@@ -21,6 +21,7 @@ import { DEFAULT_PLATFORM_ROLE_KEY, systemRoleId } from "@/lib/rbac";
 import { generateHandle, pickUserColor } from "@/lib/user-defaults";
 import { isFirstAccount, provisionNewUser } from "@/lib/user-provisioning";
 import { splitName } from "@/lib/utils/string";
+import { simpleWebAuthn } from "@/lib/webauthn/server";
 
 // PrismaAdapter with a createUser override: OAuth/mail users only supply
 // name/email/image, but `handle` and `color` are NOT NULL. The full name
@@ -306,6 +307,9 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
               origin: appBaseUrl(),
             },
             enableConditionalUI: true,
+            // Auth.js still calls `@simplewebauthn/server` the v9 way — the
+            // bridge translates to the v14 we ship (`lib/webauthn/server.ts`).
+            simpleWebAuthn,
             // Without a custom `getUserInfo`, next-auth would return
             // `exists: false` for any unknown email and thereby allow a
             // brand-new account via passkey (`LoginForm`'s "Register with
