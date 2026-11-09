@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Avatar } from "@/components/ui/atoms/Avatar/Avatar";
+import { Shortcut } from "@/components/ui/atoms/Shortcut/Shortcut";
+import { shortcutGroups } from "@/features/account/components/AccountShortcuts/shortcutGroups";
 import { searchIssuesForPalette } from "@/features/issues/actions";
 import { StatusIcon } from "@/features/issues/components/IssueIcons/IssueIcons";
 import { issuePath } from "@/features/issues/issue-links";
@@ -30,17 +32,31 @@ interface NavEntry {
   href: string;
   label: (t: Translator) => string;
   icon: string;
+  /** Spec of the shortcut that does the same, if there is one. */
+  keys?: string | string[];
 }
+
+/** The row's id in `shortcutGroups` (the "?" help) — the palette shows the
+ *  same keys, so the two can't drift apart. */
+type ShortcutId = string;
 
 // Which WORKSPACE_SECTIONS entries show up as "go to" results, and the
 // (differently-phrased) palette label for each — icon/href still come from
-// lib/nav.ts so they can't drift from the Sidebar.
-const PALETTE_GOTO: [NavLabelKey, (t: Translator) => string][] = [
-  ["myIssues", (t) => t("palette.goto.my")],
-  ["inbox", (t) => t("palette.goto.inbox")],
-  ["members", (t) => t("palette.goto.members")],
-  ["teams", (t) => t("palette.goto.teams")],
-  ["settings", (t) => t("palette.goto.settings")],
+// lib/nav.ts so they can't drift from the Sidebar. Only those the person
+// may open (`allowedNav`) are offered, same as in the Sidebar. The third
+// entry names the "g" shortcut to the same place. Members and settings use
+// the workspace-only "g u"/"g w": "g m"/"g s" go to the *project's* page
+// while one is open, which isn't where these rows lead.
+const PALETTE_GOTO: [NavLabelKey, (t: Translator) => string, ShortcutId][] = [
+  ["dashboard", (t) => t("palette.goto.dashboard"), "goto-dashboard"],
+  ["myIssues", (t) => t("palette.goto.my"), "goto-my-issues"],
+  ["inbox", (t) => t("palette.goto.inbox"), "goto-inbox"],
+  ["projects", (t) => t("palette.goto.projects"), "goto-projects"],
+  ["views", (t) => t("palette.goto.views"), "goto-views"],
+  ["members", (t) => t("palette.goto.members"), "goto-workspace-members"],
+  ["teams", (t) => t("palette.goto.teams"), "goto-teams"],
+  ["settings", (t) => t("palette.goto.settings"), "goto-workspace-settings"],
+  ["account", (t) => t("palette.goto.account"), "goto-account"],
 ];
 
 interface CommandEntry {
@@ -48,6 +64,7 @@ interface CommandEntry {
   label: (t: Translator) => string;
   icon: string;
   run: () => void;
+  keys?: string | string[];
 }
 
 interface CommandPaletteProps {
@@ -57,11 +74,17 @@ interface CommandPaletteProps {
   projects: Project[];
   statuses: Status[];
   searchIssues: SearchableIssue[];
+  /** The workspace sections this person may open (`navEntryAllowed`). */
+  allowedNav: NavLabelKey[];
   /** Absent wherever the action itself isn't available (e.g. nowhere left
-   *  to create an issue) — the row simply doesn't exist then, rather than
-   *  existing and doing nothing. */
+   *  to create an issue, no right to create a project) — the row simply
+   *  doesn't exist then, rather than existing and doing nothing. */
   onNewIssue?: () => void;
+  onNewProject?: () => void;
+  onNewWorkspace?: () => void;
+  onToggleSidebar?: () => void;
   onShowShortcuts?: () => void;
+  onSignOut?: () => void;
   /** Open straight in "go to view" (key V, V7). */
   startInViews?: boolean;
 }
@@ -73,8 +96,13 @@ export function CommandPalette({
   projects,
   statuses,
   searchIssues,
+  allowedNav,
   onNewIssue,
+  onNewProject,
+  onNewWorkspace,
+  onToggleSidebar,
   onShowShortcuts,
+  onSignOut,
   startInViews = false,
 }: CommandPaletteProps) {
   const t = useTranslations();
@@ -102,15 +130,44 @@ export function CommandPalette({
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  const NAV_ENTRIES: NavEntry[] = PALETTE_GOTO.map(([labelKey, label]) => {
+  const shortcutKeys = new Map(
+    shortcutGroups(t)
+      .flatMap((group) => group.rows)
+      .map((row) => [row.id, row.keys]),
+  );
+
+  const NAV_ENTRIES: NavEntry[] = PALETTE_GOTO.filter(([labelKey]) =>
+    allowedNav.includes(labelKey),
+  ).map(([labelKey, label, shortcut]) => {
     const entry = WORKSPACE_SECTIONS.find((e) => e.labelKey === labelKey);
     if (!entry) throw new Error(`No WORKSPACE_SECTIONS entry for ${labelKey}`);
     return {
       href: workspacePath(workspaceId, entry.section),
       icon: entry.icon,
       label,
+      keys: shortcutKeys.get(shortcut),
     };
   });
+
+  /** One row per handler that exists (see `CommandPaletteProps`). */
+  const command = (
+    id: string,
+    label: (t: Translator) => string,
+    icon: string,
+    run: (() => void) | undefined,
+    shortcut?: ShortcutId,
+  ): CommandEntry[] =>
+    run
+      ? [
+          {
+            id,
+            label,
+            icon,
+            run,
+            keys: shortcut ? shortcutKeys.get(shortcut) : undefined,
+          },
+        ]
+      : [];
 
   // Actual actions, not places to go — a real command palette's whole
   // point, not just a jump list. Each only exists as an entry once its
@@ -123,27 +180,49 @@ export function CommandPalette({
       run: () => {
         setViewMode(true);
       },
+      keys: shortcutKeys.get("switch-view"),
     },
-    ...(onNewIssue
-      ? [
-          {
-            id: "new-issue",
-            label: (t: Translator) => t("palette.newIssue"),
-            icon: "lucide:plus",
-            run: onNewIssue,
-          },
-        ]
-      : []),
-    ...(onShowShortcuts && hasKeyboard
-      ? [
-          {
-            id: "show-shortcuts",
-            label: (t: Translator) => t("palette.showShortcuts"),
-            icon: "lucide:keyboard",
-            run: onShowShortcuts,
-          },
-        ]
-      : []),
+    ...command(
+      "new-issue",
+      (t) => t("palette.newIssue"),
+      "lucide:plus",
+      onNewIssue,
+      "new-issue",
+    ),
+    ...command(
+      "new-project",
+      (t) => t("palette.newProject"),
+      "lucide:folder-plus",
+      onNewProject,
+      "new-project",
+    ),
+    ...command(
+      "new-workspace",
+      (t) => t("palette.newWorkspace"),
+      "lucide:building-2",
+      onNewWorkspace,
+      "new-workspace",
+    ),
+    ...command(
+      "toggle-sidebar",
+      (t) => t("palette.toggleSidebar"),
+      "lucide:panel-left",
+      onToggleSidebar,
+      "toggle-sidebar",
+    ),
+    ...command(
+      "show-shortcuts",
+      (t) => t("palette.showShortcuts"),
+      "lucide:keyboard",
+      hasKeyboard ? onShowShortcuts : undefined,
+      "help",
+    ),
+    ...command(
+      "sign-out",
+      (t) => t("palette.signOut"),
+      "lucide:log-out",
+      onSignOut,
+    ),
   ];
 
   useEffect(() => {
@@ -292,12 +371,11 @@ export function CommandPalette({
   // stable "position" the same way (a shortcut key drifting to a
   // different action every time the query changes would be worse than not
   // having one).
+  // `raw`: bound by the palette itself and `GoToShortcuts`, not through
+  // `useShortcut`, so there's no personal remap to look up.
   const quickSelectBadge = (idx: number) =>
-    hasKeyboard && idx < QUICK_SELECT_COUNT ? (
-      <span className="kbd" style={{ marginLeft: "auto" }}>
-        {mod}
-        {idx + 1}
-      </span>
+    idx < QUICK_SELECT_COUNT ? (
+      <Shortcut keys={`mod+${idx + 1}`} raw className={styles.shortcut} />
     ) : null;
 
   const select = (item: ResultItem) => {
@@ -424,6 +502,9 @@ export function CommandPalette({
                     >
                       <Icon icon={c.icon} width={15} />
                       <span>{c.label(t)}</span>
+                      {c.keys && (
+                        <Shortcut keys={c.keys} className={styles.shortcut} />
+                      )}
                     </button>
                   ))}
                 </>
@@ -521,6 +602,9 @@ export function CommandPalette({
                       >
                         <Icon icon={e.icon} width={15} />
                         <span>{e.label(t)}</span>
+                        {e.keys && (
+                          <Shortcut keys={e.keys} className={styles.shortcut} />
+                        )}
                       </button>
                     );
                   })}

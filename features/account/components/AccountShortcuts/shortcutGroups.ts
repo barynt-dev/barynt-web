@@ -48,6 +48,11 @@ export function shortcutGroups(t: Translator): ShortcutGroup[] {
           keys: "n",
         },
         {
+          id: "new-workspace",
+          label: t("account.shortcutNewWorkspace"),
+          keys: "w",
+        },
+        {
           id: "palette",
           label: t("account.shortcutPalette"),
           desc: t("account.shortcutPaletteDesc"),
@@ -94,6 +99,16 @@ export function shortcutGroups(t: Translator): ShortcutGroup[] {
           keys: "g+p",
         },
         {
+          id: "goto-views",
+          label: t("account.shortcutGoToViews"),
+          keys: "g+v",
+        },
+        {
+          id: "goto-inbox",
+          label: t("account.shortcutGoToInbox"),
+          keys: "g+n",
+        },
+        {
           id: "goto-members",
           label: t("account.shortcutGoToMembers"),
           desc: t("account.shortcutGoToMembersDesc"),
@@ -109,6 +124,23 @@ export function shortcutGroups(t: Translator): ShortcutGroup[] {
           label: t("account.shortcutGoToSettings"),
           desc: t("account.shortcutGoToSettingsDesc"),
           keys: "g+s",
+        },
+        {
+          id: "goto-workspace-members",
+          label: t("account.shortcutGoToWorkspaceMembers"),
+          desc: t("account.shortcutGoToWorkspaceDesc"),
+          keys: "g+u",
+        },
+        {
+          id: "goto-workspace-settings",
+          label: t("account.shortcutGoToWorkspaceSettings"),
+          desc: t("account.shortcutGoToWorkspaceDesc"),
+          keys: "g+w",
+        },
+        {
+          id: "goto-account",
+          label: t("account.shortcutGoToAccount"),
+          keys: "g+a",
         },
         {
           id: "goto-board",
