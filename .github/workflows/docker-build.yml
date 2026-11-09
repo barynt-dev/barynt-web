@@ -138,6 +138,8 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: ${{ needs.vars.outputs.image }}:scan
+          # Fresh `apt-get upgrade` on every run (see the Dockerfile).
+          build-args: APT_REFRESH=${{ github.run_id }}
           cache-from: type=gha,scope=linux-amd64
           cache-to: type=gha,mode=max,scope=linux-amd64
 
@@ -207,6 +209,7 @@ jobs:
           provenance: true
           sbom: true
           outputs: type=image,name=${{ needs.vars.outputs.image }},push-by-digest=true,name-canonical=true,push=true
+          build-args: APT_REFRESH=${{ github.run_id }}
           cache-from: type=gha,scope=${{ matrix.slug }}
           cache-to: type=gha,mode=max,scope=${{ matrix.slug }}
 

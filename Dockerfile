@@ -162,6 +162,13 @@ ENV NODE_ENV=production \
 # docker-build.yml (`ignore-unfixed: true`) fails the build on exactly
 # this class of gap, since a fix is available even though Bun hasn't
 # republished the base image yet.
+#
+# `APT_REFRESH` keeps that layer out of the build cache: docker-build.yml
+# passes the run id, so every run upgrades again. Without it the GHA cache
+# replayed an old upgrade and the 1.0.1 release failed its scan on fixes
+# Debian had shipped in the meantime (zlib1g, apt). Only the layers from
+# here on rebuild; the app build in `builder` stays cached.
+ARG APT_REFRESH=""
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 # The base image already ships an unprivileged "bun" user (uid/gid 1000).
