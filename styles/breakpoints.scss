@@ -78,10 +78,23 @@ $tablet: 1024px;
 }
 
 /// The sidebar is collapsed to its icon rail (`data-nav-collapsed` on the
-/// shell, set by `ShellFrame`). Desktop only: at tablet width and below the
-/// sidebar is a menu and the flag has no meaning there. Use inside
-/// the rule of the element that changes, from any module.
+/// shell, set by `ShellFrame`), for an element *inside* the sidebar
+/// (`data-nav-pane`). The same components render outside it too — a
+/// `NavLink` in a settings nav must keep its labels while the sidebar is a
+/// rail. Desktop only: at tablet width and below the sidebar is a menu and
+/// the flag has no meaning there. Use inside the rule of the element that
+/// changes, from any module.
 @mixin rail {
+  @include desktop {
+    :global([data-nav-collapsed] [data-nav-pane]) & {
+      @content;
+    }
+  }
+}
+
+/// The sidebar is collapsed, for an element outside it that reacts to that
+/// (the tab bar's menu button). Desktop only, like `rail`.
+@mixin nav-collapsed {
   @include desktop {
     :global([data-nav-collapsed]) & {
       @content;
