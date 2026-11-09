@@ -173,12 +173,12 @@ components/
 The desktop layout is the base; the mixins in `styles/breakpoints.scss` reach
 _down_ (`@use "breakpoints" as bp;`). Test widths: 375 / 768 / 1280px.
 
-| Mixin                                     | Applies                                        | JS twin (`lib/utils/useMediaQuery`) |
-| ----------------------------------------- | ---------------------------------------------- | ----------------------------------- |
-| `bp.phone`                                | ≤ 640px                                        | `PHONE_QUERY`                       |
-| `bp.tablet-down`                          | ≤ 1024px (phone + tablet)                      | `COMPACT_QUERY`                     |
-| `bp.tablet-only`, `bp.desktop`, `bp.rail` | tablet / > 1024px / collapsed icon rail        | —                                   |
-| `bp.coarse`, `bp.no-hover`                | touch / no hover (input capability, not width) | —                                   |
+| Mixin                                     | Applies                                                                                                       | JS twin (`lib/utils/useMediaQuery`) |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `bp.phone`                                | ≤ 640px                                                                                                       | `PHONE_QUERY`                       |
+| `bp.tablet-down`                          | ≤ 1024px (phone + tablet)                                                                                     | `COMPACT_QUERY`                     |
+| `bp.tablet-only`, `bp.desktop`, `bp.rail` | tablet / > 1024px / collapsed icon rail (inside the sidebar only; `bp.nav-collapsed` for elements outside it) | —                                   |
+| `bp.coarse`, `bp.no-hover`                | touch / no hover (input capability, not width)                                                                | —                                   |
 - **Layout in CSS, behavior in JS.** Width-only differences belong in SCSS;
   `useMediaQuery` is for behavior that has to differ (sheet vs. dialog, one
   column of a matrix). It is `false` on the server and during hydration.

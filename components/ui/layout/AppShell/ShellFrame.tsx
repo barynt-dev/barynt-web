@@ -225,6 +225,7 @@ export function ShellFrame({
           ref={paneRef}
           id="app-sidebar"
           className={styles.navPane}
+          data-nav-pane
           tabIndex={-1}
           onClick={(e) => {
             if ((e.target as HTMLElement).closest("a[href]")) setOpen(false);

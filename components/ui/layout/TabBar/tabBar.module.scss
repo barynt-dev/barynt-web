@@ -29,7 +29,7 @@
     display: inline-flex;
   }
 
-  @include bp.rail {
+  @include bp.nav-collapsed {
     display: inline-flex;
   }
 }

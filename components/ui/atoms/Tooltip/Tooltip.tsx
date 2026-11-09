@@ -51,8 +51,8 @@ const RAIL_GAP_PX = 10;
  * scrolling ancestor or dodge the viewport edge — unlike `Popover`, which
  * exists for exactly that heavier job.
  *
- * One exception: inside the sidebar's icon rail (`data-nav-collapsed`, see
- * `ShellFrame`) the bubble goes to the *right* of the trigger, and there it
+ * One exception: inside the sidebar's icon rail (`data-nav-collapsed` on
+ * the shell, `data-nav-pane` on the sidebar, see `ShellFrame`) the bubble goes to the *right* of the trigger, and there it
  * is `position: fixed` at measured coordinates — the sidebar scrolls and
  * clips, so an absolutely positioned bubble beside a 44px icon would be cut
  * off at the rail's edge.
@@ -81,7 +81,7 @@ export function Tooltip({
     timeoutRef.current = setTimeout(() => {
       const wrap = wrapRef.current;
       const inRail =
-        !!wrap?.closest("[data-nav-collapsed]") &&
+        !!wrap?.closest("[data-nav-collapsed] [data-nav-pane]") &&
         window.matchMedia(DESKTOP_QUERY).matches;
       if (railOnly && !inRail) return;
       if (wrap && inRail) {
