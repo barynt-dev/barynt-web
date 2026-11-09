@@ -59,13 +59,30 @@ function containsActive(tabs: TabGroup[], pathname: string): boolean {
   });
 }
 
+/** You're somewhere in this row's area — the row itself is active (a
+ *  project's `/*`, so an issue page counts too) or one of its entries. */
+function isWithin(item: TabGroup, pathname: string): boolean {
+  return (
+    isNavActive(pathname, item.href, item.activeHref) ||
+    containsActive(item.group ?? [], pathname)
+  );
+}
+
 function TabItem({ item }: { item: TabGroup }) {
   const pathname = usePathname();
   const runAction = useNavAction();
   const hasGroup = Boolean(item.group && item.group.length > 0);
-  const [expanded, setExpanded] = useState(() =>
-    hasGroup ? containsActive(item.group ?? [], pathname) : false,
+  const [expanded, setExpanded] = useState(
+    () => hasGroup && isWithin(item, pathname),
   );
+  // The sidebar outlives navigation, so the initial state alone would only
+  // cover the first page. On every navigation into this row's area it opens
+  // again; a manual collapse holds until the next one.
+  const [seenPathname, setSeenPathname] = useState(pathname);
+  if (pathname !== seenPathname) {
+    setSeenPathname(pathname);
+    if (hasGroup && isWithin(item, pathname)) setExpanded(true);
+  }
 
   return (
     // Hidden on a phone as a whole — an empty wrapper would still take a
