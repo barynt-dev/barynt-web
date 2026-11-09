@@ -1,7 +1,6 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { signIn } from "next-auth/webauthn";
 import { useFormatter, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
@@ -15,6 +14,7 @@ import {
 import { addEmail, removePasskey } from "@/features/account/actions";
 import type { AccountSecurityView } from "@/features/account/types";
 import { Link } from "@/i18n/navigation";
+import { passkeySignIn } from "@/lib/webauthn/client";
 import styles from "./accountSecurity.module.scss";
 
 interface Props extends AccountSecurityView {
@@ -35,8 +35,8 @@ interface Props extends AccountSecurityView {
  * What you get in with.
  *
  * No more password — passkeys and connected providers are the only ways in.
- * The ceremony (browser prompt) is handled entirely by `next-auth/webauthn`'s
- * `signIn`, the last-way-in protection lives on the server (`removePasskey`);
+ * The ceremony (browser prompt) is handled entirely by `passkeySignIn`
+ * (`lib/webauthn/client`), the last-way-in protection lives on the server (`removePasskey`);
  * the UI only makes the rule visible.
  *
  * What's missing here is missing deliberately: *changing* an existing
@@ -81,7 +81,7 @@ export function AccountSecurity({
     setPasskeyError("");
     startPasskeyTransition(async () => {
       try {
-        await signIn("webauthn", { action: "register", redirect: true });
+        await passkeySignIn({ action: "register" });
       } catch {
         setPasskeyError(t("account.passkeyAddFailed"));
       }

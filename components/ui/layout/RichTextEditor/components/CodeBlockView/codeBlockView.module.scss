@@ -30,7 +30,9 @@
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--on-surface-variant);
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 
   &:hover {
     background: var(--surface-container-highest);

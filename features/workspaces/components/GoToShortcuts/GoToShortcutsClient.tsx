@@ -32,6 +32,8 @@ interface GoToShortcutsClientProps {
  * clicking those tabs there would — everywhere else, the workspace's.
  * `activeSlug` mirrors `NewIssueButton.tsx`'s own project-from-pathname
  * check for the same reason: preselecting from where you already are.
+ * "u"/"w" are their workspace-only twins (users, workspace settings): the
+ * workspace's members/settings even from inside a project.
  *
  * "["/"]" cycle to the previous/next project — a separate, bare-key
  * shortcut rather than another "g" binding: this isn't "go to a fixed
@@ -115,7 +117,12 @@ export function GoToShortcutsClient({
       d: () => router.push(workspacePath(workspaceId, "dashboard")),
       i: () => router.push(workspacePath(workspaceId, "my")),
       p: () => router.push(workspacePath(workspaceId, "projects")),
+      v: () => router.push(workspacePath(workspaceId, "views")),
+      n: () => router.push(workspacePath(workspaceId, "inbox")),
+      a: () => router.push(workspacePath(workspaceId, "account")),
       t: () => router.push(workspacePath(workspaceId, "teams")),
+      u: () => router.push(workspacePath(workspaceId, "members")),
+      w: () => router.push(workspaceSettingsPath(workspaceId, "")),
       m: () =>
         router.push(
           activeSlug

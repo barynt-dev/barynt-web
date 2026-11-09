@@ -35,7 +35,9 @@
   border: 1px solid var(--outline-variant);
   padding: 0 0.6875rem;
   font-size: var(--text-base);
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
 
   &::placeholder {
     color: var(--on-surface-variant);
@@ -92,7 +94,10 @@
   /* Same padding as the description below — otherwise the two would sit
      offset by eight pixels within the dialog. */
   padding: 0.3125rem 0.5rem;
-  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    box-shadow 0.12s;
 
   &::placeholder {
     color: var(--outline);
@@ -154,7 +159,9 @@
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-sm);
   cursor: text;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
 
   /* The padding deliberately lives *inside* the children (`.prefix` on the
      left, `.bare` on the right) rather than on the border: both direct a
@@ -259,7 +266,9 @@
     background: transparent;
     color: var(--on-surface-variant);
     cursor: pointer;
-    transition: background 0.1s, color 0.1s;
+    transition:
+      background 0.1s,
+      color 0.1s;
 
     &:hover {
       background: var(--surface-container-low);

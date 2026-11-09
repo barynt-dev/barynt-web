@@ -1,10 +1,10 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { signIn } from "next-auth/webauthn";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { OptionButton } from "@/components/ui/atoms/OptionButton/OptionButton";
+import { passkeySignIn } from "@/lib/webauthn/client";
 
 interface Props {
   callbackUrl?: string;
@@ -19,12 +19,12 @@ interface Props {
  * "userless" ceremony as 1Password, GitHub, and others.
  *
  * The ceremony (browser prompt, verification) is handled entirely by
- * `next-auth/webauthn`'s `signIn` — it fetches the options from the server,
- * calls `@simplewebauthn/browser`, and posts the response back.
+ * `passkeySignIn` (`lib/webauthn/client`) — it fetches the options from the
+ * server, calls `@simplewebauthn/browser`, and posts the response back.
  *
  * If the person cancels the browser prompt (no passkey selected, timeout),
  * `startAuthentication` throws before any server contact — only this
- * try/catch catches that, `next-auth/webauthn` itself doesn't.
+ * try/catch catches that.
  */
 export function PasskeyLoginButton({ callbackUrl, onError }: Props) {
   const t = useTranslations();
@@ -34,7 +34,7 @@ export function PasskeyLoginButton({ callbackUrl, onError }: Props) {
     onError("");
     startTransition(async () => {
       try {
-        await signIn("webauthn", { redirectTo: callbackUrl || "/" });
+        await passkeySignIn({ redirectTo: callbackUrl || "/" });
       } catch {
         onError(t("login.passkeyFailed"));
       }

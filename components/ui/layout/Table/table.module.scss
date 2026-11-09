@@ -375,7 +375,9 @@ tbody.group {
   /* Invisible until the row is meant — a list full of handles would be
      restless, and the whole row is draggable anyway. */
   opacity: 0;
-  transition: opacity 0.12s, color 0.12s;
+  transition:
+    opacity 0.12s,
+    color 0.12s;
 
   &:hover,
   &:focus-visible {

@@ -46,7 +46,9 @@
   font-size: var(--text-base);
   font-weight: 500;
   color: var(--on-surface);
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 
   &:not([data-readonly]):hover {
     border-color: var(--outline-variant);
@@ -145,7 +147,10 @@
   margin-left: -0.25rem;
   border-radius: var(--radius-sm);
   color: var(--outline);
-  transition: transform 0.15s, color 0.12s, background 0.12s;
+  transition:
+    transform 0.15s,
+    color 0.12s,
+    background 0.12s;
 
   &:hover {
     color: var(--on-surface);
@@ -426,7 +431,10 @@
     width: 2px;
     border-radius: 1px;
     background: var(--outline-variant);
-    transition: background 0.12s, width 0.12s, inset-inline-start 0.12s;
+    transition:
+      background 0.12s,
+      width 0.12s,
+      inset-inline-start 0.12s;
   }
 
   &:hover::after,

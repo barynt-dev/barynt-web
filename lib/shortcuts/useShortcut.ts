@@ -51,6 +51,14 @@ function eventMatches(e: KeyboardEvent, parsed: ParsedShortcut): boolean {
   return true;
 }
 
+/**
+ * Keypresses that finished a sequence ("g" then "p") — a bare-key
+ * `useShortcut` on the same letter ("p", change priority) must not fire
+ * on them as well. The sequence listener runs in the capture phase, so it
+ * always gets there first.
+ */
+const consumedBySequence = new WeakSet<KeyboardEvent>();
+
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName;
@@ -104,6 +112,7 @@ export function useShortcut(
     const parsed = parseShortcut(spec);
 
     const onKeyDown = (e: KeyboardEvent) => {
+      if (consumedBySequence.has(e)) return;
       if (!allowInEditable && isEditableTarget(e.target)) return;
       if (!eventMatches(e, parsed)) return;
       e.preventDefault();
@@ -183,6 +192,7 @@ export function useShortcutSequence(
         const handler = bindingsRef.current[key];
         if (handler) {
           e.preventDefault();
+          consumedBySequence.add(e);
           handler();
         }
         return;
@@ -194,9 +204,9 @@ export function useShortcutSequence(
       }
     };
 
-    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("keydown", onKeyDown, { capture: true });
     return () => {
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("keydown", onKeyDown, { capture: true });
       clearTimeout(timer);
     };
   }, [prefixKey, enabled, windowMs]);

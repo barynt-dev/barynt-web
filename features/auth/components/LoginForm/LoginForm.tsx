@@ -1,7 +1,6 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { signIn } from "next-auth/webauthn";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
@@ -12,6 +11,7 @@ import { AuthCard } from "@/features/auth/components/AuthCard/AuthCard";
 import { PasskeyLoginButton } from "@/features/auth/components/PasskeyLoginButton/PasskeyLoginButton";
 import { useRouter } from "@/i18n/navigation";
 import { randomId } from "@/lib/utils/id";
+import { passkeySignIn } from "@/lib/webauthn/client";
 import styles from "./loginForm.module.scss";
 
 interface LoginFormProps {
@@ -107,7 +107,7 @@ export function LoginForm({
     setError("");
     startPasskeyTransition(async () => {
       try {
-        await signIn("webauthn", {
+        await passkeySignIn({
           email: `${randomId()}@no-email.invalid`,
           redirectTo: callbackUrl || "/",
         });

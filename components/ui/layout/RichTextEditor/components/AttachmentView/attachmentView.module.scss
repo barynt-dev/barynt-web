@@ -64,7 +64,10 @@
   border: 1px solid var(--outline-variant);
   color: var(--on-surface-variant);
   opacity: 0;
-  transition: opacity 0.12s, background 0.12s, color 0.12s;
+  transition:
+    opacity 0.12s,
+    background 0.12s,
+    color 0.12s;
 
   &:hover {
     background: var(--error-container);

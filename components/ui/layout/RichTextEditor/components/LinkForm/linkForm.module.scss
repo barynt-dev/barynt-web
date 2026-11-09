@@ -58,7 +58,9 @@
   height: 1.625rem;
   border-radius: var(--radius-sm);
   color: var(--on-surface-variant);
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 
   &:hover:not(:disabled) {
     background: var(--surface-container-high);
