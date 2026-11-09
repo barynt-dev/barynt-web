@@ -125,6 +125,12 @@
   background: var(--surface-container-high);
 }
 
+/* The shortcut that does the same as the row, at its right edge. */
+.shortcut {
+  margin-left: auto;
+  flex: none;
+}
+
 .issueTitle {
   overflow: hidden;
   text-overflow: ellipsis;
