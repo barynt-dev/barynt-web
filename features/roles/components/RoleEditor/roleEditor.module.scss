@@ -50,7 +50,9 @@
   color: var(--red);
   font-size: var(--text-xs);
   white-space: nowrap;
-  transition: background 0.12s, border-color 0.12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
 
   &:hover:not(:disabled) {
     background: color-mix(in srgb, var(--red) 12%, transparent);
@@ -73,7 +75,9 @@
   height: 1.5rem;
   border-radius: var(--radius-sm);
   color: var(--on-surface-variant);
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 
   &:hover {
     background: var(--surface-container-high);

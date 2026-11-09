@@ -18,7 +18,9 @@
   /* Room for the resize handle, so it doesn't run into the bottom rounding
      and get clipped there. */
   padding-bottom: 0.3125rem;
-  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+  transition:
+    border-color 0.14s ease,
+    box-shadow 0.14s ease;
 
   /* The field stands out while writing — a soft ring instead of a hard
      border swap, so the change doesn't jump out at the eye. */

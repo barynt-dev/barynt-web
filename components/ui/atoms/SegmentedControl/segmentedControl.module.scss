@@ -45,7 +45,9 @@
   font-weight: 450;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
   position: relative;
 
   /* Only the text may give way. A squeezed icon is a distorted icon — same

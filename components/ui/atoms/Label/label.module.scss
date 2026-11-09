@@ -102,7 +102,9 @@
   border-radius: var(--radius-pill);
   color: inherit;
   opacity: 0.5;
-  transition: opacity 0.12s, background 0.12s;
+  transition:
+    opacity 0.12s,
+    background 0.12s;
 
   &:hover {
     opacity: 1;

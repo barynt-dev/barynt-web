@@ -374,11 +374,13 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
 ```
 
 **Why all three?**
+
 - Step 1 alone → client and DB fall out of sync, runtime errors
 - Step 2 alone (without 1) → no migration, DB is missing the field
 - Forgetting step 3 → seed fails, `bun db:reset` breaks
 
 **Adding a field (NOT NULL without a default):**
+
 ```sql
 -- Add this to the generated migration.sql BEFORE migrate deploy runs:
 ALTER TABLE "Model" ADD COLUMN "field" TEXT;

@@ -107,7 +107,9 @@
   white-space: nowrap;
   cursor: pointer;
   text-decoration: none;
-  transition: background 0.12s, border-color 0.12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
 }
 
 .primary {

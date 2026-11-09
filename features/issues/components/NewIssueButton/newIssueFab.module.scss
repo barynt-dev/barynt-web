@@ -62,7 +62,9 @@
 
   &:focus-visible {
     outline: none;
-    box-shadow: var(--shadow-pop), 0 0 0 3px var(--tertiary);
+    box-shadow:
+      var(--shadow-pop),
+      0 0 0 3px var(--tertiary);
   }
 }
 
@@ -77,7 +79,9 @@
   background: var(--primary);
   color: var(--on-primary);
   box-shadow: var(--shadow-pop);
-  transition: transform 0.06s, filter 0.12s;
+  transition:
+    transform 0.06s,
+    filter 0.12s;
 
   &:active {
     transform: scale(0.96);
@@ -86,7 +90,9 @@
 
   &:focus-visible {
     outline: none;
-    box-shadow: var(--shadow-pop), 0 0 0 3px var(--tertiary);
+    box-shadow:
+      var(--shadow-pop),
+      0 0 0 3px var(--tertiary);
   }
 
   /* Extended: icon and a word ("＋ Widget"). */

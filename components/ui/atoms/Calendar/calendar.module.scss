@@ -39,7 +39,9 @@
   height: 1.625rem;
   border-radius: var(--radius-sm);
   color: var(--on-surface-variant);
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 
   &:hover {
     background: var(--surface-container-high);
@@ -72,7 +74,9 @@
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   color: var(--on-surface);
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 
   &:hover {
     background: var(--surface-container-high);
@@ -112,7 +116,9 @@
   font-size: var(--text-xs);
   font-weight: 550;
   color: var(--on-surface-variant);
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 
   &:hover {
     background: var(--surface-container-high);
