@@ -185,7 +185,7 @@ export const ICON_COLLECTIONS: IconifyJSON[] = [
       "archive": {
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><rect width=\"20\" height=\"5\" x=\"2\" y=\"3\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8m-10 4h4\"/></g>"
       },
-      "archive-restore": {
+      "archive-arrow-up": {
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><rect width=\"20\" height=\"5\" x=\"2\" y=\"3\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h2M20 8v11a2 2 0 0 1-2 2h-2m-7-6l3-3l3 3m-3-3v9\"/></g>"
       },
       "arrow-down": {
@@ -227,7 +227,7 @@ export const ICON_COLLECTIONS: IconifyJSON[] = [
       "blocks": {
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2\"/><rect width=\"8\" height=\"8\" x=\"14\" y=\"2\" rx=\"1\"/></g>"
       },
-      "bold": {
+      "letter-b": {
         "body": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8\"/>"
       },
       "book-open": {
@@ -290,7 +290,7 @@ export const ICON_COLLECTIONS: IconifyJSON[] = [
       "circle": {
         "body": "<circle cx=\"12\" cy=\"12\" r=\"10\" fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"/>"
       },
-      "circle-alert": {
+      "circle-exclamation-point": {
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 8v4m0 4h.01\"/></g>"
       },
       "circle-check": {
@@ -429,7 +429,8 @@ export const ICON_COLLECTIONS: IconifyJSON[] = [
         "body": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 9h16M4 15h16M10 3L8 21m8-18l-2 18\"/>"
       },
       "heading": {
-        "body": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 12h12M6 20V4m12 16V4\"/>"
+        "body": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 12h12M6 20V4m12 16V4\"/>",
+        "hidden": true
       },
       "heading-1": {
         "body": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 12h8m-8 6V6m8 12V6m5 6l3-2v8\"/>"
@@ -735,7 +736,7 @@ export const ICON_COLLECTIONS: IconifyJSON[] = [
       "trending-up": {
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M16 7h6v6\"/><path d=\"m22 7l-8.5 8.5l-5-5L2 17\"/></g>"
       },
-      "triangle-alert": {
+      "triangle-exclamation-point": {
         "body": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"m21.73 18l-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4m0 4h.01\"/>"
       },
       "type": {
@@ -797,8 +798,17 @@ export const ICON_COLLECTIONS: IconifyJSON[] = [
       }
     },
     "aliases": {
+      "archive-restore": {
+        "parent": "archive-arrow-up"
+      },
+      "bold": {
+        "parent": "letter-b"
+      },
       "building-2": {
         "parent": "building-complex"
+      },
+      "circle-alert": {
+        "parent": "circle-exclamation-point"
       },
       "file-question": {
         "parent": "file-question-mark"
@@ -820,6 +830,9 @@ export const ICON_COLLECTIONS: IconifyJSON[] = [
       },
       "trash-2": {
         "parent": "trash"
+      },
+      "triangle-alert": {
+        "parent": "triangle-exclamation-point"
       }
     }
   },
