@@ -1,8 +1,14 @@
 import { afterAll, describe, expect, it, mock } from "bun:test";
 
-// Every host resolves to a public address — no network needed.
+// Every host resolves to a public address — no network needed — except
+// `*.internal`, a company's own network.
 mock.module("node:dns/promises", () => ({
-  lookup: async () => [{ address: "140.82.121.6", family: 4 }],
+  lookup: async (host: string) => [
+    {
+      address: host.endsWith(".internal") ? "10.0.0.5" : "140.82.121.6",
+      family: 4,
+    },
+  ],
 }));
 
 const { fetchPublic } = await import("@/lib/public-fetch");
@@ -74,5 +80,33 @@ describe("fetchPublic headers (BARY-141)", () => {
       "Bearer secret",
       "Bearer secret",
     ]);
+  });
+
+  it("reaches a private host only when an admin let it through (BARY-198)", async () => {
+    const ok = () =>
+      new Response("ok", {
+        headers: { "content-type": "application/octet-stream" },
+      });
+    serve({
+      "https://gitlab.acme.internal/a": ok,
+      "https://gitlab.acme.internal:8443/a": ok,
+    });
+    const at = (url: string, internalHosts?: string[]) =>
+      fetchPublic(new URL(url), { ...options, internalHosts });
+    expect(await at("https://gitlab.acme.internal/a")).toBe(null);
+    expect(
+      await at("https://gitlab.acme.internal/a", ["gitlab.acme.internal"]),
+    ).not.toBe(null);
+    expect(
+      await at("https://gitlab.acme.internal:8443/a", [
+        "gitlab.acme.internal:8443",
+      ]),
+    ).not.toBe(null);
+    expect(
+      await at("https://other.acme.internal/a", ["gitlab.acme.internal"]),
+    ).toBe(null);
+    expect(
+      await at("http://gitlab.acme.internal/a", ["gitlab.acme.internal"]),
+    ).toBe(null);
   });
 });

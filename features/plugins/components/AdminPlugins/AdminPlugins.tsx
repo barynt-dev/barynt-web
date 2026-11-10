@@ -6,6 +6,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/atoms/Badge/Badge";
 import { Button } from "@/components/ui/atoms/Button/Button";
+import { Chip } from "@/components/ui/atoms/Chip/Chip";
 import { Input } from "@/components/ui/atoms/Input/Input";
 import { Switch } from "@/components/ui/atoms/Switch/Switch";
 import { useConfirm } from "@/components/ui/layout/ConfirmDialog/ConfirmDialog";
@@ -19,6 +20,7 @@ import {
 import {
   addPluginSource,
   browseSource,
+  checkPluginSource,
   type DirectoryPlugin,
   installPlugin,
   type PluginResult,
@@ -35,6 +37,12 @@ import type {
   PluginSourceRow,
 } from "@/features/plugins/queries";
 import { useModal } from "@/lib/context";
+import {
+  detectProvider,
+  GIT_PROVIDERS,
+  type GitProvider,
+  parseGitRepo,
+} from "@/lib/plugins/git-hosts";
 import { compareSemver } from "@/lib/plugins/semver";
 import { PHONE_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
 import styles from "../plugins.module.scss";
@@ -184,6 +192,14 @@ export function AdminPlugins({ sources, installed }: AdminPluginsView) {
       <span className={styles.rowDesc}>
         <span className={styles.url}>{source.url}</span>
         <span className={styles.badges}>
+          <Badge size="sm" mono={false}>
+            {text.t(`provider.${source.provider}` as "provider.https")}
+          </Badge>
+          {source.ref && (
+            <Badge size="sm">
+              <Icon icon="lucide:git-branch" width={11} /> {source.ref}
+            </Badge>
+          )}
           {source.private && (
             <Badge size="sm" mono={false}>
               <Icon icon="lucide:lock" width={11} /> {text.t("private")}
@@ -377,18 +393,51 @@ function AddSourceDialog({
   const text = usePluginText();
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
+  const [choice, setChoice] = useState<GitProvider | "auto">("auto");
+  const [ref, setRef] = useState("");
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
+  const [checked, setChecked] = useState("");
   const [isPending, startTransition] = useTransition();
-  const canAdd = !!name.trim() && !!url.trim() && !isPending;
+
+  // What the address says on its own; the admin may overrule it.
+  const detected = guessProvider(url);
+  const provider = choice === "auto" ? detected : choice;
+  const host = hostOf(url, provider);
+  const canAdd = !!name.trim() && !!url.trim() && !!provider && !isPending;
+  const input = () => ({
+    url,
+    provider: choice === "auto" ? null : choice,
+    ref: provider === "https" ? null : ref,
+    token,
+  });
+
+  const check = () =>
+    startTransition(async () => {
+      setError("");
+      setChecked("");
+      const result = await checkPluginSource(input());
+      if ("error" in result) return setError(text.error(result.error));
+      setChecked(
+        text.t("checkOk", {
+          plugins: result.plugins,
+          versions: result.versions,
+        }),
+      );
+    });
 
   const add = () =>
     startTransition(async () => {
-      const result = await addPluginSource({ name, url, token });
+      const result = await addPluginSource({ name, ...input() });
       if ("error" in result) return setError(text.error(result.error));
       onDone();
       close();
     });
+
+  const reset = () => {
+    setChecked("");
+    setError("");
+  };
 
   return (
     <PluginDialog
@@ -402,12 +451,42 @@ function AddSourceDialog({
               {t("actions.cancel")}
             </Button>
           )}
+          <Button
+            variant="outline"
+            disabled={!url.trim() || !provider || isPending}
+            onClick={check}
+          >
+            {text.t("checkSource")}
+          </Button>
           <Button variant="primary" disabled={!canAdd} onClick={add}>
             {text.t("addSource")}
           </Button>
         </>
       }
     >
+      <fieldset className={styles.fieldset}>
+        <legend className={styles.fieldLabel}>
+          {text.t("sourceProvider")}
+        </legend>
+        <div className={styles.providers}>
+          {GIT_PROVIDERS.map((p) => (
+            <Chip
+              key={p}
+              type="filter"
+              selected={provider === p}
+              disabled={isPending}
+              onClick={() => {
+                // Clicking what the address already says goes back to
+                // following the address.
+                setChoice(p === detected ? "auto" : p);
+                reset();
+              }}
+            >
+              {text.t(`provider.${p}`)}
+            </Chip>
+          ))}
+        </div>
+      </fieldset>
       <Input
         autoFocus={!sheet}
         label={text.t("sourceName")}
@@ -418,24 +497,94 @@ function AddSourceDialog({
       />
       <Input
         label={text.t("sourceUrl")}
-        placeholder="https://raw.githubusercontent.com/…/plugins.json"
-        hint={text.t("sourceUrlHint")}
+        placeholder={URL_EXAMPLES[provider ?? "github"]}
+        hint={
+          provider
+            ? text.t(
+                choice === "auto" ? "providerDetected" : "providerChosen",
+                {
+                  provider: text.t(`provider.${provider}`),
+                  how: text.t(`providerHow.${provider}`),
+                },
+              )
+            : text.t("sourceUrlHint")
+        }
         value={url}
         disabled={isPending}
-        onChange={(e) => setUrl(e.target.value)}
+        onChange={(e) => {
+          setUrl(e.target.value);
+          reset();
+        }}
       />
+      {provider !== "https" && (
+        <Input
+          label={text.t("sourceRef")}
+          placeholder={text.t("sourceRefPlaceholder")}
+          value={ref}
+          disabled={isPending}
+          onChange={(e) => {
+            setRef(e.target.value);
+            reset();
+          }}
+        />
+      )}
       <Input
         variant="password"
         autoComplete="off"
         label={text.t("sourceToken")}
-        hint={text.t("sourceTokenHint")}
+        hint={[
+          text.t(`tokenHint.${provider ?? "https"}`),
+          host && text.t("tokenGoesTo", { host }),
+        ]
+          .filter(Boolean)
+          .join(" ")}
         value={token}
         disabled={isPending}
-        onChange={(e) => setToken(e.target.value)}
+        onChange={(e) => {
+          setToken(e.target.value);
+          reset();
+        }}
       />
+      {checked && (
+        <p className={styles.ok} role="status">
+          <Icon icon="lucide:circle-check" width={14} />
+          {checked}
+        </p>
+      )}
       <ErrorLine message={error} />
     </PluginDialog>
   );
+}
+
+/** What an address looks like per provider, as the field's placeholder. */
+const URL_EXAMPLES: Record<GitProvider, string> = {
+  github: "https://github.com/team/barynt-plugins",
+  gitlab: "https://gitlab.example.com/team/barynt-plugins",
+  gitea: "https://codeberg.org/team/barynt-plugins",
+  bitbucket: "https://bitbucket.org/team/barynt-plugins",
+  https: "https://plugins.example.com/plugins.json",
+};
+
+/** The provider an address names on its own — `null` until it does. */
+function guessProvider(raw: string): GitProvider | null {
+  const value = raw.trim();
+  if (!value) return null;
+  if (/^[\w-]+\/[\w.-]+$/.test(value)) return "github";
+  try {
+    return detectProvider(new URL(value));
+  } catch {
+    return null;
+  }
+}
+
+/** Where a token for this address would go, for the hint under the field. */
+function hostOf(raw: string, provider: GitProvider | null): string | null {
+  if (!provider) return null;
+  const repo = parseGitRepo(raw, provider, { allowHttp: true });
+  if (!repo) return null;
+  if (provider === "github") return "api.github.com";
+  if (provider === "bitbucket") return "api.bitbucket.org";
+  return new URL(repo.origin).host;
 }
 
 function BrowseDialog({

@@ -48,12 +48,14 @@ mock.module("@/lib/audit", () => ({ recordAudit: mock(async () => {}) }));
 mock.module("next/cache", () => ({ revalidatePath: mock() }));
 mock.module("@/features/plugins/directory", () => ({
   fetchRelease: mock(),
+  readDirectory: mock(),
   sealSourceToken: (t: string) => `sealed(${t})`,
 }));
 
 import {
   activatePlugin,
   addPluginSource,
+  checkPluginSource,
   deactivatePlugin,
   installPlugin,
   rollbackPlugin,
@@ -62,7 +64,7 @@ import {
   uninstallPlugin,
   updatePluginSource,
 } from "@/features/plugins/actions";
-import { fetchRelease } from "@/features/plugins/directory";
+import { fetchRelease, readDirectory } from "@/features/plugins/directory";
 import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/permissions";
@@ -138,6 +140,73 @@ describe("sources", () => {
     expect(
       await addPluginSource({ name: "A", url: "https://example.com/p.json" }),
     ).toEqual({ error: "source_exists" });
+  });
+
+  it("stores a Git repository normalized, with its provider (BARY-198)", async () => {
+    source.findUnique.mockResolvedValue(null);
+    source.create.mockResolvedValue({ id: "s2", tokenCipher: null });
+    await addPluginSource({
+      name: "Acme",
+      url: " https://gitlab.acme.dev/team/plugins.git ",
+      ref: "release",
+    });
+    const data = source.create.mock.calls[0][0].data;
+    expect(data.url).toBe("https://gitlab.acme.dev/team/plugins");
+    expect(data.provider).toBe("gitlab");
+    expect(data.ref).toBe("release");
+  });
+
+  it("asks for the provider when the host doesn't tell", async () => {
+    expect(
+      await addPluginSource({ name: "A", url: "https://git.acme.dev/t/p" }),
+    ).toEqual({ error: "provider_required" });
+    source.findUnique.mockResolvedValue(null);
+    source.create.mockResolvedValue({ id: "s3", tokenCipher: null });
+    await addPluginSource({
+      name: "A",
+      url: "https://git.acme.dev/t/p",
+      provider: "gitea",
+    });
+    expect(source.create.mock.calls[0][0].data.provider).toBe("gitea");
+    expect(
+      await addPluginSource({
+        name: "A",
+        url: "https://gitlab.com/t/p",
+        ref: "main; rm",
+      }),
+    ).toEqual({ error: "invalid_ref" });
+  });
+
+  it("checks a source before it's saved", async () => {
+    (readDirectory as ReturnType<typeof mock>).mockResolvedValue({
+      ok: true,
+      entries: [
+        { versions: { "1.0.0": "a", "1.1.0": "b" } },
+        { versions: { "2.0.0": "c" } },
+      ],
+      issues: [],
+    });
+    expect(
+      await checkPluginSource({
+        url: "https://codeberg.org/n/plugins",
+        token: " t ",
+      }),
+    ).toEqual({
+      ok: true,
+      provider: "gitea",
+      plugins: 2,
+      versions: 3,
+      skipped: 0,
+    });
+    expect((readDirectory as ReturnType<typeof mock>).mock.calls[0][0]).toEqual(
+      {
+        url: "https://codeberg.org/n/plugins",
+        provider: "gitea",
+        ref: null,
+        token: "t",
+      },
+    );
+    expect(source.create).not.toHaveBeenCalled();
   });
 
   it("never writes the token into the audit log", async () => {

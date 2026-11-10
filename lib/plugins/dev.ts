@@ -26,3 +26,16 @@ export function isDevUrl(url: URL): boolean {
   const base = pluginDevBase();
   return !!base && url.origin === base.origin;
 }
+
+/**
+ * Hosts on a private network that plugin sources may still reach — a
+ * company's own GitLab or Gitea (BARY-198). `PLUGIN_INTERNAL_HOSTS` is a
+ * comma-separated list of `name` or `name:port`; https only, like any source.
+ * Unlike the dev directory this holds in production too: an admin set it.
+ */
+export function pluginInternalHosts(): string[] {
+  return (process.env.PLUGIN_INTERNAL_HOSTS ?? "")
+    .split(",")
+    .map((h) => h.trim().toLowerCase())
+    .filter((h) => /^[a-z0-9.-]+(:\d{1,5})?$/.test(h));
+}

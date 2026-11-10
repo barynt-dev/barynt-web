@@ -1,11 +1,15 @@
 // A local plugin directory with a few demo plugins, for trying the plugin
-// pages without a real directory (BARY-143). Serves `plugins.json` and the
-// releases in GitHub's layout; the app reads it when `PLUGIN_DEV_BASE`
-// points here (development only, see `lib/plugins/dev.ts`):
+// pages without a real directory (BARY-143). It plays a Gitea/Forgejo server
+// (BARY-198) — the directory through Gitea's API, the releases at Gitea's
+// download addresses — and a plain web server at the same time. The app
+// reads it when `PLUGIN_DEV_BASE` points here (development only, see
+// `lib/plugins/dev.ts`):
 //
 //   bun run plugins:demo                       # http://localhost:4555
 //   PLUGIN_DEV_BASE=http://localhost:4555      # in .env, then restart the app
-//   Admin → Plugins → Add source: http://localhost:4555/plugins.json
+//   Admin → Plugins → Add source, either
+//     http://localhost:4555/barynt-demo/plugins   (provider Gitea / Forgejo)
+//     http://localhost:4555/plugins.json          (web server)
 //
 // The plugins only exist to be installed and switched on — they run nothing.
 
@@ -17,6 +21,7 @@ import {
 import { validateManifest } from "../../lib/plugins/manifest";
 
 const PORT = Number(process.env.PORT ?? 4555);
+const ORIGIN = `http://localhost:${PORT}`;
 const enc = (s: string) => new TextEncoder().encode(s);
 
 interface Demo {
@@ -35,7 +40,7 @@ const DEMOS: Demo[] = [
       name: "Demo Timeline",
       author: "Barynt demo",
       description: "Issues on a time line, as a project view.",
-      repo: "barynt-demo/timeline",
+      repo: `${ORIGIN}/barynt-demo/timeline`,
       levels: ["workspace", "project"],
       kind: "sandbox",
     },
@@ -59,7 +64,7 @@ const DEMOS: Demo[] = [
       name: "Demo Chat Notifications",
       author: "Barynt demo",
       description: "Posts new issues to a chat channel, from its own server.",
-      repo: "barynt-demo/notify",
+      repo: `${ORIGIN}/barynt-demo/notify`,
       levels: ["workspace"],
       kind: "service",
     },
@@ -79,7 +84,7 @@ const DEMOS: Demo[] = [
       name: "Demo Tampered",
       author: "Barynt demo",
       description: "Its files don't match the directory — installing it fails.",
-      repo: "barynt-demo/tampered",
+      repo: `${ORIGIN}/barynt-demo/tampered`,
       levels: ["project"],
       kind: "sandbox",
     },
@@ -124,20 +129,27 @@ const directory = DEMOS.map((demo) => {
         "styles.css": enc(".demo { color: inherit; }\n"),
       }),
     };
-    releases.set(`${demo.entry.repo}/${version}`, files);
+    releases.set(
+      `${new URL(demo.entry.repo).pathname.slice(1)}/${version}`,
+      files,
+    );
     versions[version] = demo.tampered ? "0".repeat(64) : releaseHash(files);
   }
   return { ...demo.entry, versions };
 });
 
-const RELEASE = /^\/(.+)\/releases\/download\/([^/]+)\/([^/]+)$/;
+/** Gitea's download address, `/<owner>/<repo>/releases/download/<tag>/<file>`,
+ *  and a web server's, `/<owner>/<repo>/<version>/<file>`. */
+const RELEASE = /^\/([^/]+\/[^/]+)\/(?:releases\/download\/)?([^/]+)\/([^/]+)$/;
+const GITEA_DIRECTORY = "/api/v1/repos/barynt-demo/plugins/raw/plugins.json";
 
 Bun.serve({
   port: PORT,
   fetch(req) {
     const { pathname } = new URL(req.url);
     console.log(`${req.method} ${pathname}`);
-    if (pathname === "/plugins.json") return Response.json(directory);
+    if (pathname === "/plugins.json" || pathname === GITEA_DIRECTORY)
+      return Response.json(directory);
     const m = pathname.match(RELEASE);
     const file =
       m &&
@@ -152,5 +164,6 @@ Bun.serve({
   },
 });
 
-console.log(`Demo plugin directory: http://localhost:${PORT}/plugins.json`);
+console.log(`Demo plugin directory, as Gitea: ${ORIGIN}/barynt-demo/plugins`);
+console.log(`Demo plugin directory, as a web server: ${ORIGIN}/plugins.json`);
 console.log(`Set PLUGIN_DEV_BASE=http://localhost:${PORT} for the app.`);

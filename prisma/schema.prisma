@@ -1983,7 +1983,14 @@ model PluginFile {
 model PluginSource {
   id          String  @id @default(cuid())
   name        String
+  /// Die Adresse des Repositorys (`https://gitlab.acme.dev/team/plugins`),
+  /// bei `provider = "https"` die der `plugins.json` selbst.
   url         String  @unique
+  /// Was auf dem Host läuft: github, gitlab, gitea, bitbucket oder https
+  /// (ein einfacher Webserver) — `lib/plugins/git-hosts.ts` (BARY-198).
+  provider    String  @default("https")
+  /// Branch oder Tag der `plugins.json`; leer heißt der Standard-Branch.
+  ref         String?
   /// Zugriffstoken für private Verzeichnisse und Plugin-Repos — nie im
   /// Klartext. Wie es versiegelt wird, legt der Verzeichnis-Client fest (B3).
   tokenCipher String?

@@ -44,6 +44,8 @@ const KNOWN_ERRORS = [
   "unreachable",
   "not_json",
   "token_unreadable",
+  "provider_required",
+  "invalid_ref",
 ] as const;
 
 export function usePluginText() {

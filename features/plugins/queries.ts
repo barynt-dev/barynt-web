@@ -73,6 +73,9 @@ export interface PluginSourceRow {
   id: string;
   name: string;
   url: string;
+  /** `lib/plugins/git-hosts` — github, gitlab, gitea, bitbucket, https. */
+  provider: string;
+  ref: string | null;
   enabled: boolean;
   private: boolean;
   lastSyncAt: Date | null;
@@ -111,6 +114,8 @@ export async function getAdminPluginsView(): Promise<AdminPluginsView | null> {
       id: s.id,
       name: s.name,
       url: s.url,
+      provider: s.provider,
+      ref: s.ref,
       enabled: s.enabled,
       private: !!s.tokenCipher,
       lastSyncAt: s.lastSyncAt,

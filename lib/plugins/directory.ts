@@ -10,6 +10,7 @@
 
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import { GIT_PROVIDERS } from "./git-hosts";
 import {
   isCompatible,
   PLUGIN_KINDS,
@@ -22,8 +23,10 @@ import { isSemver } from "./semver";
 // ─── The directory ──────────────────────────────────────────────────────────
 
 const ID_RE = /^[a-z][a-z0-9-]{1,38}[a-z0-9]$/;
-/** A GitHub repository, `owner/name`. */
-const REPO_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]{1,100}$/;
+/** GitHub's short form, `owner/name`, or a repository's address on any
+ *  Git host (`lib/plugins/git-hosts.ts` reads it). */
+const REPO_RE =
+  /^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]{1,100}|https?:\/\/\S{3,290})$/;
 const SHA256_RE = /^[0-9a-f]{64}$/;
 
 /**
@@ -36,7 +39,11 @@ export const directoryEntrySchema = z.strictObject({
   name: z.string().trim().min(1).max(60),
   author: z.string().trim().min(1).max(80),
   description: z.string().trim().min(1).max(300),
-  repo: z.string().regex(REPO_RE, 'expected a GitHub repository, "owner/name"'),
+  repo: z
+    .string()
+    .regex(REPO_RE, 'expected a repository address or "owner/name"'),
+  /** The repository's host software, when its address doesn't tell. */
+  provider: z.enum(GIT_PROVIDERS).optional(),
   levels: z.array(z.enum(PLUGIN_LEVELS)).min(1).max(2),
   kind: z.enum(PLUGIN_KINDS),
   versions: z
@@ -228,52 +235,4 @@ export async function loadRelease(
     return { ok: false, error: "incompatible" };
 
   return { ok: true, manifest, files, hash };
-}
-
-// ─── Where a release lives (GitHub) ─────────────────────────────────────────
-
-/** A release file without a token: the download address GitHub serves for
- *  public repositories. The tag is the version itself, as with Obsidian.
- *  `base` is GitHub, or a local directory in development. */
-export function publicAssetUrl(
-  repo: string,
-  version: string,
-  file: ReleaseFileName,
-  base = "https://github.com",
-): URL {
-  return new URL(
-    `${base}/${repo}/releases/download/${encodeURIComponent(version)}/${file}`,
-  );
-}
-
-/** With a token: the release's metadata from the API, which names each
- *  asset's own download address (`url`). */
-export function releaseApiUrl(repo: string, version: string): URL {
-  return new URL(
-    `https://api.github.com/repos/${repo}/releases/tags/${encodeURIComponent(version)}`,
-  );
-}
-
-/** The API address of an asset in a release's metadata, or `null`. Only
- *  `api.github.com` addresses are taken — the token goes nowhere else. */
-export function assetApiUrl(
-  release: unknown,
-  file: ReleaseFileName,
-): URL | null {
-  if (!release || typeof release !== "object") return null;
-  const assets = (release as { assets?: unknown }).assets;
-  if (!Array.isArray(assets)) return null;
-  const asset = assets.find(
-    (a) =>
-      a && typeof a === "object" && (a as { name?: unknown }).name === file,
-  ) as { url?: unknown } | undefined;
-  if (typeof asset?.url !== "string") return null;
-  try {
-    const url = new URL(asset.url);
-    return url.protocol === "https:" && url.hostname === "api.github.com"
-      ? url
-      : null;
-  } catch {
-    return null;
-  }
 }
