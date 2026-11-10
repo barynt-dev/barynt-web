@@ -75,6 +75,9 @@ const SEGMENTS: string[][] = [
   // Mocks `node:dns/promises` and the global `fetch` to watch which
   // headers `fetchPublic` sends where — a process of its own.
   ["tests/unit/net"],
+  // Mocks `@/lib/db`, `@/lib/permissions`, `@/lib/audit` and the plugin
+  // directory client to drive the lifecycle actions — a process of its own.
+  ["tests/unit/pluginActions"],
   ["tests/unit/account"],
   // Mocks `@/lib/db`, `@/lib/permissions` and `@/lib/audit` — own process,
   // like the other action tests that replace `@/lib/permissions`.

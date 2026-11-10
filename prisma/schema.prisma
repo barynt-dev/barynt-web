@@ -1944,6 +1944,21 @@ enum PluginStatus {
   blocked
 }
 
+/// Die Dateien einer installierten Version (`main.js`, `styles.css`; das
+/// Manifest steht in `Plugin.manifest`). In der Datenbank statt im
+/// Objektspeicher: der ist optional, und jede Replika muss sie haben (BARY-142).
+model PluginFile {
+  pluginRowId String
+  /// `main.js` oder `styles.css`.
+  name        String
+  content     Bytes
+  size        Int
+
+  plugin Plugin @relation(fields: [pluginRowId], references: [id], onDelete: Cascade)
+
+  @@id([pluginRowId, name])
+}
+
 /// Ein Verzeichnis (`plugins.json`), aus dem Plugins gelistet werden. Mehrere
 /// Quellen sind möglich; eine weitere Quelle gibt nie automatisch Code frei.
 model PluginSource {
@@ -1987,6 +2002,7 @@ model Plugin {
 
   source      PluginSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
   installedBy User?         @relation("PluginInstalledBy", fields: [installedById], references: [id], onDelete: SetNull)
+  files       PluginFile[]
 
   @@unique([pluginId, version])
   @@index([pluginId, status])

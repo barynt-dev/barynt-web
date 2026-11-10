@@ -1476,7 +1476,19 @@
       "customFieldArchived": "Custom Feld archiviert",
       "customFieldRestored": "Custom Feld wiederhergestellt",
       "customFieldDeleted": "Custom Feld gelöscht",
-      "issueFieldChanged": "Custom Feld geändert"
+      "issueFieldChanged": "Custom Feld geändert",
+      "pluginSourceAdded": "Plugin-Quelle hinzugefügt",
+      "pluginSourceUpdated": "Plugin-Quelle geändert",
+      "pluginSourceRemoved": "Plugin-Quelle entfernt",
+      "pluginInstalled": "Plugin installiert",
+      "pluginUpdated": "Plugin aktualisiert",
+      "pluginRolledBack": "Plugin zurückgesetzt",
+      "pluginBlocked": "Plugin gesperrt",
+      "pluginUnblocked": "Plugin entsperrt",
+      "pluginUninstalled": "Plugin deinstalliert",
+      "pluginActivated": "Plugin eingeschaltet",
+      "pluginDeactivated": "Plugin ausgeschaltet",
+      "pluginDataDeleted": "Plugin-Daten gelöscht"
     }
   },
   "dashboard": {

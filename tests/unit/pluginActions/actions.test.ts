@@ -1,0 +1,361 @@
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+
+// The plugin lifecycle's server actions (BARY-142), with the database, the
+// permission check, the audit log and the directory client mocked away. Own
+// process: it replaces `@/lib/permissions` and `@/lib/audit`.
+
+const tx = {
+  plugin: { updateMany: mock(), create: mock() },
+};
+
+mock.module("@/lib/db", () => ({
+  db: {
+    plugin: {
+      findMany: mock(),
+      findFirst: mock(),
+      count: mock(),
+      update: mock(),
+      deleteMany: mock(),
+    },
+    pluginSource: {
+      findUnique: mock(),
+      create: mock(),
+      update: mock(),
+      delete: mock(),
+    },
+    pluginActivation: {
+      upsert: mock(),
+      updateMany: mock(),
+      deleteMany: mock(),
+    },
+    project: { findUnique: mock() },
+    $transaction: mock(async (arg: unknown) =>
+      typeof arg === "function"
+        ? (arg as (t: typeof tx) => unknown)(tx)
+        : Promise.all(arg as Promise<unknown>[]),
+    ),
+  },
+}));
+
+class PermissionError extends Error {}
+mock.module("@/lib/permissions", () => ({
+  PLATFORM: { scope: "platform" },
+  requirePermission: mock(async () => "admin-1"),
+  PermissionError,
+}));
+mock.module("@/lib/audit", () => ({ recordAudit: mock(async () => {}) }));
+mock.module("next/cache", () => ({ revalidatePath: mock() }));
+mock.module("@/features/plugins/directory", () => ({
+  fetchRelease: mock(),
+  sealSourceToken: (t: string) => `sealed(${t})`,
+}));
+
+import {
+  activatePlugin,
+  addPluginSource,
+  deactivatePlugin,
+  installPlugin,
+  rollbackPlugin,
+  setPluginBlocked,
+  uninstallPlugin,
+  updatePluginSource,
+} from "@/features/plugins/actions";
+import { fetchRelease } from "@/features/plugins/directory";
+import { recordAudit } from "@/lib/audit";
+import { db } from "@/lib/db";
+import { requirePermission } from "@/lib/permissions";
+
+type M = ReturnType<typeof mock>;
+const plugin = db.plugin as unknown as Record<string, M>;
+const source = db.pluginSource as unknown as Record<string, M>;
+const activation = db.pluginActivation as unknown as Record<string, M>;
+const project = db.project.findUnique as unknown as M;
+const perm = requirePermission as unknown as M;
+const audit = recordAudit as unknown as M;
+const release = fetchRelease as unknown as M;
+
+const manifest = {
+  id: "gantt-timeline",
+  name: "Gantt Timeline",
+  version: "1.1.0",
+  minBaryntVersion: "0.9.0",
+  author: "Acme",
+  description: "Issues on a time line.",
+  license: "MIT",
+  kind: "sandbox",
+  levels: ["project"],
+  capabilities: ["issues:read", "ui:project-view"],
+  network: [],
+  contributes: { projectViews: [{ id: "timeline", title: "Timeline" }] },
+};
+
+const okRelease = {
+  ok: true,
+  manifest,
+  hash: "f".repeat(64),
+  files: {
+    "manifest.json": new Uint8Array([1]),
+    "main.js": new Uint8Array([1, 2, 3]),
+  },
+};
+
+beforeEach(() => {
+  for (const group of [plugin, source, activation, tx.plugin])
+    for (const fn of Object.values(group)) (fn as M).mockReset();
+  project.mockReset();
+  audit.mockClear();
+  release.mockReset();
+  perm.mockReset();
+  perm.mockImplementation(async () => "admin-1");
+  tx.plugin.create.mockResolvedValue({ id: "row-1" });
+});
+
+describe("sources", () => {
+  it("adds an https source with a sealed token", async () => {
+    source.findUnique.mockResolvedValue(null);
+    source.create.mockResolvedValue({ id: "s1", tokenCipher: "sealed(t)" });
+    const result = await addPluginSource({
+      name: "Acme",
+      url: "https://example.com/plugins.json",
+      token: " t ",
+    });
+    expect(result).toEqual({ ok: true, id: "s1" });
+    expect(perm).toHaveBeenCalledWith("plugin.manage", { scope: "platform" });
+    expect(source.create.mock.calls[0][0].data.tokenCipher).toBe("sealed(t)");
+    expect(audit.mock.calls[0][0].action).toBe("plugin.source.added");
+  });
+
+  it("refuses plain http and a duplicate", async () => {
+    expect(
+      await addPluginSource({ name: "A", url: "http://example.com/p.json" }),
+    ).toEqual({ error: "invalid_url" });
+    source.findUnique.mockResolvedValue({ id: "s0" });
+    expect(
+      await addPluginSource({ name: "A", url: "https://example.com/p.json" }),
+    ).toEqual({ error: "source_exists" });
+  });
+
+  it("never writes the token into the audit log", async () => {
+    source.findUnique.mockResolvedValue({ id: "s1", name: "Acme" });
+    await updatePluginSource("s1", { token: "ghp_secret" });
+    expect(JSON.stringify(audit.mock.calls[0][0])).not.toContain("ghp_secret");
+    expect(audit.mock.calls[0][0].meta.token).toBe("set");
+  });
+
+  it("fails closed without the permission", async () => {
+    perm.mockImplementation(async () => {
+      throw new PermissionError("plugin.manage");
+    });
+    await expect(
+      addPluginSource({ name: "A", url: "https://example.com/p.json" }),
+    ).rejects.toThrow();
+    expect(source.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("installPlugin", () => {
+  const input = {
+    sourceId: "s1",
+    pluginId: "gantt-timeline",
+    version: "1.1.0",
+    capabilities: ["ui:project-view", "issues:read"],
+  };
+
+  it("installs a checked release with confirmed capabilities", async () => {
+    plugin.findMany.mockResolvedValue([]);
+    release.mockResolvedValue(okRelease);
+    const result = await installPlugin(input);
+    expect(result).toEqual({ ok: true, id: "row-1", updatedFrom: null });
+    const data = tx.plugin.create.mock.calls[0][0].data;
+    expect(data.hash).toBe("f".repeat(64));
+    // The manifest is stored as a column, only code and styles as files.
+    expect(data.files.create.map((f: { name: string }) => f.name)).toEqual([
+      "main.js",
+    ]);
+    expect(audit.mock.calls[0][0].action).toBe("plugin.installed");
+  });
+
+  it("is an update when another version is active", async () => {
+    plugin.findMany.mockResolvedValue([{ version: "1.0.0", status: "active" }]);
+    release.mockResolvedValue(okRelease);
+    const result = await installPlugin(input);
+    expect(result).toMatchObject({ ok: true, updatedFrom: "1.0.0" });
+    expect(tx.plugin.updateMany.mock.calls[0][0]).toEqual({
+      where: { pluginId: "gantt-timeline", status: "active" },
+      data: { status: "superseded" },
+    });
+    expect(audit.mock.calls[0][0]).toMatchObject({
+      action: "plugin.updated",
+      meta: { from: "1.0.0", version: "1.1.0" },
+    });
+  });
+
+  it("refuses unless the capabilities were confirmed exactly", async () => {
+    plugin.findMany.mockResolvedValue([]);
+    release.mockResolvedValue(okRelease);
+    expect(
+      await installPlugin({ ...input, capabilities: ["issues:read"] }),
+    ).toEqual({ error: "capabilities_not_confirmed" });
+    expect(tx.plugin.create).not.toHaveBeenCalled();
+  });
+
+  it("passes on what the directory client refused", async () => {
+    plugin.findMany.mockResolvedValue([]);
+    release.mockResolvedValue({ ok: false, error: "hash_mismatch" });
+    expect(await installPlugin(input)).toEqual({ error: "hash_mismatch" });
+    expect(tx.plugin.create).not.toHaveBeenCalled();
+  });
+
+  it("won't install a version twice or a blocked plugin", async () => {
+    plugin.findMany.mockResolvedValue([{ version: "1.1.0", status: "active" }]);
+    expect(await installPlugin(input)).toEqual({ error: "already_installed" });
+    plugin.findMany.mockResolvedValue([
+      { version: "1.0.0", status: "blocked" },
+    ]);
+    expect(await installPlugin(input)).toEqual({ error: "blocked" });
+    expect(release).not.toHaveBeenCalled();
+  });
+});
+
+describe("rollback, block, uninstall", () => {
+  it("rolls back to the version before", async () => {
+    plugin.findMany.mockResolvedValue([
+      { version: "1.0.0", status: "superseded" },
+      { version: "1.1.0", status: "active" },
+    ]);
+    plugin.findFirst.mockResolvedValue({ manifest });
+    expect(await rollbackPlugin("gantt-timeline")).toEqual({
+      ok: true,
+      version: "1.0.0",
+    });
+    expect(plugin.update.mock.calls.map((c) => c[0].data.status)).toEqual([
+      "superseded",
+      "active",
+    ]);
+    expect(audit.mock.calls[0][0]).toMatchObject({
+      action: "plugin.rolledback",
+      meta: { from: "1.1.0", to: "1.0.0" },
+    });
+  });
+
+  it("blocks the active version and unblocks the newest blocked one", async () => {
+    plugin.findMany.mockResolvedValue([{ version: "1.1.0", status: "active" }]);
+    await setPluginBlocked("gantt-timeline", true);
+    expect(plugin.update.mock.calls[0][0].data.status).toBe("blocked");
+    plugin.findMany.mockResolvedValue([
+      { version: "1.1.0", status: "blocked" },
+    ]);
+    await setPluginBlocked("gantt-timeline", false);
+    expect(plugin.update.mock.calls[1][0].data.status).toBe("active");
+    expect(audit.mock.calls.map((c) => c[0].action)).toEqual([
+      "plugin.blocked",
+      "plugin.unblocked",
+    ]);
+  });
+
+  it("keeps the activations switched off unless data is to go", async () => {
+    plugin.count.mockResolvedValue(2);
+    plugin.deleteMany.mockResolvedValue({ count: 2 });
+    activation.updateMany.mockResolvedValue({ count: 3 });
+    await uninstallPlugin("gantt-timeline", { deleteData: false });
+    expect(activation.updateMany).toHaveBeenCalledWith({
+      where: { pluginId: "gantt-timeline" },
+      data: { enabled: false },
+    });
+    expect(activation.deleteMany).not.toHaveBeenCalled();
+
+    activation.deleteMany.mockResolvedValue({ count: 3 });
+    await uninstallPlugin("gantt-timeline", { deleteData: true });
+    expect(activation.deleteMany).toHaveBeenCalledWith({
+      where: { pluginId: "gantt-timeline" },
+    });
+  });
+
+  it("changes nothing for a plugin that isn't installed", async () => {
+    plugin.count.mockResolvedValue(0);
+    expect(await uninstallPlugin("nope", { deleteData: true })).toEqual({
+      error: "not_found",
+    });
+    expect(activation.deleteMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("activations", () => {
+  const caps = ["issues:read", "ui:project-view"];
+
+  it("switches on in a project, checked in that project", async () => {
+    project.mockResolvedValue({ workspaceId: "ws-1" });
+    plugin.findFirst.mockResolvedValue({ manifest });
+    const result = await activatePlugin({
+      pluginId: "gantt-timeline",
+      workspaceId: "ws-other",
+      projectId: "p1",
+      capabilities: caps,
+    });
+    expect(result).toEqual({ ok: true });
+    expect(perm).toHaveBeenCalledWith("plugin.enable", { projectId: "p1" });
+    const upsert = activation.upsert.mock.calls[0][0];
+    // The workspace comes from the project, not from the caller.
+    expect(upsert.create).toMatchObject({
+      workspaceId: "ws-1",
+      projectId: "p1",
+      scopeKey: "pr:p1",
+      capabilities: manifest.capabilities,
+    });
+    expect(audit.mock.calls[0][0]).toMatchObject({
+      action: "plugin.activated",
+      workspaceId: "ws-1",
+      projectId: "p1",
+    });
+  });
+
+  it("refuses a level the manifest doesn't name", async () => {
+    plugin.findFirst.mockResolvedValue({ manifest });
+    expect(
+      await activatePlugin({
+        pluginId: "gantt-timeline",
+        workspaceId: "ws-1",
+        capabilities: caps,
+      }),
+    ).toEqual({ error: "level_not_allowed" });
+    expect(perm).toHaveBeenCalledWith("plugin.enable", { workspaceId: "ws-1" });
+  });
+
+  it("refuses an unconfirmed capability and a plugin that isn't active", async () => {
+    project.mockResolvedValue({ workspaceId: "ws-1" });
+    plugin.findFirst.mockResolvedValue({ manifest });
+    expect(
+      await activatePlugin({
+        pluginId: "gantt-timeline",
+        workspaceId: "ws-1",
+        projectId: "p1",
+        capabilities: ["issues:read"],
+      }),
+    ).toEqual({ error: "capabilities_not_confirmed" });
+    plugin.findFirst.mockResolvedValue(null);
+    expect(
+      await activatePlugin({
+        pluginId: "gantt-timeline",
+        workspaceId: "ws-1",
+        projectId: "p1",
+        capabilities: caps,
+      }),
+    ).toEqual({ error: "not_installed" });
+    expect(activation.upsert).not.toHaveBeenCalled();
+  });
+
+  it("switches off, keeping the data", async () => {
+    activation.updateMany.mockResolvedValue({ count: 1 });
+    plugin.findFirst.mockResolvedValue({ manifest });
+    expect(
+      await deactivatePlugin({
+        pluginId: "gantt-timeline",
+        workspaceId: "ws-1",
+      }),
+    ).toEqual({ ok: true });
+    expect(activation.updateMany).toHaveBeenCalledWith({
+      where: { pluginId: "gantt-timeline", scopeKey: "ws:ws-1" },
+      data: { enabled: false },
+    });
+  });
+});

@@ -190,6 +190,24 @@ fetching.
   without it. Changing `AUTH_SECRET` makes sealed tokens unreadable: the source then
   reports `token_unreadable` and the token has to be entered again.
 
+The **lifecycle** (BARY-142) is the server actions in `features/plugins/actions.ts`; the
+rules they follow are pure, in `lib/plugins/lifecycle.ts`.
+
+| Step | Permission | What happens |
+| --- | --- | --- |
+| Add, change, remove a source | `plugin.manage` (platform) | The token is sealed; the audit entry says whether one is set, never the token. |
+| Install / update | `plugin.manage` | `fetchRelease`, then the admin's confirmed capabilities must equal the manifest's exactly (checked on the server). A new `Plugin` row becomes `active`, the previous one `superseded`. `main.js` and `styles.css` go into `PluginFile` (the database: object storage is optional and every replica needs them); the manifest is `Plugin.manifest`. |
+| Roll back | `plugin.manage` | The newest older `superseded` version becomes `active` again. |
+| Block / unblock | `plugin.manage` | The kill switch: the active version becomes `blocked` and runs nowhere; unblocking brings back the newest blocked one. |
+| Uninstall | `plugin.manage` | Deletes every version with its files. Activations are deleted with their settings and storage, or, if the admin keeps the data, switched off. |
+| Switch on / confirm again | `plugin.enable` in that workspace or project | Only on a level the manifest names; the confirmed capabilities must equal the active version's. The workspace of a project comes from the project, never from the request. |
+| Switch off / delete data | `plugin.enable` | Off keeps settings and storage; deleting removes the activation with both. |
+
+An activation stores the capabilities it confirmed. After an update that asks for more,
+`activationState` reports `needsConfirmation` until someone switches it on again; until
+then it may only use what was confirmed. Every step writes a `plugin.*` audit entry
+(`lib/audit/actions.ts`), with the workspace and project for activations.
+
 ## Smaller pieces
 
 | Piece | File | What it does |
