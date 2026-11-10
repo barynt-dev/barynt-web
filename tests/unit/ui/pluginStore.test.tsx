@@ -157,6 +157,9 @@ describe("PluginStore", () => {
       'href="/admin/plugins?plugin=timeline&amp;tab=versions"',
     );
     expect(html).toContain("/api/plugin-previews/r1/preview-1.png");
+    // The directory's category, among the facts.
+    expect(html).toContain("categoriesLabel");
+    expect(html).toContain("category.planning");
     expect(html).toContain('data-open="plugin"');
   });
 

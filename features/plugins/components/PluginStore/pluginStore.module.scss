@@ -539,6 +539,13 @@
   }
 }
 
+/* The directory's categories for a plugin, as labels in its facts. */
+.categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
 .muted {
   margin: 0;
   color: var(--on-surface-variant);

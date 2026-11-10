@@ -298,6 +298,22 @@ function Overview({
             )}
             <dt>{text.t("kindLabel")}</dt>
             <dd>{text.kind(entry.kind)}</dd>
+            {entry.listing && entry.listing.categories.length > 0 && (
+              <>
+                <dt>
+                  {text.t("categoriesLabel", {
+                    count: entry.listing.categories.length,
+                  })}
+                </dt>
+                <dd className={styles.categories}>
+                  {entry.listing.categories.map((c) => (
+                    <Badge key={c} mono={false}>
+                      {text.t(`category.${c}` as "category.planning")}
+                    </Badge>
+                  ))}
+                </dd>
+              </>
+            )}
             {installed && (
               <>
                 <dt>{text.t("activeIn")}</dt>

@@ -2655,6 +2655,7 @@
       "update": "Update",
       "blocked": "Blocked"
     },
-    "backToAdmin": "Back to administration"
+    "backToAdmin": "Back to administration",
+    "categoriesLabel": "{count, plural, one {Category} other {Categories}}"
   }
 }

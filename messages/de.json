@@ -2655,6 +2655,7 @@
       "update": "Update",
       "blocked": "Gesperrt"
     },
-    "backToAdmin": "Zur Verwaltung"
+    "backToAdmin": "Zur Verwaltung",
+    "categoriesLabel": "{count, plural, one {Kategorie} other {Kategorien}}"
   }
 }
