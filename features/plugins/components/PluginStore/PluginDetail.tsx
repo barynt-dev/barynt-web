@@ -137,21 +137,26 @@ export function PluginDetail({
         </div>
       </header>
 
-      <Tabs label={text.t("detailTabs")} className={styles.tabs}>
+      <Tabs
+        indicator="top"
+        label={text.t("detailTabs")}
+        className={styles.tabs}
+      >
         {tabs.map((id) => (
           <Tab
             key={id}
             href={storeHref({ plugin: entry.id, tab: id })}
             active={current === id}
+            icon={<Icon icon={TAB_ICONS[id]} width={15} />}
           >
             {text.t(`tab.${id}`)}
             {id === "capabilities" && installed && (
-              <span className={styles.tabCount}>
+              <Badge className={styles.tabCount}>
                 {installed.capabilities.length}
-              </span>
+              </Badge>
             )}
             {id === "places" && installed && (
-              <span className={styles.tabCount}>{installed.activations}</span>
+              <Badge className={styles.tabCount}>{installed.activations}</Badge>
             )}
           </Tab>
         ))}
@@ -170,6 +175,14 @@ export function PluginDetail({
     </article>
   );
 }
+
+/** The same kind of tabs as an issue view's (`AreaTabs`): icon, label, count. */
+const TAB_ICONS: Record<StoreTab, string> = {
+  overview: "lucide:layout-panel-top",
+  capabilities: "lucide:key-round",
+  versions: "lucide:history",
+  places: "lucide:map-pin",
+};
 
 type Release = ReturnType<typeof useRelease>;
 

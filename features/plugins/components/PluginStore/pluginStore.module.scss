@@ -351,15 +351,14 @@
   }
 }
 
+/* Like an issue view's tabs: they hang off a divider above, the open one
+   marked by a bar on it (`indicator="top"`). */
 .tabs {
-  margin-top: -0.25rem;
-  border-bottom: 1px solid var(--outline-variant);
+  border-top: 1px solid var(--outline-variant);
 }
 
 .tabCount {
-  margin-left: 0.375rem;
   color: var(--on-surface-variant);
-  font-variant-numeric: tabular-nums;
 }
 
 // ─── Overview ───────────────────────────────────────────────────────────────
