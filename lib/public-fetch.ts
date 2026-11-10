@@ -76,6 +76,13 @@ export async function fetchPublic(
     types: RegExp;
     protocols: ("https:" | "http:")[];
     truncate?: boolean;
+    /** Extra request headers — an access token. Sent to the first host
+     *  only: a redirect elsewhere (a CDN, a signed download) goes without. */
+    headers?: Record<string, string>;
+    /** Who's asking; the link preview by default. */
+    userAgent?: string;
+    /** Per request, in milliseconds; 3 s by default. */
+    timeoutMs?: number;
   },
 ): Promise<PublicResponse | null> {
   try {
@@ -88,10 +95,11 @@ export async function fetchPublic(
       if (!(await isPublicHost(url.hostname))) return null;
       const res = await fetch(url, {
         redirect: "manual",
-        signal: AbortSignal.timeout(TIMEOUT_MS),
+        signal: AbortSignal.timeout(options.timeoutMs ?? TIMEOUT_MS),
         headers: {
+          ...(url.host === start.host ? options.headers : undefined),
           accept: options.accept,
-          "user-agent": "Barynt-link-preview",
+          "user-agent": options.userAgent ?? "Barynt-link-preview",
         },
       });
       if (res.status >= 300 && res.status < 400) {

@@ -14,6 +14,7 @@ add-on is not configured.
 | [Audit log](#audit-log) | `lib/audit` | Built in |
 | [Notifications](#notifications) | `lib/notify` | Built in |
 | [Webhooks](#webhooks) | `lib/webhooks` | Built in |
+| [Plugin directory](#plugin-directory) | `lib/plugins`, `features/plugins` | Only with plugin sources |
 | [Smaller pieces](#smaller-pieces) | various | Built in |
 
 ## Mail
@@ -161,6 +162,33 @@ which the app does not have, so the outcome (status or error) is stored on the w
 `lib/webhooks/events.ts`. Payload shapes and how to add an event: [API and MCP
 internals](api-and-mcp.md#adding-a-webhook-event). For receivers, see the user guide's
 [Webhooks](../guide/en/integrations/webhooks.md).
+
+## Plugin directory
+
+Part of the plugin system (BARY-128, on its own branch until it ships). A **source**
+(`PluginSource`) is the address of a directory's `plugins.json`: a list of plugins, each
+with its GitHub repository and, per version it vouches for, a SHA-256 of the release's
+files. The format and every check are in `lib/plugins/directory.ts` (no dependency on the
+app, the directory repository's CI can use it); `features/plugins/directory.ts` does the
+fetching.
+
+- `readSource(id)` reads the directory and notes the outcome on the source
+  (`lastSyncAt`, `lastSyncError`). A broken entry is left out and reported, it does not
+  take the others down.
+- `fetchRelease(sourceId, pluginId, version)` loads `manifest.json`, `main.js` (required
+  for a sandbox plugin) and `styles.css` from the GitHub release whose tag is the version,
+  then refuses it unless the files hash to the listed value (`releaseHash`: what
+  `sha256sum manifest.json main.js styles.css | sort -k2 | sha256sum` prints), the
+  manifest is valid and names the same id, version, kind and levels, and it runs on this
+  Barynt (`minBaryntVersion`/`maxBaryntVersion`). It stores nothing; installing is the
+  lifecycle's job.
+- All traffic goes through `fetchPublic` (`lib/public-fetch.ts`): `https` only, public
+  addresses only, every redirect checked, size and time capped per file.
+- A **private** directory or repository uses the source's access token. It is stored
+  sealed (`lib/secret-box.ts`: AES-256-GCM, key derived from `AUTH_SECRET`) and only ever
+  sent to the first host of a request; the signed download GitHub redirects to goes
+  without it. Changing `AUTH_SECRET` makes sealed tokens unreadable: the source then
+  reports `token_unreadable` and the token has to be entered again.
 
 ## Smaller pieces
 
