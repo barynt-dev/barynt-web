@@ -59,7 +59,7 @@ export function PluginDetail({
             {entry.author}
             {installed?.version && <> · v{installed.version}</>}
           </span>
-          <PluginBadges kind={entry.kind} levels={entry.levels} />
+          <PluginBadges kind={entry.kind} levels={entry.levels} size="md" />
         </div>
         <div className={styles.headActions}>
           {installed ? (

@@ -84,7 +84,8 @@ export function PluginBadges({
 }: {
   kind: string;
   levels: string[];
-  /** `md` on the store's cards, where they're read rather than skimmed. */
+  /** `md` in the store's cards and plugin header, where they're read
+   *  rather than skimmed. */
   size?: "sm" | "md";
 }) {
   const text = usePluginText();
