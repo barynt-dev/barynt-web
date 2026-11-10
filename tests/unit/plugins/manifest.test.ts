@@ -67,6 +67,33 @@ describe("validateManifest", () => {
     expect(e.length).toBeGreaterThan(0);
   });
 
+  it("takes up to six previews with flat image names (BARY-199)", () => {
+    const p = (file: string) => ({ file, title: "Shot" });
+    expect(
+      errors({ ...base, previews: [p("preview-1.webp"), p("preview-2.png")] }),
+    ).toEqual([]);
+    expect(
+      errors({ ...base, previews: [p("previews/1.webp")] }).length,
+    ).toBeGreaterThan(0);
+    expect(
+      errors({ ...base, previews: [p("preview-1.svg")] }).length,
+    ).toBeGreaterThan(0);
+    expect(
+      errors({
+        ...base,
+        previews: [p("preview-1.png"), p("preview-1.png")],
+      })[0],
+    ).toContain("unique");
+    expect(
+      errors({
+        ...base,
+        previews: [1, 2, 3, 4, 5, 6, 1].map((n, i) =>
+          p(`preview-${n}.${i < 6 ? "png" : "webp"}`),
+        ),
+      }).length,
+    ).toBeGreaterThan(0);
+  });
+
   it("rejects an unknown capability", () => {
     expect(
       errors({ ...base, capabilities: ["issues:read", "db:everything"] })

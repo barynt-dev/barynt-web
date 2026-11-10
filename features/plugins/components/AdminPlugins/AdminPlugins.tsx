@@ -51,6 +51,7 @@ import {
   ErrorLine,
   PluginBadges,
   PluginDialog,
+  PreviewStrip,
   usePluginText,
 } from "../shared";
 
@@ -828,6 +829,7 @@ function InstallDialog({
       <ErrorLine message={error} />
       {preview && (
         <>
+          <PreviewStrip previews={preview.previews} />
           <dl className={styles.facts}>
             <dt>{text.t("author")}</dt>
             <dd>

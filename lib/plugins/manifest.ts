@@ -55,6 +55,11 @@ const LOCAL_ID_RE = /^[a-z][a-z0-9-]{0,38}[a-z0-9]$|^[a-z]$/;
 const HOST_RE =
   /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 const ICON_RE = /^[a-z0-9-]+:[a-z0-9-]+$/;
+/** A preview image in a release: `preview-1.webp` … `preview-6.png`. Flat
+ *  names, because release assets on GitHub can't have folders. */
+export const PREVIEW_FILE_RE = /^preview-[1-6]\.(webp|png)$/;
+/** How many preview images a plugin may show. */
+export const MAX_PREVIEWS = 6;
 
 const localId = z
   .string()
@@ -167,6 +172,21 @@ export const manifestSchema = z
     capabilities: z.array(z.enum(CAPABILITIES)).max(CAPABILITIES.length),
     network: z.array(z.string().regex(HOST_RE, "expected a host name")).max(10),
     contributes: contributesSchema.default({}),
+    /** Screenshots for the store, in the order they're shown (BARY-199). */
+    previews: z
+      .array(
+        z.strictObject({
+          file: z
+            .string()
+            .regex(
+              PREVIEW_FILE_RE,
+              'expected "preview-1.webp" … "preview-6.png"',
+            ),
+          title,
+        }),
+      )
+      .max(MAX_PREVIEWS)
+      .optional(),
   })
   .superRefine((m, ctx) => {
     const add = (path: (string | number)[], message: string) =>
@@ -187,6 +207,12 @@ export const manifestSchema = z
       add(["levels"], "levels must be unique");
     if (new Set(m.network).size !== m.network.length)
       add(["network"], "hosts must be unique");
+
+    if (
+      m.previews &&
+      new Set(m.previews.map((p) => p.file)).size !== m.previews.length
+    )
+      add(["previews"], "preview files must be unique");
 
     if (m.kind === "declarative" && m.network.length > 0)
       add(

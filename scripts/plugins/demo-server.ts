@@ -19,6 +19,7 @@ import {
   releaseHash,
 } from "../../lib/plugins/directory";
 import { validateManifest } from "../../lib/plugins/manifest";
+import { type DemoScreen, demoScreenshot } from "./demo-images";
 
 const PORT = Number(process.env.PORT ?? 4555);
 const ORIGIN = `http://localhost:${PORT}`;
@@ -31,6 +32,8 @@ interface Demo {
   versions: Record<string, Record<string, unknown>>;
   /** Lists a wrong hash — the install is refused. */
   tampered?: boolean;
+  /** Screenshots in the release (BARY-199). */
+  previews?: { title: string; screen: DemoScreen; accent: string }[];
 }
 
 const DEMOS: Demo[] = [
@@ -57,6 +60,11 @@ const DEMOS: Demo[] = [
         capabilities: ["issues:read", "issues:write", "ui:project-view"],
       },
     },
+    previews: [
+      { title: "Timeline per project", screen: "timeline", accent: "#e8743b" },
+      { title: "Drag to reschedule", screen: "board", accent: "#e8743b" },
+      { title: "Settings", screen: "settings", accent: "#e8743b" },
+    ],
   },
   {
     entry: {
@@ -77,6 +85,11 @@ const DEMOS: Demo[] = [
       },
     },
     versions: { "1.0.0": { capabilities: ["events:issue", "notify:send"] } },
+    previews: [
+      { title: "A message in the channel", screen: "chat", accent: "#3b7bd5" },
+      { title: "Channel per workspace", screen: "settings", accent: "#3b7bd5" },
+      { title: "What gets posted", screen: "list", accent: "#3b7bd5" },
+    ],
   },
   {
     entry: {
@@ -114,6 +127,12 @@ const directory = DEMOS.map((demo) => {
       network: [],
       ...demo.manifest,
       ...extra,
+      ...(demo.previews && {
+        previews: demo.previews.map((p, i) => ({
+          file: `preview-${i + 1}.png`,
+          title: p.title,
+        })),
+      }),
     };
     const checked = validateManifest(manifest);
     if (!checked.ok)
@@ -128,6 +147,12 @@ const directory = DEMOS.map((demo) => {
         ),
         "styles.css": enc(".demo { color: inherit; }\n"),
       }),
+      ...Object.fromEntries(
+        (demo.previews ?? []).map((p, i) => [
+          `preview-${i + 1}.png`,
+          demoScreenshot(p.screen, p.accent),
+        ]),
+      ),
     };
     releases.set(
       `${new URL(demo.entry.repo).pathname.slice(1)}/${version}`,

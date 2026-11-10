@@ -197,6 +197,31 @@ export function PluginDialog({
   );
 }
 
+/**
+ * A plugin's screenshots as a row that scrolls sideways (BARY-199).
+ * Nothing when the plugin has none.
+ */
+export function PreviewStrip({
+  previews,
+}: {
+  previews: { title: string; src: string }[];
+}) {
+  if (previews.length === 0) return null;
+  return (
+    <ul className={styles.previews}>
+      {previews.map((p) => (
+        <li key={p.src}>
+          <figure>
+            {/* biome-ignore lint/performance/noImgElement: stored or inline plugin images, nothing for next/image to optimize */}
+            <img src={p.src} alt={p.title} loading="lazy" decoding="async" />
+            <figcaption>{p.title}</figcaption>
+          </figure>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** An error line, as the settings pages show them. */
 export function ErrorLine({ message }: { message: string }) {
   if (!message) return null;

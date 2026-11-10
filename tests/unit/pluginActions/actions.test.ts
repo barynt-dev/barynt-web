@@ -58,6 +58,7 @@ import {
   checkPluginSource,
   deactivatePlugin,
   installPlugin,
+  previewRelease,
   rollbackPlugin,
   setPluginBlocked,
   setPluginGrant,
@@ -247,6 +248,35 @@ describe("installPlugin", () => {
       "main.js",
     ]);
     expect(audit.mock.calls[0][0].action).toBe("plugin.installed");
+  });
+
+  it("stores the preview images with the version (BARY-199)", async () => {
+    plugin.findMany.mockResolvedValue([]);
+    release.mockResolvedValue({
+      ...okRelease,
+      files: { ...okRelease.files, "preview-1.png": new Uint8Array([9]) },
+    });
+    await installPlugin(input);
+    const data = tx.plugin.create.mock.calls[0][0].data;
+    expect(data.files.create.map((f: { name: string }) => f.name)).toEqual([
+      "main.js",
+      "preview-1.png",
+    ]);
+  });
+
+  it("shows a release's previews before it's installed", async () => {
+    release.mockResolvedValue({
+      ...okRelease,
+      manifest: {
+        ...manifest,
+        previews: [{ file: "preview-1.png", title: "Board" }],
+      },
+      files: { ...okRelease.files, "preview-1.png": new Uint8Array([9]) },
+    });
+    const result = await previewRelease(input);
+    expect("preview" in result && result.preview.previews).toEqual([
+      { title: "Board", src: "data:image/png;base64,CQ==" },
+    ]);
   });
 
   it("is an update when another version is active", async () => {

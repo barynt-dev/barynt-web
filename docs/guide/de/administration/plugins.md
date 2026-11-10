@@ -26,7 +26,7 @@ Plugins erweitern Barynt: eine Projektansicht, ein Dashboard-Widget, ein Abgleic
    > Ein Git-Server in eurem internen Netz ist gesperrt, solange er nicht in `PLUGIN_INTERNAL_HOSTS` steht.
 2. Klicke bei der Quelle auf **Durchsuchen**. Du siehst ihre Plugins, wer sie gebaut hat und in welchen Versionen.
 3. Klicke bei einem Plugin auf **Installieren**. Barynt lädt diese Version und prüft sie: Die Dateien müssen zu dem passen, was das Verzeichnis angibt, und die Version muss auf deinem Barynt laufen. Passt etwas nicht, wird es nicht installiert.
-4. Der Dialog zeigt Autor, Herkunft des Codes, Art, wo es nutzbar ist, was es verlangt und welche anderen Server es aufrufen darf. Setz den Haken und installiere.
+4. Der Dialog zeigt die Screenshots des Plugins, falls es welche hat, dann Autor, Herkunft des Codes, Art, wo es nutzbar ist, was es verlangt und welche anderen Server es aufrufen darf. Setz den Haken und installiere.
 
 | Aktion | Was sie tut |
 | --- | --- |

@@ -198,10 +198,18 @@ provider for an address on the source's host, a known host's (`github.com`, `git
 - `fetchRelease(sourceId, pluginId, version)` loads `manifest.json`, `main.js` (required
   for a sandbox plugin) and `styles.css` from the release whose tag is the version, then
   refuses it unless the files hash to the listed value (`releaseHash`: what
-  `sha256sum manifest.json main.js styles.css | sort -k2 | sha256sum` prints), the
+  `sha256sum manifest.json main.js styles.css preview-*.* | sort -k2 | sha256sum` prints), the
   manifest is valid and names the same id, version, kind and levels, and it runs on this
   Barynt (`minBaryntVersion`/`maxBaryntVersion`). It stores nothing; installing is the
   lifecycle's job.
+- **Preview images** (BARY-199): the manifest's `previews` name up to six files
+  `preview-N.webp|png` in the release. `loadRelease` reads their names from the manifest
+  before checking it, loads them (512 KB each), hashes them with the other files and,
+  after the manifest check, refuses any whose bytes aren't a PNG or WebP signature.
+  Installing stores them in `PluginFile` with the code; `/api/plugin-previews/<row>/<file>`
+  serves them to signed-in people (`nosniff`, `sandbox` CSP, cached for good — a version's
+  files never change). `previewRelease` returns them as data URLs, since nothing is stored
+  yet. The browser never loads a preview from the plugin's Git host.
 - All traffic goes through `fetchPublic` (`lib/public-fetch.ts`): `https` only, public
   addresses only, every redirect checked, size and time capped per file. Hosts listed in
   `PLUGIN_INTERNAL_HOSTS` (`name` or `name:port`, `lib/plugins/dev.ts`) are let through
