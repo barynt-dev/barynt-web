@@ -87,8 +87,14 @@ export const AUDIT_ACTIONS = {
   "issue.dueDate.changed": "Due date changed",
   "issue.storyPoints.changed": "Story points changed",
   "issue.estimateHours.changed": "Time estimate changed",
+  "issue.field.changed": "Custom field changed",
   "label.created": "Label created",
   "label.deleted": "Label deleted",
+  "customfield.created": "Custom field created",
+  "customfield.updated": "Custom field changed",
+  "customfield.archived": "Custom field archived",
+  "customfield.restored": "Custom field restored",
+  "customfield.deleted": "Custom field deleted",
   "view.deleted": "Shared view deleted",
 } as const;
 
@@ -124,6 +130,7 @@ export type AuditTargetType =
   | "systemSettings"
   | "issue"
   | "label"
+  | "customField"
   | "view";
 
 export interface AuditTarget {

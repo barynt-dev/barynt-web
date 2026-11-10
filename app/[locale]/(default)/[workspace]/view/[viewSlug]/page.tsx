@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { getWorkspaceFieldKeys } from "@/features/custom-fields/queries";
 import { DashboardLoader } from "@/features/dashboard/components/DashboardLoader/DashboardLoader";
 import { Board } from "@/features/issues/components/Board/Board";
 import { IssuePeek } from "@/features/issues/components/IssuePeek/IssuePeek";
@@ -76,10 +77,11 @@ export default async function WorkspaceViewPage({
   }
 
   if (!filters.layout) {
-    const [priorities, members, labels] = await Promise.all([
+    const [priorities, members, labels, customFields] = await Promise.all([
       getWorkspacePriorities(),
       getWorkspaceMembers(),
       getWorkspaceLabels(),
+      getWorkspaceFieldKeys(),
     ]);
     const canonical = viewParams(view, {
       priorities,
@@ -87,6 +89,7 @@ export default async function WorkspaceViewPage({
         m.handle ? [{ id: m.id, handle: m.handle }] : [],
       ),
       labels,
+      customFields,
     });
     // What isn't view state (an open issue panel, a search) comes along.
     for (const [key, value] of Object.entries(filters))

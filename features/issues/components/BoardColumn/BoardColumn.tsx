@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/atoms/Button/Button";
 import { BoardCard } from "@/features/issues/components/BoardCard/BoardCard";
 import { CreateIssueModal } from "@/features/issues/components/CreateIssueModal/CreateIssueModal";
 import { GroupIcon } from "@/features/issues/components/GroupIcon/GroupIcon";
-import { type GroupDef, groupPatch } from "@/features/issues/group";
+import { type GroupDef, groupStartPatch } from "@/features/issues/group";
 import type { IssueComposerData, IssueLookups } from "@/features/issues/types";
 import { useModal } from "@/lib/context";
 import type { IssueDetail } from "@/types";
@@ -31,7 +31,10 @@ interface BoardColumnProps {
   onColumnDragOver: (e: React.DragEvent) => void;
   onColumnDragLeave: (e: React.DragEvent) => void;
   onColumnDrop: (e: React.DragEvent) => void;
-  onCardDragStart: (issue: IssueDetail) => (e: React.DragEvent) => void;
+  onCardDragStart: (
+    issue: IssueDetail,
+    fromGroupId: string,
+  ) => (e: React.DragEvent) => void;
   onCardDragEnd: () => void;
   onCardDragOver: (cardId: string) => (e: React.DragEvent) => void;
   /** Whether this issue is currently shown in the side panel. */
@@ -43,7 +46,11 @@ interface BoardColumnProps {
   onCardOpenInNewTab: (issue: IssueDetail) => void;
   /** All columns of the board, for each card's "Move to…". */
   moveTargets?: GroupDef[];
-  onCardMoveTo?: (issue: IssueDetail, groupId: string) => void;
+  onCardMoveTo?: (
+    issue: IssueDetail,
+    groupId: string,
+    fromGroupId: string,
+  ) => void;
   /**
    * With swimlanes (BARY-173) a column splits: its `head` sits once above
    * every lane, and each lane draws a `cell` — only the cards of that
@@ -103,7 +110,11 @@ export function BoardColumn({
   // A new issue starts in the column it's created in — a priority column
   // presets the priority. Without a status column it starts in the
   // workspace's first workflow status, as the composer would.
-  const { status, ...initialValues } = groupPatch(group.key, group.id);
+  const { status, ...initialValues } = groupStartPatch(
+    group.key,
+    group.id,
+    lookups.customFields,
+  );
   const initialStatus =
     status ??
     composer.statuses.find((s) => s.isColumn)?.id ??
@@ -187,7 +198,7 @@ export function BoardColumn({
                   isDragging={dragging === issue.id}
                   isActive={isCardActive(issue)}
                   isFocused={isCardFocused(issue)}
-                  onDragStart={onCardDragStart(issue)}
+                  onDragStart={onCardDragStart(issue, group.id)}
                   onDragEnd={onCardDragEnd}
                   onDragOver={onCardDragOver(issue.id)}
                   onOpen={() => onCardOpen(issue)}
@@ -195,7 +206,8 @@ export function BoardColumn({
                   moveTargets={moveTargets}
                   currentGroupId={group.id}
                   onMoveTo={
-                    onCardMoveTo && ((groupId) => onCardMoveTo(issue, groupId))
+                    onCardMoveTo &&
+                    ((groupId) => onCardMoveTo(issue, groupId, group.id))
                   }
                 />
                 {isCardOver && !insertAbove && (

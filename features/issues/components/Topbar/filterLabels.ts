@@ -2,15 +2,25 @@
 
 import { useFormatter, useTranslations } from "next-intl";
 import {
+  type CustomFilterField,
+  customFieldRef,
   type FilterField,
   type FilterNode,
   type FilterOp,
   type FilterRule,
+  isCustomFilterField,
   isGroup,
   ME,
   NONE_VALUE,
   type RelativeDate,
+  type RuleField,
 } from "@/features/issues/filter";
+import {
+  CHECKBOX_NO,
+  CHECKBOX_YES,
+  customFilterOps,
+} from "@/features/issues/filter-custom";
+import type { FieldDefinition } from "@/lib/custom-fields";
 import { fullName } from "@/lib/utils/string";
 import type {
   IssueType,
@@ -29,6 +39,27 @@ export interface FilterLabelLookups {
   members: User[];
   labels: Label[];
   projects: Project[];
+  /** The custom fields that apply here (BARY-196). */
+  customFields?: FieldDefinition[];
+}
+
+/** The custom field behind `cf:<id>`, if it's still there. */
+export function customFieldOf(
+  lookups: Pick<FilterLabelLookups, "customFields">,
+  field: CustomFilterField,
+): FieldDefinition | undefined {
+  const id = customFieldRef(field);
+  return lookups.customFields?.find((f) => f.id === id);
+}
+
+/** The operators the editor offers for a field — a custom one's by its type. */
+export function editorOps(
+  lookups: Pick<FilterLabelLookups, "customFields">,
+  field: RuleField,
+): FilterOp[] | undefined {
+  if (!isCustomFilterField(field)) return EDITOR_OPS[field];
+  const def = customFieldOf(lookups, field);
+  return def ? customFilterOps(def) : undefined;
 }
 
 /** The fields the editor offers, in its menu's order (BARY-166). Project
@@ -96,7 +127,9 @@ export function useFilterLabels(lookups: FilterLabelLookups) {
     });
   };
 
-  const field = (f: FilterField): string => {
+  const field = (f: RuleField): string => {
+    if (isCustomFilterField(f))
+      return customFieldOf(lookups, f)?.name ?? t("filters.unknownField");
     switch (f) {
       case "status":
         return t("fields.status");
@@ -127,7 +160,7 @@ export function useFilterLabels(lookups: FilterLabelLookups) {
     }
   };
 
-  const op = (f: FilterField, o: FilterOp): string => {
+  const op = (f: RuleField, o: FilterOp): string => {
     if (f === "parent")
       return o === "empty"
         ? t("filters.opParentEmpty")
@@ -153,6 +186,8 @@ export function useFilterLabels(lookups: FilterLabelLookups) {
         return t("filters.opAfter");
       case "within":
         return t("filters.opWithin");
+      case "contains":
+        return t("filters.opContains");
       default:
         return o;
     }
@@ -175,9 +210,37 @@ export function useFilterLabels(lookups: FilterLabelLookups) {
     }
   };
 
-  const value = (f: FilterField, v: string | number): string => {
+  /** A custom field's value: a choice's name, a person, yes/no, a day. */
+  const customValue = (f: CustomFilterField, v: string | number): string => {
+    const def = customFieldOf(lookups, f);
+    switch (def?.type) {
+      case "SELECT":
+      case "MULTI_SELECT":
+        return def.options.find((o) => o.id === v)?.label ?? String(v);
+      case "USER": {
+        const m = lookups.members.find((u) => u.id === v);
+        return m ? fullName(m) : String(v);
+      }
+      case "CHECKBOX":
+        return v === CHECKBOX_YES
+          ? t("customFields.yes")
+          : v === CHECKBOX_NO
+            ? t("customFields.no")
+            : String(v);
+      case "DATE":
+        if (String(v) === "today") return t("filters.relToday");
+        return ISO_DAY.test(String(v)) ? day(String(v)) : relative(String(v));
+      case "NUMBER":
+        return def.numberUnit ? `${v} ${def.numberUnit}` : String(v);
+      default:
+        return String(v);
+    }
+  };
+
+  const value = (f: RuleField, v: string | number): string => {
     if (v === ME) return t("filters.me");
     if (v === NONE_VALUE) return t("filters.notSet");
+    if (isCustomFilterField(f)) return customValue(f, v);
     switch (f) {
       case "status":
         return lookups.statuses.find((s) => s.id === v)?.name ?? String(v);

@@ -106,7 +106,34 @@ export const GROUP_FIELDS = [
   "label",
   "project",
 ] as const;
-export type GroupField = (typeof GROUP_FIELDS)[number];
+export type BuiltinGroupField = (typeof GROUP_FIELDS)[number];
+
+/** A custom field as a grouping or a measure: `cf:<fieldId>` (BARY-197),
+ *  the same form a filter rule names it by. Groupings take a field with a
+ *  list of answers — a choice, a person, a yes/no; a multi-choice, like
+ *  labels, not as a matrix axis. Measures take a number field. */
+export type CustomWidgetField = `cf:${string}`;
+export type GroupField = BuiltinGroupField | CustomWidgetField;
+
+const CUSTOM_FIELD_REF = /^cf:[A-Za-z0-9_-]{1,100}$/;
+
+export function isCustomWidgetField(
+  value: string | undefined,
+): value is CustomWidgetField {
+  return value !== undefined && CUSTOM_FIELD_REF.test(value);
+}
+
+/** The custom fields a grouping can be by: a choice, several, a person, a
+ *  yes/no. */
+export function isGroupableCustomField(field: { type: string }): boolean {
+  return ["SELECT", "MULTI_SELECT", "USER", "CHECKBOX"].includes(field.type);
+}
+
+/** …and the ones a matrix axis can be — not a multi-choice, which would
+ *  count an issue in several cells. */
+export function isMatrixCustomField(field: { type: string }): boolean {
+  return isGroupableCustomField(field) && field.type !== "MULTI_SELECT";
+}
 export const MATRIX_FIELDS: GroupField[] = [
   "status",
   "priority",
@@ -234,9 +261,9 @@ const WIDGET_SORTS = ["urgency", "oldest", ...ISSUE_SORTS] as const;
 export type WidgetSort = (typeof WIDGET_SORTS)[number];
 
 /** What a widget adds up (BARY-170): issues, or their story points or
- *  estimated hours. Custom number fields join here later (BARY-129). */
+ *  estimated hours — or a custom number field, `cf:<fieldId>` (BARY-197). */
 export const MEASURES = ["count", "storyPoints", "estimate"] as const;
-export type Measure = (typeof MEASURES)[number];
+export type Measure = (typeof MEASURES)[number] | CustomWidgetField;
 
 /** The time axis of a time series: created and closed side by side (the
  *  classic), or one date alone — created, closed or due. */
@@ -1440,6 +1467,15 @@ export function offeredOn(
 
 // ─── Validation ──────────────────────────────────────────────────────────────
 
+/** A built-in grouping, or a custom field by id. */
+const groupFieldSchema = z.union([
+  z.enum(GROUP_FIELDS),
+  z
+    .string()
+    .regex(CUSTOM_FIELD_REF)
+    .transform((f) => f as CustomWidgetField),
+]);
+
 const labelsSchema = z
   .object({ legend: z.boolean(), axes: z.boolean(), values: z.boolean() })
   .strict();
@@ -1448,12 +1484,20 @@ const baseConfigShape = z.object({
   title: z.string().trim().max(80).optional(),
   filter: issueFilterSchema.optional(),
   metric: z.enum(KPI_METRICS).optional(),
-  groupBy: z.enum(GROUP_FIELDS).optional(),
-  groupBy2: z.enum(GROUP_FIELDS).optional(),
+  groupBy: groupFieldSchema.optional(),
+  groupBy2: groupFieldSchema.optional(),
   chart: z.enum(DISTRIBUTION_CHARTS).optional(),
-  measure: z.enum(MEASURES).optional(),
+  measure: z
+    .union([
+      z.enum(MEASURES),
+      z
+        .string()
+        .regex(CUSTOM_FIELD_REF)
+        .transform((f) => f as CustomWidgetField),
+    ])
+    .optional(),
   timeBy: z.enum(TIME_BY).optional(),
-  splitBy: z.enum(GROUP_FIELDS).optional(),
+  splitBy: groupFieldSchema.optional(),
   seriesChart: z.enum(SERIES_CHARTS).optional(),
   openOnly: z.boolean().optional(),
   sort: z.enum(WIDGET_SORTS).optional(),

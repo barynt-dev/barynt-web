@@ -27,6 +27,7 @@ import {
   VIEW_DEFAULT_GROUP,
   VIEW_DEFAULT_SORT,
 } from "@/features/views/url";
+import type { FieldDefinition } from "@/lib/custom-fields";
 import { usePreferences } from "@/lib/preferences/PreferencesContext";
 import type {
   IssueType,
@@ -55,6 +56,10 @@ interface TopbarClientProps {
   members: User[];
   labels: Label[];
   issueTypes: IssueType[];
+  /** Custom fields that can be grouped by (a list of choices). */
+  customFields: FieldDefinition[];
+  /** Every custom field that applies here, to show or hide on cards and rows. */
+  displayFields: FieldDefinition[];
   /** Groups this person hid in this view, as `hidden-groups.ts` entries (BARY-47). */
   hiddenGroups: string[];
   hideEmptyGroups: boolean;
@@ -110,6 +115,8 @@ export function TopbarClient({
   members,
   labels,
   issueTypes,
+  customFields,
+  displayFields,
   hiddenGroups,
   hideEmptyGroups,
   showSubIssues,
@@ -157,6 +164,7 @@ export function TopbarClient({
     priorities,
     members,
     labels,
+    customFields: displayFields,
     viewMode: activeView !== null,
   });
 
@@ -369,6 +377,7 @@ export function TopbarClient({
               labels={labels}
               projects={projects}
               issueTypes={issueTypes}
+              customFields={displayFields}
               onToggle={toggleFilter}
               onClearAll={clearAll}
               tree={tree}
@@ -388,6 +397,7 @@ export function TopbarClient({
               members,
               labels,
               projects,
+              customFields: displayFields,
             }}
             onRemove={removeExtra}
           />
@@ -416,12 +426,14 @@ export function TopbarClient({
               onLaneChange={setLanes}
               hideEmptyLanes={display.hideEmptyLanes}
               hiddenFields={display.hiddenFields}
+              displayFields={displayFields}
               onDisplayChange={saveDisplay}
               groupLookups={{
                 statuses,
                 priorities,
                 issueTypes,
                 members,
+                customFields,
                 // Across projects, grouping by project exists (V8).
                 ...(area === "my" ? { projects } : {}),
               }}

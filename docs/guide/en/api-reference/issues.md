@@ -26,6 +26,7 @@ List issues in a project, newest first, cursor-paginated.
 | Name | Type | Required | Description |
 | --- | --- | --- | --- |
 | `status` | `string` |  | Filter by status key. |
+| `field.<key>` | `string` |  | Filter by a custom field, by its key, e.g. field.customer=Acme. Exact match; a choice by id or label. Several field.* filters must all match; an unknown key returns an empty list. |
 | `assignee` | `string` |  | Filter by assignee user id. |
 | `q` | `string` |  | Case-insensitive substring match against title and description. |
 | `filter` | `string (JSON)` |  | A filter tree as JSON, URL-encoded — e.g. `{"op":"and","rules":[{"field":"priority","is":"gte","value":3}]}`. "@me" means you. How it works: [Filters](filters.md). 422 invalid_filter if it isn't a valid tree. |
@@ -71,7 +72,8 @@ curl "$BARYNT_URL/api/v1/projects/$PROJECT_ID/issues" \
       "attachmentCount": 0,
       "parent": null,
       "children": [],
-      "relations": []
+      "relations": [],
+      "customFields": { "customer": "Acme", "size": { "id": "o_s", "label": "Small" } }
     }
   ],
   "nextCursor": "eyJpZCI6ImlfNGsybjF4In0"
@@ -101,6 +103,7 @@ Create an issue. The reporter is always the token's owner, never a body field.
 | `assignee` | `string \| null` |  | A user id, or null. |
 | `labels` | `string[]` |  | Label ids. |
 | `type` | `string` |  | An issue type key. Default "feature". |
+| `customFields` | `object` |  | Custom field values by field key, e.g. {"customer": "Acme"}. A choice by id or label; null clears a value. A label that matches no choice adds one if the field allows its own values (allowCustomOptions). A date field takes YYYY-MM-DD, an ISO date-time with a zone (stored in UTC) or HH:mm, depending on its dateMode. See GET /api/v1/projects/{id}/custom-fields. Responses carry the values under customFields; a choice comes as {id, label}. |
 | `parentId` | `string \| null` |  | Makes the new issue a sub-issue of this one right away. |
 | `dueDate` | `string \| null` |  | ISO 8601 date, e.g. "2026-09-20". |
 | `storyPoints` | `integer \| null` |  | Typically a Fibonacci value (1/2/3/5/8/13), not enforced. |
@@ -160,7 +163,8 @@ curl -X POST "$BARYNT_URL/api/v1/projects/$PROJECT_ID/issues" \
     "attachmentCount": 0,
     "parent": null,
     "children": [],
-    "relations": []
+    "relations": [],
+    "customFields": { "customer": "Acme" }
   }
 }
 ```
@@ -270,6 +274,7 @@ Update an issue. Every field is optional — send only what changes. Re-assignin
 | `assignee` | `string \| null` |  | A user id, or null to unassign. |
 | `labels` | `string[]` |  | Label ids. |
 | `type` | `string` |  | An issue type key. |
+| `customFields` | `object` |  | Custom field values by field key, e.g. {"customer": "Acme"}. A choice by id or label; null clears a value. A label that matches no choice adds one if the field allows its own values (allowCustomOptions). A date field takes YYYY-MM-DD, an ISO date-time with a zone (stored in UTC) or HH:mm, depending on its dateMode. See GET /api/v1/projects/{id}/custom-fields. Responses carry the values under customFields; a choice comes as {id, label}. |
 | `parentId` | `string \| null` |  | Sets the issue's parent (sub-issue of); null clears it. Rejected (422) if it would create a cycle. |
 | `dueDate` | `string \| null` |  | ISO 8601 date, e.g. "2026-09-20"; null clears it. |
 | `storyPoints` | `integer \| null` |  | Typically a Fibonacci value (1/2/3/5/8/13), not enforced. |
@@ -306,6 +311,80 @@ curl -X PATCH "$BARYNT_URL/api/v1/issues/$ISSUE_ID" \
 {
   "data": { "id": "i_4k2n1x" }
 }
+```
+
+## `GET /api/v1/workspaces/{id}/custom-fields`
+
+Scope: `issues:read`
+
+List a workspace's custom fields: workspace-wide ones plus those of projects you can see. Defining or changing fields happens in the app.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | The workspace's id. |
+
+**Example**
+
+```bash
+curl "$BARYNT_URL/api/v1/workspaces/$WORKSPACE_ID/custom-fields" \
+  -H "Authorization: Bearer $BARYNT_API_KEY"
+```
+
+**Response**
+
+```json
+{
+  "data": [
+    {
+      "id": "cf_1a2b3c",
+      "key": "customer",
+      "name": "Customer",
+      "description": "",
+      "type": "TEXT",
+      "options": [],
+      "icon": "lucide:building-2",
+      "dateMode": "DATE",
+      "allowCustomOptions": false,
+      "projectId": null
+    },
+    {
+      "id": "cf_4d5e6f",
+      "key": "size",
+      "name": "Size",
+      "description": "",
+      "type": "SELECT",
+      "options": [{ "id": "o_s", "label": "Small", "color": null }],
+      "projectId": null
+    }
+  ]
+}
+```
+
+## `GET /api/v1/projects/{id}/custom-fields`
+
+Scope: `issues:read`
+
+List the custom fields that apply to one project: the workspace's fields and the project's own. Types: TEXT, NUMBER, DATE (YYYY-MM-DD), SELECT, MULTI_SELECT, CHECKBOX, URL, USER (a user id).
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | The project's id. |
+
+**Example**
+
+```bash
+curl "$BARYNT_URL/api/v1/projects/$PROJECT_ID/custom-fields" \
+  -H "Authorization: Bearer $BARYNT_API_KEY"
+```
+
+**Response**
+
+```json
+{ "data": [ /* same shape as the workspace endpoint */ ] }
 ```
 
 ## `POST /api/v1/issues/{id}/relations`

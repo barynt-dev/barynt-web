@@ -1,11 +1,16 @@
 import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 import {
+  getWorkspaceCustomFields,
+  getWorkspaceFieldKeys,
+} from "@/features/custom-fields/queries";
+import {
   setIssueViewFieldVisibility,
   setIssueViewGroups,
   setMyIssuesViewFieldVisibility,
   setMyIssuesViewGroups,
 } from "@/features/issues/actions";
+import { isGroupableField } from "@/features/issues/group";
 import {
   getIssueViewGroups,
   getIssueViewPreference,
@@ -64,6 +69,7 @@ export async function Topbar({
     hiddenCardFields,
     groups,
     issueTypes,
+    allCustomFields,
   ] = await Promise.all([
     getCurrentWorkspace(),
     getWorkspaceProjects(),
@@ -78,10 +84,20 @@ export async function Topbar({
       ? getIssueViewGroups(projectId, view)
       : getMyIssuesViewGroups(view),
     getWorkspaceIssueTypes(),
+    getWorkspaceCustomFields(),
   ]);
 
   if (!workspace) return null;
 
+  // Only the fields that can be grouped by, and — inside one project — only
+  // the ones that apply there: the workspace's and that project's own.
+  const inScope = allCustomFields.filter((f) =>
+    projectId
+      ? (f.projectId === null || f.projectId === projectId) &&
+        !f.hiddenInProjects.includes(projectId)
+      : true,
+  );
+  const customFields = inScope.filter(isGroupableField);
   const project = projectId ? projects.find((p) => p.id === projectId) : null;
   // A project's views — or, outside a project, the workspace's (V8).
   const views =
@@ -91,7 +107,13 @@ export async function Topbar({
           workspaceId: workspace.id,
           projectId: project?.id ?? null,
           projectSlug: project?.slug ?? null,
-          lookups: { priorities, members: withHandles(members), labels },
+          lookups: {
+            priorities,
+            members: withHandles(members),
+            labels,
+            // Archived ones too: a view's rule on one must survive.
+            customFields: await getWorkspaceFieldKeys(),
+          },
           members,
           activeView,
         });
@@ -121,6 +143,8 @@ export async function Topbar({
         labels={labels}
         hiddenCardFields={hiddenCardFields}
         issueTypes={issueTypes}
+        customFields={customFields}
+        displayFields={inScope}
         hiddenGroups={groups.hiddenGroups}
         hideEmptyGroups={groups.hideEmptyGroups}
         showSubIssues={groups.showSubIssues}

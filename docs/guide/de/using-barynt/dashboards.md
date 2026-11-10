@@ -49,6 +49,8 @@ Klicke auf **Bearbeiten**, dann auf **Widget hinzufügen**, um die Galerie zu ö
 
 Die meisten Widgets können einen **eigenen Filter** zusätzlich zu dem des Dashboards haben, sodass eine Kachel „nur Bugs“ zeigt, während eine andere alles zeigt.
 
+Auch Custom Fields funktionieren in Widgets: nach ihnen filtern, eine Verteilung oder Matrix nach einem Auswahl-, Personen- oder Ja/Nein-Feld gruppieren, eine Zeitreihe danach aufteilen oder statt Issues zu zählen ein Zahlenfeld aufsummieren (zum Beispiel den Auftragswert pro Kunde). Ein Klick auf einen Teil öffnet das Board, gefiltert auf diesen Wert.
+
 ## Mach es zu deinem
 
 Klicke oben rechts auf **Bearbeiten**. Jetzt kannst du:

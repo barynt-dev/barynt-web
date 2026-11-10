@@ -1,6 +1,11 @@
 import { cache } from "react";
 import { listAudit } from "@/lib/audit";
 import { getCurrentWorkspaceId } from "@/lib/current-workspace";
+import {
+  type FieldValue,
+  narrowFieldValue,
+  titleKey,
+} from "@/lib/custom-fields";
 import { db } from "@/lib/db";
 import { issueShareUrl } from "@/lib/issue-share";
 import {
@@ -37,7 +42,13 @@ import type {
   Team,
   User,
 } from "@/types";
-import { type IssueFilter, narrowProjects } from "./filter";
+import {
+  customFieldRef,
+  type IssueFilter,
+  isCustomFilterField,
+  narrowProjects,
+  rulesIn,
+} from "./filter";
 import {
   mapFilterValues,
   parseFilterParams,
@@ -83,6 +94,7 @@ function mapIssue(
       source: ContentSource;
     }[];
     shareToken?: string | null;
+    fieldValues?: { fieldId: string; value: unknown; title?: string | null }[];
   },
   // For `reactedByMe` — whoever isn't logged in (there are no public calls
   // here, but the type stays honest) sees no reaction as their own.
@@ -119,7 +131,25 @@ function mapIssue(
       source: c.source,
     })),
     shareUrl: i.shareToken ? issueShareUrl(i.shareToken) : null,
+    fieldValues: fieldValuesOf(i.fieldValues),
   };
+}
+
+/** The `IssueFieldValue` rows of one issue as `{ fieldId: value }`. */
+function fieldValuesOf(
+  rows:
+    | { fieldId: string; value: unknown; title?: string | null }[]
+    | undefined,
+): Record<string, FieldValue> {
+  const out: Record<string, FieldValue> = {};
+  for (const row of rows ?? []) {
+    const value = narrowFieldValue(row.value);
+    if (value === null) continue;
+    out[row.fieldId] = value;
+    // A link's own title, beside its value.
+    if (row.title) out[titleKey(row.fieldId)] = row.title;
+  }
+  return out;
 }
 
 /** Raw reaction rows grouped by emoji — the comment bar only shows the
@@ -441,6 +471,8 @@ export interface IssueFilters {
    *  Matches OR'd together — "overdue or has no due date" is a valid
    *  combination, same as picking several statuses at once. */
   dueDate?: string;
+  /** `cf.<fieldKey>`: comma-separated answers of one custom field. */
+  [customField: `cf.${string}`]: string | undefined;
 }
 
 /**
@@ -500,43 +532,74 @@ export async function resolveUrlFilter(
   // parsed with slugs, then the slugs looked up in one query per kind.
   const parsed = parseFilterParams(filters as Record<string, string>);
   const slugs = slugsByField(parsed);
-  const users = [...(slugs.assignee ?? []), ...(slugs.reporter ?? [])];
+  // Custom fields by key (BARY-196); their values may be handles too.
+  const customKeys = [
+    ...new Set(
+      parsed.rules
+        .flatMap(rulesIn)
+        .flatMap((r) =>
+          isCustomFilterField(r.field) ? [customFieldRef(r.field)] : [],
+        ),
+    ),
+  ];
+  const users = [
+    ...(slugs.assignee ?? []),
+    ...(slugs.reporter ?? []),
+    ...Object.entries(slugs).flatMap(([field, values]) =>
+      isCustomFilterField(field) ? (values ?? []) : [],
+    ),
+  ];
   const inWorkspace = "workspaceId" in scope;
 
-  const [priorityRows, userRows, labelRows, projectRows] = await Promise.all([
-    slugs.priority?.length
-      ? db.priority.findMany({
-          where: { key: { in: slugs.priority } },
-          select: { id: true, key: true },
-        })
-      : Promise.resolve([]),
-    users.length
-      ? db.user.findMany({
-          where: { handle: { in: users } },
-          select: { id: true, handle: true },
-        })
-      : Promise.resolve([]),
-    slugs.label?.length
-      ? db.label.findMany({
-          where: {
-            slug: { in: slugs.label },
-            ...("projectId" in scope
-              ? { workspace: { projects: { some: { id: scope.projectId } } } }
-              : { workspaceId: scope.workspaceId }),
-          },
-          select: { id: true, slug: true },
-        })
-      : Promise.resolve([]),
-    slugs.project?.length && inWorkspace
-      ? db.project.findMany({
-          where: {
-            slug: { in: slugs.project },
-            workspaceId: scope.workspaceId,
-          },
-          select: { id: true, slug: true },
-        })
-      : Promise.resolve([]),
-  ]);
+  const [priorityRows, userRows, labelRows, projectRows, fieldRows] =
+    await Promise.all([
+      slugs.priority?.length
+        ? db.priority.findMany({
+            where: { key: { in: slugs.priority } },
+            select: { id: true, key: true },
+          })
+        : Promise.resolve([]),
+      users.length
+        ? db.user.findMany({
+            where: { handle: { in: users } },
+            select: { id: true, handle: true },
+          })
+        : Promise.resolve([]),
+      slugs.label?.length
+        ? db.label.findMany({
+            where: {
+              slug: { in: slugs.label },
+              ...("projectId" in scope
+                ? { workspace: { projects: { some: { id: scope.projectId } } } }
+                : { workspaceId: scope.workspaceId }),
+            },
+            select: { id: true, slug: true },
+          })
+        : Promise.resolve([]),
+      slugs.project?.length && inWorkspace
+        ? db.project.findMany({
+            where: {
+              slug: { in: slugs.project },
+              workspaceId: scope.workspaceId,
+            },
+            select: { id: true, slug: true },
+          })
+        : Promise.resolve([]),
+      customKeys.length
+        ? db.customField.findMany({
+            where: {
+              key: { in: customKeys },
+              ...("projectId" in scope
+                ? {
+                    workspace: { projects: { some: { id: scope.projectId } } },
+                    OR: [{ projectId: null }, { projectId: scope.projectId }],
+                  }
+                : { workspaceId: scope.workspaceId }),
+            },
+            select: { id: true, key: true, type: true },
+          })
+        : Promise.resolve([]),
+    ]);
 
   // A project's own board has nothing to narrow by project — those rules
   // drop out, as `?project=` always did there.
@@ -550,6 +613,7 @@ export async function resolveUrlFilter(
         ),
         labels: labelRows,
         projects: projectRows,
+        customFields: fieldRows,
       },
       { projects: inWorkspace },
     ),
@@ -575,6 +639,22 @@ export async function filterContext(userId?: string): Promise<FilterContext> {
     // `getIssuesByProject`): a search filters which rows show up, it
     // doesn't reshuffle a manually-ordered board.
     searchIds: async (q) => [...(await searchIssueIds(q)).keys()],
+    customFieldValues: async (fieldId) => {
+      const field = await db.customField.findUnique({
+        where: { id: fieldId },
+        select: {
+          type: true,
+          dateMode: true,
+          values: { select: { issueId: true, value: true } },
+        },
+      });
+      return field
+        ? {
+            field: { type: field.type, dateMode: field.dateMode },
+            rows: field.values,
+          }
+        : null;
+    },
   };
 }
 
@@ -611,6 +691,7 @@ export async function getIssuesByProject(
         orderBy: { created: "asc" },
         include: { reactions: true },
       },
+      fieldValues: { select: { fieldId: true, value: true, title: true } },
     },
     orderBy: [{ rank: "asc" }, { created: "asc" }],
   });
@@ -695,6 +776,7 @@ export async function getWorkspaceIssues(
         orderBy: { created: "asc" },
         include: { reactions: true },
       },
+      fieldValues: { select: { fieldId: true, value: true, title: true } },
     },
     // Same as within a project: by rank, so a dragged row stays where it
     // was dropped.
@@ -885,6 +967,7 @@ export async function getIssueById(id: string): Promise<IssueDetail | null> {
         orderBy: { created: "asc" },
         include: { reactions: true },
       },
+      fieldValues: { select: { fieldId: true, value: true, title: true } },
       attachments: { orderBy: { created: "asc" } },
       project: { select: { workspaceId: true } },
     },
@@ -941,6 +1024,7 @@ export const getIssueByRef = cache(
           orderBy: { created: "asc" },
           include: { reactions: true },
         },
+        fieldValues: { select: { fieldId: true, value: true, title: true } },
         attachments: { orderBy: { created: "asc" } },
       },
     });

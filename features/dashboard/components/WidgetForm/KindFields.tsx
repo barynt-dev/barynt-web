@@ -19,6 +19,8 @@ import {
   GROUP_FIELDS,
   type GroupField,
   ISSUE_SORTS,
+  isGroupableCustomField,
+  isMatrixCustomField,
   KPI_METRICS,
   MATRIX_FIELDS,
   MEASURES,
@@ -32,6 +34,7 @@ import {
   type Widget,
   type WidgetConfig,
 } from "@/features/dashboard/widgets";
+import { useWidgetFieldNames, useWidgetFields } from "../Widget/fieldNames";
 import styles from "../WidgetSettings/widgetSettings.module.scss";
 
 /**
@@ -49,8 +52,15 @@ export function KindFields({
   const t = useTranslations("widgets");
   const def = WIDGETS[widget.type];
   const { config } = widget;
+  const names = useWidgetFieldNames();
+  // The custom fields join the built-in choices (BARY-197): those with a
+  // list of answers as groupings, number fields as measures.
+  const customFields = useWidgetFields();
+  const customRefs = (keep: (f: { type: string }) => boolean) =>
+    customFields.filter(keep).map((f) => `cf:${f.id}` as const);
+  const groupable = customRefs(isGroupableCustomField);
   const fieldItems = (fields: readonly GroupField[]) =>
-    fields.map((f) => ({ value: f, label: t(`group_${f}`) }));
+    fields.map((f) => ({ value: f, label: names.group(f) }));
 
   return (
     <>
@@ -68,10 +78,12 @@ export function KindFields({
           onChange={(v) =>
             set({ measure: v === "count" ? undefined : (v as Measure) })
           }
-          items={MEASURES.map((m) => ({
-            value: m,
-            label: t(`measure_${m}`),
-          }))}
+          items={[...MEASURES, ...customRefs((f) => f.type === "NUMBER")].map(
+            (m) => ({
+              value: m,
+              label: names.measure(m),
+            }),
+          )}
         />
       )}
 
@@ -102,10 +114,7 @@ export function KindFields({
               }
               items={[
                 { value: "", label: t("splitNone") },
-                ...GROUP_FIELDS.map((f) => ({
-                  value: f,
-                  label: t(`group_${f}`),
-                })),
+                ...fieldItems([...GROUP_FIELDS, ...groupable]),
               ]}
             />
           )}
@@ -150,7 +159,7 @@ export function KindFields({
             label={t("groupBy")}
             value={config.groupBy ?? "status"}
             onChange={(v) => set({ groupBy: v as WidgetConfig["groupBy"] })}
-            items={fieldItems(GROUP_FIELDS)}
+            items={fieldItems([...GROUP_FIELDS, ...groupable])}
           />
           <div className={styles.field}>
             <span className={styles.label}>{t("chart")}</span>
@@ -175,13 +184,19 @@ export function KindFields({
             label={t("rows")}
             value={config.groupBy ?? "assignee"}
             onChange={(v) => set({ groupBy: v as WidgetConfig["groupBy"] })}
-            items={fieldItems(MATRIX_FIELDS)}
+            items={fieldItems([
+              ...MATRIX_FIELDS,
+              ...customRefs(isMatrixCustomField),
+            ])}
           />
           <NativeSelect
             label={t("columns")}
             value={config.groupBy2 ?? "status"}
             onChange={(v) => set({ groupBy2: v as WidgetConfig["groupBy2"] })}
-            items={fieldItems(MATRIX_FIELDS)}
+            items={fieldItems([
+              ...MATRIX_FIELDS,
+              ...customRefs(isMatrixCustomField),
+            ])}
           />
         </>
       )}

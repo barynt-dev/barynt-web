@@ -113,8 +113,16 @@ export const MCP_TOOL_GROUPS: McpToolGroup[] = [
         name: "list_issues",
         scope: "issues:read",
         desc: {
-          en: "List issues in a project, optionally filtered by status, assignee, a text search or a filter tree (`filter`). With `viewId`, the issues a saved view shows (needs views:read too); `@me` means you.",
-          de: "Listet die Issues eines Projekts, wahlweise gefiltert nach Status, Zuständigem, Textsuche oder Filterbaum (`filter`). Mit `viewId` die Issues einer gespeicherten View (braucht zusätzlich views:read); `@me` bist du.",
+          en: "List issues in a project, optionally filtered by status, assignee, a text search, a filter tree (`filter`) or exact custom field values (`customFieldFilters`). With `viewId`, the issues a saved view shows (needs views:read too); `@me` means you.",
+          de: "Listet die Issues eines Projekts, wahlweise gefiltert nach Status, Zuständigem, Textsuche oder Filterbaum (`filter`), dazu exakt nach Custom Fields (`customFieldFilters`). Mit `viewId` die Issues einer gespeicherten View (braucht zusätzlich views:read); `@me` bist du.",
+        },
+      },
+      {
+        name: "list_custom_fields",
+        scope: "issues:read",
+        desc: {
+          en: "List the custom fields of a workspace, or with `projectId` the ones that apply to that project. Issues carry their values under `customFields`, keyed by field key.",
+          de: "Listet die Custom Fields eines Workspaces, mit `projectId` die, die in diesem Projekt gelten. Issues tragen ihre Werte unter `customFields`, nach Feld-Key.",
         },
       },
       {

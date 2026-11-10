@@ -81,7 +81,7 @@ Welche Vergleiche ein Feld kennt, steht beim Feld. Werte sind IDs, sofern nichts
 | --- | --- | --- |
 | `any` | ist eines davon | `["a", "b"]` |
 | `none` | ist keines davon (Issues ohne Wert passen trotzdem) | `["a", "b"]` |
-| `all` | hat alle davon (nur Labels) | `["a", "b"]` |
+| `all` | hat alle davon (Labels und Custom Fields mit Mehrfachauswahl) | `["a", "b"]` |
 | `empty` | ist nicht gesetzt | — |
 | `notEmpty` | ist gesetzt | — |
 | `gte` | ist mindestens | `3` |
@@ -103,8 +103,21 @@ Welche Vergleiche ein Feld kennt, steht beim Feld. Werte sind IDs, sofern nichts
 | `"next_7_days"` | Bei within: heute und die 6 Tage danach. |
 | `"last_7_days"` | Bei within: heute und die 6 Tage davor. |
 | `"last_30_days"` | Bei within: heute und die 29 Tage davor. |
+| `"cf:<fieldId>"` | Als Feld: ein Custom Field, über seine ID (list_custom_fields, GET …/custom-fields). Auswahl- und Personenfelder nehmen any/none/empty/notEmpty mit Auswahl- oder User-IDs, "@me" und "_none" — eine Mehrfachauswahl auch all; eine Checkbox any mit ["yes"] oder ["no"]; eine Zahl gte/lte; ein Datum within/before/after; Text und Links contains; alle auch empty/notEmpty. |
 
 ## Rezepte
+
+### Custom Fields: Kunde ist Acme, Auftrag mindestens 1000 (IDs aus list_custom_fields)
+
+```json
+{
+  "op": "and",
+  "rules": [
+    { "field": "cf:f_customer", "is": "any", "value": ["o_acme"] },
+    { "field": "cf:f_deal", "is": "gte", "value": 1000 }
+  ]
+}
+```
 
 ### Meine offenen Issues
 

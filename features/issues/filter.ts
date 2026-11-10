@@ -105,10 +105,36 @@ export const FILTER_FIELDS = {
 export type FilterField = keyof typeof FILTER_FIELDS;
 export const FILTER_FIELD_KEYS = Object.keys(FILTER_FIELDS) as FilterField[];
 
+/**
+ * A custom field as a rule's field: `cf:<fieldId>` (BARY-196). By id, not
+ * key, so a saved view survives the field being renamed. Which operators
+ * and values make sense depends on the field's type, which only the
+ * database knows — the schema checks the shape, `filter-custom.ts` the rest.
+ */
+export type CustomFilterField = `cf:${string}`;
+
+/** Anything a rule can name: a built-in field or a custom one. */
+export type RuleField = FilterField | CustomFilterField;
+
+const CUSTOM_PREFIX = "cf:";
+
+export function isCustomFilterField(field: string): field is CustomFilterField {
+  return field.startsWith(CUSTOM_PREFIX) && field.length > CUSTOM_PREFIX.length;
+}
+
+export function customFilterField(fieldId: string): CustomFilterField {
+  return `${CUSTOM_PREFIX}${fieldId}`;
+}
+
+/** The field id (or, in a URL's tree, the key) behind `cf:…`. */
+export function customFieldRef(field: CustomFilterField): string {
+  return field.slice(CUSTOM_PREFIX.length);
+}
+
 export type FilterValue = string | number | (string | number)[];
 
 export interface FilterRule {
-  field: FilterField;
+  field: RuleField;
   is: FilterOp;
   /** Absent for `empty`/`notEmpty`. A list for `any`/`none`/`all`; a single
    *  number for `gte`/`lte`; an ISO date (`YYYY-MM-DD`) or `today` for
@@ -200,11 +226,16 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Whether `value` has the shape `field`+`is` expects — the part a plain
  *  Zod union can't express, since it depends on both. */
-function valueFits(field: FilterField, is: FilterOp, value: unknown): boolean {
-  const { kind } = FILTER_FIELDS[field];
+function valueFits(field: RuleField, is: FilterOp, value: unknown): boolean {
+  const kind = isCustomFilterField(field)
+    ? "custom"
+    : FILTER_FIELDS[field].kind;
   if (is === "empty" || is === "notEmpty") return value === undefined;
   if (is === "any" || is === "none" || is === "all") {
     if (!Array.isArray(value)) return false;
+    // A custom field's values are always text: choice and user ids, `@me`,
+    // `yes`/`no` of a checkbox — and it may always be empty.
+    if (kind === "custom") return value.every((v) => typeof v === "string");
     const plain = NULLABLE_FIELDS.has(field)
       ? value.filter((v) => v !== NONE_VALUE)
       : value;
@@ -229,7 +260,13 @@ function valueFits(field: FilterField, is: FilterOp, value: unknown): boolean {
 
 const ruleSchema = z
   .object({
-    field: z.enum(FILTER_FIELD_KEYS as [FilterField, ...FilterField[]]),
+    field: z.union([
+      z.enum(FILTER_FIELD_KEYS as [FilterField, ...FilterField[]]),
+      z
+        .string()
+        .regex(/^cf:[A-Za-z0-9_-]{1,100}$/)
+        .transform((f) => f as CustomFilterField),
+    ]),
     is: z.enum(FILTER_OPS),
     value: z
       .union([
@@ -241,8 +278,12 @@ const ruleSchema = z
   })
   .strict()
   .superRefine((rule, ctx) => {
-    const def = FILTER_FIELDS[rule.field];
-    if (!(def.ops as readonly FilterOp[]).includes(rule.is)) {
+    // A custom field takes any operator here; one that doesn't suit the
+    // field's type drops out when the filter is applied (`filter-custom.ts`).
+    const ops: readonly FilterOp[] = isCustomFilterField(rule.field)
+      ? FILTER_OPS
+      : FILTER_FIELDS[rule.field].ops;
+    if (!ops.includes(rule.is)) {
       ctx.addIssue({
         code: "custom",
         message: `"${rule.is}" is not allowed for "${rule.field}"`,
@@ -292,10 +333,10 @@ export function parseIssueFilter(input: unknown): IssueFilter | null {
 // ─── References that no longer exist ────────────────────────────────────────
 
 /** Ids a field's rules can point at, as far as the caller knows them. */
-export type KnownRefs = Partial<Record<FilterField, Set<string | number>>>;
+export type KnownRefs = Partial<Record<RuleField, Set<string | number>>>;
 
 export interface MissingRef {
-  field: FilterField;
+  field: RuleField;
   value: string | number;
 }
 

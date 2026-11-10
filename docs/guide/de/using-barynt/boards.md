@@ -50,14 +50,14 @@ Willst du eine dieser Einstellungen morgen wieder haben oder mit deinem Team tei
 
 ## Filtern: nur zeigen, was zählt
 
-Klicke über dem Board auf **Filter**. Die Schnellfilter sind _Status_, _Typ_, _Priorität_, _Zuständig_ und _Label_. Wähle in jedem einen oder mehrere Werte. **Alle Filter zurücksetzen** beginnt von vorn.
+Klicke über dem Board auf **Filter**. Die Schnellfilter sind _Status_, _Typ_, _Priorität_, _Zuständig_ und _Label_. Custom Fields mit einer Liste von Antworten (eine Auswahl, eine Person, ja/nein) bekommen einen eigenen Schnellfilter. Wähle in jedem einen oder mehrere Werte. **Alle Filter zurücksetzen** beginnt von vorn.
 
 ![Das Filter-Menü](../../assets/de/filter.webp)
 
 Für alles Genauere öffne die **erweiterten Filtereinstellungen**. Dort baust du Bedingungen selbst:
 
-- Zu den Feldern gehören Status, Typ, Priorität, Zuständigkeit, Ersteller, Labels, Fälligkeitsdatum, Story Points und ob es eine Unteraufgabe ist.
-- Zu den Vergleichen gehören _ist_, _ist nicht_, _ist leer_, _mindestens_, _höchstens_, _vor_, _nach_ und _innerhalb_.
+- Zu den Feldern gehören Status, Typ, Priorität, Zuständigkeit, Ersteller, Labels, Fälligkeitsdatum, Story Points, ob es eine Unteraufgabe ist, und jedes Custom Field.
+- Zu den Vergleichen gehören _ist_, _ist nicht_, _ist leer_, _mindestens_, _höchstens_, _vor_, _nach_, _innerhalb_ und, bei Text, _enthält_.
 - Spezielle Werte sparen Tipparbeit: **Ich** steht für die Person, die gerade schaut, und Daten können relativ sein, etwa _überfällig_, _heute_, _nächste 7 Tage_ oder _letzte 30 Tage_.
 - Bedingungen lassen sich mit **UND** oder **ODER** verknüpfen und in Kästen gruppieren.
 

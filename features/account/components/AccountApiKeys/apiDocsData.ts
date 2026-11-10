@@ -345,6 +345,11 @@ export const API_DOC_GROUPS: ApiDocGroup[] = [
             },
           },
           {
+            name: "field.<key>",
+            type: "string",
+            desc: "Filter by a custom field, by its key, e.g. field.customer=Acme. Exact match; a choice by id or label. Several field.* filters must all match; an unknown key returns an empty list.",
+          },
+          {
             name: "assignee",
             type: "string",
             desc: {
@@ -421,7 +426,8 @@ export const API_DOC_GROUPS: ApiDocGroup[] = [
       "attachmentCount": 0,
       "parent": null,
       "children": [],
-      "relations": []
+      "relations": [],
+      "customFields": { "customer": "Acme", "size": { "id": "o_s", "label": "Small" } }
     }
   ],
   "nextCursor": "eyJpZCI6ImlfNGsybjF4In0"
@@ -476,6 +482,11 @@ export const API_DOC_GROUPS: ApiDocGroup[] = [
               en: 'An issue type key. Default "feature".',
               de: 'Ein Issue-Typ-Key. Standard "feature".',
             },
+          },
+          {
+            name: "customFields",
+            type: "object",
+            desc: 'Custom field values by field key, e.g. {"customer": "Acme"}. A choice by id or label; null clears a value. A label that matches no choice adds one if the field allows its own values (allowCustomOptions). A date field takes YYYY-MM-DD, an ISO date-time with a zone (stored in UTC) or HH:mm, depending on its dateMode. See GET /api/v1/projects/{id}/custom-fields. Responses carry the values under customFields; a choice comes as {id, label}.',
           },
           {
             name: "parentId",
@@ -554,7 +565,8 @@ export const API_DOC_GROUPS: ApiDocGroup[] = [
     "attachmentCount": 0,
     "parent": null,
     "children": [],
-    "relations": []
+    "relations": [],
+    "customFields": { "customer": "Acme" }
   }
 }`,
       },
@@ -681,6 +693,11 @@ export const API_DOC_GROUPS: ApiDocGroup[] = [
             desc: { en: "An issue type key.", de: "Ein Issue-Typ-Key." },
           },
           {
+            name: "customFields",
+            type: "object",
+            desc: 'Custom field values by field key, e.g. {"customer": "Acme"}. A choice by id or label; null clears a value. A label that matches no choice adds one if the field allows its own values (allowCustomOptions). A date field takes YYYY-MM-DD, an ISO date-time with a zone (stored in UTC) or HH:mm, depending on its dateMode. See GET /api/v1/projects/{id}/custom-fields. Responses carry the values under customFields; a choice comes as {id, label}.',
+          },
+          {
             name: "parentId",
             type: "string | null",
             desc: {
@@ -734,6 +751,46 @@ export const API_DOC_GROUPS: ApiDocGroup[] = [
         response: `{
   "data": { "id": "i_4k2n1x" }
 }`,
+      },
+      {
+        method: "GET",
+        path: "/api/v1/workspaces/{id}/custom-fields",
+        scope: "issues:read",
+        desc: "List a workspace's custom fields: workspace-wide ones plus those of projects you can see. Defining or changing fields happens in the app.",
+        pathParams: [idParam("workspace")],
+        response: `{
+  "data": [
+    {
+      "id": "cf_1a2b3c",
+      "key": "customer",
+      "name": "Customer",
+      "description": "",
+      "type": "TEXT",
+      "options": [],
+      "icon": "lucide:building-2",
+      "dateMode": "DATE",
+      "allowCustomOptions": false,
+      "projectId": null
+    },
+    {
+      "id": "cf_4d5e6f",
+      "key": "size",
+      "name": "Size",
+      "description": "",
+      "type": "SELECT",
+      "options": [{ "id": "o_s", "label": "Small", "color": null }],
+      "projectId": null
+    }
+  ]
+}`,
+      },
+      {
+        method: "GET",
+        path: "/api/v1/projects/{id}/custom-fields",
+        scope: "issues:read",
+        desc: "List the custom fields that apply to one project: the workspace's fields and the project's own. Types: TEXT, NUMBER, DATE (YYYY-MM-DD), SELECT, MULTI_SELECT, CHECKBOX, URL, USER (a user id).",
+        pathParams: [idParam("project")],
+        response: `{ "data": [ /* same shape as the workspace endpoint */ ] }`,
       },
       {
         method: "POST",

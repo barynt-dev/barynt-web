@@ -49,6 +49,8 @@ Click **Edit**, then **Add widget** to open the gallery. You can search it, and 
 
 Most widgets can have their **own filter** on top of the dashboard's, so one tile can show "bugs only" while another shows everything.
 
+Custom fields work in widgets too: filter by them, group a distribution or a matrix by a choice, a person or a yes/no field, split a time series by one, or add up a number field instead of counting issues (for example the total deal value per customer). A click on a part opens the board filtered to that value.
+
 ## Making it yours
 
 Click **Edit** at the top right. You can now:
