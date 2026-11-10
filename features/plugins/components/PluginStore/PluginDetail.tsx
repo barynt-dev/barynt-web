@@ -137,11 +137,7 @@ export function PluginDetail({
         </div>
       </header>
 
-      <Tabs
-        indicator="top"
-        label={text.t("detailTabs")}
-        className={styles.tabs}
-      >
+      <Tabs label={text.t("detailTabs")} className={styles.tabs}>
         {tabs.map((id) => (
           <Tab
             key={id}

@@ -351,10 +351,12 @@
   }
 }
 
-/* Like an issue view's tabs: they hang off a divider above, the open one
-   marked by a bar on it (`indicator="top"`). */
+/* An issue view's tabs, the bar on a divider below: a row as tall as the
+   topbar's (3rem), the tabs filling it. */
 .tabs {
-  border-top: 1px solid var(--outline-variant);
+  min-height: 3rem;
+  margin-top: 0.25rem;
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .tabCount {
