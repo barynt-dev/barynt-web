@@ -2571,8 +2571,6 @@
     "previousPreview": "Vorige Vorschau",
     "nextPreview": "Nächste Vorschau",
     "capabilitiesIntro": "Ein Plugin kann nie mehr als die Person, in deren Sitzung es handelt. Workspaces und Projekte bestätigen diese Liste, wenn sie es einschalten.",
-    "capsNow": "Jetzt · {version}",
-    "capsAfter": "Nach dem Update · {version}",
     "capGroup": {
       "data": "Daten",
       "ui": "Oberfläche",
@@ -2584,7 +2582,6 @@
     "noNetwork": "Ruft keine anderen Server auf.",
     "networkNote": "Andere Hosts sind gesperrt.",
     "capsConfirmedIn": "{count, plural, =0 {Noch nirgends bestätigt.} one {In # Aktivierung bestätigt.} other {In # Aktivierungen bestätigt.}}",
-    "capsAfterNote": "{count, plural, =0 {Nach dem Update bestätigt jede neue Aktivierung die neue Liste.} one {Nach dem Update läuft # Aktivierung mit den alten Rechten weiter, bis sie die neuen bestätigt.} other {Nach dem Update laufen # Aktivierungen mit den alten Rechten weiter, bis sie die neuen bestätigen.}}",
     "whereItsOn": "Wo es aktiv ist",
     "versionState": {
       "active": "Aktiv",
@@ -2657,6 +2654,19 @@
     },
     "backToAdmin": "Zur Verwaltung",
     "categoriesLabel": "{count, plural, one {Kategorie} other {Kategorien}}",
-    "clearCategory": "Kategorie-Filter entfernen"
+    "clearCategory": "Kategorie-Filter entfernen",
+    "capsVersion": "Version",
+    "capsVersionOption": {
+      "installed": "v{version} · installiert",
+      "newest": "v{version} · neueste",
+      "newer": "v{version} · neuer",
+      "older": "v{version} · älter"
+    },
+    "capsComparedTo": "Unterschied zu v{version} (installiert):",
+    "capsAddedCount": "{count} neu",
+    "capsRemovedCount": "{count} entfällt",
+    "capsBackToInstalled": "Zurück zu v{version}",
+    "capsCompareWith": "Mit v{version} vergleichen",
+    "capsSwitchNote": "Nach einem Wechsel auf v{version} {count, plural, =0 {bestätigt jede neue Aktivierung die neue Liste.} one {läuft # Aktivierung mit den alten Rechten weiter, bis sie die neuen bestätigt.} other {laufen # Aktivierungen mit den alten Rechten weiter, bis sie die neuen bestätigen.}}"
   }
 }

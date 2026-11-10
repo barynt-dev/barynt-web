@@ -173,6 +173,17 @@ describe("PluginStore", () => {
     expect(html).toContain("installOlder");
   });
 
+  it("picks the version to look at from every version there is", () => {
+    const html = render({ selected: timeline, tab: "capabilities" });
+    // All four listed versions, each with where it stands.
+    expect(html.match(/<option /g)?.length).toBe(4);
+    for (const key of ["installed", "newest", "older"])
+      expect(html).toContain(`capsVersionOption.${key}`);
+    // The installed one is shown; the update is one click away.
+    expect(html).toContain("capsCompareWith");
+    expect(html).not.toContain("capsComparedTo");
+  });
+
   it("has only overview and capabilities for a plugin that isn't installed", () => {
     const html = render({ selected: notify, tab: "versions" });
     expect(html).toContain("install");

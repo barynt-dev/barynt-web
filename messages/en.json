@@ -2571,8 +2571,6 @@
     "previousPreview": "Previous screenshot",
     "nextPreview": "Next screenshot",
     "capabilitiesIntro": "A plugin can never do more than the person it acts for. Workspaces and projects confirm this list when they switch it on.",
-    "capsNow": "Now · {version}",
-    "capsAfter": "After the update · {version}",
     "capGroup": {
       "data": "Data",
       "ui": "Interface",
@@ -2584,7 +2582,6 @@
     "noNetwork": "Calls no other servers.",
     "networkNote": "Other hosts are blocked.",
     "capsConfirmedIn": "{count, plural, =0 {Not confirmed anywhere yet.} one {Confirmed in # activation.} other {Confirmed in # activations.}}",
-    "capsAfterNote": "{count, plural, =0 {After the update, every new activation confirms the new list.} one {After the update, # activation keeps the old permissions until it confirms the new ones.} other {After the update, # activations keep the old permissions until they confirm the new ones.}}",
     "whereItsOn": "Where it’s on",
     "versionState": {
       "active": "Active",
@@ -2657,6 +2654,19 @@
     },
     "backToAdmin": "Back to administration",
     "categoriesLabel": "{count, plural, one {Category} other {Categories}}",
-    "clearCategory": "Clear category filter"
+    "clearCategory": "Clear category filter",
+    "capsVersion": "Version",
+    "capsVersionOption": {
+      "installed": "v{version} · installed",
+      "newest": "v{version} · newest",
+      "newer": "v{version} · newer",
+      "older": "v{version} · older"
+    },
+    "capsComparedTo": "Compared with v{version} (installed):",
+    "capsAddedCount": "{count} added",
+    "capsRemovedCount": "{count} removed",
+    "capsBackToInstalled": "Back to v{version}",
+    "capsCompareWith": "Compare with v{version}",
+    "capsSwitchNote": "After switching to v{version}, {count, plural, =0 {every new activation confirms the new list.} one {# activation keeps the old permissions until it confirms the new ones.} other {# activations keep the old permissions until they confirm the new ones.}}"
   }
 }

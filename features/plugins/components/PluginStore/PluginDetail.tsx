@@ -6,7 +6,6 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/atoms/Badge/Badge";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import { NativeSelect } from "@/components/ui/atoms/NativeSelect/NativeSelect";
-import { SegmentedControl } from "@/components/ui/atoms/SegmentedControl/SegmentedControl";
 import { Tab, Tabs } from "@/components/ui/layout/Tabs/Tabs";
 import type { PluginPlace, StoreEntry } from "@/features/plugins/queries";
 import { Link } from "@/i18n/navigation";
@@ -363,48 +362,115 @@ function Capabilities({
 }) {
   const text = usePluginText();
   const installed = entry.installed;
-  const [after, setAfter] = useState(false);
-  const next = release.status === "ready" ? release.preview : null;
-  const now = installed?.capabilities ?? next?.capabilities ?? null;
-  const shown = installed && after ? (next?.capabilities ?? null) : now;
-  const network =
-    installed && after
-      ? (next?.network ?? [])
-      : (installed?.network ?? next?.network ?? []);
+  const active = installed?.version ?? null;
+  // Which version to look at: the installed one by default. Any version the
+  // directory lists can be picked and is compared with the installed one.
+  const [picked, setPicked] = useState<string | null>(active);
+  const other = installed && picked && picked !== active ? picked : null;
+  const loaded = useRelease(
+    other ? (entry.listing?.sourceId ?? null) : null,
+    entry.id,
+    other,
+  );
+  const target = installed
+    ? other
+      ? loaded.status === "ready"
+        ? loaded.preview
+        : null
+      : { capabilities: installed.capabilities, network: installed.network }
+    : release.status === "ready"
+      ? release.preview
+      : null;
+  const state = installed && other ? loaded : release;
+  const shown = target?.capabilities ?? null;
+  const network = target?.network ?? [];
+  const base = other && installed ? installed : null;
   const added =
-    installed && after && next
-      ? next.capabilities.filter((c) => !installed.capabilities.includes(c))
-      : [];
+    base && shown ? shown.filter((c) => !base.capabilities.includes(c)) : [];
   const removed =
-    installed && after && next
-      ? installed.capabilities.filter((c) => !next.capabilities.includes(c))
-      : [];
+    base && shown ? base.capabilities.filter((c) => !shown.includes(c)) : [];
+  const hostsAdded = base
+    ? network.filter((h) => !base.network.includes(h))
+    : [];
+  const hostsRemoved =
+    base && target ? base.network.filter((h) => !network.includes(h)) : [];
+
+  // Every version there is, newest first, each with where it stands.
+  const versions = [
+    ...new Set([
+      ...(entry.listing?.versions ?? []),
+      ...(active ? [active] : []),
+    ]),
+  ].sort((x, y) => compareSemver(y, x));
+  const label = (v: string) => {
+    const state =
+      v === active
+        ? "installed"
+        : v === versions[0]
+          ? "newest"
+          : active && compareSemver(v, active) > 0
+            ? "newer"
+            : "older";
+    return text.t(`capsVersionOption.${state}`, { version: v });
+  };
 
   return (
     <div className={styles.capabilities}>
-      <div className={styles.capIntro}>
-        <p>{text.t("capabilitiesIntro")}</p>
-        {installed && entry.update && (
-          <SegmentedControl
-            variant="surface"
-            value={after ? "after" : "now"}
-            onChange={(v) => setAfter(v === "after")}
-            items={[
-              {
-                value: "now",
-                label: text.t("capsNow", { version: installed.version ?? "" }),
-              },
-              {
-                value: "after",
-                label: text.t("capsAfter", { version: entry.update }),
-              },
-            ]}
-          />
-        )}
-      </div>
+      <p className={styles.capLead}>{text.t("capabilitiesIntro")}</p>
+
+      {installed && versions.length > 1 && (
+        <div className={styles.versionBar}>
+          {/* The select names itself (`aria-label`); the visible word is for the eye. */}
+          <div className={styles.versionPick}>
+            <span className={styles.fieldLabel} aria-hidden>
+              {text.t("capsVersion")}
+            </span>
+            <NativeSelect
+              label={text.t("capsVersion")}
+              value={picked ?? ""}
+              onChange={setPicked}
+              items={versions.map((v) => ({ value: v, label: label(v) }))}
+            />
+          </div>
+          {other && active ? (
+            <span className={styles.diffSummary}>
+              <span>{text.t("capsComparedTo", { version: active })}</span>
+              <span className={styles.diffCount} data-kind="added">
+                {text.t("capsAddedCount", {
+                  count: added.length + hostsAdded.length,
+                })}
+              </span>
+              <span className={styles.diffCount} data-kind="removed">
+                {text.t("capsRemovedCount", {
+                  count: removed.length + hostsRemoved.length,
+                })}
+              </span>
+              <button
+                type="button"
+                className={styles.linkButton}
+                onClick={() => setPicked(active)}
+              >
+                {text.t("capsBackToInstalled", { version: active })}
+              </button>
+            </span>
+          ) : (
+            entry.update && (
+              <button
+                type="button"
+                className={styles.compareButton}
+                onClick={() => setPicked(entry.update)}
+              >
+                <Icon icon="lucide:git-compare" width={15} aria-hidden />
+                {text.t("capsCompareWith", { version: entry.update })}
+              </button>
+            )
+          )}
+        </div>
+      )}
+
       {shown === null ? (
-        release.status === "error" ? (
-          <ErrorLine message={text.error(release.error)} />
+        state.status === "error" ? (
+          <ErrorLine message={text.error(state.error)} />
         ) : (
           <p className={styles.muted}>
             <Icon
@@ -427,42 +493,20 @@ function Capabilities({
                   {text.t(`capGroup.${group.id}` as "capGroup.data")}
                 </h3>
                 <ul className={styles.capRows}>
-                  {caps.map((cap) => {
-                    const change = added.includes(cap)
-                      ? "added"
-                      : removed.includes(cap)
-                        ? "removed"
-                        : undefined;
-                    return (
-                      <li
-                        key={cap}
-                        className={styles.capRow}
-                        data-change={change}
-                      >
-                        <span className={styles.capMark} aria-hidden>
-                          {change === "added"
-                            ? "+"
-                            : change === "removed"
-                              ? "−"
-                              : ""}
-                        </span>
-                        <span className={styles.capLabel}>
-                          {text.capability(cap)}
-                          {change && (
-                            <span className={styles.srOnly}>
-                              {" "}
-                              (
-                              {text.t(
-                                change === "added" ? "capAdded" : "capRemoved",
-                              )}
-                              )
-                            </span>
-                          )}
-                        </span>
-                        <code>{cap}</code>
-                      </li>
-                    );
-                  })}
+                  {caps.map((cap) => (
+                    <CapRow
+                      key={cap}
+                      label={text.capability(cap)}
+                      code={cap}
+                      change={
+                        added.includes(cap)
+                          ? "added"
+                          : removed.includes(cap)
+                            ? "removed"
+                            : undefined
+                      }
+                    />
+                  ))}
                 </ul>
               </section>
             );
@@ -472,14 +516,23 @@ function Capabilities({
               <Icon icon="lucide:globe" width={14} aria-hidden />
               {text.t("networkTitle")}
             </h3>
-            {network.length === 0 ? (
+            {network.length + hostsRemoved.length === 0 ? (
               <p className={styles.muted}>{text.t("noNetwork")}</p>
             ) : (
               <ul className={styles.capRows}>
-                {network.map((host) => (
-                  <li key={host} className={styles.capRow}>
-                    <code className={styles.host}>{host}</code>
-                  </li>
+                {[...network, ...hostsRemoved].map((host) => (
+                  <CapRow
+                    key={host}
+                    label={host}
+                    change={
+                      hostsAdded.includes(host)
+                        ? "added"
+                        : hostsRemoved.includes(host)
+                          ? "removed"
+                          : undefined
+                    }
+                    mono
+                  />
                 ))}
               </ul>
             )}
@@ -487,12 +540,16 @@ function Capabilities({
           </section>
         </div>
       )}
+
       {installed && (
         <p className={styles.footnote}>
           <Icon icon="lucide:users" width={16} aria-hidden />
           <span>
-            {after && added.length > 0
-              ? text.t("capsAfterNote", { count: installed.activations })
+            {other && added.length + hostsAdded.length > 0
+              ? text.t("capsSwitchNote", {
+                  version: other,
+                  count: installed.activations,
+                })
               : text.t("capsConfirmedIn", { count: installed.activations })}
           </span>
           <Link href={storeHref({ plugin: entry.id, tab: "places" })}>
@@ -501,6 +558,39 @@ function Capabilities({
         </p>
       )}
     </div>
+  );
+}
+
+/** One capability or host; `change` marks it added (+) or removed (−)
+ *  against the installed version. */
+function CapRow({
+  label,
+  code,
+  change,
+  mono = false,
+}: {
+  label: string;
+  code?: string;
+  change?: "added" | "removed";
+  mono?: boolean;
+}) {
+  const text = usePluginText();
+  return (
+    <li className={styles.capRow} data-change={change}>
+      <span className={styles.capMark} aria-hidden>
+        {change === "added" ? "+" : change === "removed" ? "−" : ""}
+      </span>
+      <span className={mono ? styles.host : styles.capLabel}>
+        {label}
+        {change && (
+          <span className={styles.srOnly}>
+            {" "}
+            ({text.t(change === "added" ? "capAdded" : "capRemoved")})
+          </span>
+        )}
+      </span>
+      {code && <code>{code}</code>}
+    </li>
   );
 }
 
