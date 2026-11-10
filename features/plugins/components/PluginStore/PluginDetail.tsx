@@ -7,7 +7,11 @@ import { Badge } from "@/components/ui/atoms/Badge/Badge";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import { NativeSelect } from "@/components/ui/atoms/NativeSelect/NativeSelect";
 import { Tab, Tabs } from "@/components/ui/layout/Tabs/Tabs";
-import type { PluginPlace, StoreEntry } from "@/features/plugins/queries";
+import type {
+  InstalledPlugin,
+  PluginPlace,
+  StoreEntry,
+} from "@/features/plugins/queries";
 import { Link } from "@/i18n/navigation";
 import { compareSemver } from "@/lib/plugins/semver";
 import { ErrorLine, PluginBadges, usePluginText } from "../shared";
@@ -156,10 +160,15 @@ export function PluginDetail({
         <Overview entry={entry} version={version} release={release} />
       )}
       {current === "capabilities" && (
-        <Capabilities entry={entry} release={release} />
+        <Capabilities
+          entry={entry}
+          version={version}
+          release={release}
+          actions={actions}
+        />
       )}
       {current === "versions" && installed && (
-        <Versions entry={entry} actions={actions} />
+        <Versions entry={entry} release={release} actions={actions} />
       )}
       {current === "places" && <Places places={places ?? []} />}
     </article>
@@ -212,8 +221,9 @@ function Overview({
             <Icon icon="lucide:sparkles" width={18} aria-hidden />
             <span>
               {text.t("updateBanner", { version: entry.update })}{" "}
+              <ChangeSummary installed={installed} release={release} />{" "}
               <Link href={storeHref({ plugin: entry.id, tab: "capabilities" })}>
-                {text.t("compareCapabilities")}
+                {text.t("whatChanges")}
               </Link>
             </span>
           </div>
@@ -353,124 +363,197 @@ const GROUPS: { id: string; icon: string; test: (cap: string) => boolean }[] = [
   },
 ];
 
-function Capabilities({
-  entry,
+/** What an update changes against the installed version. */
+interface Changes {
+  added: string[];
+  removed: string[];
+  hostsAdded: string[];
+  hostsRemoved: string[];
+}
+
+function changesOf(
+  installed: InstalledPlugin,
+  next: { capabilities: string[]; network: string[] },
+): Changes {
+  return {
+    added: next.capabilities.filter((c) => !installed.capabilities.includes(c)),
+    removed: installed.capabilities.filter(
+      (c) => !next.capabilities.includes(c),
+    ),
+    hostsAdded: next.network.filter((h) => !installed.network.includes(h)),
+    hostsRemoved: installed.network.filter((h) => !next.network.includes(h)),
+  };
+}
+
+/** One line: "asks for 1 new capability" — or that it asks for nothing new. */
+function ChangeSummary({
+  installed,
   release,
 }: {
-  entry: StoreEntry;
+  installed: InstalledPlugin;
   release: Release;
 }) {
   const text = usePluginText();
-  const installed = entry.installed;
-  const active = installed?.version ?? null;
-  // Which version to look at: the installed one by default. Any version the
-  // directory lists can be picked and is compared with the installed one.
-  const [picked, setPicked] = useState<string | null>(active);
-  const other = installed && picked && picked !== active ? picked : null;
-  const loaded = useRelease(
-    other ? (entry.listing?.sourceId ?? null) : null,
-    entry.id,
-    other,
+  if (release.status !== "ready") return null;
+  const c = changesOf(installed, release.preview);
+  const more = c.added.length + c.hostsAdded.length;
+  return (
+    <span className={styles.changeSummary} data-more={more > 0 || undefined}>
+      {more > 0
+        ? text.t("summaryMore", {
+            caps: c.added.length,
+            hosts: c.hostsAdded.length,
+          })
+        : text.t("summaryNothingNew")}
+    </span>
   );
-  const target = installed
-    ? other
-      ? loaded.status === "ready"
-        ? loaded.preview
-        : null
-      : { capabilities: installed.capabilities, network: installed.network }
+}
+
+/**
+ * The update at a glance: what it may newly do, what it no longer does,
+ * which servers it calls now, what that means for the places it's on — and
+ * the button to take it.
+ */
+function UpdateChanges({
+  entry,
+  installed,
+  release,
+  actions,
+}: {
+  entry: StoreEntry;
+  installed: InstalledPlugin;
+  release: Release;
+  actions: StoreActions;
+}) {
+  const text = usePluginText();
+  const update = entry.update as string;
+  const c =
+    release.status === "ready" ? changesOf(installed, release.preview) : null;
+  const rows = c
+    ? (
+        [
+          ["added", "lucide:plus", c.added.map(text.capability)],
+          ["removed", "lucide:minus", c.removed.map(text.capability)],
+          ["hostsAdded", "lucide:globe", c.hostsAdded],
+          ["hostsRemoved", "lucide:globe-lock", c.hostsRemoved],
+        ] as const
+      ).filter(([, , items]) => items.length > 0)
+    : [];
+  const asksMore = !!c && c.added.length + c.hostsAdded.length > 0;
+
+  return (
+    <section className={styles.updateCard} aria-labelledby="update-changes">
+      <header className={styles.updateHead}>
+        <Icon icon="lucide:sparkles" width={18} aria-hidden />
+        <h3 id="update-changes">
+          {text.t("updateChangesTitle", { version: update })}
+        </h3>
+        {!installed.blocked && (
+          <Button
+            variant="primary"
+            size="sm"
+            icon={<Icon icon="lucide:package-check" width={14} />}
+            disabled={actions.pending}
+            onClick={() => actions.install(entry, update)}
+          >
+            {text.t("updateTo", { version: update })}
+          </Button>
+        )}
+      </header>
+
+      {release.status === "error" ? (
+        <ErrorLine message={text.error(release.error)} />
+      ) : !c ? (
+        <p className={styles.muted}>
+          <Icon
+            icon="lucide:loader-circle"
+            width={14}
+            className={styles.spin}
+          />{" "}
+          {text.t("checkingRelease")}
+        </p>
+      ) : rows.length === 0 ? (
+        <p className={styles.updateSame}>
+          <Icon icon="lucide:circle-check" width={16} aria-hidden />
+          {text.t("updateSame", { version: installed.version ?? "" })}
+        </p>
+      ) : (
+        <dl className={styles.updateRows}>
+          {rows.map(([kind, icon, items]) => (
+            <div key={kind} className={styles.updateRow} data-kind={kind}>
+              <dt>
+                <Icon icon={icon} width={14} aria-hidden />
+                {text.t(`updateRow.${kind}` as "updateRow.added")}
+              </dt>
+              <dd>
+                {items.map((item) => (
+                  <span key={item} className={styles.updateItem}>
+                    {item}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {c && (
+        <p className={styles.updateImpact}>
+          <Icon icon="lucide:users" width={15} aria-hidden />
+          {asksMore
+            ? text.t("updateImpactMore", { count: installed.activations })
+            : text.t("updateImpactSame")}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function Capabilities({
+  entry,
+  version,
+  release,
+  actions,
+}: {
+  entry: StoreEntry;
+  version: string | null;
+  release: Release;
+  actions: StoreActions;
+}) {
+  const text = usePluginText();
+  const installed = entry.installed;
+  // Installed: what it may do now, and on top what an update would change.
+  // Not installed: what the picked version would be allowed.
+  const shown = installed
+    ? { capabilities: installed.capabilities, network: installed.network }
     : release.status === "ready"
       ? release.preview
       : null;
-  const state = installed && other ? loaded : release;
-  const shown = target?.capabilities ?? null;
-  const network = target?.network ?? [];
-  const base = other && installed ? installed : null;
-  const added =
-    base && shown ? shown.filter((c) => !base.capabilities.includes(c)) : [];
-  const removed =
-    base && shown ? base.capabilities.filter((c) => !shown.includes(c)) : [];
-  const hostsAdded = base
-    ? network.filter((h) => !base.network.includes(h))
-    : [];
-  const hostsRemoved =
-    base && target ? base.network.filter((h) => !network.includes(h)) : [];
-
-  // Every version there is, newest first, each with where it stands.
-  const versions = [
-    ...new Set([
-      ...(entry.listing?.versions ?? []),
-      ...(active ? [active] : []),
-    ]),
-  ].sort((x, y) => compareSemver(y, x));
-  const label = (v: string) => {
-    const state =
-      v === active
-        ? "installed"
-        : v === versions[0]
-          ? "newest"
-          : active && compareSemver(v, active) > 0
-            ? "newer"
-            : "older";
-    return text.t(`capsVersionOption.${state}`, { version: v });
-  };
+  const shownVersion = installed?.version ?? version;
 
   return (
     <div className={styles.capabilities}>
-      <p className={styles.capLead}>{text.t("capabilitiesIntro")}</p>
-
-      {installed && versions.length > 1 && (
-        <div className={styles.versionBar}>
-          {/* The select names itself (`aria-label`); the visible word is for the eye. */}
-          <div className={styles.versionPick}>
-            <span className={styles.fieldLabel} aria-hidden>
-              {text.t("capsVersion")}
-            </span>
-            <NativeSelect
-              label={text.t("capsVersion")}
-              value={picked ?? ""}
-              onChange={setPicked}
-              items={versions.map((v) => ({ value: v, label: label(v) }))}
-            />
-          </div>
-          {other && active ? (
-            <span className={styles.diffSummary}>
-              <span>{text.t("capsComparedTo", { version: active })}</span>
-              <span className={styles.diffCount} data-kind="added">
-                {text.t("capsAddedCount", {
-                  count: added.length + hostsAdded.length,
-                })}
-              </span>
-              <span className={styles.diffCount} data-kind="removed">
-                {text.t("capsRemovedCount", {
-                  count: removed.length + hostsRemoved.length,
-                })}
-              </span>
-              <button
-                type="button"
-                className={styles.linkButton}
-                onClick={() => setPicked(active)}
-              >
-                {text.t("capsBackToInstalled", { version: active })}
-              </button>
-            </span>
-          ) : (
-            entry.update && (
-              <button
-                type="button"
-                className={styles.compareButton}
-                onClick={() => setPicked(entry.update)}
-              >
-                <Icon icon="lucide:git-compare" width={15} aria-hidden />
-                {text.t("capsCompareWith", { version: entry.update })}
-              </button>
-            )
-          )}
-        </div>
+      {installed && entry.update && (
+        <UpdateChanges
+          entry={entry}
+          installed={installed}
+          release={release}
+          actions={actions}
+        />
       )}
 
+      <header className={styles.capHead}>
+        <h3>
+          {text.t(installed ? "capsOfInstalled" : "capsOfVersion", {
+            version: shownVersion ?? "",
+          })}
+        </h3>
+        <p>{text.t("capabilitiesIntro")}</p>
+      </header>
+
       {shown === null ? (
-        state.status === "error" ? (
-          <ErrorLine message={text.error(state.error)} />
+        release.status === "error" ? (
+          <ErrorLine message={text.error(release.error)} />
         ) : (
           <p className={styles.muted}>
             <Icon
@@ -484,7 +567,7 @@ function Capabilities({
       ) : (
         <div className={styles.capGrid}>
           {GROUPS.map((group) => {
-            const caps = [...shown, ...removed].filter(group.test);
+            const caps = shown.capabilities.filter(group.test);
             if (caps.length === 0) return null;
             return (
               <section key={group.id} className={styles.card}>
@@ -494,18 +577,12 @@ function Capabilities({
                 </h3>
                 <ul className={styles.capRows}>
                   {caps.map((cap) => (
-                    <CapRow
-                      key={cap}
-                      label={text.capability(cap)}
-                      code={cap}
-                      change={
-                        added.includes(cap)
-                          ? "added"
-                          : removed.includes(cap)
-                            ? "removed"
-                            : undefined
-                      }
-                    />
+                    <li key={cap} className={styles.capRow}>
+                      <span className={styles.capLabel}>
+                        {text.capability(cap)}
+                      </span>
+                      <code>{cap}</code>
+                    </li>
                   ))}
                 </ul>
               </section>
@@ -516,23 +593,14 @@ function Capabilities({
               <Icon icon="lucide:globe" width={14} aria-hidden />
               {text.t("networkTitle")}
             </h3>
-            {network.length + hostsRemoved.length === 0 ? (
+            {shown.network.length === 0 ? (
               <p className={styles.muted}>{text.t("noNetwork")}</p>
             ) : (
               <ul className={styles.capRows}>
-                {[...network, ...hostsRemoved].map((host) => (
-                  <CapRow
-                    key={host}
-                    label={host}
-                    change={
-                      hostsAdded.includes(host)
-                        ? "added"
-                        : hostsRemoved.includes(host)
-                          ? "removed"
-                          : undefined
-                    }
-                    mono
-                  />
+                {shown.network.map((host) => (
+                  <li key={host} className={styles.capRow}>
+                    <code className={styles.host}>{host}</code>
+                  </li>
                 ))}
               </ul>
             )}
@@ -545,12 +613,7 @@ function Capabilities({
         <p className={styles.footnote}>
           <Icon icon="lucide:users" width={16} aria-hidden />
           <span>
-            {other && added.length + hostsAdded.length > 0
-              ? text.t("capsSwitchNote", {
-                  version: other,
-                  count: installed.activations,
-                })
-              : text.t("capsConfirmedIn", { count: installed.activations })}
+            {text.t("capsConfirmedIn", { count: installed.activations })}
           </span>
           <Link href={storeHref({ plugin: entry.id, tab: "places" })}>
             {text.t("whereItsOn")}
@@ -561,44 +624,14 @@ function Capabilities({
   );
 }
 
-/** One capability or host; `change` marks it added (+) or removed (−)
- *  against the installed version. */
-function CapRow({
-  label,
-  code,
-  change,
-  mono = false,
-}: {
-  label: string;
-  code?: string;
-  change?: "added" | "removed";
-  mono?: boolean;
-}) {
-  const text = usePluginText();
-  return (
-    <li className={styles.capRow} data-change={change}>
-      <span className={styles.capMark} aria-hidden>
-        {change === "added" ? "+" : change === "removed" ? "−" : ""}
-      </span>
-      <span className={mono ? styles.host : styles.capLabel}>
-        {label}
-        {change && (
-          <span className={styles.srOnly}>
-            {" "}
-            ({text.t(change === "added" ? "capAdded" : "capRemoved")})
-          </span>
-        )}
-      </span>
-      {code && <code>{code}</code>}
-    </li>
-  );
-}
-
 function Versions({
   entry,
+  release,
   actions,
 }: {
   entry: StoreEntry;
+  /** The update's release, for what it changes. */
+  release: Release;
   actions: StoreActions;
 }) {
   const text = usePluginText();
@@ -699,6 +732,16 @@ function Versions({
                   )}
                 </span>
               </div>
+              {row.version === entry.update && (
+                <p className={styles.stepChanges}>
+                  <ChangeSummary installed={installed} release={release} />{" "}
+                  <Link
+                    href={storeHref({ plugin: entry.id, tab: "capabilities" })}
+                  >
+                    {text.t("whatChanges")}
+                  </Link>
+                </p>
+              )}
             </div>
           </li>
         );

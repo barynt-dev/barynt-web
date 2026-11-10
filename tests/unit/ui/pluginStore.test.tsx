@@ -173,15 +173,18 @@ describe("PluginStore", () => {
     expect(html).toContain("installOlder");
   });
 
-  it("picks the version to look at from every version there is", () => {
+  it("puts what the update changes above what the installed version may do", () => {
     const html = render({ selected: timeline, tab: "capabilities" });
-    // All four listed versions, each with where it stands.
-    expect(html.match(/<option /g)?.length).toBe(4);
-    for (const key of ["installed", "newest", "older"])
-      expect(html).toContain(`capsVersionOption.${key}`);
-    // The installed one is shown; the update is one click away.
-    expect(html).toContain("capsCompareWith");
-    expect(html).not.toContain("capsComparedTo");
+    expect(html).toContain("updateChangesTitle");
+    expect(html).toContain("capsOfInstalled");
+    expect(html.indexOf("updateChangesTitle")).toBeLessThan(
+      html.indexOf("capsOfInstalled"),
+    );
+    // And no update card without an update.
+    const current = { ...timeline, update: null };
+    expect(render({ selected: current, tab: "capabilities" })).not.toContain(
+      "updateChangesTitle",
+    );
   });
 
   it("has only overview and capabilities for a plugin that isn't installed", () => {
