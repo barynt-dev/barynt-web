@@ -2656,6 +2656,7 @@
       "blocked": "Gesperrt"
     },
     "backToAdmin": "Zur Verwaltung",
-    "categoriesLabel": "{count, plural, one {Kategorie} other {Kategorien}}"
+    "categoriesLabel": "{count, plural, one {Kategorie} other {Kategorien}}",
+    "clearCategory": "Kategorie-Filter entfernen"
   }
 }

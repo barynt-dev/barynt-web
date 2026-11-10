@@ -126,6 +126,7 @@ const render = (
     selected: StoreEntry | null;
     tab: StoreTab;
     sourcesOpen: boolean;
+    category: string | null;
   }> = {},
 ) =>
   renderToStaticMarkup(
@@ -135,6 +136,7 @@ const render = (
       tab={over.tab ?? "overview"}
       sourcesOpen={over.sourcesOpen ?? false}
       places={[]}
+      category={over.category ?? null}
     />,
   );
 
@@ -216,6 +218,23 @@ describe("PluginStore", () => {
     const html = render();
     expect(html).not.toContain("featuredTitle");
     expect(html).not.toContain("newestTitle");
+  });
+
+  it("links a plugin's categories to the plugins of that category", () => {
+    const html = render({ selected: timeline });
+    expect(html).toContain(
+      'href="/admin/plugins?category=planning#all-plugins"',
+    );
+  });
+
+  it("narrows the list to the category in the address", () => {
+    const html = render({ category: "communication" });
+    // Neither plugin is in it: the list says so, with a way back.
+    expect(html).toContain("noMatches");
+    expect(html).toContain("clearCategory");
+    expect(render({ category: "planning" })).toContain(
+      'href="/admin/plugins?plugin=timeline"',
+    );
   });
 
   it("welcomes a first visit", () => {

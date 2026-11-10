@@ -21,13 +21,16 @@ type Filter = "installed" | "updates";
 export function StoreHome({
   view,
   onFilter,
+  initialCategory = null,
 }: {
   view: StoreView;
+  /** The category the address asks for (`?category=`), if any. */
+  initialCategory?: string | null;
   /** Narrows the list on the left — a widget is a shortcut to it. */
   onFilter: (filter: Filter) => void;
 }) {
   const text = usePluginText();
-  const [category, setCategory] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(initialCategory);
   const entries = view.entries;
   const installed = entries.filter((e) => e.installed);
   const on = installed.filter((e) => (e.installed?.activations ?? 0) > 0);

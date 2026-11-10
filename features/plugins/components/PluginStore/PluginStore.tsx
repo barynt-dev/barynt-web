@@ -55,13 +55,18 @@ export function storeHref(to: {
   plugin?: string;
   tab?: StoreTab;
   sources?: boolean;
+  /** Narrows the list and the start page's "All plugins" to a category. */
+  category?: string;
 }) {
   const params = new URLSearchParams();
   if (to.sources) params.set("view", "sources");
   if (to.plugin) params.set("plugin", to.plugin);
   if (to.tab && to.tab !== "overview") params.set("tab", to.tab);
+  if (to.category) params.set("category", to.category);
   const query = params.toString();
-  return query ? `${STORE_PATH}?${query}` : STORE_PATH;
+  const path = query ? `${STORE_PATH}?${query}` : STORE_PATH;
+  // Straight to the plugins of the category on the start page.
+  return to.category && !to.plugin ? `${path}#all-plugins` : path;
 }
 
 /** What the panes can do; the store runs it and shows what went wrong. */
@@ -85,12 +90,15 @@ export function PluginStore({
   tab,
   sourcesOpen,
   places,
+  category = null,
 }: {
   view: StoreView;
   selected: StoreEntry | null;
   tab: StoreTab;
   sourcesOpen: boolean;
   places: PluginPlace[] | null;
+  /** From the address (`?category=`): the list shows only that category. */
+  category?: string | null;
 }) {
   const t = useTranslations();
   const text = usePluginText();
@@ -222,6 +230,7 @@ export function PluginStore({
       )
     )
       return false;
+    if (category && !e.listing?.categories.includes(category)) return false;
     if (filter === "installed") return !!e.installed;
     if (filter === "updates") return !!e.update;
     if (filter === "blocked") return !!e.installed?.blocked;
@@ -303,6 +312,19 @@ export function PluginStore({
               </Chip>
             ))}
           </div>
+          {category && (
+            <div className={styles.filters}>
+              <Chip
+                type="input"
+                selected
+                icon={<Icon icon="lucide:tag" width={14} />}
+                onRemove={() => router.push(storeHref({}))}
+                removeLabel={text.t("clearCategory")}
+              >
+                {text.t(`category.${category}` as "category.planning")}
+              </Chip>
+            </div>
+          )}
 
           {view.unreadable.length > 0 && (
             <Link
@@ -367,7 +389,13 @@ export function PluginStore({
               actions={actions}
             />
           ) : (
-            <StoreHome view={view} onFilter={setFilter} />
+            <StoreHome
+              // A new `?category=` starts the start page's filter afresh.
+              key={category ?? ""}
+              view={view}
+              onFilter={setFilter}
+              initialCategory={category}
+            />
           )}
         </main>
       </div>

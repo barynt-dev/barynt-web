@@ -2656,6 +2656,7 @@
       "blocked": "Blocked"
     },
     "backToAdmin": "Back to administration",
-    "categoriesLabel": "{count, plural, one {Category} other {Categories}}"
+    "categoriesLabel": "{count, plural, one {Category} other {Categories}}",
+    "clearCategory": "Clear category filter"
   }
 }

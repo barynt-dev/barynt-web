@@ -307,9 +307,14 @@ function Overview({
                 </dt>
                 <dd className={styles.categories}>
                   {entry.listing.categories.map((c) => (
-                    <Badge key={c} mono={false}>
+                    // Every plugin of the category, on the start page.
+                    <Link
+                      key={c}
+                      href={storeHref({ category: c })}
+                      className={styles.categoryLink}
+                    >
                       {text.t(`category.${c}` as "category.planning")}
-                    </Badge>
+                    </Link>
                   ))}
                 </dd>
               </>
