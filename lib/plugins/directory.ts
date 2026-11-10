@@ -233,14 +233,16 @@ export async function loadRelease(
 // ─── Where a release lives (GitHub) ─────────────────────────────────────────
 
 /** A release file without a token: the download address GitHub serves for
- *  public repositories. The tag is the version itself, as with Obsidian. */
+ *  public repositories. The tag is the version itself, as with Obsidian.
+ *  `base` is GitHub, or a local directory in development. */
 export function publicAssetUrl(
   repo: string,
   version: string,
   file: ReleaseFileName,
+  base = "https://github.com",
 ): URL {
   return new URL(
-    `https://github.com/${repo}/releases/download/${encodeURIComponent(version)}/${file}`,
+    `${base}/${repo}/releases/download/${encodeURIComponent(version)}/${file}`,
   );
 }
 

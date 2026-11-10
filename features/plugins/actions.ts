@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { PLATFORM, requirePermission } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
+import { isDevUrl } from "@/lib/plugins/dev";
 import {
   allowsLevel,
   confirmsExactly,
@@ -36,7 +37,10 @@ const done = () => revalidatePath("/", "layout");
 function cleanUrl(input: string): string | null {
   try {
     const url = new URL(input.trim());
-    return url.protocol === "https:" && !url.username && !url.password
+    // https, or the local demo directory in development (`lib/plugins/dev`).
+    return (url.protocol === "https:" || isDevUrl(url)) &&
+      !url.username &&
+      !url.password
       ? url.href
       : null;
   } catch {

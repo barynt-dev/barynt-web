@@ -83,16 +83,24 @@ export async function fetchPublic(
     userAgent?: string;
     /** Per request, in milliseconds; 3 s by default. */
     timeoutMs?: number;
+    /** One origin exempt from the public-address rules — the local plugin
+     *  directory in development (`lib/plugins/dev.ts`). A redirect away
+     *  from it is checked like any other. */
+    localOrigin?: string;
   },
 ): Promise<PublicResponse | null> {
   try {
     let url = start;
     for (let hop = 0; hop <= 3; hop++) {
-      if (!(options.protocols as string[]).includes(url.protocol)) return null;
-      if (url.port !== "" || url.username !== "" || url.password !== "") {
-        return null;
+      const local = !!options.localOrigin && url.origin === options.localOrigin;
+      if (!local) {
+        if (!(options.protocols as string[]).includes(url.protocol))
+          return null;
+        if (url.port !== "" || url.username !== "" || url.password !== "") {
+          return null;
+        }
+        if (!(await isPublicHost(url.hostname))) return null;
       }
-      if (!(await isPublicHost(url.hostname))) return null;
       const res = await fetch(url, {
         redirect: "manual",
         signal: AbortSignal.timeout(options.timeoutMs ?? TIMEOUT_MS),
