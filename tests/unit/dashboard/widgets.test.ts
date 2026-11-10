@@ -10,6 +10,8 @@ import {
   elementsOf,
   fitSize,
   fitsSize,
+  isGroupableCustomField,
+  isMatrixCustomField,
   labelsOf,
   layoutKey,
   minSizeChoices,
@@ -214,6 +216,59 @@ describe("Measures and time series (BARY-170)", () => {
         { id: "k", type: "kpi", size: "S", config: { measure: "money" } },
       ]),
     ).toBeNull();
+  });
+});
+
+describe("Custom fields (BARY-197)", () => {
+  it("accepts a custom field as grouping, axis, split and measure", () => {
+    const widgets = [
+      {
+        id: "d",
+        type: "distribution",
+        size: "L",
+        config: { groupBy: "cf:f_customer", measure: "cf:f_deal" },
+      },
+      {
+        id: "m",
+        type: "matrix",
+        size: "XL",
+        config: { groupBy: "cf:f_owner", groupBy2: "status" },
+      },
+      {
+        id: "f",
+        type: "flow",
+        size: "XL",
+        config: { timeBy: "created", splitBy: "cf:f_customer" },
+      },
+    ];
+    expect(parseWidgets(widgets)).toEqual(widgets as Widget[]);
+  });
+
+  it("rejects a malformed field reference", () => {
+    expect(
+      parseWidgets([
+        {
+          id: "d",
+          type: "distribution",
+          size: "L",
+          config: { groupBy: "cf:" },
+        },
+      ]),
+    ).toBeNull();
+    expect(
+      parseWidgets([
+        { id: "k", type: "kpi", size: "S", config: { measure: "cf:a b" } },
+      ]),
+    ).toBeNull();
+  });
+
+  it("tells which custom fields can group and be a matrix axis", () => {
+    expect(isGroupableCustomField({ type: "SELECT" })).toBe(true);
+    expect(isGroupableCustomField({ type: "CHECKBOX" })).toBe(true);
+    expect(isGroupableCustomField({ type: "TEXT" })).toBe(false);
+    expect(isMatrixCustomField({ type: "USER" })).toBe(true);
+    // A multi-choice would count an issue in several cells.
+    expect(isMatrixCustomField({ type: "MULTI_SELECT" })).toBe(false);
   });
 });
 

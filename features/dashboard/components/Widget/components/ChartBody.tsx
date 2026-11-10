@@ -10,6 +10,7 @@ import {
   type Widget,
 } from "@/features/dashboard/widgets";
 import { Link, useRouter } from "@/i18n/navigation";
+import { useWidgetFieldNames } from "../fieldNames";
 import styles from "../widget.module.scss";
 import { type BodyProps, marked, Spark, TimeAxis } from "./shared";
 
@@ -68,22 +69,26 @@ function useSliceName() {
       ? t(`category_${slice.key as "backlog"}`)
       : slice.key === "_other"
         ? t("other")
-        : slice.key === "_none"
-          ? field === "label"
-            ? t("noneLabel")
-            : t("noneAssignee")
-          : slice.label;
+        : // A custom yes/no (BARY-197) comes without a name.
+          !slice.label && (slice.key === "yes" || slice.key === "no")
+          ? t(slice.key === "yes" ? "answerYes" : "answerNo")
+          : slice.key === "_none"
+            ? field === "label"
+              ? t("noneLabel")
+              : field === "assignee"
+                ? t("noneAssignee")
+                : t("noneValue")
+            : slice.label;
 }
 
 /** A value in the widget's measure — "12", "34 SP", "6,5 h". */
 function useMeasureFormat(measure: Widget["config"]["measure"]) {
-  const t = useTranslations("widgets");
+  const names = useWidgetFieldNames();
   const format = useFormatter();
+  const suffix = names.unit(measure);
   return (n: number, unit = true) => {
     const v = format.number(n, { maximumFractionDigits: 1 });
-    return unit && measure && measure !== "count"
-      ? `${v} ${t(`unit_${measure}`)}`
-      : v;
+    return unit && suffix ? `${v} ${suffix}` : v;
   };
 }
 
@@ -96,6 +101,7 @@ function Distribution({
   const name = useSliceName();
   const router = useRouter();
   const t = useTranslations("widgets");
+  const names = useWidgetFieldNames();
   const fmt = useMeasureFormat(widget.config.measure);
   const field = widget.config.groupBy;
   if (data.total === 0) return <Empty />;
@@ -139,8 +145,8 @@ function Distribution({
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>{t(`group_${field ?? "status"}`)}</th>
-              <th>{t(`measure_${widget.config.measure ?? "count"}`)}</th>
+              <th>{names.group(field ?? "status")}</th>
+              <th>{names.measure(widget.config.measure ?? "count")}</th>
               <th>{t("share")}</th>
             </tr>
           </thead>

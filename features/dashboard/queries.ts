@@ -26,11 +26,14 @@ import type {
 import {
   blockWidget,
   type CustomWidgetEntry,
+  type CustomWidgetField,
   type CycleBy,
   defaultWidgets,
   elementOf,
   type FlowBy,
   type GroupField,
+  isCustomWidgetField,
+  isMatrixCustomField,
   type KpiMetric,
   layoutKey,
   type Measure,
@@ -67,6 +70,11 @@ import {
   type Window,
   windowFor,
 } from "@/lib/buckets";
+import {
+  type FieldOption,
+  narrowFieldValue,
+  toOptions,
+} from "@/lib/custom-fields";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import {
@@ -329,6 +337,14 @@ async function storedPrefs(
 
 // ── Shared context for one computation ──────────────────────────────────────
 
+/** A custom field as the widgets read it. */
+interface WidgetCustomField {
+  id: string;
+  key: string;
+  type: string;
+  options: FieldOption[];
+}
+
 interface Ctx {
   resolved: Resolved;
   userId: string;
@@ -343,6 +359,9 @@ interface Ctx {
   types: IssueType[];
   prefixes: Map<string, string>;
   statusById: Map<string, Status>;
+  /** The workspace's custom fields by id — what a `cf:<id>` grouping or
+   *  measure needs (BARY-197). */
+  customFields: Map<string, WidgetCustomField>;
   scope: DashboardScope;
   /** "<kind>:<id>" — where a private note is filed. */
   targetKey: string;
@@ -368,16 +387,21 @@ async function buildCtx(
   scope: DashboardScope,
 ): Promise<Ctx> {
   const window = windowFor(range);
-  const [statuses, priorities, types, projects, viewWhere] = await Promise.all([
-    getStatuses(resolved.workspaceId),
-    getPriorities(resolved.workspaceId),
-    getIssueTypes(resolved.workspaceId),
-    db.project.findMany({
-      where: { id: { in: resolved.projectIds } },
-      select: { id: true, prefix: true },
-    }),
-    filterWhere(resolved.viewFilter),
-  ]);
+  const [statuses, priorities, types, projects, viewWhere, fields] =
+    await Promise.all([
+      getStatuses(resolved.workspaceId),
+      getPriorities(resolved.workspaceId),
+      getIssueTypes(resolved.workspaceId),
+      db.project.findMany({
+        where: { id: { in: resolved.projectIds } },
+        select: { id: true, prefix: true },
+      }),
+      filterWhere(resolved.viewFilter),
+      db.customField.findMany({
+        where: { workspaceId: resolved.workspaceId },
+        select: { id: true, key: true, type: true, options: true },
+      }),
+    ]);
   const ids = (cats: string[]) =>
     statuses.filter((s) => cats.includes(s.category)).map((s) => s.id);
 
@@ -441,6 +465,9 @@ async function buildCtx(
     types,
     prefixes: new Map(projects.map((p) => [p.id, p.prefix])),
     statusById: new Map(statuses.map((s) => [s.id, s])),
+    customFields: new Map(
+      fields.map((f) => [f.id, { ...f, options: toOptions(f.options) }]),
+    ),
   };
 }
 
@@ -615,12 +642,30 @@ const AGG_SELECT = {
   assigneeId: true,
   projectId: true,
   labels: true,
+  // Custom fields as groupings and measures (BARY-197).
+  fieldValues: { select: { fieldId: true, value: true } },
 } as const;
 
 type AggRow = Prisma.IssueGetPayload<{ select: typeof AGG_SELECT }>;
 
-/** What one issue adds to a measure (BARY-170). */
+/** The field id behind `cf:<id>`. */
+const fieldIdOf = (ref: CustomWidgetField) => ref.slice(3);
+
+/** An issue's value of a custom field, narrowed; `null` when it has none. */
+function customValueOf(row: AggRow, ref: CustomWidgetField) {
+  const id = fieldIdOf(ref);
+  const found = row.fieldValues.find((v) => v.fieldId === id);
+  return found ? narrowFieldValue(found.value) : null;
+}
+
+/** What one issue adds to a measure (BARY-170) — a custom number field's
+ *  value, or nothing without one (BARY-197). */
 function weightOf(measure: Measure): (row: AggRow) => number {
+  if (isCustomWidgetField(measure))
+    return (row) => {
+      const v = customValueOf(row, measure);
+      return typeof v === "number" ? v : 0;
+    };
   if (measure === "storyPoints") return (row) => row.storyPoints ?? 0;
   if (measure === "estimate") return (row) => row.estimateHours ?? 0;
   return () => 1;
@@ -631,6 +676,18 @@ const round1 = (n: number) => Math.round(n * 10) / 10;
 /** Issues (or their points/hours) matching `where` — one number. */
 async function measureOf(where: Where, measure: Measure): Promise<number> {
   if (measure === "count") return db.issue.count({ where });
+  if (isCustomWidgetField(measure)) {
+    const rows = await db.issueFieldValue.findMany({
+      where: { fieldId: fieldIdOf(measure), issue: where },
+      select: { value: true },
+    });
+    return round1(
+      rows.reduce((sum, r) => {
+        const v = narrowFieldValue(r.value);
+        return sum + (typeof v === "number" ? v : 0);
+      }, 0),
+    );
+  }
   const result = await db.issue.aggregate({
     where,
     _sum: { storyPoints: true, estimateHours: true },
@@ -678,8 +735,19 @@ async function datesIn(
   });
 }
 
+/** The group key(s) of an issue for a custom field: a choice or a person
+ *  by id, several for a multi-choice, `yes`/`no` for a checkbox. */
+function customKeysOf(ctx: Ctx, row: AggRow, ref: CustomWidgetField): string[] {
+  const field = ctx.customFields.get(fieldIdOf(ref));
+  const value = customValueOf(row, ref);
+  if (field?.type === "CHECKBOX") return [value === true ? "yes" : "no"];
+  if (Array.isArray(value)) return value.length ? value : ["_none"];
+  return typeof value === "string" && value ? [value] : ["_none"];
+}
+
 /** The group key(s) of an issue for a field — labels can be several. */
 function keysOf(ctx: Ctx, row: AggRow, field: GroupField): string[] {
+  if (isCustomWidgetField(field)) return customKeysOf(ctx, row, field);
   switch (field) {
     case "status":
       return [row.status];
@@ -907,7 +975,7 @@ async function progress(
 }
 
 const COLUMN: Record<
-  Exclude<GroupField, "label" | "statusCategory">,
+  Exclude<GroupField, "label" | "statusCategory" | CustomWidgetField>,
   "status" | "priority" | "type" | "assigneeId" | "projectId"
 > = {
   status: "status",
@@ -923,6 +991,7 @@ async function axisFor(
   field: GroupField,
   keys: string[],
 ): Promise<Slice[]> {
+  if (isCustomWidgetField(field)) return customAxisFor(ctx, field, keys);
   switch (field) {
     case "statusCategory":
       // Named on the client (`category_*`); colors match the status ladder.
@@ -1003,6 +1072,66 @@ async function axisFor(
   }
 }
 
+/** Colors for choices that have none of their own. */
+const CHOICE_COLORS = [
+  "#3b7bd5",
+  "#5ab98a",
+  "#e0992b",
+  "#a274d9",
+  "#2fb3a0",
+  "#e8743b",
+  "#9bc53d",
+  "#7c86ff",
+  "#e05252",
+];
+
+/** A custom field's axis (BARY-197): its choices in their own order, the
+ *  people, or yes and no — "no value" last. Yes/no and "no value" are named
+ *  on the client. */
+async function customAxisFor(
+  ctx: Ctx,
+  ref: CustomWidgetField,
+  keys: string[],
+): Promise<Slice[]> {
+  const field = ctx.customFields.get(fieldIdOf(ref));
+  const none = { key: "_none", label: "", color: "#8a9099", count: 0 };
+  if (!field) return [];
+  switch (field.type) {
+    case "CHECKBOX":
+      return [
+        { key: "yes", label: "", color: "#5ab98a", count: 0 },
+        { key: "no", label: "", color: "#8a9099", count: 0 },
+      ];
+    case "USER": {
+      const users = await db.user.findMany({
+        where: { id: { in: keys.filter((k) => k !== "_none") } },
+        select: USER_SELECT,
+      });
+      const mapped = await Promise.all(users.map(mapUser));
+      return [
+        ...mapped.map((user) => ({
+          key: user.id,
+          label: `${user.firstName} ${user.lastName}`.trim(),
+          color: user.color,
+          count: 0,
+          user,
+        })),
+        { ...none, user: null },
+      ];
+    }
+    default:
+      return [
+        ...field.options.map((o, i) => ({
+          key: o.id,
+          label: o.label,
+          color: o.color ?? CHOICE_COLORS[i % CHOICE_COLORS.length],
+          count: 0,
+        })),
+        none,
+      ];
+  }
+}
+
 /** The measure per key of one field — issues, points or hours. */
 async function countsBy(
   ctx: Ctx,
@@ -1010,7 +1139,13 @@ async function countsBy(
   field: GroupField,
   measure: Measure = "count",
 ): Promise<Map<string, number>> {
-  if (field === "label") {
+  // Labels, custom fields and custom measures are counted in memory — a
+  // `groupBy` can't reach into them.
+  if (
+    field === "label" ||
+    isCustomWidgetField(field) ||
+    isCustomWidgetField(measure)
+  ) {
     const rows = await db.issue.findMany({ where, select: AGG_SELECT });
     const weight = weightOf(measure);
     const counts = new Map<string, number>();
@@ -1052,6 +1187,14 @@ const LADDER = new Set<GroupField>([
   "type",
 ]);
 
+/** Whether a field's values keep their own order — a ladder field, or a
+ *  custom single choice or yes/no; people and multi-choices go by size. */
+function keepsOrder(ctx: Ctx, field: GroupField): boolean {
+  if (!isCustomWidgetField(field)) return LADDER.has(field);
+  const type = ctx.customFields.get(fieldIdOf(field))?.type;
+  return type === "SELECT" || type === "CHECKBOX";
+}
+
 /** Board params for one value of a field — `null` for "everything else". */
 async function sliceParams(
   ctx: Ctx,
@@ -1059,6 +1202,7 @@ async function sliceParams(
   key: string,
 ): Promise<[string, string][] | null> {
   if (key === "_other") return null;
+  if (isCustomWidgetField(field)) return customSliceParams(ctx, field, key);
   if (key === "_none") {
     return field === "assignee"
       ? [["assignee.empty", "1"]]
@@ -1093,6 +1237,24 @@ async function sliceParams(
   }
 }
 
+/** Board params for one value of a custom field (BARY-196's address form):
+ *  `cf.<key>=<value>`, a person by handle, "no value" as `.empty`. */
+async function customSliceParams(
+  ctx: Ctx,
+  ref: CustomWidgetField,
+  key: string,
+): Promise<[string, string][] | null> {
+  const field = ctx.customFields.get(fieldIdOf(ref));
+  if (!field) return null;
+  const param = `cf.${field.key}`;
+  if (key === "_none") return [[`${param}.empty`, "1"]];
+  if (field.type === "USER") {
+    const m = (await ctx.slugs()).members.find((x) => x.id === key);
+    return m ? [[param, m.handle]] : null;
+  }
+  return [[param, key]];
+}
+
 async function distribution(
   ctx: Ctx,
   where: Where,
@@ -1109,7 +1271,7 @@ async function distribution(
   let slices = axis
     .map((slice) => ({ ...slice, count: counts.get(slice.key) ?? 0 }))
     .filter((slice) => slice.count > 0);
-  if (!LADDER.has(field)) slices.sort((a, b) => b.count - a.count);
+  if (!keepsOrder(ctx, field)) slices.sort((a, b) => b.count - a.count);
   const total = round1([...counts.values()].reduce((a, b) => a + b, 0));
   if (slices.length > SLICE_LIMIT) {
     const rest = slices.slice(SLICE_LIMIT - 1);
@@ -1426,7 +1588,7 @@ async function flow(
       values: bucketSums(byKey.get(slice.key) ?? [], window),
     }))
     .sort((a, b) =>
-      LADDER.has(split)
+      keepsOrder(ctx, split)
         ? 0
         : b.values.reduce((x, y) => x + y, 0) -
           a.values.reduce((x, y) => x + y, 0),
@@ -1740,12 +1902,17 @@ async function matrix(
   openOnly: boolean,
   measure: Measure,
 ): Promise<WidgetData> {
-  // Labels and status groups can't be an axis (see `MATRIX_FIELDS`); fall
-  // back to status.
-  const rf =
-    rowField === "label" || rowField === "statusCategory" ? "status" : rowField;
+  // Labels, status groups and multi-choice fields can't be an axis (see
+  // `MATRIX_FIELDS`, `isMatrixCustomField`); fall back to status.
+  const axisOk = (field: GroupField) => {
+    if (!isCustomWidgetField(field))
+      return field !== "label" && field !== "statusCategory";
+    const def = ctx.customFields.get(fieldIdOf(field));
+    return !!def && isMatrixCustomField(def);
+  };
+  const rf = axisOk(rowField) ? rowField : "status";
   const cf =
-    colField === "label" || colField === "statusCategory" || colField === rf
+    !axisOk(colField) || colField === rf
       ? rf === "status"
         ? "priority"
         : "status"
@@ -1753,36 +1920,59 @@ async function matrix(
   const scoped = openOnly
     ? { AND: [where, { status: { notIn: ctx.closed } }] }
     : where;
-  const r = COLUMN[rf];
-  const c = COLUMN[cf];
-  const rows = await db.issue.groupBy({
-    by: r === c ? [r] : [r, c],
-    where: scoped,
-    _count: { _all: true },
-    _sum: { storyPoints: true, estimateHours: true },
-  });
-  const measured = (row: (typeof rows)[number]) =>
-    measure === "storyPoints"
-      ? (row._sum.storyPoints ?? 0)
-      : measure === "estimate"
-        ? (row._sum.estimateHours ?? 0)
-        : row._count._all;
-  const keyOf = (row: Record<string, unknown>, column: string) =>
-    String(row[column] ?? "_none");
-  const rowKeys = new Set(rows.map((row) => keyOf(row, r)));
-  const colKeys = new Set(rows.map((row) => keyOf(row, c)));
+
+  // The measure per cell, by "<row key>\u0000<col key>".
+  const tally = new Map<string, number>();
+  const rowKeys = new Set<string>();
+  const colKeys = new Set<string>();
+  const add = (rk: string, ck: string, value: number) => {
+    rowKeys.add(rk);
+    colKeys.add(ck);
+    const cell = `${rk}\u0000${ck}`;
+    tally.set(cell, (tally.get(cell) ?? 0) + value);
+  };
+  if (
+    isCustomWidgetField(rf) ||
+    isCustomWidgetField(cf) ||
+    isCustomWidgetField(measure)
+  ) {
+    // A custom field on an axis, or a custom measure (BARY-197): counted in
+    // memory, one key per axis.
+    const rows = await db.issue.findMany({ where: scoped, select: AGG_SELECT });
+    const weight = weightOf(measure);
+    for (const row of rows)
+      add(keysOf(ctx, row, rf)[0], keysOf(ctx, row, cf)[0], weight(row));
+  } else {
+    const r = COLUMN[rf as keyof typeof COLUMN];
+    const c = COLUMN[cf as keyof typeof COLUMN];
+    const rows = await db.issue.groupBy({
+      by: r === c ? [r] : [r, c],
+      where: scoped,
+      _count: { _all: true },
+      _sum: { storyPoints: true, estimateHours: true },
+    });
+    const keyOf = (row: Record<string, unknown>, column: string) =>
+      String(row[column] ?? "_none");
+    for (const row of rows)
+      add(
+        keyOf(row, r),
+        keyOf(row, c),
+        measure === "storyPoints"
+          ? (row._sum.storyPoints ?? 0)
+          : measure === "estimate"
+            ? (row._sum.estimateHours ?? 0)
+            : row._count._all,
+      );
+  }
   const [rowAxis, colAxis] = await Promise.all([
     axisFor(ctx, rf, [...rowKeys]),
     axisFor(ctx, cf, [...colKeys]),
   ]);
   const rowsUsed = rowAxis.filter((s) => rowKeys.has(s.key)).slice(0, 12);
   const colsUsed = colAxis.filter((s) => colKeys.has(s.key)).slice(0, 8);
-  const cells = rowsUsed.map(() => colsUsed.map(() => 0));
-  for (const row of rows) {
-    const i = rowsUsed.findIndex((s) => s.key === keyOf(row, r));
-    const j = colsUsed.findIndex((s) => s.key === keyOf(row, c));
-    if (i >= 0 && j >= 0) cells[i][j] = round1(cells[i][j] + measured(row));
-  }
+  const cells = rowsUsed.map((rs) =>
+    colsUsed.map((cs) => round1(tally.get(`${rs.key}\u0000${cs.key}`) ?? 0)),
+  );
   for (const [i, s] of rowsUsed.entries())
     s.count = cells[i].reduce((a, b) => a + b, 0);
   for (const [j, s] of colsUsed.entries())

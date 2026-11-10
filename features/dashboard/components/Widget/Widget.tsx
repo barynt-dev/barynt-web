@@ -19,6 +19,7 @@ import { ListBody } from "./components/ListBody";
 import { NumberBody } from "./components/NumberBody";
 import type { BodyProps } from "./components/shared";
 import { TeamBody } from "./components/TeamBody";
+import { useWidgetFieldNames } from "./fieldNames";
 import styles from "./widget.module.scss";
 
 interface Props {
@@ -36,13 +37,14 @@ interface Props {
 /** The title a widget shows: its own, else what it counts or groups by. */
 export function useWidgetTitle() {
   const t = useTranslations("widgets");
+  const names = useWidgetFieldNames();
   const titleOf = (widget: WidgetModel): string => {
     const own = widget.config.title?.trim();
     if (own) return own;
     // What it adds up, when it isn't simply issues: "Offen · Story Points".
     const measure =
       widget.config.measure && widget.config.measure !== "count"
-        ? ` · ${t(`measure_${widget.config.measure}`)}`
+        ? ` · ${names.measure(widget.config.measure)}`
         : "";
     if (widget.type === "kpi")
       return t(`metric_${widget.config.metric ?? "open"}`) + measure;
@@ -50,7 +52,7 @@ export function useWidgetTitle() {
       const by = widget.config.timeBy ?? "createdClosed";
       if (by === "createdClosed") return t("type_flow") + measure;
       const split = widget.config.splitBy
-        ? ` ${t("byField", { field: t(`group_${widget.config.splitBy}`) })}`
+        ? ` ${t("byField", { field: names.group(widget.config.splitBy) })}`
         : "";
       return t(`timeBy_${by}`) + split + measure;
     }
@@ -73,7 +75,7 @@ export function useWidgetTitle() {
       );
     }
     if (widget.type === "distribution")
-      return t(`group_${widget.config.groupBy ?? "status"}`) + measure;
+      return names.group(widget.config.groupBy ?? "status") + measure;
     // An embed without a name of its own: the site it shows.
     if (widget.type === "embed" && widget.config.url) {
       try {
@@ -84,8 +86,8 @@ export function useWidgetTitle() {
     }
     if (widget.type === "matrix")
       return t("matrixTitle", {
-        rows: t(`group_${widget.config.groupBy ?? "assignee"}`),
-        cols: t(`group_${widget.config.groupBy2 ?? "status"}`),
+        rows: names.group(widget.config.groupBy ?? "assignee"),
+        cols: names.group(widget.config.groupBy2 ?? "status"),
       });
     return t(`type_${widget.type}`);
   };

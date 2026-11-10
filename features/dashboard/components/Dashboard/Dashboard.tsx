@@ -33,6 +33,7 @@ import { setFabAction } from "@/lib/fab-action";
 import { useShortcut } from "@/lib/shortcuts/useShortcut";
 import { PHONE_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
 import { NoteContext } from "../NoteContext/NoteContext";
+import { WidgetFieldsProvider } from "../Widget/fieldNames";
 import { useWidgetTitle, Widget } from "../Widget/Widget";
 import { WidgetGallery } from "../WidgetGallery/WidgetGallery";
 import { WidgetSettings } from "../WidgetSettings/WidgetSettings";
@@ -226,21 +227,24 @@ export function Dashboard({
   const openSettings = (widget: WidgetModel) =>
     openModal(
       ({ close }) => (
-        <WidgetSettings
-          widget={widget}
-          data={data[widget.id]}
-          title={titleOf(widget)}
-          lookups={lookups}
-          area={area}
-          sheet={isPhone}
-          onChange={update}
-          onRemove={() => {
-            remove(widget.id);
-            close();
-          }}
-          onMove={(by) => shift(widget.id, by)}
-          close={close}
-        />
+        // The modal renders outside the dashboard — the field names again.
+        <WidgetFieldsProvider fields={lookups.customFields}>
+          <WidgetSettings
+            widget={widget}
+            data={data[widget.id]}
+            title={titleOf(widget)}
+            lookups={lookups}
+            area={area}
+            sheet={isPhone}
+            onChange={update}
+            onRemove={() => {
+              remove(widget.id);
+              close();
+            }}
+            onMove={(by) => shift(widget.id, by)}
+            close={close}
+          />
+        </WidgetFieldsProvider>
       ),
       isPhone ? { placement: "bottom" } : { placement: "right" },
     );
@@ -248,26 +252,30 @@ export function Dashboard({
   const openGallery = () =>
     openModal(
       ({ close }) => (
-        <WidgetGallery
-          unit={view.unit}
-          issueBase={issueBase}
-          workspaceSlug={workspaceSlug}
-          kind={target.kind}
-          sheet={isPhone}
-          workspaceId={newView.workspaceId}
-          customWidgets={view.customWidgets}
-          load={(list) => loadWidgetData(target, list, view.range, view.scope)}
-          lookups={lookups}
-          area={area}
-          onAdd={(widget) => {
-            setDraft((list) => [...list, widget]);
-            fetchData([widget]);
-            close();
-            setFocusId(widget.id);
-            setJustAdded(widget.id);
-          }}
-          close={close}
-        />
+        <WidgetFieldsProvider fields={lookups.customFields}>
+          <WidgetGallery
+            unit={view.unit}
+            issueBase={issueBase}
+            workspaceSlug={workspaceSlug}
+            kind={target.kind}
+            sheet={isPhone}
+            workspaceId={newView.workspaceId}
+            customWidgets={view.customWidgets}
+            load={(list) =>
+              loadWidgetData(target, list, view.range, view.scope)
+            }
+            lookups={lookups}
+            area={area}
+            onAdd={(widget) => {
+              setDraft((list) => [...list, widget]);
+              fetchData([widget]);
+              close();
+              setFocusId(widget.id);
+              setJustAdded(widget.id);
+            }}
+            close={close}
+          />
+        </WidgetFieldsProvider>
       ),
       isPhone ? { placement: "bottom" } : { width: 1180, centered: true },
     );
