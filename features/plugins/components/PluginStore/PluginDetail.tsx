@@ -449,15 +449,18 @@ function UpdateChanges({
           {text.t("updateChangesTitle", { version: update })}
         </h3>
         {!installed.blocked && (
-          <Button
-            variant="primary"
-            size="sm"
-            icon={<Icon icon="lucide:package-check" width={14} />}
-            disabled={actions.pending}
-            onClick={() => actions.install(entry, update)}
-          >
-            {text.t("updateTo", { version: update })}
-          </Button>
+          // A phone has the same button right above, in the plugin's header.
+          <span className={styles.updateAction}>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<Icon icon="lucide:package-check" width={14} />}
+              disabled={actions.pending}
+              onClick={() => actions.install(entry, update)}
+            >
+              {text.t("updateTo", { version: update })}
+            </Button>
+          </span>
         )}
       </header>
 
