@@ -113,6 +113,8 @@ export const AUDIT_ACTIONS = {
   "plugin.activated": "Plugin switched on",
   "plugin.deactivated": "Plugin switched off",
   "plugin.data.deleted": "Plugin data deleted",
+  "plugin.granted": "Plugin released for projects",
+  "plugin.grant.revoked": "Plugin release for projects withdrawn",
 } as const;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;

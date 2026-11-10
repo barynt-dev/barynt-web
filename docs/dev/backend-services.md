@@ -208,6 +208,15 @@ An activation stores the capabilities it confirmed. After an update that asks fo
 then it may only use what was confirmed. Every step writes a `plugin.*` audit entry
 (`lib/audit/actions.ts`), with the workspace and project for activations.
 
+A **project** may only switch on what its workspace released for projects (`PluginGrant`,
+`setPluginGrant`, `plugin.enable` in the workspace); taking the release back switches the
+projects' activations off and keeps their data. The pages are **Admin → Plugins**
+(`features/plugins/components/AdminPlugins`, `plugin.manage`) and **Settings → Plugins** of
+a workspace or project (`ScopePlugins`, `plugin.enable`); each loads its view through
+`features/plugins/queries.ts`, which checks the permission again. The install dialog shows
+`previewRelease` (loaded and checked, not stored); installing loads the release once more,
+so the server never trusts what a dialog was shown.
+
 ## Smaller pieces
 
 | Piece | File | What it does |

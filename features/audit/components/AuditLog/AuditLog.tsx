@@ -313,6 +313,14 @@ export const AUDIT_ACTION_META = {
     message: "pluginDataDeleted",
     loud: true,
   },
+  "plugin.granted": {
+    icon: "lucide:badge-check",
+    message: "pluginGranted",
+  },
+  "plugin.grant.revoked": {
+    icon: "lucide:badge-x",
+    message: "pluginGrantRevoked",
+  },
 } as const satisfies Record<
   AuditAction,
   { icon: string; message: string; loud?: boolean }
