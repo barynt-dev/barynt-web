@@ -49,6 +49,7 @@ mock.module("next/cache", () => ({ revalidatePath: mock() }));
 mock.module("@/features/plugins/directory", () => ({
   fetchRelease: mock(),
   readDirectory: mock(),
+  forgetSource: mock(),
   sealSourceToken: (t: string) => `sealed(${t})`,
 }));
 

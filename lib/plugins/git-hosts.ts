@@ -358,3 +358,21 @@ export function resolvePluginRepo(
       : (detectProvider(url) ?? "https");
   return parseGitRepo(entry.repo, provider, options);
 }
+
+/** The page a person opens to look at a release — `null` for a plain web
+ *  server, which has none. */
+export function releasePageUrl(repo: GitRepo, version: string): string | null {
+  const base = repoUrl(repo);
+  const tag = enc(version);
+  switch (repo.provider) {
+    case "github":
+    case "gitea":
+      return `${base}/releases/tag/${tag}`;
+    case "gitlab":
+      return `${base}/-/releases/${tag}`;
+    case "bitbucket":
+      return `${base}/src/${tag}`;
+    case "https":
+      return null;
+  }
+}

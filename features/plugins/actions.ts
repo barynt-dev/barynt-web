@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   fetchRelease,
+  forgetSource,
   readDirectory,
   readSource,
   sealSourceToken,
@@ -181,6 +182,7 @@ export async function updatePluginSource(
       ? sealSourceToken(input.token.trim())
       : null;
   await db.pluginSource.update({ where: { id }, data });
+  forgetSource(id);
   await recordAudit({
     action: "plugin.source.updated",
     actorId,
@@ -199,12 +201,23 @@ export async function updatePluginSource(
   return { ok: true };
 }
 
+/** Reads a source's directory right now, not what the store kept from a
+ *  few minutes ago ("Fetch now"). */
+export async function refreshPluginSource(id: string): Promise<PluginResult> {
+  await requirePermission("plugin.manage", PLATFORM);
+  forgetSource(id);
+  const read = await readSource(id);
+  done();
+  return read.ok ? { ok: true } : { error: read.error };
+}
+
 /** Removes a source. Installed plugins stay — they no longer have it. */
 export async function removePluginSource(id: string): Promise<PluginResult> {
   const actorId = await requirePermission("plugin.manage", PLATFORM);
   const source = await db.pluginSource.findUnique({ where: { id } });
   if (!source) return { error: "not_found" };
   await db.pluginSource.delete({ where: { id } });
+  forgetSource(id);
   await recordAudit({
     action: "plugin.source.removed",
     actorId,
