@@ -464,15 +464,11 @@ function AddSourceDialog({
         </>
       }
     >
-      <div className={styles.field}>
-        <span className={styles.fieldLabel} id="source-provider">
+      <fieldset className={styles.fieldset}>
+        <legend className={styles.fieldLabel}>
           {text.t("sourceProvider")}
-        </span>
-        <div
-          className={styles.providers}
-          role="group"
-          aria-labelledby="source-provider"
-        >
+        </legend>
+        <div className={styles.providers}>
           {GIT_PROVIDERS.map((p) => (
             <Chip
               key={p}
@@ -490,7 +486,7 @@ function AddSourceDialog({
             </Chip>
           ))}
         </div>
-      </div>
+      </fieldset>
       <Input
         autoFocus={!sheet}
         label={text.t("sourceName")}
