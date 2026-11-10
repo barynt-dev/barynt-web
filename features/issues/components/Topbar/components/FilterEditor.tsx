@@ -17,23 +17,27 @@ import {
   TypeIcon,
 } from "@/features/issues/components/IssueIcons/IssueIcons";
 import {
-  type FilterField,
+  customFilterField,
   type FilterGroup,
   type FilterNode,
   type FilterOp,
   type FilterRule,
   type IssueFilter,
+  isCustomFilterField,
   isGroup,
   ME,
   NONE_VALUE,
+  type RuleField,
   rulesIn,
 } from "@/features/issues/filter";
 import { STORY_POINTS_OPTIONS } from "@/features/issues/story-points";
 import { randomId } from "@/lib/utils/id";
 import { fullName } from "@/lib/utils/string";
+import { customFilterAnswers } from "../customFilterOptions";
 import {
+  customFieldOf,
   EDITOR_FIELDS,
-  EDITOR_OPS,
+  editorOps,
   type FilterLabelLookups,
   RELATIVE_OPTIONS,
   useFilterLabels,
@@ -61,14 +65,12 @@ interface FilterEditorProps {
 
 const isList = (is: FilterOp) => is === "any" || is === "none" || is === "all";
 const needsNoValue = (is: FilterOp) => is === "empty" || is === "notEmpty";
-const isDateField = (f: FilterField) =>
-  f === "dueDate" || f === "created" || f === "updated";
-
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
-/** What "within" offers per date field — the future only for due dates. */
-const relativeFor = (field: FilterField) =>
-  field === "dueDate"
+/** What "within" offers per date field — the future only for due dates and
+ *  custom dates, the past only for created and updated. */
+const relativeFor = (field: RuleField) =>
+  field === "dueDate" || isCustomFilterField(field)
     ? RELATIVE_OPTIONS
     : RELATIVE_OPTIONS.filter((r) => r !== "overdue" && r !== "next_7_days");
 
@@ -121,9 +123,20 @@ export function FilterEditor({
     onChange(fromRootBox(next, text));
   };
 
-  const fields = EDITOR_FIELDS.filter((f) => f !== "project" || area === "my");
+  // Then the custom fields (BARY-196), after the built-in ones.
+  const fields: RuleField[] = [
+    ...EDITOR_FIELDS.filter((f) => f !== "project" || area === "my"),
+    ...(lookups.customFields ?? []).map((f) => customFilterField(f.id)),
+  ];
 
-  const options = (field: FilterField): ISelectItem[] => {
+  /** A custom field's answers to pick from (`customFilterAnswers`). */
+  const customOptions = (field: `cf:${string}`): ISelectItem[] => {
+    const def = customFieldOf(lookups, field);
+    return def ? customFilterAnswers(def, lookups.members, t) : [];
+  };
+
+  const options = (field: RuleField): ISelectItem[] => {
+    if (isCustomFilterField(field)) return customOptions(field);
     switch (field) {
       case "status":
         return lookups.statuses.map((s) => ({
@@ -195,11 +208,14 @@ export function FilterEditor({
   };
 
   /** A sensible value for `field` with `is` — what a new row starts with. */
-  const defaultValue = (field: FilterField, is: FilterOp) => {
+  const defaultValue = (field: RuleField, is: FilterOp) => {
     if (needsNoValue(is)) return undefined;
     if (isList(is)) return [] as (string | number)[];
     if (is === "within") return relativeFor(field)[0];
     if (is === "before" || is === "after") return todayIso();
+    if (is === "contains") return "";
+    // A custom number starts at nothing in particular.
+    if (isCustomFilterField(field)) return 0;
     // gte / lte: the first plain option (High for priority).
     const first = options(field).find(
       (o) => o.value !== ME && o.value !== NONE_VALUE,
@@ -212,8 +228,8 @@ export function FilterEditor({
     return first?.value as number;
   };
 
-  const newRule = (field: FilterField = "status"): FilterRule => {
-    const is = EDITOR_OPS[field]?.[0] ?? "any";
+  const newRule = (field: RuleField = "status"): FilterRule => {
+    const is = editorOps(lookups, field)?.[0] ?? "any";
     const value = defaultValue(field, is);
     return value === undefined ? { field, is } : { field, is, value };
   };
@@ -223,6 +239,7 @@ export function FilterEditor({
     labels,
     options,
     defaultValue,
+    opsOf: (field: RuleField) => editorOps(lookups, field),
   };
 
   const count = rulesIn(root).length;
@@ -278,7 +295,7 @@ export function FilterEditor({
 
 type CardSetup = Pick<
   React.ComponentProps<typeof ConditionCard>,
-  "fields" | "labels" | "options" | "defaultValue"
+  "fields" | "labels" | "options" | "defaultValue" | "opsOf"
 >;
 
 /**
@@ -461,31 +478,31 @@ function ConditionCard({
   labels,
   options,
   defaultValue,
+  opsOf,
   onChange,
   onRemove,
 }: {
   rule: FilterRule;
-  fields: FilterField[];
+  fields: RuleField[];
   labels: ReturnType<typeof useFilterLabels>;
-  options: (field: FilterField) => ISelectItem[];
+  options: (field: RuleField) => ISelectItem[];
   defaultValue: (
-    field: FilterField,
+    field: RuleField,
     is: FilterOp,
   ) => FilterRule["value"] | undefined;
+  opsOf: (field: RuleField) => FilterOp[] | undefined;
   onChange: (next: FilterRule) => void;
   onRemove: () => void;
 }) {
   const t = useTranslations();
-  const ops = EDITOR_OPS[rule.field] ?? [rule.is];
+  const ops = opsOf(rule.field) ?? [rule.is];
+  const custom = isCustomFilterField(rule.field);
 
-  const make = (
-    field: FilterField,
-    is: FilterOp,
-    value?: FilterRule["value"],
-  ) => (value === undefined ? { field, is } : { field, is, value });
+  const make = (field: RuleField, is: FilterOp, value?: FilterRule["value"]) =>
+    value === undefined ? { field, is } : { field, is, value };
 
-  const setField = (field: FilterField) => {
-    const is = EDITOR_OPS[field]?.[0] ?? "any";
+  const setField = (field: RuleField) => {
+    const is = opsOf(field)?.[0] ?? "any";
     onChange(make(field, is, defaultValue(field, is)));
   };
 
@@ -552,6 +569,29 @@ function ConditionCard({
         </InlinePicker>
       </>
     );
+  } else if (custom && (rule.is === "gte" || rule.is === "lte")) {
+    // A custom number has no list of values — any number goes.
+    value = (
+      <CommitInput
+        type="number"
+        label={t("filters.value")}
+        value={String(rule.value ?? "")}
+        onCommit={(v) => {
+          const n = Number(v);
+          if (v !== "" && Number.isFinite(n))
+            onChange(make(rule.field, rule.is, n));
+        }}
+      />
+    );
+  } else if (rule.is === "contains") {
+    value = (
+      <CommitInput
+        type="text"
+        label={t("filters.value")}
+        value={String(rule.value ?? "")}
+        onCommit={(v) => onChange(make(rule.field, rule.is, v))}
+      />
+    );
   } else if (rule.is === "gte" || rule.is === "lte") {
     value = (
       <TokenSelect
@@ -568,10 +608,10 @@ function ConditionCard({
       <TokenSelect
         label={t("filters.value")}
         value={String(rule.value ?? "")}
-        items={(isDateField(rule.field)
-          ? relativeFor(rule.field)
-          : RELATIVE_OPTIONS
-        ).map((r) => ({ value: r, label: labels.relative(r) }))}
+        items={relativeFor(rule.field).map((r) => ({
+          value: r,
+          label: labels.relative(r),
+        }))}
         onChange={(v) => onChange(make(rule.field, rule.is, v))}
       />
     );
@@ -596,7 +636,7 @@ function ConditionCard({
           label={t("filters.field")}
           value={rule.field}
           items={fields.map((f) => ({ value: f, label: labels.field(f) }))}
-          onChange={(v) => setField(v as FilterField)}
+          onChange={(v) => setField(v as RuleField)}
         />
         <TokenSelect
           label={t("filters.operator")}
@@ -620,5 +660,41 @@ function ConditionCard({
       </div>
       {value && <div className={styles.values}>{value}</div>}
     </div>
+  );
+}
+
+/**
+ * A number or a piece of text typed into a condition. It applies when the
+ * field is left or Enter is pressed — not on every keystroke, each of which
+ * would rewrite the address.
+ */
+function CommitInput({
+  type,
+  label,
+  value,
+  onCommit,
+}: {
+  type: "number" | "text";
+  label: string;
+  value: string;
+  onCommit: (value: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  const commit = () => {
+    if (draft !== value) onCommit(draft.trim());
+  };
+  return (
+    <input
+      type={type}
+      inputMode={type === "number" ? "decimal" : undefined}
+      aria-label={label}
+      className={styles.date}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commit();
+      }}
+    />
   );
 }

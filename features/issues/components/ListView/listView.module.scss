@@ -272,7 +272,8 @@
     td[data-col="type"],
     td[data-col="storyPoints"],
     td[data-col="dueDate"],
-    td[data-col="labels"] {
+    td[data-col="labels"],
+    td[data-col="fields"] {
       order: 5;
     }
 
@@ -297,7 +298,8 @@
       order: 5;
     }
 
-    td[data-col="labels"] {
+    td[data-col="labels"],
+    td[data-col="fields"] {
       max-width: 100%;
       overflow: hidden;
     }

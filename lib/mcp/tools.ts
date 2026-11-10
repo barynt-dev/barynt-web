@@ -32,8 +32,10 @@ import {
   getIssueForUser,
   listAttachmentsForUser,
   listCommentsForUser,
+  listCustomFieldsForUser,
   listIssuesForUser,
   listLabelsForUser,
+  listProjectCustomFieldsForUser,
   listProjectMembersForUser,
   listProjectsForUser,
   listWorkspaceMembersForUser,
@@ -289,6 +291,29 @@ export function registerBaryntTools(server: McpServer): void {
       const auth = await authorize(ctx, "labels:read");
       if (!auth.ok) return auth.result;
       const data = await listLabelsForUser(auth.auth.userId, workspaceId);
+      return data ? jsonResult(data) : notFoundResult();
+    },
+  );
+
+  server.registerTool(
+    "list_custom_fields",
+    {
+      title: "List custom fields",
+      description:
+        "List the custom fields of a workspace (workspace-wide plus those of projects the caller can see), or, with projectId, the ones that apply to that project. Issues carry their values under `customFields`, keyed by field key.",
+      inputSchema: z.object({
+        workspaceId: z.string().optional(),
+        projectId: z.string().optional(),
+      }),
+    },
+    async ({ workspaceId, projectId }, ctx) => {
+      const auth = await authorize(ctx, "issues:read");
+      if (!auth.ok) return auth.result;
+      const data = projectId
+        ? await listProjectCustomFieldsForUser(auth.auth.userId, projectId)
+        : workspaceId
+          ? await listCustomFieldsForUser(auth.auth.userId, workspaceId)
+          : null;
       return data ? jsonResult(data) : notFoundResult();
     },
   );
@@ -562,7 +587,7 @@ export function registerBaryntTools(server: McpServer): void {
           .unknown()
           .optional()
           .describe(
-            'A filter tree, as views store it: { "op": "and"|"or", "rules": [ { "field": "priority", "is": "gte", "value": 3 }, { "op": "or", "rules": [...] } ] }. Values like "@me" resolve to you; values are ids, not names. Fields: status, statusCategory, priority, type, assignee, reporter, label, project, storyPoints, estimate, dueDate, created, updated, parent, text. Ignored with viewId.',
+            'A filter tree, as views store it: { "op": "and"|"or", "rules": [ { "field": "priority", "is": "gte", "value": 3 }, { "op": "or", "rules": [...] } ] }. Values like "@me" resolve to you; values are ids, not names. Fields: status, statusCategory, priority, type, assignee, reporter, label, project, storyPoints, estimate, dueDate, created, updated, parent, text. A custom field is "cf:<fieldId>" (list_custom_fields). Ignored with viewId.',
           ),
         status: z.string().optional(),
         assignee: z.string().optional().describe("User id."),
@@ -576,6 +601,12 @@ export function registerBaryntTools(server: McpServer): void {
           .string()
           .optional()
           .describe("Opaque cursor from a previous call's `nextCursor`."),
+        customFieldFilters: z
+          .record(z.string(), z.string())
+          .optional()
+          .describe(
+            'Exact-match filters on custom fields, by field key, e.g. {"customer": "Acme"}. All must match.',
+          ),
         limit: limitSchema,
         fields: z
           .string()
@@ -586,7 +617,15 @@ export function registerBaryntTools(server: McpServer): void {
       }),
     },
     async (
-      { projectId, viewId, filter: rawFilter, limit, fields, ...filters },
+      {
+        projectId,
+        viewId,
+        filter: rawFilter,
+        limit,
+        fields,
+        customFieldFilters,
+        ...filters
+      },
       ctx,
     ) => {
       const auth = await authorize(ctx, "issues:read");
@@ -608,6 +647,7 @@ export function registerBaryntTools(server: McpServer): void {
         page = await listIssuesForUser(auth.auth.userId, projectId, {
           ...filters,
           filter,
+          fieldFilters: customFieldFilters,
           take: limit ?? 25,
         });
       }
@@ -677,6 +717,12 @@ export function registerBaryntTools(server: McpServer): void {
           .optional()
           .describe(
             "Which unit estimateHours was entered in. Defaults to hours.",
+          ),
+        customFields: z
+          .record(z.string(), z.unknown())
+          .optional()
+          .describe(
+            "Custom field values by field key (see list_custom_fields). A choice by id or label; null clears a value.",
           ),
       }),
     },
@@ -783,6 +829,12 @@ export function registerBaryntTools(server: McpServer): void {
           .optional()
           .describe(
             "Relabels estimateHours's display unit. Defaults to hours when set alongside a new estimateHours.",
+          ),
+        customFields: z
+          .record(z.string(), z.unknown())
+          .optional()
+          .describe(
+            "Custom field values by field key (see list_custom_fields). A choice by id or label; null clears a value.",
           ),
       }),
     },

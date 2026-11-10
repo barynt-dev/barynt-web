@@ -13,6 +13,7 @@ import {
   type GroupKey,
   groupDefs,
   laneEntry,
+  resolveGroupKey,
   visibleGroups,
 } from "@/features/issues/group";
 import { groupOrderEntries, orderGroups } from "@/features/issues/group-order";
@@ -92,7 +93,7 @@ export function Board({
   composer,
   hiddenCardFields,
   sortKey,
-  groupKey,
+  groupKey: requestedGroupKey,
   hiddenGroups,
   hideEmptyGroups,
   groupOrder = [],
@@ -103,11 +104,14 @@ export function Board({
   collapsedLanes = [],
   onCollapsedLanesChange,
 }: BoardProps) {
+  // A grouping by a custom field that has since gone is a status board.
+  const groupKey = resolveGroupKey(requestedGroupKey, composer.customFields);
   const lookups: IssueLookups = {
     projects: composer.projects,
     members: composer.members,
     labels: composer.labels,
     issueTypes: composer.issueTypes,
+    customFields: composer.customFields,
   };
   const t = useTranslations();
   const { toast } = useUI();
@@ -124,6 +128,7 @@ export function Board({
     },
     groupKey,
     laneKey,
+    composer.customFields,
   );
   // Shift + wheel scrolls the columns horizontally, no matter where the pointer is.
   const scrollSetter = useShiftScroll();
@@ -160,11 +165,13 @@ export function Board({
       priorities: composer.priorities,
       issueTypes: composer.issueTypes,
       members: composer.members,
+      customFields: composer.customFields,
       projects: composer.projects,
     },
     {
       unassigned: t("fields.unassigned"),
       noStoryPoints: t("fields.noStoryPoints"),
+      noValue: t("customFields.noValue"),
     },
     issues,
   );
@@ -220,10 +227,12 @@ export function Board({
           issueTypes: composer.issueTypes,
           members: composer.members,
           projects: composer.projects,
+          customFields: composer.customFields,
         },
         {
           unassigned: t("fields.unassigned"),
           noStoryPoints: t("fields.noStoryPoints"),
+          noValue: t("customFields.noValue"),
         },
         issues,
       ).filter((lane) => {
@@ -446,8 +455,8 @@ export function Board({
     },
   });
 
-  const moveCard = (issue: IssueDetail, groupId: string) => {
-    board.moveIssue(issue, groupId);
+  const moveCard = (issue: IssueDetail, groupId: string, fromId?: string) => {
+    board.moveIssue(issue, groupId, fromId);
     const target = groups.find((g) => g.id === groupId);
     if (target) toast(t("issues.movedTo", { group: target.label }));
   };
@@ -630,8 +639,8 @@ export function Board({
         onColumnDragOver={onDragOver}
         onColumnDragLeave={onDragLeave}
         onColumnDrop={onDrop}
-        onCardDragStart={(issue) => {
-          const start = board.onDragStart(issue);
+        onCardDragStart={(issue, fromGroupId) => {
+          const start = board.onDragStart(issue, fromGroupId, laneId);
           return (e: React.DragEvent) => {
             setSpringLanes(new Set());
             start(e);

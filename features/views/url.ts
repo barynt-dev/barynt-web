@@ -1,4 +1,4 @@
-import { isCardFieldKey } from "@/features/issues/card-fields";
+import { isCardFieldEntry } from "@/features/issues/card-fields";
 import { type FilterNode, isGroup } from "@/features/issues/filter";
 import {
   filterToParams,
@@ -222,7 +222,7 @@ export function displayFromParams(
   return {
     hiddenGroups: sanitizeHiddenGroups(list("hide")),
     groupOrder: sanitizeGroupOrder(list("order")),
-    hiddenFields: list("fields").filter(isCardFieldKey),
+    hiddenFields: list("fields").filter(isCardFieldEntry),
     hideEmptyGroups: read(source, "empty") === "1",
     showSubIssues: read(source, "sub") === "1",
     hideEmptyLanes: read(source, "emptylanes") === "1",

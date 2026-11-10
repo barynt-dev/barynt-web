@@ -13,6 +13,8 @@ export const LIST_COLUMNS = [
   "type",
   "title",
   "labels",
+  // Custom fields as chips (BARY-129).
+  "fields",
   "assignee",
   "storyPoints",
   "estimate",
@@ -40,6 +42,7 @@ export const DEFAULT_LIST_COLUMNS: readonly ListColumn[] = [
   "status",
   "title",
   "labels",
+  "fields",
   "assignee",
   "updated",
 ];
@@ -54,6 +57,7 @@ export const CARD_ROW_COLUMNS: readonly ListColumn[] = [
   "type",
   "title",
   "labels",
+  "fields",
   "comments",
   "assignee",
   "storyPoints",

@@ -2,7 +2,14 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { type IssueFilter, isGroup } from "@/features/issues/filter";
+import {
+  type CustomFilterField,
+  customFilterField,
+  type IssueFilter,
+  isCustomFilterField,
+  isGroup,
+} from "@/features/issues/filter";
+import { hasChoiceList } from "@/features/issues/filter-custom";
 import {
   filterToParams,
   idToSlug,
@@ -25,10 +32,12 @@ import {
   VIEW_SETTING_KEYS,
 } from "@/features/views/url";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import type { FieldDefinition } from "@/lib/custom-fields";
 import { usePreferences } from "@/lib/preferences/PreferencesContext";
 import type { Label, Priority, Project, User } from "@/types";
 import {
   type ChipField,
+  type ChipKey,
   chipState,
   conditionCount,
   dueBuckets,
@@ -38,9 +47,9 @@ import {
   withoutNode,
 } from "./filterModel";
 
-/** A field with a chip of its own (`filterModel.ts`), plus the due-date
- *  buckets. */
-export type FilterKey = ChipField | "dueDate";
+/** A field with a chip of its own (`filterModel.ts`) — a custom field's
+ *  too — plus the due-date buckets. */
+export type FilterKey = ChipKey | "dueDate";
 
 export type View = "board" | "list";
 
@@ -56,7 +65,22 @@ export function filterStateOf(tree: IssueFilter): FilterState {
     project: values("project") as string[],
     storyPoints: values("storyPoints") as number[],
     dueDate: dueBuckets(tree),
+    custom: Object.fromEntries(
+      tree.rules.flatMap((node) =>
+        !isGroup(node) && isCustomFilterField(node.field)
+          ? [[node.field, chipState(tree, node.field).values as string[]]]
+          : [],
+      ),
+    ),
   };
+}
+
+/** The values a chip shows, a custom field's included. */
+export function chipValues(
+  filters: FilterState,
+  key: FilterKey,
+): (string | number)[] {
+  return isCustomFilterField(key) ? (filters.custom[key] ?? []) : filters[key];
 }
 
 /**
@@ -82,6 +106,8 @@ export interface FilterState {
   storyPoints: number[];
   /** Due-date buckets: `overdue`, `today`, `week`, `none` (BARY-4). */
   dueDate: string[];
+  /** Custom fields' chips, by `cf:<fieldId>` (BARY-196). */
+  custom: Partial<Record<CustomFilterField, string[]>>;
 }
 
 /** Keystrokes are cheap, navigations are not — wait for a pause before pushing. */
@@ -98,6 +124,8 @@ export interface UseTopbarArgs {
   priorities: Priority[];
   members: User[];
   labels: Label[];
+  /** The custom fields that apply here (BARY-196). */
+  customFields?: FieldDefinition[];
   /**
    * On a saved view's page (BARY-164): the layout comes from `?layout=` and
    * the board/list switch writes it there instead of changing the path, and a
@@ -112,6 +140,7 @@ export function useTopbar({
   priorities,
   members,
   labels,
+  customFields = [],
   viewMode = false,
 }: UseTopbarArgs) {
   const router = useRouter();
@@ -160,25 +189,26 @@ export function useTopbar({
     ),
     labels,
     projects,
+    customFields,
   };
   const tree: IssueFilter = mapFilterValues(
     parseFilterParams(searchParams),
     slugToId(slugLookups),
   );
 
-  const chip = (field: ChipField) => chipState(tree, field);
+  const chip = (field: ChipKey) => chipState(tree, field);
   const filters = filterStateOf(tree);
   // "Is not" picked before any value: the tree has no rule to carry it
   // yet, so it waits here until the first value arrives.
   const [pendingNot, setPendingNot] = useState<
-    Partial<Record<ChipField, boolean>>
+    Partial<Record<ChipKey, boolean>>
   >({});
-  const isNot = (field: ChipField) =>
+  const isNot = (field: ChipKey) =>
     chip(field).values.length > 0
       ? chip(field).negated
       : (pendingNot[field] ?? false);
   /** Which chips exclude rather than include ("is not"). */
-  const negated: Record<ChipField, boolean> = {
+  const negated: Partial<Record<ChipKey, boolean>> = {
     status: isNot("status"),
     priority: isNot("priority"),
     type: isNot("type"),
@@ -186,6 +216,11 @@ export function useTopbar({
     label: isNot("label"),
     project: isNot("project"),
     storyPoints: isNot("storyPoints"),
+    ...Object.fromEntries(
+      customFields
+        .filter(hasChoiceList)
+        .map((f) => [customFilterField(f.id), isNot(customFilterField(f.id))]),
+    ),
   };
 
   // The typed text belongs to the search box alone (see IssueSearch): it renders
@@ -270,11 +305,11 @@ export function useTopbar({
     const next = cur.includes(value)
       ? cur.filter((v) => v !== value)
       : [...cur, value];
-    setFilter(withChip(tree, key, next, negated[key]));
+    setFilter(withChip(tree, key, next, negated[key] ?? false));
   }
 
   /** "is" ↔ "is not" for a chip (BARY-166). */
-  function setNegated(key: ChipField, value: boolean) {
+  function setNegated(key: ChipKey, value: boolean) {
     setPendingNot((cur) => ({ ...cur, [key]: value }));
     if (chip(key).values.length > 0)
       setFilter(withChip(tree, key, chip(key).values, value));

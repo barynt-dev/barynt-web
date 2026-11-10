@@ -50,14 +50,14 @@ If you want one of these setups again tomorrow, or want to share it with your te
 
 ## Filter: show only what matters
 
-Click **Filter** above the board. The quick filters are _Status_, _Type_, _Priority_, _Assignee_ and _Label_. Pick one or several values in each. **Clear all filters** starts over.
+Click **Filter** above the board. The quick filters are _Status_, _Type_, _Priority_, _Assignee_ and _Label_. Custom fields with a list of answers (a choice, a person, a yes/no) get a quick filter of their own. Pick one or several values in each. **Clear all filters** starts over.
 
 ![The filter menu](../../assets/en/filter.webp)
 
 For anything more precise, open **Advanced filter settings**. There you build conditions yourself:
 
-- Fields include status, type, priority, assignee, creator, labels, due date, story points and whether it is a sub-issue.
-- Comparisons include _is_, _is not_, _is empty_, _at least_, _at most_, _before_, _after_ and _within_.
+- Fields include status, type, priority, assignee, creator, labels, due date, story points, whether it is a sub-issue, and every custom field.
+- Comparisons include _is_, _is not_, _is empty_, _at least_, _at most_, _before_, _after_, _within_ and, for text, _contains_.
 - Special values save typing: **Me** stands for whoever is looking, and dates can be relative, like _overdue_, _today_, _next 7 days_ or _last 30 days_.
 - Conditions can be combined with **AND** or **OR**, and grouped into boxes.
 

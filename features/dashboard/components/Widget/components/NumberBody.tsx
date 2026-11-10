@@ -11,6 +11,7 @@ import {
   type WidgetElement,
 } from "@/features/dashboard/widgets";
 import { Link } from "@/i18n/navigation";
+import { useWidgetFieldNames } from "../fieldNames";
 import styles from "../widget.module.scss";
 import { type BodyProps, marked, Spark } from "./shared";
 
@@ -32,10 +33,7 @@ export function NumberBody({
   const t = useTranslations("widgets");
   const format = useFormatter();
   const num = (n: number) => format.number(n, { maximumFractionDigits: 1 });
-  const unit =
-    widget.config.measure && widget.config.measure !== "count"
-      ? t(`unit_${widget.config.measure}`)
-      : null;
+  const unit = useWidgetFieldNames().unit(widget.config.measure);
   const elements = shownElements(widget);
   const has = (kind: WidgetElement["kind"]) =>
     elements.some((e) => e.kind === kind);

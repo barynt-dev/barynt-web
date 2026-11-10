@@ -8,7 +8,11 @@ import {
 } from "@/features/issues/group";
 import type { Issue } from "@/types";
 
-const labels = { unassigned: "Unassigned", noStoryPoints: "No points" };
+const labels = {
+  unassigned: "Unassigned",
+  noStoryPoints: "No points",
+  noValue: "No value",
+};
 const projects = [
   { id: "p1", name: "Mobile", color: "#5ab98a" },
   { id: "p2", name: "Web", color: "#3b7bd5" },

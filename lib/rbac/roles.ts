@@ -176,6 +176,7 @@ const WORKSPACE_ROLES: SystemRole[] = [
       "label.create",
       "label.update",
       "label.delete",
+      "customfield.manage",
       "view.share",
       "view.manage",
     ],

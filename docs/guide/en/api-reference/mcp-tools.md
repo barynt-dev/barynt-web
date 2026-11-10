@@ -110,19 +110,31 @@ Permanently delete a project and all of its issues.
 
 Scope: `issues:read`
 
-List issues in a project, optionally filtered by status, assignee, a text search or a filter tree (`filter`). With `viewId`, the issues a saved view shows (needs views:read too); `@me` means you.
+List issues in a project, optionally filtered by status, assignee, a text search, a filter tree (`filter`) or exact custom field values (`customFieldFilters`). With `viewId`, the issues a saved view shows (needs views:read too); `@me` means you.
 
 | Name | Type | Description |
 | --- | --- | --- |
 | `projectId` | `string` | Required unless viewId is given. |
 | `viewId` | `string` | A saved view's id (list_views) — its filter, project and fixed conditions apply. |
-| `filter` | `any` | A filter tree, as views store it: { "op": "and"\|"or", "rules": [ { "field": "priority", "is": "gte", "value": 3 }, { "op": "or", "rules": [...] } ] }. Values like "@me" resolve to you; values are ids, not names. Fields: status, statusCategory, priority, type, assignee, reporter, label, project, storyPoints, estimate, dueDate, created, updated, parent, text. Ignored with viewId. |
+| `filter` | `any` | A filter tree, as views store it: { "op": "and"\|"or", "rules": [ { "field": "priority", "is": "gte", "value": 3 }, { "op": "or", "rules": [...] } ] }. Values like "@me" resolve to you; values are ids, not names. Fields: status, statusCategory, priority, type, assignee, reporter, label, project, storyPoints, estimate, dueDate, created, updated, parent, text. A custom field is "cf:<fieldId>" (list_custom_fields). Ignored with viewId. |
 | `status` | `string` |  |
 | `assignee` | `string` | User id. |
 | `q` | `string` | Case-insensitive substring match against title and description. |
 | `cursor` | `string` | Opaque cursor from a previous call's `nextCursor`. |
+| `customFieldFilters` | `object` | Exact-match filters on custom fields, by field key, e.g. {"customer": "Acme"}. All must match. |
 | `limit` | `integer (1–100)` | Max rows to return (default 25, max 100). |
 | `fields` | `string` | Comma-separated allowlist of fields to return, e.g. "id,title,status". |
+
+### `list_custom_fields`
+
+Scope: `issues:read`
+
+List the custom fields of a workspace, or with `projectId` the ones that apply to that project. Issues carry their values under `customFields`, keyed by field key.
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `workspaceId` | `string` |  |
+| `projectId` | `string` |  |
 
 ### `create_issue`
 
@@ -145,6 +157,7 @@ Create a new issue in a project. The description can @mention a workspace member
 | `storyPoints` | `integer (-9007199254740991–9007199254740991)` | Typically a Fibonacci value (1/2/3/5/8/13). |
 | `estimateHours` | `number \| null` | Normalized to hours, e.g. 2.5. |
 | `estimateUnit` | `"hours" \| "days" \| "weeks" \| "months" \| "years"` | Which unit estimateHours was entered in. Defaults to hours. |
+| `customFields` | `object` | Custom field values by field key (see list_custom_fields). A choice by id or label; null clears a value. |
 
 ### `get_issue`
 
@@ -178,6 +191,7 @@ Update an issue's title, description, status, priority, assignee, labels, or typ
 | `storyPoints` | `integer (-9007199254740991–9007199254740991)` | Typically a Fibonacci value (1/2/3/5/8/13). |
 | `estimateHours` | `number \| null` | Normalized to hours, e.g. 2.5. `null` clears it. |
 | `estimateUnit` | `"hours" \| "days" \| "weeks" \| "months" \| "years"` | Relabels estimateHours's display unit. Defaults to hours when set alongside a new estimateHours. |
+| `customFields` | `object` | Custom field values by field key (see list_custom_fields). A choice by id or label; null clears a value. |
 
 ### `add_issue_relation`
 

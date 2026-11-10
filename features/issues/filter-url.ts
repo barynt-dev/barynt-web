@@ -13,6 +13,9 @@
 //   dueDate.within=next_7_days  relative range   (`.before`/`.after`: a day)
 //   dueDate=overdue,none        the due-date buckets of the chip (unchanged)
 //   q=login                     text
+//   cf.customer=o_1,o_2         a custom field, by its key (BARY-196) —
+//   cf.points.gte=5             every operator as above, `.contains` for
+//   cf.notes.contains=urgent    text; a person by handle, a choice by id
 //   or=priority.gte:high;dueDate.within:next_7_days|label:bug
 //                               OR groups: rules `key:values` joined by `;`,
 //                               groups joined by `|`
@@ -30,6 +33,9 @@
 // No dependencies beyond `filter.ts` — runs in the client and the server.
 
 import {
+  type CustomFilterField,
+  customFieldRef,
+  customFilterField,
   FILTER_FIELD_KEYS,
   FILTER_FIELDS,
   type FilterField,
@@ -38,15 +44,18 @@ import {
   type FilterOp,
   type FilterRule,
   type IssueFilter,
+  isCustomFilterField,
   isGroup,
   ME,
   mapNode,
   NONE_VALUE,
+  type RuleField,
   rulesIn,
 } from "./filter";
 
-/** URL suffix per operator — `any` has none. */
-const SUFFIX: Record<Exclude<FilterOp, "contains">, string> = {
+/** URL suffix per operator — `any` has none. `contains` only for a custom
+ *  field: the search text has `q`. */
+const SUFFIX: Record<FilterOp, string> = {
   any: "",
   none: "not",
   all: "all",
@@ -57,6 +66,7 @@ const SUFFIX: Record<Exclude<FilterOp, "contains">, string> = {
   before: "before",
   after: "after",
   within: "within",
+  contains: "contains",
 };
 const OP_OF_SUFFIX = new Map(
   Object.entries(SUFFIX).map(([op, suffix]) => [suffix, op as FilterOp]),
@@ -84,16 +94,24 @@ export function dueBucketOf(rule: FilterRule): string | null {
 const isListOp = (is: FilterOp) =>
   is === "any" || is === "none" || is === "all";
 
+/** `cf.<key>` or `cf.<key>.suffix` — a custom field, still by its key. */
+const CUSTOM_KEY = /^cf\.([a-z0-9_]+)(?:\.([a-z]+))?$/;
+
 /** `field` or `field.suffix` → field and operator; `null` for any other key. */
 export function parseFilterKey(
   key: string,
-): { field: FilterField; is: FilterOp } | null {
+): { field: RuleField; is: FilterOp } | null {
+  const custom = key.match(CUSTOM_KEY);
+  if (custom) {
+    const is = OP_OF_SUFFIX.get(custom[2] ?? "");
+    return is ? { field: customFilterField(custom[1]), is } : null;
+  }
   const [name, suffix = ""] = key.split(".", 2);
   if (!(FILTER_FIELD_KEYS as string[]).includes(name) || name === "text")
     return null;
   const field = name as FilterField;
   const is = OP_OF_SUFFIX.get(suffix);
-  if (!is) return null;
+  if (!is || is === "contains") return null;
   if (!(FILTER_FIELDS[field].ops as readonly FilterOp[]).includes(is))
     // `dueDate=` is the bucket list — the only "any" a date field has.
     return field === "dueDate" && is === "any" ? { field, is } : null;
@@ -106,7 +124,7 @@ export function isFilterParam(key: string): boolean {
 }
 
 function ruleFrom(
-  field: FilterField,
+  field: RuleField,
   is: FilterOp,
   raw: string,
 ): FilterRule | FilterRule[] | null {
@@ -234,11 +252,15 @@ export function parseFilterParams(
   return { op: "and", rules };
 }
 
-/** Turns one value of a rule into another — or `null` to drop it. */
-export type ValueMapper = (
-  field: FilterField,
+/** Turns one value of a rule into another — or `null` to drop it. `field`
+ *  names a custom field as the tree going in has it (key or id); `.field`,
+ *  if there, turns that one into the other — `null` drops the rule. */
+export type ValueMapper = ((
+  field: RuleField,
   value: string | number,
-) => string | number | null;
+) => string | number | null) & {
+  field?: (field: CustomFilterField) => CustomFilterField | null;
+};
 
 /**
  * The same tree with every value mapped (slug → id or back). A list that
@@ -250,19 +272,31 @@ export function mapFilterValues(
   filter: IssueFilter,
   map: ValueMapper,
 ): IssueFilter {
-  const mapRule = (rule: FilterRule): FilterRule | null => {
+  const mapRule = (original: FilterRule): FilterRule | null => {
+    let rule = original;
+    if (isCustomFilterField(rule.field) && map.field) {
+      const field = map.field(rule.field);
+      if (!field) return null;
+      rule = { ...rule, field };
+    }
     if (rule.value === undefined || rule.field === "text") return rule;
     // Relative tokens and plain dates aren't references.
-    if (FILTER_FIELDS[rule.field].kind === "date") return rule;
+    if (
+      !isCustomFilterField(rule.field) &&
+      FILTER_FIELDS[rule.field].kind === "date"
+    )
+      return rule;
+    // The value mapper reads the field as it came in (key or id).
+    const field = original.field;
     if (Array.isArray(rule.value)) {
       const values = rule.value.flatMap((v) => {
         if (v === ME || v === NONE_VALUE) return [v];
-        const out = map(rule.field, v);
+        const out = map(field, v);
         return out === null ? [] : [out];
       });
       return values.length ? { ...rule, value: values } : null;
     }
-    const out = map(rule.field, rule.value);
+    const out = map(field, rule.value);
     return out === null ? null : { ...rule, value: out };
   };
   const rules = filter.rules.flatMap((node) => {
@@ -275,8 +309,8 @@ export function mapFilterValues(
 /** Slugs per field that need looking up — everything but the tokens. */
 export function slugsByField(
   filter: IssueFilter,
-): Partial<Record<FilterField, string[]>> {
-  const out: Partial<Record<FilterField, Set<string>>> = {};
+): Partial<Record<RuleField, string[]>> {
+  const out: Partial<Record<RuleField, Set<string>>> = {};
   const visit = (rule: FilterRule) => {
     const values = Array.isArray(rule.value)
       ? rule.value
@@ -295,7 +329,7 @@ export function slugsByField(
   }
   return Object.fromEntries(
     Object.entries(out).map(([k, set]) => [k, [...(set as Set<string>)]]),
-  ) as Partial<Record<FilterField, string[]>>;
+  ) as Partial<Record<RuleField, string[]>>;
 }
 
 function encodeValue(rule: FilterRule): string {
@@ -305,8 +339,11 @@ function encodeValue(rule: FilterRule): string {
 }
 
 function keyOf(rule: FilterRule): string {
-  const suffix = SUFFIX[rule.is as Exclude<FilterOp, "contains">];
-  return suffix ? `${rule.field}.${suffix}` : rule.field;
+  const suffix = SUFFIX[rule.is];
+  const name = isCustomFilterField(rule.field)
+    ? `cf.${customFieldRef(rule.field)}`
+    : rule.field;
+  return suffix ? `${name}.${suffix}` : name;
 }
 
 /** The OR group as the chip's due-date buckets, if that's all it is. */
@@ -374,6 +411,43 @@ export interface SlugLookups {
   labels: { id: string; slug: string }[];
   /** Cross-project views only. */
   projects?: { id: string; slug: string }[];
+  /** Custom fields that may show up in a filter (BARY-196): the URL names
+   *  them by key, the tree by id. */
+  customFields?: { id: string; key: string; type: string }[];
+}
+
+/** A custom field's half of a mapper: its name in the other form, and how a
+ *  value of it changes — a person by handle ↔ id, a number from text. */
+function customMapper(
+  lookups: SlugLookups,
+  toId: boolean,
+): {
+  field: (field: CustomFilterField) => CustomFilterField | null;
+  value: (
+    field: CustomFilterField,
+    value: string | number,
+  ) => string | number | null;
+} {
+  const fields = lookups.customFields ?? [];
+  const byRef = new Map(fields.map((f) => [toId ? f.key : f.id, f]));
+  const user = new Map(
+    lookups.members.map((m) => (toId ? [m.handle, m.id] : [m.id, m.handle])),
+  );
+  return {
+    field: (field) => {
+      const found = byRef.get(customFieldRef(field));
+      return found ? customFilterField(toId ? found.id : found.key) : null;
+    },
+    value: (field, value) => {
+      const type = byRef.get(customFieldRef(field))?.type;
+      if (type === "USER") return user.get(String(value)) ?? null;
+      if (type === "NUMBER" && toId) {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : null;
+      }
+      return value;
+    },
+  };
 }
 
 /** Slug → id, from lookups. `projects: false` drops project rules (a
@@ -386,7 +460,9 @@ export function slugToId(
   const user = new Map(lookups.members.map((m) => [m.handle, m.id]));
   const label = new Map(lookups.labels.map((l) => [l.slug, l.id]));
   const project = new Map((lookups.projects ?? []).map((p) => [p.slug, p.id]));
-  return (field, value) => {
+  const custom = customMapper(lookups, true);
+  const mapper: ValueMapper = (field, value) => {
+    if (isCustomFilterField(field)) return custom.value(field, value);
     const slug = String(value);
     switch (field) {
       case "priority":
@@ -407,6 +483,8 @@ export function slugToId(
         return slug;
     }
   };
+  mapper.field = custom.field;
+  return mapper;
 }
 
 /** Id → slug, for writing a tree into the URL. */
@@ -415,7 +493,9 @@ export function idToSlug(lookups: SlugLookups): ValueMapper {
   const user = new Map(lookups.members.map((m) => [m.id, m.handle]));
   const label = new Map(lookups.labels.map((l) => [l.id, l.slug]));
   const project = new Map((lookups.projects ?? []).map((p) => [p.id, p.slug]));
-  return (field, value) => {
+  const custom = customMapper(lookups, false);
+  const mapper: ValueMapper = (field, value) => {
+    if (isCustomFilterField(field)) return custom.value(field, value);
     switch (field) {
       case "priority":
         return priority.get(Number(value)) ?? null;
@@ -430,4 +510,6 @@ export function idToSlug(lookups: SlugLookups): ValueMapper {
         return value;
     }
   };
+  mapper.field = custom.field;
+  return mapper;
 }
