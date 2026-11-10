@@ -80,6 +80,25 @@ describe("parseDirectory", () => {
     expect(parseDirectory({ plugins: [] }).issues[0].index).toBe(-1);
   });
 
+  it("takes categories, featured and a date for the store (BARY-200)", () => {
+    const good = entry(release());
+    const meta = {
+      categories: ["planning", "time"],
+      featured: true,
+      added: "2026-11-02",
+    };
+    expect(parseDirectory([{ ...good, ...meta }]).entries[0]).toMatchObject(
+      meta,
+    );
+    for (const bad of [
+      { categories: ["games"] },
+      { categories: ["planning", "time", "reports", "support"] },
+      { added: "02.11.2026" },
+      { featured: "yes" },
+    ])
+      expect(parseDirectory([{ ...good, ...bad }]).entries).toEqual([]);
+  });
+
   it("wants a repository address and a SHA-256 per version", () => {
     const good = entry(release());
     for (const repo of [

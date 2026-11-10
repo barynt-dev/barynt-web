@@ -2620,12 +2620,8 @@
       "sources": "Sources"
     },
     "homeActive": "{count, plural, =0 {not on anywhere yet} one {# of them on} other {# of them on}}",
-    "homeUpdatesSub": "newer versions available",
-    "homeListedSub": "not installed yet",
+    "homeListedSub": "not installed yet · {count, plural, =0 {no categories} one {# category} other {# categories}}",
     "homeSourcesOk": "all readable",
-    "spotlightUpdate": "Update to {version}",
-    "spotlightNew": "New in the directory",
-    "homeHint": "Pick a plugin on the left to see its screenshots, capabilities and versions.",
     "welcomeTitle": "Extend Barynt with what your team needs",
     "welcomeText": "Plugins come from Git repositories – GitHub, GitLab, Gitea, Bitbucket or your own server. You decide which sources are allowed; workspaces and projects then switch installed plugins on themselves.",
     "stepSourceTitle": "Connect a source",
@@ -2638,6 +2634,26 @@
     "checkDownloaded": "Downloaded",
     "checkHash": "Hash matches",
     "checkManifest": "Manifest valid",
-    "checkCompatible": "Fits this Barynt"
+    "checkCompatible": "Fits this Barynt",
+    "homeOnOf": "{on} of {all} on",
+    "homeUpToDate": "everything up to date",
+    "featuredTitle": "Featured",
+    "featuredSub": "Put forward by the directory",
+    "newestTitle": "New in the directory",
+    "categoryAll": "All",
+    "category": {
+      "development": "Development",
+      "planning": "Planning",
+      "communication": "Communication",
+      "reports": "Reports",
+      "time": "Time",
+      "automation": "Automation",
+      "support": "Support"
+    },
+    "cardState": {
+      "installed": "Installed",
+      "update": "Update",
+      "blocked": "Blocked"
+    }
   }
 }

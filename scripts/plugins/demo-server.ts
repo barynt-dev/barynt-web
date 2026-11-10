@@ -46,6 +46,9 @@ const DEMOS: Demo[] = [
       repo: `${ORIGIN}/barynt-demo/timeline`,
       levels: ["workspace", "project"],
       kind: "sandbox",
+      categories: ["planning"],
+      featured: true,
+      added: "2026-09-14",
     },
     manifest: {
       minBaryntVersion: "0.9.0",
@@ -75,6 +78,9 @@ const DEMOS: Demo[] = [
       repo: `${ORIGIN}/barynt-demo/notify`,
       levels: ["workspace"],
       kind: "service",
+      categories: ["communication"],
+      featured: true,
+      added: "2026-10-28",
     },
     manifest: {
       minBaryntVersion: "0.9.0",
@@ -100,6 +106,7 @@ const DEMOS: Demo[] = [
       repo: `${ORIGIN}/barynt-demo/tampered`,
       levels: ["project"],
       kind: "sandbox",
+      categories: ["development"],
     },
     manifest: {
       minBaryntVersion: "0.9.0",
@@ -108,6 +115,79 @@ const DEMOS: Demo[] = [
     },
     versions: { "1.0.0": { capabilities: ["ui:issue-badge"] } },
     tampered: true,
+  },
+  {
+    entry: {
+      id: "demo-time-tracking",
+      name: "Demo Time Tracking",
+      author: "Tempo Labs",
+      description: "Book time on an issue, see it per project.",
+      repo: `${ORIGIN}/barynt-demo/time-tracking`,
+      levels: ["project"],
+      kind: "declarative",
+      categories: ["time", "reports"],
+      featured: true,
+      added: "2026-11-02",
+    },
+    manifest: {
+      minBaryntVersion: "0.9.0",
+      license: "MIT",
+      contributes: {
+        fields: [{ key: "spent", name: "Time spent", type: "NUMBER" }],
+        issueBadges: [{ id: "spent", title: "Time spent" }],
+      },
+    },
+    versions: {
+      "1.2.0": { capabilities: ["fields:write", "ui:issue-badge"] },
+    },
+    previews: [
+      { title: "Time on the issue", screen: "list", accent: "#2fb3a0" },
+      { title: "Per project", screen: "board", accent: "#2fb3a0" },
+    ],
+  },
+  {
+    entry: {
+      id: "demo-recurring",
+      name: "Demo Recurring Issues",
+      author: "Barynt demo",
+      description:
+        "Creates issues on a schedule – weekly reviews, monthly reports.",
+      repo: `${ORIGIN}/barynt-demo/recurring`,
+      levels: ["project"],
+      kind: "declarative",
+      categories: ["automation"],
+      added: "2026-11-07",
+    },
+    manifest: {
+      minBaryntVersion: "0.9.0",
+      license: "MIT",
+      contributes: {
+        settings: [{ key: "cron", type: "text", label: "Schedule" }],
+      },
+    },
+    versions: { "0.3.0": { capabilities: [] } },
+  },
+  {
+    entry: {
+      id: "demo-error-inbox",
+      name: "Demo Error Inbox",
+      author: "Barynt demo",
+      description:
+        "New errors from your error tracker become issues, with the stack trace.",
+      repo: `${ORIGIN}/barynt-demo/error-inbox`,
+      levels: ["project"],
+      kind: "service",
+      categories: ["development", "support"],
+      added: "2026-10-03",
+    },
+    manifest: {
+      minBaryntVersion: "0.9.0",
+      license: "Apache-2.0",
+      network: ["errors.example.com"],
+    },
+    versions: {
+      "2.0.1": { capabilities: ["issues:write", "events:issue"] },
+    },
   },
 ];
 

@@ -307,6 +307,11 @@ export interface StoreListing {
   repoUrl: string | null;
   /** Per listed version, its release page on the Git host (if it has one). */
   releaseUrls: Record<string, string>;
+  /** What the directory says about it for the start page (BARY-200). */
+  categories: string[];
+  featured: boolean;
+  /** Since when it's listed (`YYYY-MM-DD`), if the directory says. */
+  added: string | null;
 }
 
 /** One plugin in the store: installed, listed, or both. */
@@ -375,6 +380,9 @@ export async function getPluginStoreView(): Promise<StoreView | null> {
         versions,
         repoUrl: repo ? repoUrl(repo) : null,
         releaseUrls,
+        categories: entry.categories ?? [],
+        featured: entry.featured ?? false,
+        added: entry.added ?? null,
       });
     }
   }

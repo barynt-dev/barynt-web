@@ -252,7 +252,9 @@ The store's view (`getPluginStoreView`) merges what's installed with every enabl
 source's directory, read through `readSourceRecent` (at most once per source every five
 minutes, per server process; `refreshPluginSource` and every source change forget it).
 What's open is in the address (`?plugin=`, `?tab=overview|capabilities|versions|places`,
-`?view=sources`); "where it's on" comes from `getPluginPlaces`, only for that tab. The install dialog shows
+`?view=sources`); "where it's on" comes from `getPluginPlaces`, only for that tab. The
+start page uses the directory's optional `categories`, `featured` and `added`
+([directory format](../plugins/directory.md)). The install dialog shows
 `previewRelease` (loaded and checked, not stored); installing loads the release once more,
 so the server never trusts what a dialog was shown.
 

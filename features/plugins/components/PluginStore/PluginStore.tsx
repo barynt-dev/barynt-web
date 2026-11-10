@@ -36,7 +36,8 @@ import {
 import { PluginDetail } from "./PluginDetail";
 import { PluginTile } from "./PluginTile";
 import styles from "./pluginStore.module.scss";
-import { SourcesPane, StoreHome, StoreWelcome } from "./StorePanels";
+import { StoreHome } from "./StoreHome";
+import { SourcesPane, StoreWelcome } from "./StorePanels";
 import type { StoreTab } from "./tabs";
 
 // The admin plugin store (BARY-200, design "Option B"): a list of every
@@ -350,7 +351,7 @@ export function PluginStore({
               actions={actions}
             />
           ) : (
-            <StoreHome view={view} actions={actions} />
+            <StoreHome view={view} onFilter={setFilter} />
           )}
         </main>
       </div>

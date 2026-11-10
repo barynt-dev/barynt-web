@@ -16,8 +16,8 @@ import { type StoreActions, storeHref } from "./PluginStore";
 import { PluginTile } from "./PluginTile";
 import styles from "./pluginStore.module.scss";
 
-// The store's other panes: the sources, the start page next to the list,
-// and the first visit, before there is any source.
+// The store's other panes: the sources and the first visit, before there is
+// any source. The start page is `StoreHome`.
 
 /** The Git repositories the store reads, with how each one fares. */
 export function SourcesPane({
@@ -143,97 +143,6 @@ export function SourcesPane({
         );
       })}
       <p className={styles.muted}>{text.t("sourcesNote")}</p>
-    </section>
-  );
-}
-
-/** Next to the list when nothing is open: the numbers, and where to look. */
-export function StoreHome({
-  view,
-  actions,
-}: {
-  view: StoreView;
-  actions: StoreActions;
-}) {
-  const text = usePluginText();
-  const installed = view.entries.filter((e) => e.installed);
-  const tiles = [
-    {
-      id: "installed",
-      icon: "lucide:package",
-      value: installed.length,
-      sub: text.t("homeActive", {
-        count: installed.filter((e) => (e.installed?.activations ?? 0) > 0)
-          .length,
-      }),
-    },
-    {
-      id: "updates",
-      icon: "lucide:sparkles",
-      value: view.entries.filter((e) => e.update).length,
-      sub: text.t("homeUpdatesSub"),
-    },
-    {
-      id: "listed",
-      icon: "lucide:store",
-      value: view.entries.filter((e) => !e.installed).length,
-      sub: text.t("homeListedSub"),
-    },
-    {
-      id: "sources",
-      icon: "lucide:database",
-      value: view.sources.length,
-      sub:
-        view.unreadable.length > 0
-          ? text.t("sourcesUnreadable", { count: view.unreadable.length })
-          : text.t("homeSourcesOk"),
-    },
-  ];
-  const next =
-    view.entries.find((e) => e.update) ??
-    view.entries.find((e) => !e.installed);
-
-  return (
-    <section className={styles.home}>
-      <div className={styles.kpis}>
-        {tiles.map((tile) => (
-          <div key={tile.id} className={styles.kpi} data-kpi={tile.id}>
-            <span className={styles.kpiLabel}>
-              <Icon icon={tile.icon} width={15} aria-hidden />
-              {text.t(`homeKpi.${tile.id}` as "homeKpi.installed")}
-            </span>
-            <span className={styles.kpiValue}>{tile.value}</span>
-            <span className={styles.kpiSub}>{tile.sub}</span>
-          </div>
-        ))}
-      </div>
-      {next && (
-        <Link
-          href={storeHref({ plugin: next.id })}
-          className={styles.spotlight}
-        >
-          <PluginTile id={next.id} name={next.name} size="lg" />
-          <span className={styles.itemText}>
-            <span className={styles.spotlightKicker}>
-              {next.update
-                ? text.t("spotlightUpdate", { version: next.update })
-                : text.t("spotlightNew")}
-            </span>
-            <span className={styles.itemName}>{next.name}</span>
-            <span className={styles.itemSub}>{next.description}</span>
-          </span>
-          <Icon icon="lucide:chevron-right" width={18} aria-hidden />
-        </Link>
-      )}
-      <p className={styles.homeHint}>
-        <Icon icon="lucide:mouse-pointer-click" width={16} aria-hidden />
-        {text.t("homeHint")}
-      </p>
-      {view.sources.length === 0 && (
-        <Button variant="primary" onClick={actions.addSource}>
-          {text.t("addSource")}
-        </Button>
-      )}
     </section>
   );
 }

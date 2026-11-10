@@ -20,6 +20,8 @@ Plugins erweitern Barynt: eine Projektansicht, ein Dashboard-Widget, ein Abgleic
 
 ![Der Plugin-Store: links die Liste, rechts ein Plugin mit seinen Screenshots](../../assets/de/plugins-store.webp)
 
+Ist kein Plugin gewählt, zeigt die rechte Seite die Startseite des Stores: wie viele Plugins installiert und eingeschaltet sind, wartende Updates, was das Verzeichnis anbietet und ob jede Quelle lesbar ist. Darunter stehen die Plugins, die das Verzeichnis **vorstellt**, was **neu im Verzeichnis** ist und **alle Plugins** nach Kategorie.
+
 1. **Quelle hinzufügen:** die Git-Adresse eines Repositorys mit einer `plugins.json` im Hauptverzeichnis, auf GitHub, GitLab, Gitea/Forgejo oder Bitbucket, auch auf selbst gehosteten Servern. Barynt erkennt den Anbieter an der Adresse; wenn nicht, wähl ihn aus. Optional gibst du einen Branch oder Tag an. Bei einem einfachen Webserver trägst du die Adresse der `plugins.json` selbst ein und wählst **Webserver (HTTPS)**. **Verbindung prüfen** liest das Verzeichnis, bevor du speicherst.
 
    Für ein privates Repository gib Zugangsdaten an (ein Access Token, oder `Benutzer:Passwort` für Bitbucket-App-Passwörter und Webserver). Sie werden verschlüsselt gespeichert und nur an den Server dieser Quelle geschickt, nie an Plugins, die woanders liegen.

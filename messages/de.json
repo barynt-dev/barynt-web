@@ -2620,12 +2620,8 @@
       "sources": "Quellen"
     },
     "homeActive": "{count, plural, =0 {noch nirgends an} one {# davon eingeschaltet} other {# davon eingeschaltet}}",
-    "homeUpdatesSub": "neuere Versionen verfügbar",
-    "homeListedSub": "noch nicht installiert",
+    "homeListedSub": "noch nicht installiert · {count, plural, =0 {ohne Kategorien} one {# Kategorie} other {# Kategorien}}",
     "homeSourcesOk": "alle lesbar",
-    "spotlightUpdate": "Update auf {version}",
-    "spotlightNew": "Neu im Verzeichnis",
-    "homeHint": "Wähl links ein Plugin, um Vorschauen, Fähigkeiten und Versionen zu sehen.",
     "welcomeTitle": "Erweitere Barynt um das, was dein Team braucht",
     "welcomeText": "Plugins kommen aus Git-Repositories – GitHub, GitLab, Gitea, Bitbucket oder dein eigener Server. Du legst fest, welche Quellen erlaubt sind; Workspaces und Projekte schalten installierte Plugins dann selbst ein.",
     "stepSourceTitle": "Quelle verbinden",
@@ -2638,6 +2634,26 @@
     "checkDownloaded": "Heruntergeladen",
     "checkHash": "Hash passt",
     "checkManifest": "Manifest gültig",
-    "checkCompatible": "Passt zu Barynt"
+    "checkCompatible": "Passt zu Barynt",
+    "homeOnOf": "{on} von {all} an",
+    "homeUpToDate": "alles auf dem neuesten Stand",
+    "featuredTitle": "Vorgestellt",
+    "featuredSub": "Vom Verzeichnis hervorgehoben",
+    "newestTitle": "Neu im Verzeichnis",
+    "categoryAll": "Alle",
+    "category": {
+      "development": "Entwicklung",
+      "planning": "Planung",
+      "communication": "Kommunikation",
+      "reports": "Berichte",
+      "time": "Zeit",
+      "automation": "Automatisierung",
+      "support": "Support"
+    },
+    "cardState": {
+      "installed": "Installiert",
+      "update": "Update",
+      "blocked": "Gesperrt"
+    }
   }
 }

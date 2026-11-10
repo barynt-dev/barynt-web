@@ -74,6 +74,9 @@ const listing = (versions: string[]) => ({
   versions,
   repoUrl: "https://gitlab.acme.dev/team/x",
   releaseUrls: {},
+  categories: ["planning"],
+  featured: false,
+  added: null,
 });
 
 const timeline: StoreEntry = {
@@ -177,6 +180,39 @@ describe("PluginStore", () => {
     expect(html).toContain("provider.gitlab");
     expect(html).toContain("fetchNow");
     expect(html).toContain('data-open="sources"');
+  });
+
+  it("starts with the numbers, featured, newest and every plugin by category", () => {
+    const featured = {
+      ...notify,
+      listing: {
+        ...listing(["2.0.0"]),
+        categories: ["communication"],
+        featured: true,
+        added: "2026-11-01",
+      },
+    };
+    const html = render({ view: { ...view, entries: [featured, timeline] } });
+    for (const key of [
+      "homeKpi.installed",
+      "homeKpi.updates",
+      "featuredTitle",
+      "newestTitle",
+      "category.communication",
+      "category.planning",
+    ])
+      expect(html).toContain(key);
+    // Notify is in the list on the left too — the featured card comes after
+    // the section's title.
+    const featuredAt = html.indexOf("featuredTitle");
+    expect(html.indexOf("Notify", featuredAt)).toBeGreaterThan(featuredAt);
+    expect(html).toContain('id="all-plugins"');
+  });
+
+  it("leaves out featured and newest when the directory names none", () => {
+    const html = render();
+    expect(html).not.toContain("featuredTitle");
+    expect(html).not.toContain("newestTitle");
   });
 
   it("welcomes a first visit", () => {
