@@ -217,6 +217,13 @@ a workspace or project (`ScopePlugins`, `plugin.enable`); each loads its view th
 `previewRelease` (loaded and checked, not stored); installing loads the release once more,
 so the server never trusts what a dialog was shown.
 
+**Trying it locally:** there is no public Barynt plugin directory yet. `bun run plugins:demo`
+serves one on `http://localhost:4555` with three demo plugins (one whose update asks for a
+new capability, one service, one whose files don't match its hash). Set
+`PLUGIN_DEV_BASE="http://localhost:4555"` in `.env`, restart the app and add
+`http://localhost:4555/plugins.json` as a source under **Admin → Plugins**. The variable is
+ignored in production and for anything but localhost (`lib/plugins/dev.ts`).
+
 ## Smaller pieces
 
 | Piece | File | What it does |
