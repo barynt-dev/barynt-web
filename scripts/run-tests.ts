@@ -72,6 +72,9 @@ const SEGMENTS: string[][] = [
   // Release automation (scripts/release), the published docs (docs/guide)
   // and the plugin manifest/model: pure functions and file checks, no mocks.
   ["tests/unit/release", "tests/unit/docs", "tests/unit/plugins"],
+  // Mocks `node:dns/promises` and the global `fetch` to watch which
+  // headers `fetchPublic` sends where — a process of its own.
+  ["tests/unit/net"],
   ["tests/unit/account"],
   // Mocks `@/lib/db`, `@/lib/permissions` and `@/lib/audit` — own process,
   // like the other action tests that replace `@/lib/permissions`.
