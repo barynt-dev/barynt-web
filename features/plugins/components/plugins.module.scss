@@ -262,6 +262,8 @@
 /* Screenshots: a row that scrolls sideways and snaps, one and a bit per
    row on a phone so it's clear there is more. */
 .previews {
+  /* In the scrolling dialog body: keep its height, don't get squeezed. */
+  flex: none;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(14rem, 1fr);
