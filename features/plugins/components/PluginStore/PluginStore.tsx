@@ -25,6 +25,7 @@ import type {
 } from "@/features/plugins/queries";
 import { Link } from "@/i18n/navigation";
 import { useModal } from "@/lib/context";
+import { adminPath } from "@/lib/nav";
 import { PHONE_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
 import { ErrorLine, usePluginText } from "../shared";
 import {
@@ -243,18 +244,33 @@ export function PluginStore({
         divider={false}
         title={text.t("adminTitle")}
         leading={
-          open !== "home" && (
-            // A phone shows one pane at a time: back to the list, as an
-            // arrow in the header like everywhere on a phone.
+          // Up a level, as an arrow like everywhere on a phone or tablet,
+          // whose admin menu sits behind the hamburger: on a phone from a
+          // plugin or the sources back to the list, otherwise to the admin
+          // overview. A desktop has the sidebar and needs neither.
+          <>
+            {open !== "home" && (
+              <Link
+                href={storeHref({})}
+                className={styles.headerBack}
+                data-to="list"
+                aria-label={text.t("allPlugins")}
+                title={text.t("allPlugins")}
+              >
+                <Icon icon="lucide:chevron-left" width={22} aria-hidden />
+              </Link>
+            )}
             <Link
-              href={storeHref({})}
+              href={adminPath("")}
               className={styles.headerBack}
-              aria-label={text.t("allPlugins")}
-              title={text.t("allPlugins")}
+              data-to="admin"
+              data-also-list={open !== "home" || undefined}
+              aria-label={text.t("backToAdmin")}
+              title={text.t("backToAdmin")}
             >
               <Icon icon="lucide:chevron-left" width={22} aria-hidden />
             </Link>
-          )
+          </>
         }
         actions={
           <Button

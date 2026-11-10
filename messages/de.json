@@ -2654,6 +2654,7 @@
       "installed": "Installiert",
       "update": "Update",
       "blocked": "Gesperrt"
-    }
+    },
+    "backToAdmin": "Zur Verwaltung"
   }
 }

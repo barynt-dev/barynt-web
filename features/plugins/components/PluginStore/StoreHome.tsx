@@ -85,7 +85,7 @@ export function StoreHome({
           type="button"
           className={styles.kpi}
           data-accent="amber"
-          data-bg={updates.length > 0 ? "gradient" : undefined}
+          data-bg={updates.length > 0 ? "tint" : undefined}
           onClick={() => onFilter("updates")}
         >
           <span className={styles.kpiHead}>
@@ -153,7 +153,11 @@ export function StoreHome({
                 </span>
                 <span className={styles.featureText}>{entry.description}</span>
                 <span className={styles.cardFoot}>
-                  <PluginBadges kind={entry.kind} levels={entry.levels} />
+                  <PluginBadges
+                    kind={entry.kind}
+                    levels={entry.levels}
+                    size="md"
+                  />
                   <CardState entry={entry} />
                 </span>
               </Link>
@@ -228,9 +232,7 @@ export function StoreHome({
               </span>
               <span className={styles.gridText}>{entry.description}</span>
               <span className={styles.cardFoot}>
-                <Badge size="sm" mono={false}>
-                  {text.kind(entry.kind)}
-                </Badge>
+                <Badge mono={false}>{text.kind(entry.kind)}</Badge>
                 <CardState entry={entry} />
               </span>
             </Link>

@@ -288,8 +288,9 @@
   min-width: 0;
 }
 
-/* Back to the list, left of the page title — only a phone needs it, it
-   has no list beside the plugin. */
+/* Up a level, left of the page title (see `PluginStore`): to the list on a
+   phone that shows a plugin, else to the admin overview on a tablet or
+   phone. Exactly one of the two shows. */
 .headerBack {
   display: none;
   align-items: center;
@@ -304,8 +305,22 @@
     background: var(--surface-container-high);
   }
 
-  @include bp.phone {
-    display: inline-flex;
+  &[data-to="admin"] {
+    @include bp.tablet-down {
+      display: inline-flex;
+    }
+  }
+
+  &[data-to="list"] {
+    @include bp.phone {
+      display: inline-flex;
+    }
+  }
+
+  &[data-to="admin"][data-also-list] {
+    @include bp.phone {
+      display: none;
+    }
   }
 }
 
@@ -1105,15 +1120,10 @@
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
     0 0.5rem 1.5rem rgb(0 0 0 / 0.14);
-  transition:
-    transform 160ms ease,
-    box-shadow 160ms ease;
+  transition: background 120ms ease;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, white 6%, transparent),
-      0 0.75rem 2rem rgb(0 0 0 / 0.22);
+    background: var(--surface-container);
   }
 
   &:focus-visible {
@@ -1151,14 +1161,6 @@
       color-mix(in srgb, var(--accent) 34%, var(--surface-container-low)),
       var(--surface-container-low) 75%
     );
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-
-    &:hover {
-      transform: none;
-    }
   }
 }
 
