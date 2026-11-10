@@ -95,6 +95,22 @@ export const getCustomFieldsView = cache(
  * and those of the projects they can see. A field of a project the viewer
  * has no access to would otherwise reveal its name.
  */
+/**
+ * Every custom field of the workspace by id, key and type — archived ones
+ * included. What a filter in an address needs to go from key to id and back
+ * (`SlugLookups`, BARY-196), so a saved view keeps its custom-field rules.
+ */
+export const getWorkspaceFieldKeys = cache(
+  async (): Promise<{ id: string; key: string; type: string }[]> => {
+    const workspaceId = getCurrentWorkspaceId();
+    if (!workspaceId) return [];
+    return db.customField.findMany({
+      where: { workspaceId },
+      select: { id: true, key: true, type: true },
+    });
+  },
+);
+
 export const getWorkspaceCustomFields = cache(
   async (): Promise<FieldDefinition[]> => {
     const workspaceId = getCurrentWorkspaceId();

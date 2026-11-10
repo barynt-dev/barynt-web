@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getWorkspaceFieldKeys } from "@/features/custom-fields/queries";
 import { getDashboard } from "@/features/dashboard/queries";
 import type { DashboardTarget } from "@/features/dashboard/types";
 import type { SavedView } from "@/features/views/schema";
@@ -52,6 +53,7 @@ export async function DashboardLoader({
     labels,
     projects,
     canShare,
+    fieldKeys,
   ] = await Promise.all([
     getDashboard(target, params),
     getWorkspaceStatuses(),
@@ -66,6 +68,7 @@ export async function DashboardLoader({
         ? { projectId: place.projectId }
         : { workspaceId: workspace },
     ),
+    getWorkspaceFieldKeys(),
   ]);
   if (!view) notFound();
 
@@ -79,6 +82,7 @@ export async function DashboardLoader({
           ),
           labels,
           projects,
+          customFields: fieldKeys,
         }),
       )
     : {};

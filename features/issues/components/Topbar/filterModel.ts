@@ -7,10 +7,12 @@
 // and shows as a rule chip of its own (`extraNodes`).
 
 import {
+  type CustomFilterField,
   type FilterGroup,
   type FilterNode,
   type FilterRule,
   type IssueFilter,
+  isCustomFilterField,
   isGroup,
   rulesIn,
 } from "@/features/issues/filter";
@@ -28,10 +30,15 @@ export const CHIP_FIELDS = [
 ] as const;
 export type ChipField = (typeof CHIP_FIELDS)[number];
 
+/** A chip: a built-in field's, or a custom field's with a list of answers
+ *  (BARY-196). */
+export type ChipKey = ChipField | CustomFilterField;
+
 type Node = FilterNode;
 
-const isChipField = (field: string): field is ChipField =>
-  (CHIP_FIELDS as readonly string[]).includes(field);
+const isChipField = (field: string): field is ChipKey =>
+  (CHIP_FIELDS as readonly string[]).includes(field) ||
+  isCustomFilterField(field);
 
 /** A top-level "any/none of a list" rule — what a chip shows. */
 function isChipRule(node: Node, field?: string): boolean {
@@ -57,7 +64,7 @@ function isBucketNode(node: Node): boolean {
 /** What a field's chip shows. */
 export function chipState(
   filter: IssueFilter,
-  field: ChipField,
+  field: ChipKey,
 ): { values: (string | number)[]; negated: boolean } {
   const rule = filter.rules.find((n) => isChipRule(n, field)) as
     | FilterRule
@@ -71,7 +78,7 @@ export function chipState(
 /** The tree with a field's chip set to `values` — removed when empty. */
 export function withChip(
   filter: IssueFilter,
-  field: ChipField,
+  field: ChipKey,
   values: (string | number)[],
   negated: boolean,
 ): IssueFilter {

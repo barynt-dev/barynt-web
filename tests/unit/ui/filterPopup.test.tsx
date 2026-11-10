@@ -30,6 +30,7 @@ const empty: FilterState = {
   project: [],
   storyPoints: [],
   dueDate: [],
+  custom: {},
 };
 
 function render(filterCount: number) {
@@ -86,7 +87,13 @@ const options = [
 ];
 
 function facet(selected: string[], opts = options): Facet {
-  return { key: "status", title: "Status", options: opts, selected };
+  return {
+    key: "status",
+    title: "Status",
+    options: opts,
+    selected,
+    negatable: true,
+  };
 }
 
 describe("FilterRow", () => {

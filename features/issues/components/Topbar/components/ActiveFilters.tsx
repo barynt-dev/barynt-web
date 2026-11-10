@@ -10,10 +10,9 @@ import {
   isGroup,
   rulesIn,
 } from "@/features/issues/filter";
-import { FILTER_ACCENT } from "../filterAccent";
+import { filterAccent } from "../filterAccent";
 import { type FilterLabelLookups, useFilterLabels } from "../filterLabels";
 import styles from "../topbar.module.scss";
-import type { FilterKey } from "../useTopbar";
 
 /** One rule in words — "is not" said by crossing it out. */
 function RuleText({
@@ -97,9 +96,9 @@ function GroupParts({
         className={styles.condChip}
         // The same outline as the field's own chip above.
         style={
-          node.field in FILTER_ACCENT
+          filterAccent(node.field)
             ? ({
-                "--filter-accent": FILTER_ACCENT[node.field as FilterKey],
+                "--filter-accent": filterAccent(node.field),
               } as React.CSSProperties)
             : undefined
         }

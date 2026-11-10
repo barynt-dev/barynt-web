@@ -81,7 +81,7 @@ Which comparisons a field takes is listed per field. Values are ids unless noted
 | --- | --- | --- |
 | `any` | is one of | `["a", "b"]` |
 | `none` | is none of (issues without a value still match) | `["a", "b"]` |
-| `all` | has all of (labels only) | `["a", "b"]` |
+| `all` | has all of (labels and multi-choice custom fields) | `["a", "b"]` |
 | `empty` | is not set | — |
 | `notEmpty` | is set | — |
 | `gte` | is at least | `3` |
@@ -103,8 +103,21 @@ Which comparisons a field takes is listed per field. Values are ids unless noted
 | `"next_7_days"` | For within: today and the 6 days after. |
 | `"last_7_days"` | For within: today and the 6 days before. |
 | `"last_30_days"` | For within: today and the 29 days before. |
+| `"cf:<fieldId>"` | As a field: a custom field, by its id (list_custom_fields, GET …/custom-fields). Choice and person fields take any/none/empty/notEmpty with choice or user ids, "@me" and "_none" — a multi-choice also all; a checkbox any with ["yes"] or ["no"]; a number gte/lte; a date within/before/after; text and links contains; all of them empty/notEmpty. |
 
 ## Recipes
+
+### Custom fields: customer is Acme, deal at least 1000 (ids from list_custom_fields)
+
+```json
+{
+  "op": "and",
+  "rules": [
+    { "field": "cf:f_customer", "is": "any", "value": ["o_acme"] },
+    { "field": "cf:f_deal", "is": "gte", "value": 1000 }
+  ]
+}
+```
 
 ### My open issues
 

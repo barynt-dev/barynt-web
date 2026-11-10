@@ -164,6 +164,7 @@ export function TopbarClient({
     priorities,
     members,
     labels,
+    customFields: displayFields,
     viewMode: activeView !== null,
   });
 
@@ -376,6 +377,7 @@ export function TopbarClient({
               labels={labels}
               projects={projects}
               issueTypes={issueTypes}
+              customFields={displayFields}
               onToggle={toggleFilter}
               onClearAll={clearAll}
               tree={tree}
@@ -395,6 +397,7 @@ export function TopbarClient({
               members,
               labels,
               projects,
+              customFields: displayFields,
             }}
             onRemove={removeExtra}
           />

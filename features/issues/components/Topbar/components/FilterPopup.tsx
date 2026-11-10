@@ -18,15 +18,19 @@ import {
   TypeIcon,
 } from "@/features/issues/components/IssueIcons/IssueIcons";
 import {
+  customFilterField,
   type IssueFilter,
+  isCustomFilterField,
   isGroup,
   ME,
   NONE_VALUE,
 } from "@/features/issues/filter";
+import { hasChoiceList } from "@/features/issues/filter-custom";
 import { STORY_POINTS_OPTIONS } from "@/features/issues/story-points";
 import { visibleDetailFields } from "@/features/projects/detail-fields";
 import type { Translator } from "@/i18n/types";
 import { useModal } from "@/lib/context";
+import type { FieldDefinition } from "@/lib/custom-fields";
 import { fullName } from "@/lib/utils/string";
 import { PHONE_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
 import { useSwipeToClose } from "@/lib/utils/useSwipeToClose";
@@ -38,9 +42,11 @@ import type {
   Status,
   User,
 } from "@/types";
-import { FILTER_ACCENT } from "../filterAccent";
-import { type ChipField, extraNodes, onlySearch } from "../filterModel";
+import { customFilterAnswers } from "../customFilterOptions";
+import { filterAccent } from "../filterAccent";
+import { type ChipKey, extraNodes, onlySearch } from "../filterModel";
 import {
+  chipValues,
   type FilterKey,
   type FilterState,
   filterStateOf,
@@ -69,6 +75,9 @@ interface FilterPopupProps {
   projects: Project[];
   /** Issue types, for the type filter (BARY-166). */
   issueTypes: IssueType[];
+  /** The custom fields that apply here — a row each for those with a list
+   *  of answers, all of them in the editor (BARY-196). */
+  customFields?: FieldDefinition[];
   onToggle: (key: FilterKey, value: string | number) => void;
   onClearAll: () => void;
   /** The whole filter, for the advanced editor behind the last row
@@ -76,8 +85,8 @@ interface FilterPopupProps {
   tree: IssueFilter;
   onFilterChange: (next: IssueFilter) => void;
   /** "Is / is not" per filter, above its values (BARY-166). */
-  negated: Record<ChipField, boolean>;
-  onNegate: (key: ChipField, negated: boolean) => void;
+  negated: Partial<Record<ChipKey, boolean>>;
+  onNegate: (key: ChipKey, negated: boolean) => void;
 }
 
 /** What the panel shows: the rows, one filter's values, or the editor. */
@@ -95,6 +104,17 @@ export interface Facet {
   title: string;
   options: FilterOption[];
   selected: (string | number)[];
+  /** Offers "is not" — not for the due-date buckets or a yes/no. */
+  negatable: boolean;
+}
+
+/** All the values the chips hold, counted. */
+function countValues(filters: FilterState): number {
+  const { custom, ...builtin } = filters;
+  return [...Object.values(builtin), ...Object.values(custom)].reduce(
+    (sum, values) => sum + (values?.length ?? 0),
+    0,
+  );
 }
 
 /**
@@ -201,16 +221,13 @@ function FilterSheet({
   const swipe = useSwipeToClose(close, bodyRef);
 
   const props = latest.current;
-  const filterCount = Object.values(filters).reduce(
-    (sum, values) => sum + values.length,
-    0,
-  );
+  const filterCount = countValues(filters);
   const panelProps = {
     ...props,
     filters,
     filterCount,
     negated,
-    onNegate: (key: ChipField, value: boolean) => {
+    onNegate: (key: ChipKey, value: boolean) => {
       setNegated((current) => ({ ...current, [key]: value }));
       latest.current.onNegate(key, value);
     },
@@ -233,11 +250,13 @@ function FilterSheet({
     editorKey,
     onToggle: (key: FilterKey, value: string | number) => {
       setFilters((current) => {
-        const list = current[key] as (string | number)[];
+        const list = chipValues(current, key);
         const next = list.includes(value)
           ? list.filter((v) => v !== value)
           : [...list, value];
-        return { ...current, [key]: next };
+        return isCustomFilterField(key)
+          ? { ...current, custom: { ...current.custom, [key]: next } }
+          : { ...current, [key]: next };
       });
       latest.current.onToggle(key, value);
     },
@@ -251,6 +270,7 @@ function FilterSheet({
         project: [],
         storyPoints: [],
         dueDate: [],
+        custom: {},
       });
       setEdited(null);
       latest.current.onClearAll();
@@ -333,6 +353,7 @@ export function buildFacets(
     labels,
     projects,
     issueTypes,
+    customFields = [],
   }: Pick<
     FilterPopupProps,
     | "filters"
@@ -344,6 +365,7 @@ export function buildFacets(
     | "labels"
     | "projects"
     | "issueTypes"
+    | "customFields"
   >,
   t: Translator,
 ): Facet[] {
@@ -353,6 +375,7 @@ export function buildFacets(
       key: "status",
       title: t("fields.status"),
       selected: filters.status,
+      negatable: true,
       options: statuses.map((status) => ({
         value: status.id,
         label: status.name,
@@ -365,6 +388,7 @@ export function buildFacets(
       key: "type",
       title: t("fields.type"),
       selected: filters.type,
+      negatable: true,
       options: issueTypes.map((type) => ({
         value: type.id,
         label: type.name,
@@ -377,6 +401,7 @@ export function buildFacets(
       key: "priority",
       title: t("fields.priority"),
       selected: filters.priority,
+      negatable: true,
       options: priorities.map((priority) => ({
         value: priority.id,
         label: priority.name,
@@ -390,6 +415,7 @@ export function buildFacets(
       key: "assignee",
       title: t("fields.assignee"),
       selected: filters.assignee,
+      negatable: true,
       options: [
         // Whoever looks, and nobody (BARY-166).
         {
@@ -414,6 +440,7 @@ export function buildFacets(
       key: "project",
       title: t("fields.project"),
       selected: filters.project,
+      negatable: true,
       options: projects.map((project) => ({
         value: project.id,
         label: project.name,
@@ -426,6 +453,7 @@ export function buildFacets(
       key: "label",
       title: t("fields.label"),
       selected: filters.label,
+      negatable: true,
       options: [
         {
           value: NONE_VALUE,
@@ -445,6 +473,7 @@ export function buildFacets(
       key: "storyPoints",
       title: t("fields.storyPoints"),
       selected: filters.storyPoints,
+      negatable: true,
       options: [
         ...STORY_POINTS_OPTIONS.map((points) => ({
           value: points,
@@ -465,10 +494,23 @@ export function buildFacets(
       key: "dueDate",
       title: t("fields.dueDate"),
       selected: filters.dueDate,
+      negatable: false,
       options: DUE_DATE_BUCKETS.map((bucket) => ({
         value: bucket,
         label: dueDateLabel[bucket],
       })),
+    });
+  }
+  // The custom fields with a list of answers — a choice, a person, a yes/no
+  // (BARY-196). Everything else is the editor's.
+  for (const field of customFields.filter(hasChoiceList)) {
+    const key = customFilterField(field.id);
+    facets.push({
+      key,
+      title: field.name,
+      selected: chipValues(filters, key),
+      negatable: field.type !== "CHECKBOX",
+      options: customFilterAnswers(field, members, t),
     });
   }
   return facets;
@@ -530,10 +572,10 @@ function FilterPanel(props: FilterPanelProps) {
             {open.title}
           </button>
         )}
-        {open.key !== "dueDate" && (
+        {open.negatable && (
           <NegateToggle
-            negated={props.negated[open.key]}
-            onChange={(value) => props.onNegate(open.key as ChipField, value)}
+            negated={props.negated[open.key as ChipKey] ?? false}
+            onChange={(value) => props.onNegate(open.key as ChipKey, value)}
           />
         )}
         <FilterOptions
@@ -551,7 +593,7 @@ function FilterPanel(props: FilterPanelProps) {
         <FilterRow
           key={f.key}
           facet={f}
-          negated={f.key !== "dueDate" && props.negated[f.key]}
+          negated={f.negatable && (props.negated[f.key as ChipKey] ?? false)}
           onOpen={() => onFacetChange(f.key)}
           onToggle={(value) => onToggle(f.key, value)}
         />
@@ -665,7 +707,7 @@ export function FilterRow({
           data-not={negated || undefined}
           style={
             {
-              "--filter-accent": FILTER_ACCENT[facet.key],
+              "--filter-accent": filterAccent(facet.key),
             } as React.CSSProperties
           }
         >
