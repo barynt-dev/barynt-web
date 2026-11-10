@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
+import { PluginStore } from "@/features/plugins/components/PluginStore/PluginStore";
 import {
   STORE_TABS,
   type StoreTab,
-} from "@/features/plugins/components/PluginStore/PluginDetail";
-import { PluginStore } from "@/features/plugins/components/PluginStore/PluginStore";
+} from "@/features/plugins/components/PluginStore/tabs";
 import {
   getPluginPlaces,
   getPluginStoreView,

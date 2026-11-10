@@ -17,15 +17,8 @@ import { type StoreActions, storeHref } from "./PluginStore";
 import { PluginTile } from "./PluginTile";
 import { PreviewGallery } from "./PreviewGallery";
 import styles from "./pluginStore.module.scss";
+import { STORE_TABS, type StoreTab } from "./tabs";
 import { useRelease } from "./useRelease";
-
-export const STORE_TABS = [
-  "overview",
-  "capabilities",
-  "versions",
-  "places",
-] as const;
-export type StoreTab = (typeof STORE_TABS)[number];
 
 /** A plugin's page in the store: header with what can be done, then tabs. */
 export function PluginDetail({

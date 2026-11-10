@@ -33,10 +33,11 @@ import {
   type InstallTarget,
   UninstallDialog,
 } from "./dialogs";
-import { PluginDetail, type StoreTab } from "./PluginDetail";
+import { PluginDetail } from "./PluginDetail";
 import { PluginTile } from "./PluginTile";
 import styles from "./pluginStore.module.scss";
 import { SourcesPane, StoreHome, StoreWelcome } from "./StorePanels";
+import type { StoreTab } from "./tabs";
 
 // The admin plugin store (BARY-200, design "Option B"): a list of every
 // plugin — what needs attention, what's installed, what the sources offer —

@@ -16,7 +16,9 @@ Plugins add to Barynt: a project view, a dashboard widget, a sync with another t
 
 ## Installing (platform administrators)
 
-Open **Admin → Plugins**.
+Open **Admin → Plugins**. On the left is every plugin: what **needs attention** (an update, a blocked plugin), what's **installed** and what your sources offer **in the directory**, with a search and filters. On the right is the plugin you picked.
+
+![The plugin store: the list on the left, a plugin with its screenshots on the right](../../assets/en/plugins-store.webp)
 
 1. **Add source:** the Git address of a repository with a `plugins.json` in its root, on GitHub, GitLab, Gitea/Forgejo or Bitbucket, including self-hosted servers. Barynt recognizes the provider from the address; if it can't, pick it. Optionally name a branch or tag. On a plain web server, enter the address of the `plugins.json` itself and pick **Web server (HTTPS)**. **Check connection** reads the directory before you save.
 
@@ -24,16 +26,27 @@ Open **Admin → Plugins**.
 
    > [!NOTE]
    > A Git server on your internal network is blocked unless your operator lists it in `PLUGIN_INTERNAL_HOSTS`.
-2. Click **Browse** next to the source. You see its plugins, who made them and in which versions.
-3. Click **Install** on a plugin. Barynt loads that version and checks it: the files must match what the directory lists, and the version must run on your Barynt. If anything doesn't match, it is not installed.
+2. Pick a plugin from **In the directory**. Its page shows the screenshots, what it asks for and where the code comes from. Choose a version if you don't want the newest.
+3. Click **Install**. Barynt loads that version and checks it: the files must match what the directory lists, and the version must run on your Barynt. If anything doesn't match, it is not installed.
 4. The dialog shows the plugin's screenshots, if it has any, then the author, where the code comes from, its kind, where it can be used, what it asks for and which other servers it may call. Tick the box and install.
 
 | Action | What it does |
 | --- | --- |
-| **Update** | In **Browse**, a newer version shows **Update to …**. Workspaces and projects keep using it. If the update asks for more than before, they have to confirm again; until then it only does what was confirmed. |
+| **Update** | A plugin with a newer version is under **Needs attention** and shows **Update to …**. Workspaces and projects keep using it. If the update asks for more than before, they have to confirm again; until then it only does what was confirmed. |
 | **Back to v…** | Returns to the version before. The newer one stays installed. |
 | **Block** | Stops the plugin everywhere at once. Activations and data stay and apply again when you unblock it. |
 | **Uninstall** | Removes every version. You choose whether its data in workspaces and projects is deleted too, or kept switched off. |
+
+A plugin's page has four tabs:
+
+- **Overview:** screenshots, description, what it asks for and where it comes from.
+- **Capabilities:** everything it may do, by data, interface and events, and which other servers it calls. With an update waiting, switch between **Now** and **After the update** to see what's added (+) and what goes (−) before you update.
+- **Versions:** the available, active and earlier versions, with **Update**, **Back to v…** and older releases to install.
+- **Where it's on:** every workspace that has it on or released it for projects, and its projects.
+
+![Comparing capabilities before an update](../../assets/en/plugins-capabilities.webp)
+
+**Sources** at the bottom of the list shows each source with its provider, when it was last read and any error. A directory is read at most every few minutes; **Fetch now** reads it again right away.
 
 Every step is recorded in the [audit log](audit.md).
 

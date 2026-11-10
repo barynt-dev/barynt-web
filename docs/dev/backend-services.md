@@ -244,10 +244,15 @@ then it may only use what was confirmed. Every step writes a `plugin.*` audit en
 
 A **project** may only switch on what its workspace released for projects (`PluginGrant`,
 `setPluginGrant`, `plugin.enable` in the workspace); taking the release back switches the
-projects' activations off and keeps their data. The pages are **Admin → Plugins**
-(`features/plugins/components/AdminPlugins`, `plugin.manage`) and **Settings → Plugins** of
-a workspace or project (`ScopePlugins`, `plugin.enable`); each loads its view through
-`features/plugins/queries.ts`, which checks the permission again. The install dialog shows
+projects' activations off and keeps their data. The pages are **Admin → Plugins**, the
+store (`features/plugins/components/PluginStore`, `plugin.manage`, BARY-200) and
+**Settings → Plugins** of a workspace or project (`ScopePlugins`, `plugin.enable`); each
+loads its view through `features/plugins/queries.ts`, which checks the permission again.
+The store's view (`getPluginStoreView`) merges what's installed with every enabled
+source's directory, read through `readSourceRecent` (at most once per source every five
+minutes, per server process; `refreshPluginSource` and every source change forget it).
+What's open is in the address (`?plugin=`, `?tab=overview|capabilities|versions|places`,
+`?view=sources`); "where it's on" comes from `getPluginPlaces`, only for that tab. The install dialog shows
 `previewRelease` (loaded and checked, not stored); installing loads the release once more,
 so the server never trusts what a dialog was shown.
 
