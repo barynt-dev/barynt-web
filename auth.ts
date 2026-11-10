@@ -6,6 +6,7 @@ import Nodemailer from "next-auth/providers/nodemailer";
 import WebAuthn from "next-auth/providers/webauthn";
 import {
   authConfig,
+  oidcEmailLinkingEnabled,
   passkeyLoginEnabled,
   passkeyRegistrationEnabled,
   registrationEnabled,
@@ -20,6 +21,7 @@ import { DEFAULT_PLATFORM_ROLE_KEY, systemRoleId } from "@/lib/rbac";
 import { generateHandle, pickUserColor } from "@/lib/user-defaults";
 import { isFirstAccount, provisionNewUser } from "@/lib/user-provisioning";
 import { splitName } from "@/lib/utils/string";
+import { simpleWebAuthn } from "@/lib/webauthn/server";
 
 // PrismaAdapter with a createUser override: OAuth/mail users only supply
 // name/email/image, but `handle` and `color` are NOT NULL. The full name
@@ -229,14 +231,45 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
 
       if (!user.id) return true;
 
+      // With AUTH_OIDC_ALLOW_EMAIL_LINKING, @auth/core links an unknown OIDC
+      // `sub` to the user with the same email only *after* this callback
+      // (`handleLoginOrRegister`) — until then `user` is the IdP's profile
+      // with a random stand-in id, not the row that's about to sign in.
+      // Resolve that row here, otherwise a deactivated account would get
+      // back in through the switch and the audit entry would point nowhere.
+      let userId = user.id;
+      if (
+        oidcEmailLinkingEnabled &&
+        account?.provider === "oidc" &&
+        account.providerAccountId &&
+        user.email
+      ) {
+        const linked = await db.account.findUnique({
+          where: {
+            provider_providerAccountId: {
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+            },
+          },
+          select: { userId: true },
+        });
+        if (!linked) {
+          const byEmail = await db.user.findUnique({
+            where: { email: user.email },
+            select: { id: true },
+          });
+          if (byEmail) userId = byEmail.id;
+        }
+      }
+
       const row = await db.user.findUnique({
-        where: { id: user.id },
+        where: { id: userId },
         select: { deactivatedAt: true },
       });
       if (row?.deactivatedAt) {
         await recordAudit({
           action: "auth.login.failed",
-          actorId: user.id,
+          actorId: userId,
           meta: { reason: "deactivated", provider: account?.provider ?? null },
         });
         return false;
@@ -246,10 +279,10 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         await Promise.all([
           recordAudit({
             action: "auth.login",
-            actorId: user.id,
+            actorId: userId,
             meta: { provider: account.provider },
           }),
-          touchLastSeen(user.id),
+          touchLastSeen(userId),
         ]);
       }
 
@@ -274,6 +307,9 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
               origin: appBaseUrl(),
             },
             enableConditionalUI: true,
+            // Auth.js still calls `@simplewebauthn/server` the v9 way — the
+            // bridge translates to the v14 we ship (`lib/webauthn/server.ts`).
+            simpleWebAuthn,
             // Without a custom `getUserInfo`, next-auth would return
             // `exists: false` for any unknown email and thereby allow a
             // brand-new account via passkey (`LoginForm`'s "Register with

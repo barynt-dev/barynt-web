@@ -11,28 +11,43 @@ import { InlinePicker } from "@/components/ui/atoms/InlinePicker/InlinePicker";
 import { Input } from "@/components/ui/atoms/Input/Input";
 import { SheetHeader } from "@/components/ui/layout/Modal/components/SheetHeader";
 import { Modal, ModalBody } from "@/components/ui/layout/Modal/Modal";
-import { fieldFilterOptions } from "@/features/custom-fields/components/FieldFilter/filterOptions";
 import {
   LabelIcon,
   PriorityIcon,
   StatusIcon,
+  TypeIcon,
 } from "@/features/issues/components/IssueIcons/IssueIcons";
+import {
+  type IssueFilter,
+  isGroup,
+  ME,
+  NONE_VALUE,
+} from "@/features/issues/filter";
 import { STORY_POINTS_OPTIONS } from "@/features/issues/story-points";
 import { visibleDetailFields } from "@/features/projects/detail-fields";
 import type { Translator } from "@/i18n/types";
 import { useModal } from "@/lib/context";
-import type { FieldDefinition } from "@/lib/custom-fields";
-import { fieldKeyOfParam, filterParam } from "@/lib/custom-fields/filter";
 import { fullName } from "@/lib/utils/string";
 import { PHONE_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
 import { useSwipeToClose } from "@/lib/utils/useSwipeToClose";
-import type { Label, Priority, Project, Status, User } from "@/types";
 import type {
-  BuiltinFilterKey,
-  FilterKey,
-  FilterState,
-  IssueArea,
+  IssueType,
+  Label,
+  Priority,
+  Project,
+  Status,
+  User,
+} from "@/types";
+import { FILTER_ACCENT } from "../filterAccent";
+import { type ChipField, extraNodes, onlySearch } from "../filterModel";
+import {
+  type FilterKey,
+  type FilterState,
+  filterStateOf,
+  type IssueArea,
 } from "../useTopbar";
+import { FilterEditor } from "./FilterEditor";
+import { NegateToggle } from "./NegateToggle";
 import styles from "./viewSettings.module.scss";
 
 /** Same four values as the desktop chip (`DueDateFilter`). */
@@ -52,11 +67,21 @@ interface FilterPopupProps {
   members: User[];
   labels: Label[];
   projects: Project[];
-  /** Custom fields that get a filter of their own (`isFilterableField`). */
-  fields?: FieldDefinition[];
+  /** Issue types, for the type filter (BARY-166). */
+  issueTypes: IssueType[];
   onToggle: (key: FilterKey, value: string | number) => void;
   onClearAll: () => void;
+  /** The whole filter, for the advanced editor behind the last row
+   *  (BARY-166) — the desktop has its own button for it. */
+  tree: IssueFilter;
+  onFilterChange: (next: IssueFilter) => void;
+  /** "Is / is not" per filter, above its values (BARY-166). */
+  negated: Record<ChipField, boolean>;
+  onNegate: (key: ChipField, negated: boolean) => void;
 }
+
+/** What the panel shows: the rows, one filter's values, or the editor. */
+type PanelView = FilterKey | "advanced" | null;
 
 export interface FilterOption {
   value: string | number;
@@ -92,7 +117,7 @@ export function FilterPopup(props: FilterPopupProps) {
   // A phone gets a bottom sheet instead of a dropdown; a tablet keeps the
   // popup.
   const isPhone = useMediaQuery(PHONE_QUERY);
-  const [facet, setFacet] = useState<FilterKey | null>(null);
+  const [facet, setFacet] = useState<PanelView>(null);
 
   // The sheet lives in the modal layer, outside this component's tree, so
   // what it was opened with goes stale. It reads the latest props through
@@ -129,13 +154,17 @@ export function FilterPopup(props: FilterPopupProps) {
 
   return (
     <InlinePicker
-      width={320}
+      // The editor needs room for field · operator · value side by side.
+      width={facet === "advanced" ? 640 : 320}
       trigger={trigger}
       // Next time it opens, it starts at the rows again.
       onOpenChange={(open) => !open && setFacet(null)}
     >
       {() => (
-        <div className={`${styles.panel} ${styles.scrolling}`}>
+        // The editor scrolls its boxes itself, its buttons stay put.
+        <div
+          className={`${styles.panel}${facet === "advanced" ? "" : ` ${styles.scrolling}`}`}
+        >
           <FilterPanel
             {...props}
             facet={facet}
@@ -162,45 +191,53 @@ function FilterSheet({
 }) {
   const t = useTranslations();
   const [filters, setFilters] = useState(latest.current.filters);
-  const [facet, setFacet] = useState<FilterKey | null>(null);
+  const [negated, setNegated] = useState(latest.current.negated);
+  const [facet, setFacet] = useState<PanelView>(null);
+  // The editor's latest tree while it's open — the URL lags behind it, and
+  // the sheet doesn't re-render when the URL lands.
+  const [edited, setEdited] = useState<IssueFilter | null>(null);
+  const [editorKey, setEditorKey] = useState(0);
   const bodyRef = useRef<HTMLDivElement>(null);
   const swipe = useSwipeToClose(close, bodyRef);
 
   const props = latest.current;
-  const { custom, ...builtin } = filters;
-  const filterCount =
-    Object.values(builtin).reduce((sum, values) => sum + values.length, 0) +
-    Object.values(custom).reduce((sum, values) => sum + values.length, 0);
+  const filterCount = Object.values(filters).reduce(
+    (sum, values) => sum + values.length,
+    0,
+  );
   const panelProps = {
     ...props,
     filters,
     filterCount,
+    negated,
+    onNegate: (key: ChipField, value: boolean) => {
+      setNegated((current) => ({ ...current, [key]: value }));
+      latest.current.onNegate(key, value);
+    },
+    tree: edited ?? props.tree,
     facet,
-    onFacetChange: setFacet,
+    onFacetChange: (next: PanelView) => {
+      setFacet(next);
+      // Back on the rows: the next editor starts from the URL again.
+      if (next !== "advanced") setEdited(null);
+    },
+    onFilterChange: (next: IssueFilter) => {
+      setEdited(next);
+      setFilters(filterStateOf(next));
+      latest.current.onFilterChange(next);
+    },
     showBack: false,
     alwaysSearch: true,
     hideReset: true,
+    advancedButton: true,
+    editorKey,
     onToggle: (key: FilterKey, value: string | number) => {
       setFilters((current) => {
-        const toggle = <T extends string | number>(list: T[]) =>
-          list.includes(value as T)
-            ? list.filter((v) => v !== value)
-            : [...list, value as T];
-        const fieldKey = fieldKeyOfParam(key);
-        if (fieldKey) {
-          return {
-            ...current,
-            custom: {
-              ...current.custom,
-              [fieldKey]: toggle(current.custom[fieldKey] ?? []),
-            },
-          };
-        }
-        const own = key as BuiltinFilterKey;
-        return {
-          ...current,
-          [own]: toggle(current[own] as (string | number)[]),
-        };
+        const list = current[key] as (string | number)[];
+        const next = list.includes(value)
+          ? list.filter((v) => v !== value)
+          : [...list, value];
+        return { ...current, [key]: next };
       });
       latest.current.onToggle(key, value);
     },
@@ -208,13 +245,14 @@ function FilterSheet({
       setFilters({
         status: [],
         priority: [],
+        type: [],
         assignee: [],
         label: [],
         project: [],
         storyPoints: [],
         dueDate: [],
-        custom: {},
       });
+      setEdited(null);
       latest.current.onClearAll();
     },
   };
@@ -223,19 +261,36 @@ function FilterSheet({
   return (
     <Modal variant="sheet" style={swipe.style} {...swipe.handlers}>
       <SheetHeader
-        title={openFacet?.title ?? t("filters.label")}
-        onBack={openFacet ? () => setFacet(null) : undefined}
+        title={
+          facet === "advanced"
+            ? t("filters.advanced")
+            : (openFacet?.title ?? t("filters.label"))
+        }
+        onBack={facet ? () => panelProps.onFacetChange(null) : undefined}
         backLabel={t("filters.back")}
         // On the rows (not inside one filter's list): reset everything.
         action={
-          openFacet
-            ? undefined
-            : {
-                label: t("display.reset"),
-                ariaLabel: t("filters.clearAll"),
-                disabled: filterCount === 0,
-                onClick: panelProps.onClearAll,
+          facet === "advanced"
+            ? {
+                // The editor's "remove all", up here instead of a footer.
+                label: t("filters.removeAll"),
+                tone: "secondary",
+                disabled: !panelProps.tree.rules.some(
+                  (n) => isGroup(n) || n.field !== "text",
+                ),
+                onClick: () => {
+                  panelProps.onFilterChange(onlySearch(panelProps.tree));
+                  setEditorKey((k) => k + 1);
+                },
               }
+            : facet
+              ? undefined
+              : {
+                  label: t("display.reset"),
+                  ariaLabel: t("filters.clearAll"),
+                  disabled: filterCount === 0,
+                  onClick: panelProps.onClearAll,
+                }
         }
         onClose={close}
         closeLabel={t("actions.close")}
@@ -250,15 +305,20 @@ function FilterSheet({
 }
 
 type FilterPanelProps = FilterPopupProps & {
-  /** The filter whose list is open, or `null` for the rows. */
-  facet: FilterKey | null;
-  onFacetChange: (facet: FilterKey | null) => void;
+  /** The filter whose list is open, the editor, or `null` for the rows. */
+  facet: PanelView;
+  onFacetChange: (facet: PanelView) => void;
   /** A back row inside the panel — the popup has no header bar to hold one. */
   showBack: boolean;
   /** A search field on every list, not only long ones — the phone's sheet. */
   alwaysSearch?: boolean;
   /** No reset link below the rows — the sheet has it in its bar. */
   hideReset?: boolean;
+  /** "Advanced" as a full-width button below the rows instead of a row —
+   *  the phone's sheet. */
+  advancedButton?: boolean;
+  /** Starts the editor over — after the sheet's bar cleared it. */
+  editorKey?: number;
 };
 
 /** The filters that apply here, in order, with their values. */
@@ -272,7 +332,7 @@ export function buildFacets(
     members,
     labels,
     projects,
-    fields = [],
+    issueTypes,
   }: Pick<
     FilterPopupProps,
     | "filters"
@@ -283,7 +343,7 @@ export function buildFacets(
     | "members"
     | "labels"
     | "projects"
-    | "fields"
+    | "issueTypes"
   >,
   t: Translator,
 ): Facet[] {
@@ -300,6 +360,18 @@ export function buildFacets(
       })),
     },
   ];
+  if (issueTypes.length > 0) {
+    facets.push({
+      key: "type",
+      title: t("fields.type"),
+      selected: filters.type,
+      options: issueTypes.map((type) => ({
+        value: type.id,
+        label: type.name,
+        icon: <TypeIcon type={type.id} size={14} color={type.color} />,
+      })),
+    });
+  }
   if (visible.has("priority")) {
     facets.push({
       key: "priority",
@@ -318,11 +390,24 @@ export function buildFacets(
       key: "assignee",
       title: t("fields.assignee"),
       selected: filters.assignee,
-      options: members.map((user) => ({
-        value: user.id,
-        label: fullName(user),
-        icon: <Avatar avatar={user} size={18} />,
-      })),
+      options: [
+        // Whoever looks, and nobody (BARY-166).
+        {
+          value: ME,
+          label: t("filters.me"),
+          icon: <Icon icon="lucide:user-round" width={16} />,
+        },
+        {
+          value: NONE_VALUE,
+          label: t("fields.unassigned"),
+          icon: <Icon icon="lucide:user-x" width={16} />,
+        },
+        ...members.map((user) => ({
+          value: user.id,
+          label: fullName(user),
+          icon: <Avatar avatar={user} size={18} />,
+        })),
+      ],
     });
   } else {
     facets.push({
@@ -341,11 +426,18 @@ export function buildFacets(
       key: "label",
       title: t("fields.label"),
       selected: filters.label,
-      options: labels.map((label) => ({
-        value: label.id,
-        label: label.name,
-        icon: <LabelIcon color={label.color} size={13} />,
-      })),
+      options: [
+        {
+          value: NONE_VALUE,
+          label: t("filters.notSet"),
+          icon: <Icon icon="lucide:tag" width={13} />,
+        },
+        ...labels.map((label) => ({
+          value: label.id,
+          label: label.name,
+          icon: <LabelIcon color={label.color} size={13} />,
+        })),
+      ],
     });
   }
   if (visible.has("storyPoints")) {
@@ -353,10 +445,13 @@ export function buildFacets(
       key: "storyPoints",
       title: t("fields.storyPoints"),
       selected: filters.storyPoints,
-      options: STORY_POINTS_OPTIONS.map((points) => ({
-        value: points,
-        label: String(points),
-      })),
+      options: [
+        ...STORY_POINTS_OPTIONS.map((points) => ({
+          value: points,
+          label: String(points),
+        })),
+        { value: NONE_VALUE, label: t("filters.notSet") },
+      ],
     });
   }
   if (visible.has("dueDate")) {
@@ -374,15 +469,6 @@ export function buildFacets(
         value: bucket,
         label: dueDateLabel[bucket],
       })),
-    });
-  }
-  // One filter per custom field, after the built-in ones.
-  for (const field of fields) {
-    facets.push({
-      key: filterParam(field.key) as FilterKey,
-      title: field.name,
-      selected: filters.custom[field.key] ?? [],
-      options: fieldFilterOptions(field, members, t),
     });
   }
   return facets;
@@ -403,6 +489,33 @@ function FilterPanel(props: FilterPanelProps) {
   } = props;
   const facets = buildFacets(props, t);
   const open = facets.find((f) => f.key === facet);
+  const extras = extraNodes(props.tree).length;
+
+  if (facet === "advanced") {
+    return (
+      <>
+        {showBack && (
+          <button
+            type="button"
+            className={styles.backRow}
+            onClick={() => onFacetChange(null)}
+          >
+            <Icon icon="lucide:chevron-left" width={18} />
+            {t("filters.advancedTitle")}
+          </button>
+        )}
+        <FilterEditor
+          key={props.editorKey}
+          filter={props.tree}
+          onChange={props.onFilterChange}
+          lookups={props}
+          area={props.area}
+          onDone={() => onFacetChange(null)}
+          inSheet={props.advancedButton}
+        />
+      </>
+    );
+  }
 
   if (open) {
     return (
@@ -416,6 +529,12 @@ function FilterPanel(props: FilterPanelProps) {
             <Icon icon="lucide:chevron-left" width={18} />
             {open.title}
           </button>
+        )}
+        {open.key !== "dueDate" && (
+          <NegateToggle
+            negated={props.negated[open.key]}
+            onChange={(value) => props.onNegate(open.key as ChipField, value)}
+          />
         )}
         <FilterOptions
           facet={open}
@@ -432,10 +551,45 @@ function FilterPanel(props: FilterPanelProps) {
         <FilterRow
           key={f.key}
           facet={f}
+          negated={f.key !== "dueDate" && props.negated[f.key]}
           onOpen={() => onFacetChange(f.key)}
           onToggle={(value) => onToggle(f.key, value)}
         />
       ))}
+
+      {/* Everything else — "is not", OR groups, dates (BARY-166). */}
+      {props.advancedButton ? (
+        <div className={styles.advancedFooter}>
+          {/* Set conditions the rows can't show: outlined and counted, so
+              they aren't forgotten behind the button. */}
+          <Button
+            variant="elevated"
+            full
+            className={styles.advancedButton}
+            data-active={extras > 0 || undefined}
+            icon={<Icon icon="lucide:list-filter" width={14} />}
+            iconRight={
+              extras > 0 ? <Badge size="sm">{extras}</Badge> : undefined
+            }
+            onClick={() => onFacetChange("advanced")}
+          >
+            {t("filters.advancedSettings")}
+          </Button>
+        </div>
+      ) : (
+        // A primary text button, so it doesn't pass for one more field.
+        <Button
+          variant="text"
+          full
+          className={styles.advancedLink}
+          icon={<Icon icon="lucide:list-filter" width={14} />}
+          iconRight={extras > 0 ? <Badge size="sm">{extras}</Badge> : undefined}
+          aria-haspopup="true"
+          onClick={() => onFacetChange("advanced")}
+        >
+          {t("filters.advancedSettings")}
+        </Button>
+      )}
 
       {!hideReset && (
         <div className={styles.footer}>
@@ -457,6 +611,8 @@ function FilterPanel(props: FilterPanelProps) {
 
 interface FilterRowProps {
   facet: Facet;
+  /** "Is not" — said next to the name. */
+  negated?: boolean;
   /** Opens this filter's list of values. */
   onOpen: () => void;
   /** Takes a value off again (the chip's cross). */
@@ -468,7 +624,12 @@ interface FilterRowProps {
  * left, a button on the right that opens its values, and — once something is
  * chosen — the chosen values as removable chips underneath.
  */
-export function FilterRow({ facet, onOpen, onToggle }: FilterRowProps) {
+export function FilterRow({
+  facet,
+  negated = false,
+  onOpen,
+  onToggle,
+}: FilterRowProps) {
   const t = useTranslations();
   const chosen = facet.options.filter((option) =>
     facet.selected.includes(option.value),
@@ -482,7 +643,12 @@ export function FilterRow({ facet, onOpen, onToggle }: FilterRowProps) {
         aria-haspopup="true"
         onClick={onOpen}
       >
-        <span className={styles.rowLabel}>{facet.title}</span>
+        <span className={styles.rowLabel}>
+          {facet.title}
+          {negated && facet.selected.length > 0 && (
+            <span className={styles.rowNot}> {t("filters.isNot")}</span>
+          )}
+        </span>
         <span className={styles.pick}>
           {/* Not on a phone: there the row is just name and arrow, like the
               quick actions' rows. */}
@@ -492,7 +658,17 @@ export function FilterRow({ facet, onOpen, onToggle }: FilterRowProps) {
       </button>
 
       {chosen.length > 0 && (
-        <div className={styles.chips}>
+        // Like the desktop chips: a plain surface, outlined in the filter's
+        // own color.
+        <div
+          className={styles.chips}
+          data-not={negated || undefined}
+          style={
+            {
+              "--filter-accent": FILTER_ACCENT[facet.key],
+            } as React.CSSProperties
+          }
+        >
           {chosen.map((option) => (
             <Chip
               key={option.value}
@@ -500,6 +676,7 @@ export function FilterRow({ facet, onOpen, onToggle }: FilterRowProps) {
               variant="text"
               icon={option.icon}
               selected
+              className={styles.valueChip}
               onRemove={() => onToggle(option.value)}
               removeLabel={t("actions.clearFilter", { field: option.label })}
             >

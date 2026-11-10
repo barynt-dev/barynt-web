@@ -1,0 +1,217 @@
+name: Release
+
+# Manuell starten (Actions → Release → Run workflow). Der Lauf schlägt die
+# nächste Version aus den Conventional Commits seit dem letzten Tag vor (oder
+# nimmt die eingegebene), erzeugt releases/<version>.md (EN) und .de.md (DE)
+# mit den Highlights, die du hier eintippst (oder die schon im Repo liegen)
+# plus der automatischen Änderungsliste samt vorheriger Version, und zeigt
+# das Ergebnis im Job-Summary.
+#
+# Ohne Haken bei „publish“ ist das nur eine Vorschau — nichts wird geschrieben.
+# Mit Haken: package.json, der Helm-Chart (version/appVersion) und releases/
+# werden als Commit auf main gepusht, Tag vX.Y.Z und das GitHub-Release
+# angelegt (Englisch, darunter aufklappbar Deutsch; relative Bildpfade zeigen
+# auf den Tag). Am Release hängen die Dateien für den Installer
+# (install.sh, docker-compose.yml, Caddyfile, example.env), ihre SHA256SUMS
+# und eine Sigstore-Signatur von install.sh. Danach laufen, in dieser
+# Reihenfolge, der Docker-Build auf dem Tag (Tags X.Y.Z und latest) und das
+# signierte Chart-Release — `curl … | sh` und `helm install` holen also
+# sofort die neue Version. Zum Schluss wird die Website (barynt-dev/barynt-homepage)
+# für diese Version neu gebaut (Secret SITE_DISPATCH_TOKEN).
+#
+# Ist main geschützt, braucht der Push das Secret RELEASE_TOKEN (PAT mit
+# Bypass-Recht); sonst reicht der Standard-Token.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, z. B. 0.2.0 (leer = aus den Commits vorgeschlagen)"
+        required: false
+        type: string
+      highlights_en:
+        description: "Highlights EN, Markdown (\\n = Zeilenumbruch). Leer = bestehende Datei bleibt"
+        required: false
+        type: string
+      highlights_de:
+        description: "Highlights DE, Markdown (\\n = Zeilenumbruch). Leer = bestehende Datei bleibt"
+        required: false
+        type: string
+      publish:
+        description: "Wirklich veröffentlichen (aus = nur Vorschau im Job-Summary)"
+        required: true
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Prepare and publish release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      # Keyless-Signatur von install.sh (cosign, OIDC-Token von GitHub).
+      id-token: write
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Only from main
+        if: ${{ inputs.publish && github.ref != 'refs/heads/main' }}
+        run: |
+          echo "::error::Veröffentlichen geht nur von main aus (gewählt: ${GITHUB_REF_NAME})."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      # Eingaben über die Umgebung, nicht in den Shell-Text eingesetzt.
+      - name: Prepare release files
+        id: release
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          HIGHLIGHTS_EN: ${{ inputs.highlights_en }}
+          HIGHLIGHTS_DE: ${{ inputs.highlights_de }}
+        run: bun scripts/release/cli.ts prepare
+
+      - name: Build release body
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          bun scripts/release/cli.ts body "$VERSION" --out "$RUNNER_TEMP/body.md"
+          {
+            echo "## Release v${VERSION}"
+            if [ "${{ inputs.publish }}" = "true" ]; then
+              echo "_Wird veröffentlicht._"
+            else
+              echo "_Nur Vorschau — nichts wurde geschrieben. Zum Veröffentlichen den Lauf mit „publish“ wiederholen. Bilder erscheinen erst im fertigen Release._"
+            fi
+            echo
+            cat "$RUNNER_TEMP/body.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit and push
+        if: ${{ inputs.publish }}
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/v${VERSION}" >/dev/null; then
+            echo "::error::v${VERSION} existiert schon."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json releases deploy/helm/barynt/Chart.yaml
+          git commit -m "chore(release): v${VERSION}" || echo "Nothing to commit"
+          git push origin HEAD:main
+          echo "SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      # Was der Installer von einem Release lädt (install.sh: RELEASE_FILES),
+      # aus genau dem Release-Commit, plus die Prüfsummen, gegen die er
+      # jede Datei prüft.
+      - name: Installer files and checksums
+        if: ${{ inputs.publish }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/assets"
+          cp install.sh docker-compose.yml Caddyfile example.env "$RUNNER_TEMP/assets/"
+          cd "$RUNNER_TEMP/assets"
+          sha256sum install.sh docker-compose.yml Caddyfile example.env > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Install cosign
+        if: ${{ inputs.publish }}
+        uses: sigstore/cosign-installer@v3
+
+      # Nachprüfbar mit
+      #   cosign verify-blob install.sh --bundle install.sh.sigstore.json \
+      #     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+      #     --certificate-identity-regexp '^https://github.com/barynt-dev/barynt-web/'
+      - name: Sign install.sh (keyless)
+        if: ${{ inputs.publish }}
+        working-directory: ${{ runner.temp }}/assets
+        run: cosign sign-blob --yes --bundle install.sh.sigstore.json install.sh
+
+      - name: Create the GitHub release
+        if: ${{ inputs.publish }}
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          gh release create "v${VERSION}" \
+            --target "$SHA" \
+            --title "v${VERSION}" \
+            --notes-file "$RUNNER_TEMP/body.md" \
+            --latest \
+            "$RUNNER_TEMP"/assets/*
+
+  # Die Images zum Release: dieselbe docker-build.yml wie von Hand, auf dem
+  # neuen Tag, mit X.Y.Z und latest.
+  image:
+    name: Docker image
+    needs: release
+    if: ${{ inputs.publish }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      security-events: write
+    uses: ./.github/workflows/docker-build.yml
+    with:
+      tag: ${{ needs.release.outputs.version }}
+      latest: true
+      ref: v${{ needs.release.outputs.version }}
+
+  # Erst nach dem Image: der Chart zeigt per appVersion darauf.
+  chart:
+    name: Helm chart
+    needs: [release, image]
+    if: ${{ inputs.publish }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    uses: ./.github/workflows/helm-release.yml
+    with:
+      version: ${{ needs.release.outputs.version }}
+      ref: v${{ needs.release.outputs.version }}
+
+  # Zuletzt die Website (barynt-dev/barynt-homepage): neu bauen für genau diese
+  # Version, wenn Release, Image und Chart draußen sind. Braucht das Secret
+  # SITE_DISPATCH_TOKEN (fine-grained, für barynt-homepage, Contents: read and
+  # write); fehlt es, bleibt die Website auf ihrem Stand und das Release ist
+  # trotzdem fertig.
+  site:
+    name: Website
+    needs: [release, chart]
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Rebuild barynt-homepage
+        env:
+          GH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::SITE_DISPATCH_TOKEN fehlt — die Website wird nicht neu gebaut."
+            exit 0
+          fi
+          gh api repos/barynt-dev/barynt-homepage/dispatches \
+            -f event_type=barynt-release \
+            -f "client_payload[version]=${VERSION}"
+          echo "Website wird für v${VERSION} neu gebaut: https://github.com/barynt-dev/barynt-homepage/actions" >> "$GITHUB_STEP_SUMMARY"

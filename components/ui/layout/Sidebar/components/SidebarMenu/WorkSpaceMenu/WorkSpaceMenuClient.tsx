@@ -7,7 +7,10 @@ import { Avatar } from "@/components/ui/atoms/Avatar/Avatar";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import { EmptyState } from "@/components/ui/atoms/EmptyState/EmptyState";
 import { Popover } from "@/components/ui/atoms/Popover/Popover";
+import { Shortcut } from "@/components/ui/atoms/Shortcut/Shortcut";
 import { useRouter } from "@/i18n/navigation";
+import { useHasOpenModal } from "@/lib/context";
+import { useShortcut } from "@/lib/shortcuts/useShortcut";
 import type { Workspace } from "@/types";
 import styles from "../SidebarMenu.module.scss";
 
@@ -29,6 +32,19 @@ export function WorkspaceMenuClient({
   const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const hasOpenModal = useHasOpenModal();
+
+  const createWorkspace = () => {
+    setOpen(false);
+    router.push("/create-workspace");
+  };
+
+  // "w", bare like "n" (new project) and "c" (new issue) — this menu is
+  // always mounted in the sidebar, so it owns the shortcut. Off without the
+  // right to create one, same as the button below.
+  useShortcut("w", createWorkspace, {
+    enabled: canCreateWorkspace && !hasOpenModal,
+  });
 
   function goTo(wsId: string) {
     setOpen(false);
@@ -38,16 +54,10 @@ export function WorkspaceMenuClient({
   // Extracted so the empty state below can reuse it as its call to action
   // instead of duplicating the button.
   const newWorkspaceButton = canCreateWorkspace ? (
-    <Button
-      variant="elevated"
-      full
-      onClick={() => {
-        setOpen(false);
-        router.push("/create-workspace");
-      }}
-    >
+    <Button variant="elevated" full onClick={createWorkspace}>
       <Icon icon="lucide:plus" width={16} />
       {t("newWorkspace")}
+      <Shortcut keys="w" className={styles.shortcut} />
     </Button>
   ) : null;
 

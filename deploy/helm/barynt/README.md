@@ -1,8 +1,8 @@
 # barynt (Helm-Chart)
 
-Rollt dieselben Images aus, die `docker-compose.yml` auf einem
-Single-Host-Deployment fährt (`ghcr.io/jafoson/barynt` +
-`ghcr.io/jafoson/barynt-migrate`), für einen Kubernetes-Cluster. Siehe
+Rollt dasselbe Image aus, das `docker-compose.yml` auf einem
+Single-Host-Deployment fährt (`ghcr.io/barynt-dev/barynt`), für einen
+Kubernetes-Cluster. Das Image migriert die Datenbank beim Start selbst. Siehe
 BARY-22.
 
 ## Schnellstart
@@ -12,7 +12,7 @@ Das Chart liegt als öffentliches OCI-Artefakt auf GHCR (`Helm Release`,
 dieses Repos reicht:
 
 ```sh
-helm install barynt oci://ghcr.io/jafoson/charts/barynt --version 0.1.0 \
+helm install barynt oci://ghcr.io/barynt-dev/charts/barynt --version 1.0.0 \
   -n barynt --create-namespace
 kubectl port-forward -n barynt svc/barynt 3000:80
 ```
@@ -38,29 +38,27 @@ DB/Redis/S3, Ingress+TLS) als Ausgangspunkt nehmen.
 | Compose-Service     | Hier                                             |
 | -------------------- | ------------------------------------------------ |
 | `app`                 | `Deployment` + `Service` (+ optional `Ingress`, `HPA`) |
-| `migrate`             | initContainer auf dem App-Pod (siehe unten, **nicht** als Hook-Job) |
 | `postgres`            | eigene `StatefulSet` (`postgresql.enabled`) oder `externalDatabase.*` |
 | `redis`               | eigene `StatefulSet` (`redis.enabled`) oder `externalRedis.*` |
 | `rustfs`/`rustfs-init` | eigenes `Deployment`+`PVC` (`rustfs.enabled`), Bucket/CORS-Setup als initContainer |
 | `caddy`               | entfällt — `Ingress` + cert-manager übernehmen automatisches HTTPS |
 
-## Warum Migrationen als initContainer, nicht als Helm-Hook-Job
+## Migrationen: der App-Container migriert beim Start selbst
 
-Der naheliegende Standard-Pattern für DB-Migrationen in Helm ist ein
-`pre-install,pre-upgrade`-Hook-Job. Das funktioniert sauber, **solange die
-Datenbank nicht Teil desselben Charts ist** — bei uns per Default aber
-schon (`postgresql.enabled: true`). Ein `pre-install`-Hook läuft *vor* allen
-normalen Chart-Ressourcen; bei der allerersten Installation gäbe es die
-Postgres-`StatefulSet` zu dem Zeitpunkt noch gar nicht, der Hook liefe gegen
-eine nicht existierende Datenbank.
+Es gibt weder ein Migrate-Image noch einen Hook-Job oder initContainer dafür.
+Das App-Image führt beim Start `prisma migrate deploy && bun
+prisma/bootstrap.ts` aus (`docker/entrypoint.sh`), bevor der Server hochfährt —
+ein Update ist nur ein anderes Image-Tag. Ein `pre-install`-Hook-Job kam nicht
+in Frage: Er läuft vor allen normalen Chart-Ressourcen, bei der allerersten
+Installation existierte die gebündelte Postgres-`StatefulSet` noch gar nicht.
 
-Migrationen laufen deshalb als initContainer auf dem App-Pod selbst (Image:
-`barynt-migrate`, Befehl unverändert: `bun prisma migrate deploy && bun
-prisma/bootstrap.ts`, mit kurzer TCP-Warteschleife davor). Das ist sicher,
-weil beide Befehle idempotent/nebenläufig-sicher sind — `prisma migrate
-deploy` nimmt eine Advisory-Lock, `bootstrap.ts` nutzt `skipDuplicates` —,
-läuft also unbeschadet mehrfach (mehrere Replicas, jeder Rollout), ohne die
-Hook-Ordnungsproblematik gegen eine gebündelte Datenbank zu haben.
+Das ist sicher, weil beide Befehle idempotent/nebenläufig-sicher sind —
+`prisma migrate deploy` nimmt eine Advisory-Lock, `bootstrap.ts` nutzt
+`skipDuplicates` —, läuft also unbeschadet mehrfach (mehrere Replicas, jeder
+Rollout). Der `startupProbe` der App (`probes.startup*`, Standard 5 Minuten)
+hält Liveness/Readiness zurück, solange noch migriert wird. Wird die Datenbank
+anderswo migriert, setzt man `MIGRATE_ON_START=false` per `extraEnv`;
+`MIGRATE_DATABASE_URL` nimmt einen Datenbank-User mit Schema-Rechten.
 
 ## Warum keine Bitnami-Subcharts für Postgres/Redis
 
@@ -170,6 +168,84 @@ und ein konfigurierter `s3.endpoint` ohne laufendes `rustfs` verlangt
 `s3.existingSecret` — sonst bricht `helm template` mit einer klaren
 Meldung statt eines `CreateContainerConfigError` erst beim Rollout.
 
+## Datei-Uploads (gebündeltes RustFS)
+
+Der Browser lädt Avatare und Anhänge über vorsignierte URLs direkt in den
+Speicher, nicht über die App. Die Signatur gilt für Host und Pfad — RustFS
+braucht deshalb einen eigenen Host, keinen Pfad unter `ingress.host`:
+
+```yaml
+ingress:
+  enabled: true
+  host: issues.example.com
+  filesHost: files.issues.example.com
+  tls:
+    enabled: true
+```
+
+Damit bekommt RustFS einen eigenen Ingress (`<release>-files`, mit denselben
+`ingress.annotations`, z. B. dem cert-manager-Issuer, plus
+`ingress.filesAnnotations`), und `S3_PUBLIC_ENDPOINT` zeigt automatisch auf
+`https://files.issues.example.com`. Bei `className: nginx` setzt der Chart
+`proxy-body-size: 100m`, nginx' Standard (1 MB) würde Anhänge abweisen.
+Ohne `filesHost` funktionieren Browser-Uploads nur, wenn `s3.publicEndpoint`
+anderweitig von außen erreichbar ist. Bei externem S3 (`rustfs.enabled:
+false`) ist das ohnehin der Fall.
+
+## Produktionsbausteine
+
+| Wert | Standard | Wofür |
+| --- | --- | --- |
+| `podDisruptionBudget` | an, `minAvailable: 1` | Bei Node-Drain/Cluster-Upgrade bleibt eine App-Replica am Leben. Nur bei mehr als einer Replica oder HPA. |
+| `topologySpreadConstraints` | leer → weich nach Node verteilt | App-Replicas auf verschiedene Nodes (`ScheduleAnyway`); eigene Regeln ersetzen den Standard. |
+| `nodeSelector`, `tolerations`, `priorityClassName` | leer | Gelten für alle Pods des Charts, auch Postgres/Redis/RustFS/Backup. |
+| `affinity` | leer | Nur die App. |
+| `imagePullSecrets` | leer | Private Spiegel, z. B. `[{ name: regcred }]`, für alle Pods. |
+| `image.app.digest` | leer | `sha256:…` pinnt unveränderlich, hat Vorrang vor `tag`. |
+| `networkPolicy.enabled` | aus | Postgres/Redis nur von der App (Postgres auch vom Backup), RustFS nur von der App bzw. über den Files-Ingress. `networkPolicy.appFrom` schränkt ein, wer die App erreicht. Ausgehend bleibt offen. Braucht ein CNI mit NetworkPolicy-Support. |
+| `podLabels` | leer | Zusätzliche Labels an den App-Pods. |
+
+Eine geänderte Konfiguration rollt die App-Pods automatisch neu aus
+(`checksum/config`), ein `helm upgrade --set …` braucht also keinen
+manuellen Neustart mehr.
+
+## Backup
+
+```yaml
+backup:
+  enabled: true
+  schedule: "0 3 * * *" # täglich 03:00 UTC
+  keep: 7 # die neuesten 7 bleiben
+  persistence:
+    size: 10Gi
+```
+
+Ein CronJob sichert die gebündelte Postgres-Datenbank per `pg_dump -Fc` auf
+ein eigenes Volume (`<release>-backup`, mit `helm.sh/resource-policy: keep`,
+übersteht also `helm uninstall`). Der Postgres-Pod bindet dieses Volume
+selbst (lesend unter `/backups`), der Job läuft per Pod-Affinity auf
+demselben Node. So ist es auch bei `WaitForFirstConsumer`-StorageClasses
+sofort gebunden, und `helm install --wait` wartet nicht bis zur ersten
+Sicherung. Läuft als Postgres-User unter restricted PSS. Für eine externe
+Datenbank sichert man dort, wo sie läuft; RustFS-Daten (Anhänge) deckt der
+Job nicht ab, die liegen im RustFS-Volume.
+
+Sofort sichern und wiederherstellen:
+
+```sh
+# Jetzt eine Sicherung anstoßen
+kubectl create job backup-now --from=cronjob/barynt-backup -n barynt
+
+# Vorhandene Sicherungen ansehen
+kubectl exec -n barynt barynt-postgres-0 -- ls -lh /backups
+
+# Wiederherstellen: App anhalten, Dump einspielen, App wieder starten
+kubectl scale deploy/barynt -n barynt --replicas=0
+kubectl exec -n barynt barynt-postgres-0 -- \
+  pg_restore -U barynt -d barynt --clean --if-exists --no-owner /backups/barynt-20261028-030000.dump
+kubectl scale deploy/barynt -n barynt --replicas=2
+```
+
 ## SSO/OIDC
 
 Ein generischer OIDC-Provider (Keycloak, Authentik, Entra ID, Okta, ...) —
@@ -191,6 +267,37 @@ nur per `existingSecret` referenziert, landet nie in der ConfigMap. Die
 Callback-URI ist `<AUTH_URL>/api/auth/callback/oidc` — `oidc` ist die feste
 Provider-ID aus `auth.config.ts`, nicht `auth.oidc.name` (nur das
 Button-Label).
+
+**Beim Wechsel des IdP** (z. B. authentik → Keycloak) liefert der neue IdP
+pro Person eine andere `sub`. Die bestehende Verknüpfung passt dann nicht
+mehr, und der Login scheitert mit `OAuthAccountNotLinked`. Abhilfe:
+`auth.oidc.allowEmailLinking: true` (`AUTH_OIDC_ALLOW_EMAIL_LINKING`). Damit
+wird ein unbekannter OIDC-Login mit dem bestehenden Konto derselben E-Mail
+verknüpft. Standard ist aus. Nur einschalten, wenn der IdP die Adressen
+verlässlich verifiziert (Admins pflegen sie, keine Selbstregistrierung),
+denn wer dort eine Adresse kontrolliert, bekommt das Barynt-Konto dazu. Der
+Schalter kann auch nur für die Umstellung an bleiben: Wer sich einmal
+angemeldet hat, ist dauerhaft mit der neuen `sub` verknüpft.
+
+Jeder andere OAuth-/OIDC-Provider, den Auth.js mitbringt (Discord, Slack,
+Keycloak, Okta, ...), schaltet sich über seine Env-Vars ein:
+`AUTH_<ID>_ID`, `AUTH_<ID>_SECRET` und, bei selbst gehosteten IdPs,
+`AUTH_<ID>_ISSUER` (siehe `example.env`). Der Chart bildet sie nicht
+einzeln ab, sie kommen über `extraEnv`/`extraEnvFrom`, das Secret aus einem
+eigenen Secret:
+
+```yaml
+extraEnv:
+  - name: AUTH_DISCORD_ID
+    value: "123456789"
+  - name: AUTH_DISCORD_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: barynt-discord
+        key: clientSecret
+```
+
+Callback-URI: `<AUTH_URL>/api/auth/callback/<id>`.
 
 Registrierung/Passkeys lassen sich unabhängig davon abschalten (Default:
 alles offen, wie ohne Helm):
@@ -230,10 +337,9 @@ hostAliases:
 ```
 
 `extraEnv`/`extraEnvFrom`/`extraVolumeMounts` landen auf allen Containern
-des Pods (App, `migrate`-initContainer, `rustfs-init`) — unverändert
-durchgereicht, keine Chart-seitige Sonderlogik. `migrate` und `rustfs-init`
-sprechen dieselbe Datenbank bzw. denselben Endpunkt an wie der App-Container
-und brauchen deshalb praktisch immer dieselbe Konfiguration, z. B. einen
+des Pods (App, `rustfs-init`) — unverändert durchgereicht, keine
+Chart-seitige Sonderlogik. Beide sprechen dasselbe Netz bzw. denselben
+Endpunkt an und brauchen deshalb praktisch immer dieselbe Konfiguration, z. B. einen
 internen CA-Trust-Anchor per `NODE_EXTRA_CA_CERTS` gegen ein Postgres mit
 selbstsigniertem Zertifikat. `extraVolumes`/`hostAliases` landen ohnehin am
 App-Pod und gelten damit schon für alle Container.
@@ -242,7 +348,7 @@ App-Pod und gelten damit schon für alle Container.
 
 Läuft standardmäßig gegen einen Namespace mit
 `pod-security.kubernetes.io/enforce=restricted` (Cilium/Gateway-API-Cluster
-o.ä.). Jeder Container (App, `migrate`-initContainer, `rustfs-init`,
+o.ä.). Jeder Container (App, `rustfs-init`,
 Postgres, Redis, RustFS) startet `runAsNonRoot`, ohne
 `allowPrivilegeEscalation`, mit `capabilities.drop: ["ALL"]` und
 `seccompProfile.type: RuntimeDefault`.
@@ -259,7 +365,7 @@ nicht geraten:
 | `postgres:17-alpine`      | 70 / 70     |
 | `redis:7-alpine`          | 999 / 1000  |
 | `rustfs/rustfs:latest`    | 10001/10001 |
-| `amazon/aws-cli:latest` (`rustfs-init`) | beliebig, läuft unter jeder Nicht-root-UID — bekommt denselben Container-`securityContext` wie App/`migrate` (uid/gid 1000) |
+| `amazon/aws-cli:latest` (`rustfs-init`) | beliebig, läuft unter jeder Nicht-root-UID — bekommt denselben Container-`securityContext` wie die App (uid/gid 1000) |
 
 Abnahme in einem echten Cluster (kind reicht):
 
@@ -280,16 +386,17 @@ Läuft auch automatisiert in CI, siehe `.github/workflows/helm-lint.yml`
 ## Versionierung
 
 Chart-Version (`Chart.yaml: version`, SemVer) und `appVersion` sind getrennte
-Zähler. `image.app.tag`/`image.migrate.tag` fallen auf `appVersion` zurück,
-wenn leer — in Produktion trotzdem explizit auf einen Commit-SHA oder
-Release-Tag pinnen statt `latest`, für reproduzierbare Rollouts/Rollbacks.
+Zähler (sie laufen gleich: Chart `1.0.0`, `appVersion` `"1.0.0"`).
+`image.app.tag` fällt auf `appVersion` zurück, wenn leer — in Produktion
+trotzdem explizit auf ein Release pinnen (z. B. `1.0.0`, kein `v`-Präfix)
+statt `latest`, für reproduzierbare Rollouts/Rollbacks.
 
 ## Chart veröffentlichen
 
 `Chart.yaml`s `version` erhöhen, committen, dann in GitHub Actions
 `Helm Release` manuell auslösen (`gh workflow run helm-release.yml`, analog
 zu `Docker Build`) — packt das Chart und pusht es als OCI-Artefakt nach
-`oci://ghcr.io/jafoson/charts/barynt`. Das Package ist direkt nach dem
+`oci://ghcr.io/barynt-dev/charts/barynt`. Das Package ist direkt nach dem
 ersten Push öffentlich pullbar (getestet per anonymem `helm pull`, ohne
 `helm registry login`) — kein manueller Sichtbarkeits-Schritt nötig.
 
@@ -301,6 +408,12 @@ helm template barynt ./deploy/helm/barynt | kubeconform -strict -summary
 helm template barynt ./deploy/helm/barynt -f examples/values-production.yaml | kubeconform -strict -summary
 helm install barynt ./deploy/helm/barynt -n barynt --create-namespace --wait
 helm test barynt -n barynt
+
+# Template-Tests ohne Cluster (unittests/, Plugin helm-unittest)
+helm plugin install https://github.com/helm-unittest/helm-unittest --version v1.0.3
+helm unittest -f 'unittests/*_test.yaml' ./deploy/helm/barynt
 ```
 
-Alle drei laufen auch in CI, siehe `.github/workflows/helm-lint.yml`.
+Alles davon läuft auch in CI (`.github/workflows/helm-lint.yml`), dazu ein
+Render-Durchlauf mit allen optionalen Funktionen und im kind-Cluster ein
+echter Backup-Lauf mit aktiven NetworkPolicies.

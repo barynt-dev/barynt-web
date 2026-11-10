@@ -1,7 +1,10 @@
 import { useOptimistic, useRef, useState, useTransition } from "react";
 import { reorderIssue, updateIssue } from "@/features/issues/actions";
 import {
+  canMoveBetweenGroups,
   type GroupKey,
+  groupField,
+  groupIdOf,
   groupIdsOf,
   groupMovePatch,
   withMovePatch,
@@ -27,14 +30,20 @@ import type { Issue } from "@/types";
  * still works and still changes its status/rank when dropped in another
  * column, but its position no longer visibly reflects where it's released
  * as long as a non-manual order is active.
+ *
+ * With swimlanes (`laneKey`, BARY-173) a drop target is a cell — a column
+ * within a lane — and dropping sets both values: the column's and the
+ * lane's. Without lanes, `laneId` is left out everywhere.
  */
 export function useBoardDnd<T extends Issue>(
   issues: T[],
   sortKey: SortKey,
   sortLookups: SortLookups,
   groupKey: GroupKey,
-  /** The field a custom grouping is by — needed to move between its values. */
-  groupField: FieldDefinition | null = null,
+  laneKey: GroupKey | null = null,
+  /** The custom fields a grouping (columns or lanes) can be by — needed to
+   *  move between a field's values. */
+  customFields: FieldDefinition[] = [],
 ) {
   const [, startTransition] = useTransition();
 
@@ -48,6 +57,8 @@ export function useBoardDnd<T extends Issue>(
   const dragIssueRef = useRef<T | null>(null);
   /** The group the card was picked up in — which value a move gives up. */
   const dragFromRef = useRef<string | null>(null);
+  /** …and the lane, with swimlanes by a multi-choice field. */
+  const dragFromLaneRef = useRef<string | null>(null);
   const dragOverCardRef = useRef<string | null>(null);
   const insertAboveRef = useRef(false);
 
@@ -62,17 +73,29 @@ export function useBoardDnd<T extends Issue>(
       ),
   );
 
-  const getColumnIssues = (groupId: string) =>
+  /** The cards of a column — or, with lanes and a `laneId`, of one cell. */
+  const getColumnIssues = (groupId: string, laneId?: string) =>
     sortByKey(
-      // A multi-choice card is in the column of every value it has.
-      optimisticIssues.filter((i) => groupIdsOf(i, groupKey).includes(groupId)),
+      // A multi-choice card is in the column (and lane) of every value it has.
+      optimisticIssues.filter(
+        (i) =>
+          groupIdsOf(i, groupKey).includes(groupId) &&
+          (!laneKey ||
+            laneId === undefined ||
+            groupIdsOf(i, laneKey).includes(laneId)),
+      ),
       sortKey,
       sortLookups,
     );
 
+  /** One drop target: a column, or a column within a lane. */
+  const cellKey = (groupId: string, laneId?: string) =>
+    laneId === undefined ? groupId : `${groupId}\u0000${laneId}`;
+
   const clearDragState = () => {
     dragIssueRef.current = null;
     dragFromRef.current = null;
+    dragFromLaneRef.current = null;
     dragOverCardRef.current = null;
     setDragging(null);
     setOverCol(null);
@@ -80,9 +103,11 @@ export function useBoardDnd<T extends Issue>(
   };
 
   const onDragStart =
-    (issue: T, fromGroupId?: string) => (e: React.DragEvent) => {
+    (issue: T, fromGroupId?: string, fromLaneId?: string) =>
+    (e: React.DragEvent) => {
       dragIssueRef.current = issue;
       dragFromRef.current = fromGroupId ?? null;
+      dragFromLaneRef.current = fromLaneId ?? null;
       setDragging(issue.id);
       e.dataTransfer.effectAllowed = "move";
     };
@@ -98,8 +123,12 @@ export function useBoardDnd<T extends Issue>(
   };
 
   // Rank the dropped issue between its new neighbors (or at the column edge)
-  const dropRank = (groupId: string, draggedId: string) => {
-    const colIssues = getColumnIssues(groupId).filter(
+  const dropRank = (
+    groupId: string,
+    laneId: string | undefined,
+    draggedId: string,
+  ) => {
+    const colIssues = getColumnIssues(groupId, laneId).filter(
       (i) => i.id !== draggedId,
     );
     const overCardId = dragOverCardRef.current;
@@ -125,15 +154,57 @@ export function useBoardDnd<T extends Issue>(
     issue: T,
     groupId: string,
     rank: number,
-    fromGroupId: string | null,
+    laneId?: string,
+    from: { groupId: string | null; laneId: string | null } = {
+      groupId: null,
+      laneId: null,
+    },
   ) => {
-    const patch = groupMovePatch(
+    // Across projects a card stays in its own (V8) — dropped into another
+    // project's column (or lane), it goes back.
+    if (
+      !canMoveBetweenGroups(groupKey) &&
+      groupId !== groupIdOf(issue, groupKey)
+    )
+      return;
+    const intoLane = laneKey !== null && laneId !== undefined;
+    if (
+      intoLane &&
+      !canMoveBetweenGroups(laneKey) &&
+      laneId !== groupIdOf(issue, laneKey)
+    )
+      return;
+    // Column and lane together: "In Progress" in Lena's lane is status In
+    // Progress *and* assigned to Lena. A multi-choice value swaps the one the
+    // card was picked up in for the one it lands in (`groupMovePatch`).
+    const columnPatch = groupMovePatch(
       issue,
       groupKey,
-      fromGroupId,
+      from.groupId,
       groupId,
-      groupField,
+      groupField(groupKey, customFields),
     );
+    const lanePatch = intoLane
+      ? groupMovePatch(
+          issue,
+          laneKey,
+          from.laneId,
+          laneId,
+          groupField(laneKey, customFields),
+        )
+      : {};
+    const patch: IssuePatch = {
+      ...columnPatch,
+      ...lanePatch,
+      ...(columnPatch.fieldValues || lanePatch.fieldValues
+        ? {
+            fieldValues: {
+              ...columnPatch.fieldValues,
+              ...lanePatch.fieldValues,
+            },
+          }
+        : {}),
+    };
 
     // No `router.refresh()` after the `await` — `reorderIssue` already
     // revalidates server-side (`revalidate()` in actions.ts), and Next
@@ -153,30 +224,44 @@ export function useBoardDnd<T extends Issue>(
       // the response comes back, it's guaranteed to be at or after the
       // server's own recording of this same action.
       await reorderIssue(issue.id, patch.status ?? issue.status, rank);
-      // Any other grouping changes a different field than the status —
-      // `reorderIssue` only knows status and rank.
-      if (groupKey !== "status") await updateIssue(issue.id, patch);
+      // Every field but the status — from the column's grouping or the
+      // lane's — goes through `updateIssue`; `reorderIssue` only knows
+      // status and rank.
+      const { status: _status, ...rest } = patch;
+      const changed = Object.fromEntries(
+        Object.entries(rest).filter(
+          ([key, value]) => issue[key as keyof Issue] !== value,
+        ),
+      );
+      if (Object.keys(changed).length > 0)
+        await updateIssue(issue.id, changed as IssuePatch);
       markLocalMutation();
     });
   };
 
-  /** "Move to…": the end of the target group, no dragging involved. */
+  /** "Move to…": the end of the target column, in the card's own lane —
+   *  no dragging involved. `fromGroupId` is the column the card was in, for
+   *  a multi-choice grouping where it sits in several. */
   const moveIssue = (issue: T, groupId: string, fromGroupId?: string) => {
     if (groupIdsOf(issue, groupKey).includes(groupId)) return;
-    const colIssues = getColumnIssues(groupId).filter((i) => i.id !== issue.id);
+    const laneId = laneKey ? groupIdOf(issue, laneKey) : undefined;
+    const colIssues = getColumnIssues(groupId, laneId).filter(
+      (i) => i.id !== issue.id,
+    );
     commitMove(
       issue,
       groupId,
       rankBetween(colIssues[colIssues.length - 1] ?? null, null),
-      fromGroupId ?? null,
+      laneId,
+      { groupId: fromGroupId ?? null, laneId: laneId ?? null },
     );
   };
 
-  const columnHandlers = (groupId: string) => ({
-    isOver: overCol === groupId,
+  const columnHandlers = (groupId: string, laneId?: string) => ({
+    isOver: overCol === cellKey(groupId, laneId),
     onDragOver: (e: React.DragEvent) => {
       e.preventDefault();
-      setOverCol(groupId);
+      setOverCol(cellKey(groupId, laneId));
     },
     onDragLeave: (e: React.DragEvent) => {
       if (!e.currentTarget.contains(e.relatedTarget as Node)) {
@@ -190,10 +275,13 @@ export function useBoardDnd<T extends Issue>(
       const issue = dragIssueRef.current;
       if (!issue) return;
 
-      const rank = dropRank(groupId, issue.id);
-      const from = dragFromRef.current;
+      const rank = dropRank(groupId, laneId, issue.id);
+      const from = {
+        groupId: dragFromRef.current,
+        laneId: dragFromLaneRef.current,
+      };
       clearDragState();
-      commitMove(issue, groupId, rank, from);
+      commitMove(issue, groupId, rank, laneId, from);
     },
   });
 

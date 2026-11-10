@@ -14,6 +14,17 @@ const nextConfig: NextConfig = {
   // never hydrates — inputs render but state never updates, so a button that
   // is `disabled` until an email is typed stays disabled forever.
   allowedDevOrigins: ["192.168.0.*"],
+  // GitHub Codespaces' port forwarding rewrites the `Origin` header to
+  // `localhost:<port>` but sets `X-Forwarded-Host` to the public
+  // `*.app.github.dev` host — Next's Server Actions CSRF check sees the
+  // mismatch and aborts every action ("Invalid Server Actions request").
+  // Only inside a Codespace (`CODESPACES=true`), so production keeps the
+  // strict same-origin check.
+  ...(process.env.CODESPACES === "true" && {
+    experimental: {
+      serverActions: { allowedOrigins: ["localhost:3000"] },
+    },
+  }),
   images: {
     remotePatterns: [{ hostname: "www.gravatar.com" }],
   },
@@ -28,11 +39,13 @@ const nextConfig: NextConfig = {
   // crashes on its first Prisma query. Deliberately NOT including the
   // `prisma` CLI package here — it drags in ~200MB of engine binaries
   // (schema engine, Prisma Studio) that the running app never needs;
-  // `prisma migrate deploy` instead runs from the `builder` stage as a
-  // separate one-off step (see docker-compose.prod.yml's `migrate` service).
+  // `prisma migrate deploy` runs from its own isolated install under
+  // /opt/migrate in the image (see the Dockerfile and docker/entrypoint.sh).
   outputFileTracingIncludes: {
     "/*": [
       "lib/generated/prisma/**/*",
+      // The release notes the in-app window shows (lib/releases).
+      "releases/**/*",
       "node_modules/pg-*/**/*",
       "node_modules/@prisma/client-*/**/*",
     ],

@@ -186,7 +186,9 @@
   height: 1.5rem;
   border-radius: var(--radius-sm);
   color: var(--outline);
-  transition: color 0.12s, background 0.12s;
+  transition:
+    color 0.12s,
+    background 0.12s;
 
   &:hover {
     background: var(--surface-container-high);
@@ -204,7 +206,9 @@
   background: transparent;
   color: var(--on-surface-variant);
   font-size: var(--text-xs);
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 
   &:hover {
     background: var(--surface-container);

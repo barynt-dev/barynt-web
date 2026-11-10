@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createIssueForUser } from "@/features/api-v1/mutations";
 import { listIssuesForUser } from "@/features/api-v1/queries";
+import { parseIssueFilter } from "@/features/issues/filter";
 import { encodeCursor, parseCursor, parseLimit } from "@/lib/api/cursor";
 import { pickFields } from "@/lib/api/fields";
 import { checkRateLimit } from "@/lib/api/rateLimit";
@@ -38,7 +39,18 @@ export async function GET(
     }
   }
 
+  // A filter tree as JSON, the shape a view stores (BARY-172).
+  const rawFilter = url.searchParams.get("filter");
+  const filter = rawFilter ? parseFilterParam(rawFilter) : undefined;
+  if (filter === null) {
+    return withRateLimitHeaders(
+      NextResponse.json({ error: { code: "invalid_filter" } }, { status: 422 }),
+      info,
+    );
+  }
+
   const page = await listIssuesForUser(auth.userId, id, {
+    filter,
     status: url.searchParams.get("status") ?? undefined,
     assignee: url.searchParams.get("assignee") ?? undefined,
     q: url.searchParams.get("q") ?? undefined,
@@ -95,4 +107,14 @@ export async function POST(
     NextResponse.json({ data: result.data }, { status: 201 }),
     info,
   );
+}
+
+/** `?filter=` as a filter tree; `null` when it isn't valid JSON or not a
+ *  valid tree. */
+function parseFilterParam(raw: string) {
+  try {
+    return parseIssueFilter(JSON.parse(raw));
+  } catch {
+    return null;
+  }
 }

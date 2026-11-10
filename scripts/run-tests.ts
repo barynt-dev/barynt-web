@@ -47,6 +47,10 @@ const SEGMENTS: string[][] = [
     "tests/unit/webhooks",
   ],
   ["tests/unit/permissions/resolver.test.ts"],
+  // Saved views (BARY-163): `actions.test.ts` mocks `@/lib/permissions` and
+  // `@/lib/audit` entirely — kept out of segment 0, where files test or rely
+  // on the real modules.
+  ["tests/unit/views"],
   // Own invocation: sharing segment 0 with tests/unit/projects made
   // projectMembers.test.ts fail on `db.workspace.findUnique` inside
   // sendInvitationEmail — a module-cache race triggered merely by this
@@ -66,6 +70,9 @@ const SEGMENTS: string[][] = [
     "tests/unit/customfields/favicon.test.ts",
     "tests/unit/customfields/filter.test.ts",
   ],
+  // Release automation (scripts/release) and the published docs (docs/guide):
+  // pure functions and file checks, no mocks.
+  ["tests/unit/release", "tests/unit/docs"],
   ["tests/unit/account"],
   // Mocks `@/lib/db`, `@/lib/permissions` and `@/lib/audit` — own process,
   // like the other action tests that replace `@/lib/permissions`.
@@ -93,7 +100,14 @@ const SEGMENTS: string[][] = [
     "tests/unit/storage/keys.test.ts",
     "tests/unit/storage/presign.test.ts",
   ],
+  // `/api/health`: mocks `@/lib/db` down to `$queryRaw` alone — kept out of
+  // segment 0, where files rely on fuller `db` mocks of their own.
+  ["tests/unit/health"],
   ["tests/unit/api-keys/route.test.ts"],
+  // Attachments in the API/MCP: mocks `@/lib/storage/config` and stubs the
+  // global `fetch` S3 is reached through — kept away from the storage tests
+  // that check the real config.
+  ["tests/unit/api-keys/attachments.test.ts"],
   ["tests/unit/api-keys/richtext.test.ts"],
   // Tests `@/lib/system-settings` for real; `workspace/createWorkspace.test.ts`
   // mocks that module away entirely, and the mock would otherwise win the

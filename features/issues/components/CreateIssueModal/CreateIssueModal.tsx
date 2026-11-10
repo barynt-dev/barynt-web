@@ -57,6 +57,19 @@ interface CreateIssueModalProps {
   /** Starting project — switchable in the header. */
   projectId: string;
   initialStatus: string;
+  /**
+   * Further starting values — where the issue is being created decides
+   * them: a board column grouped by priority, a swimlane by assignee
+   * (BARY-173). Story points have no field here; set, they're sent along.
+   */
+  initialValues?: {
+    priority?: number;
+    type?: string;
+    assignee?: string | null;
+    storyPoints?: number | null;
+    /** A column grouped by a custom field presets its choice. */
+    fieldValues?: Record<string, unknown>;
+  };
   data: IssueComposerData;
   close: () => void;
   /**
@@ -70,6 +83,7 @@ interface CreateIssueModalProps {
 export function CreateIssueModal({
   projectId: initialProjectId,
   initialStatus,
+  initialValues = {},
   data,
   close,
   onCreated,
@@ -119,12 +133,16 @@ export function CreateIssueModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState<PMDoc>(emptyDoc);
   const [status, setStatus] = useState(initialStatus);
-  const [priority, setPriority] = useState(0);
-  const [type, setType] = useState(issueTypes[0]?.id ?? "feature");
-  const [assignee, setAssignee] = useState<string | null>(null);
+  const [priority, setPriority] = useState(initialValues.priority ?? 0);
+  const [type, setType] = useState(
+    initialValues.type ?? issueTypes[0]?.id ?? "feature",
+  );
+  const [assignee, setAssignee] = useState<string | null>(
+    initialValues.assignee ?? null,
+  );
   const [labels, setLabels] = useState<string[]>([]);
   const [fieldValues, setFieldValues] = useState<Record<string, DraftValue>>(
-    {},
+    initialValues.fieldValues ?? {},
   );
   const [localLabels, setLocalLabels] = useState<Label[]>([]);
 
@@ -290,6 +308,9 @@ export function CreateIssueModal({
               : [],
           ),
         ),
+        ...(initialValues.storyPoints != null && {
+          storyPoints: initialValues.storyPoints,
+        }),
       });
 
       // Draft images/links only turn into real `Attachment` rows now that
@@ -471,7 +492,6 @@ export function CreateIssueModal({
           onCommit={setDescription}
           data={data}
           actions={false}
-          expandOnCompact
           saveLabel={t("actions.save")}
           cancelLabel={t("actions.cancel")}
           label={t("fields.description")}

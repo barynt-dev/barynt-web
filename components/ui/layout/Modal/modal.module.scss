@@ -108,10 +108,13 @@
   }
 }
 
-/* A menu taking over the sheet as a page (`Popover`) needs room for its list
-   even when the sheet's own content is short. */
-.modal.sheet:has(> :global([data-sheet-page])) {
-  min-height: min(26rem, 85dvh);
+/* A menu taking over the sheet as a page (`Popover`): the sheet shows only
+   the page and takes its height — as tall as the list, up to the sheet's
+   maximum, like a menu opened as a sheet of its own. What's underneath
+   stays mounted, just out of view. */
+.modal.sheet:has(> :global([data-sheet-page]))
+  > :not(:global([data-sheet-page])) {
+  display: none;
 }
 
 /* ---------- Header ---------- */
@@ -121,7 +124,10 @@
   flex: none;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.875rem var(--modal-pad-x) 0.625rem;
+  /* The block padding can be set from outside — a panel docked next to a
+     page bar lines its bottom edge up with that bar's. */
+  padding: var(--modal-head-pt, 0.875rem) var(--modal-pad-x)
+    var(--modal-head-pb, 0.625rem);
   background-color: var(--surface-container-high);
 }
 
@@ -222,5 +228,3 @@
 }
 
 /* ---------- Composer fields ---------- */
-
-

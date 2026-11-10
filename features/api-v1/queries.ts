@@ -6,7 +6,9 @@ import {
   fieldFiltersWhere,
   toApiCustomField,
 } from "@/features/custom-fields/api";
-import { getUserWorkspaces } from "@/features/issues/queries";
+import type { IssueFilter } from "@/features/issues/filter";
+import { toIssueWhere } from "@/features/issues/filter-where";
+import { filterContext, getUserWorkspaces } from "@/features/issues/queries";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import {
@@ -14,6 +16,9 @@ import {
   can,
   canEnterWorkspace,
 } from "@/lib/permissions";
+import { mentionedUserIds, toMarkdown } from "@/lib/richtext";
+import type { StatusCategory } from "@/lib/status-category";
+import { GET_EXPIRES_IN, resolveAttachmentUrl } from "@/lib/storage";
 import { fullName } from "@/lib/utils/string";
 
 // Read helpers for the public API (`app/api/v1`), explicitly parameterized
@@ -73,7 +78,7 @@ const userRefSelect = {
   handle: true,
 } satisfies Prisma.UserSelect;
 
-function mapUserRef(user: {
+export function mapUserRef(user: {
   id: string;
   firstName: string;
   lastName: string;
@@ -213,7 +218,7 @@ function makeProjectVisibility(
   };
 }
 
-const issueSelect = {
+export const issueSelect = {
   id: true,
   key: true,
   title: true,
@@ -226,7 +231,7 @@ const issueSelect = {
   /** Kept alongside the `project` relation below — `can()` checks
    *  (`project.view`) need the plain FK, not the full embedded object. */
   projectId: true,
-  descriptionText: true,
+  description: true,
   created: true,
   updated: true,
   closedAt: true,
@@ -237,6 +242,7 @@ const issueSelect = {
   source: true,
   project: { select: projectRefSelect },
   parent: { select: issueRefSelect },
+  _count: { select: { comments: true, attachments: true } },
   subIssues: { select: issueRefSelect, orderBy: { created: "asc" } },
   relationsFrom: {
     select: { id: true, type: true, related: { select: issueRefSelect } },
@@ -264,14 +270,19 @@ export interface ApiIssue {
   ref: string;
   title: string;
   status: string;
+  /** The status's category (BARY-161): "backlog" | "unstarted" | "started"
+   *  | "completed" | "canceled" — stable across workspaces, unlike status
+   *  ids and names. `null` for a status that no longer exists. */
+  statusCategory: StatusCategory | null;
   priority: number;
   type: string;
   labels: ApiLabel[];
   assignee: ApiUserRef | null;
   reporter: ApiUserRef;
   project: ApiProjectRef;
-  /** Plain text, not the internal ProseMirror document — that's an editor
-   *  format, not a public API contract. */
+  /** Markdown, the same dialect `description` is written in — not the
+   *  internal ProseMirror document, which is an editor format, not a public
+   *  API contract. */
   description: string;
   created: Date;
   updated: Date;
@@ -283,6 +294,16 @@ export interface ApiIssue {
    *  display hint for `estimateHours`, which itself always stays a
    *  normalized hour value. */
   estimateUnit: string | null;
+  /** How many comments the issue has (replies included). They aren't
+   *  embedded — fetch them from the comments endpoint when this is > 0. */
+  commentCount: number;
+  /** How many attachments (files and links) the issue has. The list itself,
+   *  with links to view each one, only comes with a single issue
+   *  (`attachments`) or from the attachments endpoint. */
+  attachmentCount: number;
+  /** Only on a single-issue fetch (`getIssueForUser`) — a page of issues
+   *  would otherwise sign a URL for every file of every row. */
+  attachments?: ApiAttachment[];
   source: ApiContentSource;
   /** `null` for a top-level issue. */
   parent: ApiIssueRef | null;
@@ -298,10 +319,40 @@ export interface ApiIssue {
   customFields: Record<string, ApiFieldValue>;
 }
 
-async function mapApiIssue(
+/** The category of each status among `rows` — one query per response. */
+export async function statusCategories(
+  rows: { status: string }[],
+): Promise<Map<string, StatusCategory>> {
+  const ids = [...new Set(rows.map((row) => row.status))];
+  if (ids.length === 0) return new Map();
+  const statuses = await db.status.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, category: true },
+  });
+  return new Map(statuses.map((s) => [s.id, s.category]));
+}
+
+/** Member id → `handle` for every mention in `docs` — one query per
+ *  response, so `toMarkdown` can write `@handle` (what the API accepts back)
+ *  instead of the display name. */
+async function resolveMentionHandles(
+  docs: unknown[],
+): Promise<Map<string, string>> {
+  const ids = [...new Set(docs.flatMap((doc) => mentionedUserIds(doc)))];
+  if (ids.length === 0) return new Map();
+  const users = await db.user.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, handle: true },
+  });
+  return new Map(users.map((u) => [u.id, u.handle]));
+}
+
+export async function mapApiIssue(
   row: IssueRow,
   labelMap: Map<string, ApiLabel>,
   canView: (projectId: string) => Promise<boolean>,
+  categories: Map<string, StatusCategory>,
+  handles: Map<string, string>,
 ): Promise<ApiIssue> {
   const [parent, children, relations] = await Promise.all([
     row.parent ? toApiIssueRef(row.parent, canView) : Promise.resolve(null),
@@ -329,13 +380,16 @@ async function mapApiIssue(
     ref: `${row.project.prefix}-${row.key}`,
     title: row.title,
     status: row.status,
+    statusCategory: categories.get(row.status) ?? null,
     priority: row.priority,
     type: row.type,
     labels: row.labels.map((id) => labelMap.get(id)).filter((l) => l != null),
     assignee: row.assignee ? mapUserRef(row.assignee) : null,
     reporter: mapUserRef(row.reporter),
     project: { id: row.project.id, name: row.project.name },
-    description: row.descriptionText,
+    description: toMarkdown(row.description, {
+      mentionHandle: (id) => handles.get(id),
+    }),
     created: row.created,
     updated: row.updated,
     closedAt: row.closedAt,
@@ -343,12 +397,30 @@ async function mapApiIssue(
     storyPoints: row.storyPoints,
     estimateHours: row.estimateHours,
     estimateUnit: row.estimateUnit,
+    commentCount: row._count.comments,
+    attachmentCount: row._count.attachments,
     source: row.source,
     parent,
     children,
     relations,
     customFields: apiFieldValues(row.fieldValues),
   };
+}
+
+/** A page of rows as the API returns them, seen by `userId`. */
+export async function mapApiIssues(
+  userId: string,
+  rows: IssueRow[],
+): Promise<ApiIssue[]> {
+  const [labelMap, categories, handles] = await Promise.all([
+    resolveLabels(rows.map((row) => row.labels)),
+    statusCategories(rows),
+    resolveMentionHandles(rows.map((row) => row.description)),
+  ]);
+  const canView = makeProjectVisibility(userId);
+  return Promise.all(
+    rows.map((row) => mapApiIssue(row, labelMap, canView, categories, handles)),
+  );
 }
 
 /** "PREFIX-123", the same shorthand `getIssueForUser` also accepts instead
@@ -394,6 +466,26 @@ async function resolveIssueRef(
   return null;
 }
 
+/**
+ * An issue's internal id for whatever the caller sent — an id or a
+ * "PREFIX-123" ref. Anything that isn't ref-shaped passes through untouched
+ * (no query), and a ref-shaped string is tried as an id first, like
+ * `getIssueForUser`. When nothing matches the input comes back as it was, so
+ * the caller's own lookup produces its usual 404.
+ */
+export async function resolveIssueId(
+  userId: string,
+  idOrRef: string,
+): Promise<string> {
+  if (!REF_PATTERN.test(idOrRef)) return idOrRef;
+  const byId = await db.issue.findUnique({
+    where: { id: idOrRef },
+    select: { id: true },
+  });
+  if (byId) return idOrRef;
+  return (await resolveIssueRef(userId, idOrRef)) ?? idOrRef;
+}
+
 /** `null` means "not visible to this user" — routes turn that into a 404,
  *  same as a project that doesn't exist. */
 export async function listIssuesForUser(
@@ -408,6 +500,9 @@ export async function listIssuesForUser(
     q?: string;
     /** `field.<key>=<value>` filters on custom fields, by field key. */
     fieldFilters?: Record<string, string>;
+    /** A filter tree, as a view stores it (BARY-172) — `@me` is the
+     *  caller. */
+    filter?: IssueFilter;
     cursor?: string;
     take: number;
   },
@@ -432,6 +527,9 @@ export async function listIssuesForUser(
 
   const rows = await db.issue.findMany({
     where: {
+      ...(options.filter
+        ? await toIssueWhere(options.filter, await filterContext(userId))
+        : {}),
       projectId,
       ...(fieldWhere.length > 0 ? { AND: fieldWhere } : {}),
       ...(options.status ? { status: options.status } : {}),
@@ -453,14 +551,7 @@ export async function listIssuesForUser(
 
   const hasMore = rows.length > options.take;
   const page = rows.slice(0, options.take);
-  const labelMap = await resolveLabels(page.map((row) => row.labels));
-  const canView = makeProjectVisibility(userId);
-  return {
-    rows: await Promise.all(
-      page.map((row) => mapApiIssue(row, labelMap, canView)),
-    ),
-    hasMore,
-  };
+  return { rows: await mapApiIssues(userId, page), hasMore };
 }
 
 /**
@@ -493,8 +584,16 @@ export async function getIssueForUser(
 
   const canView = makeProjectVisibility(userId);
   if (!(await canView(row.projectId))) return null;
-  const labelMap = await resolveLabels([row.labels]);
-  return mapApiIssue(row, labelMap, canView);
+  const [labelMap, categories, handles, attachments] = await Promise.all([
+    resolveLabels([row.labels]),
+    statusCategories([row]),
+    resolveMentionHandles([row.description]),
+    issueAttachments(row.id),
+  ]);
+  return {
+    ...(await mapApiIssue(row, labelMap, canView, categories, handles)),
+    attachments,
+  };
 }
 
 /**
@@ -514,8 +613,18 @@ export async function getIssueForUser(
 export async function getIssueUnchecked(id: string): Promise<ApiIssue | null> {
   const row = await db.issue.findUnique({ where: { id }, select: issueSelect });
   if (!row) return null;
-  const labelMap = await resolveLabels([row.labels]);
-  return mapApiIssue(row, labelMap, () => Promise.resolve(true));
+  const [labelMap, categories, handles] = await Promise.all([
+    resolveLabels([row.labels]),
+    statusCategories([row]),
+    resolveMentionHandles([row.description]),
+  ]);
+  return mapApiIssue(
+    row,
+    labelMap,
+    () => Promise.resolve(true),
+    categories,
+    handles,
+  );
 }
 
 export interface ApiComment {
@@ -534,7 +643,7 @@ const commentSelect = {
   issueId: true,
   author: { select: userRefSelect },
   parentId: true,
-  bodyText: true,
+  body: true,
   created: true,
   updated: true,
   source: true,
@@ -542,13 +651,16 @@ const commentSelect = {
 
 type CommentRow = Prisma.CommentGetPayload<{ select: typeof commentSelect }>;
 
-function mapApiComment(row: CommentRow): ApiComment {
+function mapApiComment(
+  row: CommentRow,
+  handles: Map<string, string>,
+): ApiComment {
   return {
     id: row.id,
     issueId: row.issueId,
     author: mapUserRef(row.author),
     parentId: row.parentId,
-    body: row.bodyText,
+    body: toMarkdown(row.body, { mentionHandle: (id) => handles.get(id) }),
     created: row.created,
     updated: row.updated,
     source: row.source,
@@ -559,8 +671,9 @@ function mapApiComment(row: CommentRow): ApiComment {
  *  that into a 404. */
 export async function listCommentsForUser(
   userId: string,
-  issueId: string,
+  idOrRef: string,
 ): Promise<ApiComment[] | null> {
+  const issueId = await resolveIssueId(userId, idOrRef);
   const issue = await db.issue.findUnique({
     where: { id: issueId },
     select: { projectId: true },
@@ -574,7 +687,8 @@ export async function listCommentsForUser(
     orderBy: { created: "asc" },
     select: commentSelect,
   });
-  return rows.map(mapApiComment);
+  const handles = await resolveMentionHandles(rows.map((r) => r.body));
+  return rows.map((row) => mapApiComment(row, handles));
 }
 
 /** Same shape as `listCommentsForUser`'s rows, without the permission
@@ -588,7 +702,111 @@ export async function getCommentUnchecked(
     where: { id },
     select: commentSelect,
   });
-  return row ? mapApiComment(row) : null;
+  if (!row) return null;
+  return mapApiComment(row, await resolveMentionHandles([row.body]));
+}
+
+export interface ApiAttachment {
+  id: string;
+  issueId: string;
+  /** "file" — uploaded, stored by Barynt; "link" — an external address. */
+  kind: "file" | "link";
+  name: string;
+  /** Where to view it. A link's own address; for a file a signed download
+   *  URL that needs no token but stops working at `urlExpiresAt` — fetch
+   *  the attachment again for a fresh one. `null` when file storage isn't
+   *  configured on this instance. */
+  url: string | null;
+  /** When a file's `url` expires. `null` for a link (it doesn't). */
+  urlExpiresAt: Date | null;
+  mimeType: string | null;
+  /** Bytes. Only for files. */
+  size: number | null;
+  author: ApiUserRef;
+  created: Date;
+}
+
+export const attachmentSelect = {
+  id: true,
+  issueId: true,
+  kind: true,
+  name: true,
+  key: true,
+  url: true,
+  mimeType: true,
+  size: true,
+  created: true,
+  author: { select: userRefSelect },
+} satisfies Prisma.AttachmentSelect;
+
+export type AttachmentRow = Prisma.AttachmentGetPayload<{
+  select: typeof attachmentSelect;
+}>;
+
+export async function mapApiAttachment(
+  row: AttachmentRow,
+): Promise<ApiAttachment> {
+  const isFile = row.kind === "file";
+  const url = isFile ? await resolveAttachmentUrl(row.key) : row.url;
+  return {
+    id: row.id,
+    issueId: row.issueId,
+    kind: isFile ? "file" : "link",
+    name: row.name,
+    url,
+    urlExpiresAt:
+      isFile && url ? new Date(Date.now() + GET_EXPIRES_IN * 1000) : null,
+    mimeType: row.mimeType,
+    size: row.size,
+    author: mapUserRef(row.author),
+    created: row.created,
+  };
+}
+
+/** An issue's attachments, oldest first — the app's order
+ *  (`IssueAttachments`). No permission check: callers have one. */
+async function issueAttachments(issueId: string): Promise<ApiAttachment[]> {
+  const rows = await db.attachment.findMany({
+    where: { issueId },
+    orderBy: { created: "asc" },
+    select: attachmentSelect,
+  });
+  return Promise.all(rows.map(mapApiAttachment));
+}
+
+/** `null` means the issue doesn't exist or isn't visible — routes turn
+ *  that into a 404. Same visibility rule as the issue itself. */
+export async function listAttachmentsForUser(
+  userId: string,
+  idOrRef: string,
+): Promise<ApiAttachment[] | null> {
+  const issueId = await resolveIssueId(userId, idOrRef);
+  const issue = await db.issue.findUnique({
+    where: { id: issueId },
+    select: { projectId: true },
+  });
+  if (!issue) return null;
+  if (!(await can(userId, "project.view", { projectId: issue.projectId })))
+    return null;
+  return issueAttachments(issueId);
+}
+
+/** One attachment with a freshly signed URL — `null` when it doesn't exist
+ *  or its issue isn't visible. Also returns the stored object key for
+ *  callers that read the file itself (`get_attachment` with content); the
+ *  key never leaves the server. */
+export async function getAttachmentForUser(
+  userId: string,
+  attachmentId: string,
+): Promise<{ attachment: ApiAttachment; key: string | null } | null> {
+  const row = await db.attachment.findUnique({
+    where: { id: attachmentId },
+    select: { ...attachmentSelect, issue: { select: { projectId: true } } },
+  });
+  if (!row) return null;
+  if (!(await can(userId, "project.view", { projectId: row.issue.projectId })))
+    return null;
+  return { attachment: await mapApiAttachment(row), key: row.key };
 }
 
 /** A label, with enough to tell where it applies — unlike the minimal

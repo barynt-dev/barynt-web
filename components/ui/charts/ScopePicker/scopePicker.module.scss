@@ -19,7 +19,9 @@
   font-size: var(--text-sm);
   color: var(--on-surface-variant);
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 
   &:hover {
     color: var(--on-surface);

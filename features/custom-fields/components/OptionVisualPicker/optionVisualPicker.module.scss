@@ -79,7 +79,9 @@
   border-radius: var(--radius);
   border: 1px dashed var(--outline-variant);
   background: color-mix(in oklab, var(--on-surface) 2%, transparent);
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 
   &[data-drag-over] {
     border-color: var(--tertiary);

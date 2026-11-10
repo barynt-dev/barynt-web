@@ -113,13 +113,13 @@
   }
 }
 
-/* Workspace overview and dashboard, at the top of the sidebar. The spacing
-   below visibly separates them from "My tasks" — both are views onto the
-   whole workspace, not part of the sections below. */
+/* Dashboard, board and "My tasks" at the top of the sidebar (V8). The
+   spacing below separates them from the directories — projects, views —
+   that follow. */
 .workspaceDashboardGroup {
   margin-bottom: 0.875rem;
 
-  /* Phone: "Overview" / "Dashboard" are in the bottom bar there. */
+  /* Phone: these three are in the bottom bar there. */
   @include bp.phone {
     display: none;
   }
@@ -140,11 +140,11 @@
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background .12s;
+  transition: background 0.12s;
 
   svg {
     color: var(--text-3);
-    transition: color .12s;
+    transition: color 0.12s;
   }
 
   &:hover {
@@ -178,7 +178,9 @@
   border-radius: var(--radius-sm);
   color: var(--text-3);
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 
   &:hover {
     background: var(--hover);
@@ -209,7 +211,7 @@
 
 .chevron {
   flex: none;
-  transition: transform .15s;
+  transition: transform 0.15s;
 }
 
 .chevronOpen {
@@ -244,7 +246,7 @@
   width: 100%;
 }
 
-.search{
+.search {
   background: var(--surface-container-low);
 
   /* Phone: same field as on the desktop, just taller. */
@@ -337,7 +339,7 @@
   }
 }
 
-.navGroup{
+.navGroup {
   display: flex;
   flex-direction: column;
   padding-bottom: 0.75rem;
@@ -384,7 +386,7 @@
   display: none;
 }
 
-.titleWrapper{
+.titleWrapper {
   /* Separates the "Projects" overview entry above from the project list. */
   margin-top: 0.5rem;
   border-top: 1px solid var(--outline-variant);
@@ -403,7 +405,7 @@
   align-items: center;
   width: 100%;
 
-  & span{
+  & span {
     color: var(--on-surface-variant);
   }
 
@@ -413,7 +415,19 @@
   }
 }
 
-.projectTabsWrapper{
+/* The favorites (V7). On a phone only the project list below scrolls, so
+   a long favorites list gets a height of its own. */
+.favoritesWrapper {
+  display: flex;
+  flex-direction: column;
+
+  @include bp.phone {
+    max-height: 30vh;
+    overflow-y: auto;
+  }
+}
+
+.projectTabsWrapper {
   /* No scrolling of its own — `.scroll` above scrolls the whole menu
      (on a phone: this list alone, see `.scrollProjects`). */
   display: flex;

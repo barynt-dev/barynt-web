@@ -29,7 +29,7 @@
     display: inline-flex;
   }
 
-  @include bp.rail {
+  @include bp.nav-collapsed {
     display: inline-flex;
   }
 }
@@ -74,7 +74,10 @@
   line-height: var(--leading-tight);
   cursor: pointer;
   user-select: none;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    color 0.12s;
 
   /* State layer — same hover/press language as Button and Chip. */
   &::after {

@@ -11,6 +11,8 @@ export const GROUP_KEYS = [
   "type",
   "assignee",
   "storyPoints",
+  // Across projects only (V8) — moving a card between projects isn't a drag.
+  "project",
 ] as const;
 
 /** The groupings every workspace has. */
@@ -82,6 +84,24 @@ export function groupKeyFromParam(value: string | undefined): GroupKey {
   return value && isGroupKey(value) ? value : "status";
 }
 
+/**
+ * Reads `?lanes=` (BARY-173): the board's second grouping, as horizontal
+ * swimlanes. `null` for none, a stale value, or the same grouping as the
+ * columns — a lane per column value would only repeat the columns.
+ */
+export function laneKeyFromParam(
+  value: string | null | undefined,
+  groupKey: GroupKey,
+): GroupKey | null {
+  return value && isGroupKey(value) && value !== groupKey ? value : null;
+}
+
+/** A lane as stored in `collapsedLanes` — "<laneKey>:<laneId>", like the
+ *  `hidden-groups.ts` entries, so another lane grouping never matches. */
+export function laneEntry(key: GroupKey, id: string): string {
+  return `${key}:${id}`;
+}
+
 export interface GroupLookups {
   statuses: Status[];
   priorities: Priority[];
@@ -89,6 +109,8 @@ export interface GroupLookups {
   members: User[];
   /** Needed for a grouping by a custom field. */
   customFields?: FieldDefinition[];
+  /** Given only across projects (V8) — where grouping by project exists. */
+  projects?: { id: string; name: string; color: string }[];
 }
 
 export interface GroupLabels {
@@ -141,13 +163,22 @@ export function groupIdOf(issue: Issue, key: GroupKey): string {
       return issue.assignee ?? NONE;
     case "storyPoints":
       return issue.storyPoints === null ? NONE : String(issue.storyPoints);
+    case "project":
+      return issue.project;
   }
 }
 
 /** Every group that could exist for `key`, in display order. */
 export function groupDefs(
   key: GroupKey,
-  { statuses, priorities, issueTypes, members, customFields }: GroupLookups,
+  {
+    statuses,
+    priorities,
+    issueTypes,
+    members,
+    projects = [],
+    customFields,
+  }: GroupLookups,
   labels: GroupLabels,
   issues: Issue[],
 ): GroupDef[] {
@@ -224,7 +255,21 @@ export function groupDefs(
         { key, id: NONE, label: labels.noStoryPoints, alwaysShow: true },
       ];
     }
+    case "project":
+      return projects.map((p) => ({
+        key,
+        id: p.id,
+        label: p.name,
+        color: p.color,
+        alwaysShow: false,
+      }));
   }
+}
+
+/** Whether a card can be dragged into another group of `key` — not across
+ *  projects (V8): that's a move with a new key, not a field change. */
+export function canMoveBetweenGroups(key: GroupKey): boolean {
+  return key !== "project";
 }
 
 /** The groups to actually draw: always-shown ones plus any with issues. */
@@ -281,6 +326,21 @@ export function withMovePatch<T extends Issue>(issue: T, patch: IssuePatch): T {
   return { ...issue, fieldValues: next };
 }
 
+/**
+ * What a new issue created in group `id` starts with — a column's value, or
+ * for a custom grouping that choice (as the only one, for a multi-choice).
+ */
+export function groupStartPatch(
+  key: GroupKey,
+  id: string,
+  customFields: FieldDefinition[] = [],
+): IssuePatch {
+  if (!isCustomGroupKey(key)) return groupPatch(key, id);
+  if (id === NONE) return {};
+  const multi = groupField(key, customFields)?.type === "MULTI_SELECT";
+  return { fieldValues: { [customFieldIdOf(key)]: multi ? [id] : id } };
+}
+
 /** What moving an issue into group `id` changes on it. */
 export function groupPatch(key: BuiltinGroupKey, id: string): IssuePatch {
   switch (key) {
@@ -294,5 +354,8 @@ export function groupPatch(key: BuiltinGroupKey, id: string): IssuePatch {
       return { assignee: id === NONE ? null : id };
     case "storyPoints":
       return { storyPoints: id === NONE ? null : Number(id) };
+    case "project":
+      // Not a field change (`canMoveBetweenGroups`).
+      return {};
   }
 }

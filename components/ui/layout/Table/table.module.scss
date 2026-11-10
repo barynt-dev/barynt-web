@@ -375,7 +375,9 @@ tbody.group {
   /* Invisible until the row is meant — a list full of handles would be
      restless, and the whole row is draggable anyway. */
   opacity: 0;
-  transition: opacity 0.12s, color 0.12s;
+  transition:
+    opacity 0.12s,
+    color 0.12s;
 
   &:hover,
   &:focus-visible {
@@ -421,7 +423,7 @@ tbody.group {
    following group's sticky header would cover it. */
 .row[data-drop]::before,
 .groupRow[data-drop]::before {
-  content: '';
+  content: "";
   position: absolute;
   inset-inline: 0;
   z-index: 3;
@@ -436,7 +438,7 @@ tbody.group {
    it: the card clips its edges, an overhang would get cut off. */
 .row[data-drop]::after,
 .groupRow[data-drop]::after {
-  content: '';
+  content: "";
   position: absolute;
   inset-inline-start: 0;
   z-index: 3;
@@ -447,15 +449,23 @@ tbody.group {
   pointer-events: none;
 }
 
-.row[data-drop='above'] {
-  &::before { top: 0; }
-  &::after { top: -0.125rem; }
+.row[data-drop="above"] {
+  &::before {
+    top: 0;
+  }
+  &::after {
+    top: -0.125rem;
+  }
 }
 
-.row[data-drop='below'],
+.row[data-drop="below"],
 .groupRow[data-drop] {
-  &::before { bottom: 0; }
-  &::after { bottom: -0.125rem; }
+  &::before {
+    bottom: 0;
+  }
+  &::after {
+    bottom: -0.125rem;
+  }
 }
 
 /* The live region: there for screen readers, not for eyes. `display: none`
@@ -629,4 +639,30 @@ tbody.group {
   background: transparent;
   border: none;
   border-radius: 0;
+}
+
+/* Sum rows (`totals`): under a group quiet, under the whole table a little
+   stronger — the same columns as the rows above. */
+.totalRow {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-height: 2.25rem;
+  padding-inline: var(--table-pad);
+  font-size: var(--text-xs);
+  color: var(--on-surface-variant);
+  font-variant-numeric: tabular-nums;
+
+  &[data-scope="all"] {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    min-height: 2.75rem;
+    background: var(--surface-container);
+    border-radius: var(--table-radius);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--on-surface);
+  }
 }

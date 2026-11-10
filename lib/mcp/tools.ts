@@ -1,18 +1,22 @@
 import "server-only";
 import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import type { MutationResult } from "@/features/api-v1/mutations";
 import {
   addIssueRelationForUser,
+  createAttachmentForUser,
   createCommentForUser,
   createIssueForUser,
   createLabelForUser,
   createProjectForUser,
   createWorkspaceForUser,
+  deleteAttachmentForUser,
   deleteCommentForUser,
   deleteLabelForUser,
   deleteProjectForUser,
   deleteWorkspaceForUser,
   removeIssueRelationForUser,
+  requestAttachmentUploadForUser,
   updateCommentForUser,
   updateIssueForUser,
   updateLabelForUser,
@@ -20,7 +24,13 @@ import {
   updateWorkspaceForUser,
 } from "@/features/api-v1/mutations";
 import {
+  listIssueTypesForUser,
+  listPrioritiesForUser,
+} from "@/features/api-v1/options";
+import {
+  getAttachmentForUser,
   getIssueForUser,
+  listAttachmentsForUser,
   listCommentsForUser,
   listCustomFieldsForUser,
   listIssuesForUser,
@@ -31,10 +41,24 @@ import {
   listWorkspaceMembersForUser,
   listWorkspacesForUser,
 } from "@/features/api-v1/queries";
+import {
+  createViewForApi,
+  deleteViewForApi,
+  getViewForUser,
+  listProjectViewsForUser,
+  listStatusesForUser,
+  listViewIssuesForUser,
+  listWorkspaceViewsForUser,
+  updateViewForApi,
+} from "@/features/api-v1/views";
+import { parseIssueFilter } from "@/features/issues/filter";
 import { encodeCursor } from "@/lib/api/cursor";
 import { pickFields } from "@/lib/api/fields";
+import { attachmentContent } from "@/lib/mcp/attachments";
 import {
   authorize,
+  forbiddenResult,
+  invalidBodyResult,
   jsonResult,
   mutationResult,
   notFoundResult,
@@ -358,6 +382,188 @@ export function registerBaryntTools(server: McpServer): void {
     },
   );
 
+  // ─── Views and statuses (BARY-172) ─────────────────────────────────────
+
+  server.registerTool(
+    "list_views",
+    {
+      title: "List views",
+      description:
+        "List the saved views you can see — a project's (projectId) or a workspace's cross-project views including the built-in 'My issues' and 'Created by me' (workspaceId).",
+      inputSchema: z.object({
+        projectId: z.string().optional(),
+        workspaceId: z.string().optional(),
+      }),
+    },
+    async ({ projectId, workspaceId }, ctx) => {
+      const auth = await authorize(ctx, "views:read");
+      if (!auth.ok) return auth.result;
+      if (!projectId === !workspaceId) return invalidBodyResult();
+      const views = projectId
+        ? await listProjectViewsForUser(auth.auth.userId, projectId)
+        : await listWorkspaceViewsForUser(auth.auth.userId, workspaceId ?? "");
+      return views ? jsonResult(views) : notFoundResult();
+    },
+  );
+
+  server.registerTool(
+    "get_view",
+    {
+      title: "Get view",
+      description:
+        "Fetch one saved view: its filter tree, layout, grouping and sort. Use list_issues with viewId for its issues.",
+      inputSchema: z.object({ viewId: z.string() }),
+    },
+    async ({ viewId }, ctx) => {
+      const auth = await authorize(ctx, "views:read");
+      if (!auth.ok) return auth.result;
+      const view = await getViewForUser(auth.auth.userId, viewId);
+      return view ? jsonResult(view) : notFoundResult();
+    },
+  );
+
+  const viewInput = {
+    name: z.string().describe("Up to 80 characters."),
+    layout: z.enum(["board", "list", "dashboard"]),
+    visibility: z
+      .enum(["PRIVATE", "PROJECT", "WORKSPACE"])
+      .optional()
+      .describe(
+        "PRIVATE (default) for you only; PROJECT in a project, WORKSPACE for a cross-project view — sharing needs the view.share permission.",
+      ),
+    filter: z.unknown().optional().describe("A filter tree (see list_issues)."),
+    groupBy: z.string().nullable().optional(),
+    sortBy: z.string().optional(),
+    sortDir: z.enum(["asc", "desc"]).optional(),
+    icon: z.string().nullable().optional(),
+    color: z
+      .string()
+      .nullable()
+      .optional()
+      .describe("Hex color, e.g. #3b7bd5."),
+  };
+
+  server.registerTool(
+    "create_view",
+    {
+      title: "Create view",
+      description:
+        "Save a view in a project (projectId) or as a cross-project view of a workspace (workspaceId).",
+      inputSchema: z.object({
+        projectId: z.string().optional(),
+        workspaceId: z.string().optional(),
+        ...viewInput,
+      }),
+    },
+    async ({ projectId, workspaceId, ...input }, ctx) => {
+      const auth = await authorize(ctx, "views:write");
+      if (!auth.ok) return auth.result;
+      if (!projectId === !workspaceId) return invalidBodyResult();
+      return viewMutationResult(
+        await createViewForApi(
+          auth.auth.userId,
+          projectId ? { projectId } : { workspaceId: workspaceId ?? "" },
+          input,
+        ),
+      );
+    },
+  );
+
+  server.registerTool(
+    "update_view",
+    {
+      title: "Update view",
+      description:
+        "Change a saved view. Only what you pass changes. Shared views: their creator (with view.share) or anyone with view.manage.",
+      inputSchema: z.object({
+        viewId: z.string(),
+        ...Object.fromEntries(
+          Object.entries(viewInput).map(([key, schema]) => [
+            key,
+            schema.optional(),
+          ]),
+        ),
+      }),
+    },
+    async ({ viewId, ...patch }, ctx) => {
+      const auth = await authorize(ctx, "views:write");
+      if (!auth.ok) return auth.result;
+      return viewMutationResult(
+        await updateViewForApi(auth.auth.userId, viewId, patch),
+      );
+    },
+  );
+
+  server.registerTool(
+    "delete_view",
+    {
+      title: "Delete view",
+      description: "Delete a saved view. Built-in views can't be deleted.",
+      inputSchema: z.object({ viewId: z.string() }),
+    },
+    async ({ viewId }, ctx) => {
+      const auth = await authorize(ctx, "views:write");
+      if (!auth.ok) return auth.result;
+      return viewMutationResult(
+        await deleteViewForApi(auth.auth.userId, viewId),
+      );
+    },
+  );
+
+  server.registerTool(
+    "list_statuses",
+    {
+      title: "List statuses",
+      description:
+        "List a workspace's statuses in board order, each with its category: backlog, unstarted, started, completed or canceled.",
+      inputSchema: z.object({ workspaceId: z.string() }),
+    },
+    async ({ workspaceId }, ctx) => {
+      const auth = await authorize(ctx, "workspaces:read");
+      if (!auth.ok) return auth.result;
+      const statuses = await listStatusesForUser(auth.auth.userId, workspaceId);
+      return statuses ? jsonResult(statuses) : notFoundResult();
+    },
+  );
+
+  server.registerTool(
+    "list_priorities",
+    {
+      title: "List priorities",
+      description:
+        "List a workspace's priorities in order. Use an `id` from here as `priority` in create_issue / update_issue.",
+      inputSchema: z.object({ workspaceId: z.string() }),
+    },
+    async ({ workspaceId }, ctx) => {
+      const auth = await authorize(ctx, "workspaces:read");
+      if (!auth.ok) return auth.result;
+      const priorities = await listPrioritiesForUser(
+        auth.auth.userId,
+        workspaceId,
+      );
+      return priorities ? jsonResult(priorities) : notFoundResult();
+    },
+  );
+
+  server.registerTool(
+    "list_issue_types",
+    {
+      title: "List issue types",
+      description:
+        "List a workspace's issue types in order. Use an `id` from here as `type` in create_issue / update_issue.",
+      inputSchema: z.object({ workspaceId: z.string() }),
+    },
+    async ({ workspaceId }, ctx) => {
+      const auth = await authorize(ctx, "workspaces:read");
+      if (!auth.ok) return auth.result;
+      const issueTypes = await listIssueTypesForUser(
+        auth.auth.userId,
+        workspaceId,
+      );
+      return issueTypes ? jsonResult(issueTypes) : notFoundResult();
+    },
+  );
+
   // ─── Issues ────────────────────────────────────────────────────────────
 
   server.registerTool(
@@ -365,9 +571,24 @@ export function registerBaryntTools(server: McpServer): void {
     {
       title: "List issues",
       description:
-        "List issues in a project, optionally filtered by status, assignee, or a text search over title and description.",
+        "List issues in a project, optionally filtered by status, assignee, a text search over title and description, or a filter tree. With viewId, list the issues a saved view shows instead (projectId is then not needed; @me in the view means you).",
       inputSchema: z.object({
-        projectId: z.string(),
+        projectId: z
+          .string()
+          .optional()
+          .describe("Required unless viewId is given."),
+        viewId: z
+          .string()
+          .optional()
+          .describe(
+            "A saved view's id (list_views) — its filter, project and fixed conditions apply.",
+          ),
+        filter: z
+          .unknown()
+          .optional()
+          .describe(
+            'A filter tree, as views store it: { "op": "and"|"or", "rules": [ { "field": "priority", "is": "gte", "value": 3 }, { "op": "or", "rules": [...] } ] }. Values like "@me" resolve to you; values are ids, not names. Fields: status, statusCategory, priority, type, assignee, reporter, label, project, storyPoints, estimate, dueDate, created, updated, parent, text. Ignored with viewId.',
+          ),
         status: z.string().optional(),
         assignee: z.string().optional().describe("User id."),
         q: z
@@ -396,17 +617,40 @@ export function registerBaryntTools(server: McpServer): void {
       }),
     },
     async (
-      { projectId, limit, fields, customFieldFilters, ...filters },
+      {
+        projectId,
+        viewId,
+        filter: rawFilter,
+        limit,
+        fields,
+        customFieldFilters,
+        ...filters
+      },
       ctx,
     ) => {
       const auth = await authorize(ctx, "issues:read");
       if (!auth.ok) return auth.result;
 
-      const page = await listIssuesForUser(auth.auth.userId, projectId, {
-        ...filters,
-        fieldFilters: customFieldFilters,
-        take: limit ?? 25,
-      });
+      let page: Awaited<ReturnType<typeof listViewIssuesForUser>>;
+      if (viewId) {
+        const views = await authorize(ctx, "views:read");
+        if (!views.ok) return views.result;
+        page = await listViewIssuesForUser(auth.auth.userId, viewId, {
+          cursor: filters.cursor,
+          take: limit ?? 25,
+        });
+      } else {
+        if (!projectId) return invalidBodyResult();
+        const filter =
+          rawFilter === undefined ? undefined : parseIssueFilter(rawFilter);
+        if (filter === null) return invalidBodyResult();
+        page = await listIssuesForUser(auth.auth.userId, projectId, {
+          ...filters,
+          filter,
+          fieldFilters: customFieldFilters,
+          take: limit ?? 25,
+        });
+      }
       if (!page) return notFoundResult();
 
       const last = page.rows.at(-1);
@@ -431,11 +675,21 @@ export function registerBaryntTools(server: McpServer): void {
           .describe(
             "Markdown. `@handle` mentions a workspace member (notifies them); `#PREFIX-123` links another issue; `//2026-08-14` (or `//14.8.2026`) becomes a date chip; `[label|https://...]` (or bare `[https://...]`) becomes a link chip. All resolved server-side; unresolved ones are left as plain text.",
           ),
-        status: z.string().optional(),
-        priority: z.number().int().optional(),
+        status: z
+          .string()
+          .optional()
+          .describe("A status id — see list_statuses."),
+        priority: z
+          .number()
+          .int()
+          .optional()
+          .describe("A priority id — see list_priorities."),
         assignee: z.string().nullable().optional().describe("User id."),
         labels: z.array(z.string()).optional().describe("Label ids."),
-        type: z.string().optional(),
+        type: z
+          .string()
+          .optional()
+          .describe("An issue type id — see list_issue_types."),
         parentId: z
           .string()
           .nullable()
@@ -485,7 +739,8 @@ export function registerBaryntTools(server: McpServer): void {
     "get_issue",
     {
       title: "Get issue",
-      description: 'Fetch a single issue by internal id or "PREFIX-123" ref.',
+      description:
+        'Fetch a single issue by internal id or "PREFIX-123" ref. Comments are not embedded: `commentCount` says how many there are. When it is above 0, also call list_comments for this issue — the discussion often holds context the description lacks.',
       inputSchema: z.object({
         issueId: z.string().describe('Internal id, or a ref like "ENG-123".'),
         fields: z
@@ -501,7 +756,17 @@ export function registerBaryntTools(server: McpServer): void {
       if (!auth.ok) return auth.result;
       const issue = await getIssueForUser(auth.auth.userId, issueId);
       if (!issue) return notFoundResult();
-      return jsonResult(pickFields(issue, fields ?? null));
+      const hints = [
+        issue.commentCount > 0 &&
+          `This issue has ${issue.commentCount} comment(s). Call list_comments with this issue before acting on it.`,
+        issue.attachmentCount > 0 &&
+          `It has ${issue.attachmentCount} attachment(s), listed under \`attachments\`. Call get_attachment with includeContent to look at an image or text file.`,
+      ].filter(Boolean);
+      return jsonResult({
+        ...pickFields(issue, fields ?? null),
+        // Outside `pickFields` so a `fields` allowlist can't hide it.
+        ...(hints.length > 0 && { hint: hints.join(" ") }),
+      });
     },
   );
 
@@ -520,11 +785,21 @@ export function registerBaryntTools(server: McpServer): void {
           .describe(
             "Markdown. `@handle` mentions a workspace member (notifies them); `#PREFIX-123` links another issue; `//2026-08-14` (or `//14.8.2026`) becomes a date chip; `[label|https://...]` (or bare `[https://...]`) becomes a link chip. All resolved server-side; unresolved ones are left as plain text.",
           ),
-        status: z.string().optional(),
-        priority: z.number().int().optional(),
+        status: z
+          .string()
+          .optional()
+          .describe("A status id — see list_statuses."),
+        priority: z
+          .number()
+          .int()
+          .optional()
+          .describe("A priority id — see list_priorities."),
         assignee: z.string().nullable().optional().describe("User id."),
         labels: z.array(z.string()).optional().describe("Label ids."),
-        type: z.string().optional(),
+        type: z
+          .string()
+          .optional()
+          .describe("An issue type id — see list_issue_types."),
         parentId: z
           .string()
           .nullable()
@@ -692,4 +967,139 @@ export function registerBaryntTools(server: McpServer): void {
       );
     },
   );
+
+  // ─── Attachments ───────────────────────────────────────────────────────
+  //
+  // Part of the issue, like in the app — `issues:read` to see them,
+  // `issues:write` to add or remove one.
+
+  server.registerTool(
+    "list_attachments",
+    {
+      title: "List attachments",
+      description:
+        "List an issue's attachments (files and links), oldest first. Each has a `url` to view it — for a file a signed download link that works without a token until `urlExpiresAt`.",
+      inputSchema: z.object({
+        issueId: z.string().describe('Internal id, or a ref like "ENG-123".'),
+      }),
+    },
+    async ({ issueId }, ctx) => {
+      const auth = await authorize(ctx, "issues:read");
+      if (!auth.ok) return auth.result;
+      const data = await listAttachmentsForUser(auth.auth.userId, issueId);
+      return data ? jsonResult(data) : notFoundResult();
+    },
+  );
+
+  server.registerTool(
+    "get_attachment",
+    {
+      title: "Get attachment",
+      description:
+        "Fetch one attachment with a fresh `url`. With includeContent, the file itself comes along: an image (PNG, JPEG, GIF, WebP up to 5 MB) as an image, a text file (plain text, Markdown, CSV, JSON, XML, YAML, logs, code up to 512 KB) as text. Other files, and links, only come as metadata — open their `url` instead.",
+      inputSchema: z.object({
+        attachmentId: z.string(),
+        includeContent: z
+          .boolean()
+          .optional()
+          .describe("Also return the file's content (see above)."),
+      }),
+    },
+    async ({ attachmentId, includeContent }, ctx) => {
+      const auth = await authorize(ctx, "issues:read");
+      if (!auth.ok) return auth.result;
+      const found = await getAttachmentForUser(auth.auth.userId, attachmentId);
+      if (!found) return notFoundResult();
+      if (!includeContent) return jsonResult(found.attachment);
+      return attachmentContent(found.attachment, found.key);
+    },
+  );
+
+  server.registerTool(
+    "add_attachment",
+    {
+      title: "Add attachment",
+      description:
+        "Attach a link or a file to an issue. Send exactly one of: `url` (an http(s) link), `content` (a file as base64 or a data: URL, up to 10 MB), or `key` (a file uploaded via request_attachment_upload).",
+      inputSchema: z.object({
+        issueId: z.string().describe('Internal id, or a ref like "ENG-123".'),
+        url: z.string().optional().describe("An http(s) link to attach."),
+        content: z
+          .string()
+          .optional()
+          .describe("The file's bytes, base64-encoded (or a data: URL)."),
+        key: z
+          .string()
+          .optional()
+          .describe("The `key` from request_attachment_upload, after the PUT."),
+        name: z
+          .string()
+          .optional()
+          .describe(
+            "File name, e.g. screenshot.png — required for a file. For a link it defaults to the host.",
+          ),
+        mimeType: z
+          .string()
+          .optional()
+          .describe("e.g. image/png. Guessed from the file name if omitted."),
+      }),
+    },
+    async ({ issueId, ...input }, ctx) => {
+      const auth = await authorize(ctx, "issues:write");
+      if (!auth.ok) return auth.result;
+      return mutationResult(
+        await createAttachmentForUser(auth.auth.userId, issueId, input),
+      );
+    },
+  );
+
+  server.registerTool(
+    "request_attachment_upload",
+    {
+      title: "Request attachment upload",
+      description:
+        "For a file over 10 MB (up to 100 MB): returns an `uploadUrl` to PUT the file's bytes to (with the returned `headers`, within 2 minutes). Then call add_attachment with the returned `key` and the file name.",
+      inputSchema: z.object({
+        issueId: z.string().describe('Internal id, or a ref like "ENG-123".'),
+        fileName: z.string(),
+        contentType: z
+          .string()
+          .optional()
+          .describe("Guessed from the file name if omitted."),
+        contentLength: z.number().int().min(0).describe("Size in bytes."),
+      }),
+    },
+    async ({ issueId, ...input }, ctx) => {
+      const auth = await authorize(ctx, "issues:write");
+      if (!auth.ok) return auth.result;
+      return mutationResult(
+        await requestAttachmentUploadForUser(auth.auth.userId, issueId, input),
+      );
+    },
+  );
+
+  server.registerTool(
+    "delete_attachment",
+    {
+      title: "Delete attachment",
+      description:
+        "Remove an attachment from its issue — a file is deleted from storage too.",
+      inputSchema: z.object({ attachmentId: z.string() }),
+    },
+    async ({ attachmentId }, ctx) => {
+      const auth = await authorize(ctx, "issues:write");
+      if (!auth.ok) return auth.result;
+      return mutationResult(
+        await deleteAttachmentForUser(auth.auth.userId, attachmentId),
+      );
+    },
+  );
+}
+
+/** A view mutation's result — unlike `mutationResult`, a 403 here means
+ *  "visible, but not yours to change". */
+function viewMutationResult<T>(result: MutationResult<T>) {
+  return !result.ok && result.status === 403
+    ? forbiddenResult()
+    : mutationResult(result);
 }

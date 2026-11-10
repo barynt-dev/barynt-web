@@ -24,6 +24,24 @@
      the full width, and the eye would lose track when wrapping to the
      next line. */
   --detail-content-w: 48.75rem;
+  /* What the pinned attribute bar (`.pinnedProps`) paints behind itself —
+     the panel's own surface, so it reads as part of the header. */
+  --detail-bg: var(--surface-container-low);
+}
+
+/* The side panel's header ends on the same line as the bar beside it
+   (the sidebar's brand row, the page's `Topbar`): a 2.875rem row, the
+   1.625rem buttons centered in it. A phone has no bar beside it, the
+   dialog fills the screen. */
+.detail:not(.expanded) {
+  --modal-head-pt: 0.625rem;
+  --modal-head-pb: 0.625rem;
+
+  /* `initial` unsets them — `Modal`'s own defaults apply again. */
+  @include bp.phone {
+    --modal-head-pt: initial;
+    --modal-head-pb: initial;
+  }
 }
 
 /* Expanded: a large dialog instead of a side panel.
@@ -64,6 +82,7 @@
      kicks in above that — somewhere the line has to end for the eye to
      still follow along when it wraps. */
   --detail-content-w: 87.5rem;
+  --detail-bg: var(--background);
 
   display: flex;
   flex: 1 1 auto;
@@ -96,7 +115,9 @@
   height: 1.75rem;
   border-radius: var(--radius-sm);
   color: var(--on-surface-variant);
-  transition: background .12s, color .12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 
   &:hover {
     background: var(--surface-container-high);
@@ -122,7 +143,9 @@
   border-radius: var(--radius-sm);
   font-size: var(--text-base);
   color: var(--on-surface-variant);
-  transition: background .12s, color .12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 
   &:hover {
     background: var(--surface-container-high);
@@ -149,7 +172,7 @@
   padding: 0 0.1875rem;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  letter-spacing: .04em;
+  letter-spacing: 0.04em;
   color: var(--on-surface);
 }
 
@@ -166,10 +189,8 @@
    and sits centered — the same calculation as in the panel (`.body`). */
 .page .main {
   gap: 1.625rem;
-  padding:
-    2rem
-    max(var(--detail-pad-x), calc((100% - var(--detail-content-w)) / 2))
-    4rem;
+  padding: 2rem
+    max(var(--detail-pad-x), calc((100% - var(--detail-content-w)) / 2)) 4rem;
 }
 
 /* Here the title carries the hierarchy of the whole page — unlike in the
@@ -208,7 +229,7 @@
 .ref {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  letter-spacing: .04em;
+  letter-spacing: 0.04em;
   color: var(--outline);
 }
 
@@ -228,18 +249,24 @@
   color: var(--on-background);
 
   &::after {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
     background: var(--on-background);
     opacity: 0;
-    transition: opacity .12s;
+    transition: opacity 0.12s;
   }
 
-  &:hover::after { opacity: var(--opacity-hover); }
-  &:focus-visible::after { opacity: var(--opacity-focus); }
-  &:active::after { opacity: var(--opacity-active); }
+  &:hover::after {
+    opacity: var(--opacity-hover);
+  }
+  &:focus-visible::after {
+    opacity: var(--opacity-focus);
+  }
+  &:active::after {
+    opacity: var(--opacity-active);
+  }
 }
 
 /* ---------- Single column: side panel ---------- */
@@ -269,7 +296,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in oklab, var(--surface-container-low) 65%, transparent);
+  background: color-mix(
+    in oklab,
+    var(--surface-container-low) 65%,
+    transparent
+  );
 }
 
 .loadingSpinner {
@@ -278,11 +309,15 @@
 }
 
 @keyframes detailLoadingSpin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .loadingSpinner { animation: none; }
+  .loadingSpinner {
+    animation: none;
+  }
 }
 
 .body {
@@ -291,10 +326,8 @@
   flex-direction: column;
   gap: 1.625rem;
   min-height: 0;
-  padding:
-    1.625rem
-    max(var(--detail-pad-x), calc((100% - var(--detail-content-w)) / 2))
-    2.75rem;
+  padding: 1.625rem
+    max(var(--detail-pad-x), calc((100% - var(--detail-content-w)) / 2)) 2.75rem;
   overflow-y: auto;
 }
 
@@ -322,6 +355,74 @@
 .body > *,
 .main > * {
   flex: none;
+}
+
+/* `.body` plus the pinned attribute bar above it. Takes over `.body`'s
+   place in the flex column, so either parent (the panel's `.contentWrap`,
+   the page) keeps sizing it the same way. */
+.stack {
+  position: relative;
+  /* The bar's z-index stays in here: above the description's own layers,
+     still below `.loadingOverlay` next door. */
+  isolation: isolate;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Type, status, priority, and assignee once their block has scrolled away
+   (`IssueStackedBody`): a second, flat bar right under the header. It lies
+   over the scroll container instead of inside it, so it takes no room and
+   the content runs on underneath. Same side padding as `.body` — the
+   percentage refers to the same parent — so the values line up with the
+   text below.
+
+   Shown by wiping down from the header's edge (`clip-path`) while the row
+   inside follows it, as if it slid out from under the header. The pickers
+   open in a portal, the clip never cuts them off. */
+.pinnedProps {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 10;
+  padding: 0.25rem
+    max(
+      calc(var(--detail-pad-x) - 0.375rem),
+      calc((100% - var(--detail-content-w)) / 2 - 0.375rem)
+    );
+  background: var(--detail-bg);
+  border-bottom: 1px solid var(--outline-variant);
+  clip-path: inset(0 0 100% 0);
+  opacity: 0;
+  transition:
+    clip-path 0.22s ease,
+    opacity 0.22s ease;
+
+  & > * {
+    transform: translateY(-0.75rem);
+    transition: transform 0.22s ease;
+  }
+
+  &[data-shown] {
+    clip-path: inset(0);
+    opacity: 1;
+
+    & > * {
+      transform: none;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pinnedProps {
+    clip-path: none;
+    transition: opacity 0.12s;
+
+    & > * {
+      transform: none;
+      transition: none;
+    }
+  }
 }
 
 /* The width is draggable (`IssueSidebar` writes it as an inline variable).
@@ -419,7 +520,7 @@
   padding: 0 0.375rem;
   font-size: var(--text-xs);
   font-weight: 500;
-  letter-spacing: .06em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--outline);
 }
@@ -459,9 +560,50 @@
 /* One step lighter than the bar, not the view's background — otherwise the
    hover state inside the box would be invisible. */
 .valueBtn {
-  transition: background .12s;
+  transition: background 0.12s;
 
-  &:hover { background: var(--surface-container-highest); }
+  &:hover {
+    background: var(--surface-container-highest);
+  }
+}
+
+/* One row, values only — the labels move to screen readers. Each field
+   takes what its value needs and gives way with an ellipsis when four
+   don't fit side by side. */
+.propertiesBar {
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.barField {
+  flex: 0 1 auto;
+  min-width: 0;
+
+  /* Flatter than in the block: the bar should take as little of the
+     reading area as it can. */
+  .valueBtn {
+    gap: 0.375rem;
+    width: auto;
+    max-width: 100%;
+    min-height: 1.75rem;
+    padding: 0.125rem 0.375rem;
+    font-size: var(--text-sm);
+
+    /* A tablet has the width — the values can stay as large as in the
+       block itself. */
+    @include bp.tablet-only {
+      gap: 0.5rem;
+      min-height: 2.25rem;
+      padding: 0.25rem 0.5rem;
+      font-size: var(--text-base);
+    }
+  }
+}
+
+.barLabel {
+  @include bp.sr-only;
 }
 
 /* Time-estimate popover (BARY-4): a number and its unit as two adjacent
@@ -472,7 +614,10 @@
   align-items: center;
   gap: 0.375rem;
 
-  > :first-child { flex: 1; min-width: 0; }
+  > :first-child {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 .unitSelect {
@@ -486,7 +631,10 @@
   font-size: var(--text-sm);
   cursor: pointer;
 
-  &:focus { border-color: var(--tertiary); outline: none; }
+  &:focus {
+    border-color: var(--tertiary);
+    outline: none;
+  }
 }
 
 /* ---------- Description ---------- */
@@ -543,7 +691,9 @@
   margin-left: auto;
   border-radius: var(--radius-sm);
   color: var(--on-surface-variant);
-  transition: background .12s, color .12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 
   &:hover {
     background: var(--surface-container-high);
@@ -565,7 +715,10 @@
   font-weight: 500;
   line-height: var(--leading-tight);
   color: var(--outline);
-  transition: color .12s, border-color .12s, background .12s;
+  transition:
+    color 0.12s,
+    border-color 0.12s,
+    background 0.12s;
 
   &:hover {
     background: var(--surface-container-high);
@@ -601,10 +754,18 @@
   height: 1.375rem;
   border-radius: var(--radius-sm);
   color: var(--outline);
-  transition: transform .15s, color .12s, background .12s;
+  transition:
+    transform 0.15s,
+    color 0.12s,
+    background 0.12s;
 
-  &:hover { color: var(--on-surface); background: var(--surface-container-high); }
-  &[aria-expanded="false"] { transform: rotate(-90deg); }
+  &:hover {
+    color: var(--on-surface);
+    background: var(--surface-container-high);
+  }
+  &[aria-expanded="false"] {
+    transform: rotate(-90deg);
+  }
 }
 
 /* Shrinks `Table`'s own spacing custom properties (see its own doc
@@ -643,9 +804,11 @@
   height: 1.375rem;
   border-radius: var(--radius-sm);
   color: var(--on-surface-variant);
-  transition: background .12s;
+  transition: background 0.12s;
 
-  &:not([data-readonly]):hover { background: var(--surface-container-high); }
+  &:not([data-readonly]):hover {
+    background: var(--surface-container-high);
+  }
 }
 
 .tableIdentTitle {
@@ -676,7 +839,9 @@
   font: inherit;
   color: var(--on-surface);
   text-align: left;
-  transition: border-color .12s, background .12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 
   &:not([data-readonly]):hover {
     border-color: var(--outline-variant);
@@ -702,9 +867,14 @@
   height: 1.375rem;
   border-radius: var(--radius-sm);
   color: var(--outline);
-  transition: color .12s, background .12s;
+  transition:
+    color 0.12s,
+    background 0.12s;
 
-  &:hover { color: var(--on-surface); background: var(--surface-container-high); }
+  &:hover {
+    color: var(--on-surface);
+    background: var(--surface-container-high);
+  }
 }
 
 /* ---------- Attachments ---------- */
@@ -717,7 +887,9 @@
   border-radius: var(--radius);
   border: 1px dashed var(--outline-variant);
   background: color-mix(in oklab, var(--on-surface) 2%, transparent);
-  transition: border-color .12s, background .12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 
   &[data-drag-over] {
     border-color: var(--tertiary);
@@ -769,7 +941,11 @@
   color: var(--on-surface-variant);
   overflow: hidden;
 
-  img { width: 100%; height: 100%; object-fit: cover; }
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 /* Like `.linkIcon` in `richText.module.scss` — a fallback icon underneath,
@@ -817,20 +993,36 @@
   border: 1px solid var(--outline-variant);
   color: var(--on-surface-variant);
   opacity: 0;
-  transition: opacity .12s, background .12s, color .12s;
+  transition:
+    opacity 0.12s,
+    background 0.12s,
+    color 0.12s;
 
-  &:hover { background: var(--error-container); color: var(--on-error-container); }
-  &:disabled { opacity: .5; pointer-events: none; }
+  &:hover {
+    background: var(--error-container);
+    color: var(--on-error-container);
+  }
+  &:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
 }
 
-.attachmentTile:hover .attachmentTileRemove { opacity: 1; }
+.attachmentTile:hover .attachmentTileRemove {
+  opacity: 1;
+}
 
 /* Same as in the editor's attachment view: no hover on touch. */
 @media (hover: none) {
-  .attachmentTileRemove { opacity: 1; }
+  .attachmentTileRemove {
+    opacity: 1;
+  }
 }
 @media (pointer: coarse) {
-  .attachmentTileRemove { width: 1.75rem; height: 1.75rem; }
+  .attachmentTileRemove {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
 }
 
 /* Same height as `.attachmentTile` — both tile types should line up flush
@@ -854,17 +1046,32 @@
   color: var(--outline);
   font-size: 0.625rem;
   text-align: center;
-  transition: color .12s, border-color .12s, background .12s;
+  transition:
+    color 0.12s,
+    border-color 0.12s,
+    background 0.12s;
 
-  span { padding: 0 0.25rem; }
+  span {
+    padding: 0 0.25rem;
+  }
 
-  &:hover { background: var(--surface-container-high); border-color: var(--outline); color: var(--on-surface); }
-  &:disabled { opacity: .5; pointer-events: none; }
+  &:hover {
+    background: var(--surface-container-high);
+    border-color: var(--outline);
+    color: var(--on-surface);
+  }
+  &:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
   /* Recolors its own dashed border instead of a default outline sitting
      a couple of pixels outside it — same reasoning as `.attachmentBox`
      above, just self-contained since this tile already has its own
      border. */
-  &:focus-visible { outline: none; border-color: var(--tertiary); }
+  &:focus-visible {
+    outline: none;
+    border-color: var(--tertiary);
+  }
 }
 
 /* The empty box itself is the call to action — no separate empty-state
@@ -879,13 +1086,20 @@
   padding: 1.125rem 0.625rem;
   color: var(--outline);
   font-size: var(--text-sm);
-  transition: color .12s;
+  transition: color 0.12s;
 
-  &:hover { color: var(--on-surface); }
-  &:disabled { opacity: .5; pointer-events: none; }
+  &:hover {
+    color: var(--on-surface);
+  }
+  &:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
   /* The focus ring shows on `.attachmentBox`'s own dashed border instead
      (see there) — this button has no border of its own to ring. */
-  &:focus-visible { outline: none; }
+  &:focus-visible {
+    outline: none;
+  }
 }
 
 .attachmentEmpty {
@@ -921,9 +1135,11 @@
   color: var(--on-surface);
   font-size: var(--text-sm);
   text-align: left;
-  transition: background .12s;
+  transition: background 0.12s;
 
-  &:hover { background: var(--surface-container-high); }
+  &:hover {
+    background: var(--surface-container-high);
+  }
 
   /* Phone (a bottom sheet): the same row as every other menu's — the height,
      gap and side padding of `SelectMenu`'s items. */
@@ -1110,7 +1326,9 @@
   color: var(--outline);
   cursor: pointer;
 
-  &:hover { color: var(--on-surface); }
+  &:hover {
+    color: var(--on-surface);
+  }
 }
 
 .commentEdited {
@@ -1152,9 +1370,14 @@
   height: 1.375rem;
   border-radius: var(--radius-sm);
   color: var(--outline);
-  transition: background .12s, color .12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 
-  &:hover { background: var(--surface-container-high); color: var(--on-surface); }
+  &:hover {
+    background: var(--surface-container-high);
+    color: var(--on-surface);
+  }
 }
 
 /* ---------- Replying to a comment ---------- */
@@ -1198,7 +1421,10 @@
   font-weight: 550;
   color: var(--outline);
 
-  &:hover { color: var(--on-surface); text-decoration: underline; }
+  &:hover {
+    color: var(--on-surface);
+    text-decoration: underline;
+  }
 }
 
 .commentTime {
@@ -1251,8 +1477,22 @@
   margin-top: 0.5rem;
 }
 
+/* Phone and tablet, writing: the editor opens in place at a fixed height —
+   a good part of what's visible above the keyboard, never all of it, so
+   the issue above stays in view and keeps scrolling. The editor fills it
+   (`fill`), its surface scrolls under the toolbar. */
+.composerBox[data-writing] {
+  display: flex;
+  flex-direction: column;
+  height: min(28rem, calc((100dvh - var(--kb-inset, 0px)) * 0.6));
+
+  .composerFoot {
+    flex: none;
+  }
+}
+
 /* Phone and tablet: the composer rests as one line (a messenger's) — a
-   field-looking button that opens the full-screen editor, plus "comment". */
+   field-looking button that opens the editor in place, plus "comment". */
 .composerCompact {
   display: flex;
   flex: 1;
@@ -1279,15 +1519,6 @@
   &[data-empty] {
     color: var(--outline);
   }
-}
-
-/* The full-screen editor: the editor grows, the buttons sit below. */
-.composerFull {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 0.5rem;
-  min-height: 0;
 }
 
 /* ---------- Loading and empty state ---------- */
@@ -1324,11 +1555,15 @@
 }
 
 @keyframes pulse {
-  50% { opacity: .45; }
+  50% {
+    opacity: 0.45;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shimmer { animation: none; }
+  .shimmer {
+    animation: none;
+  }
 }
 
 /* On narrow devices every bit of edge counts — the padding shrinks, the
@@ -1525,8 +1760,15 @@
     }
   }
 
-  /* No keyboard shortcut hint on a phone. */
-  .composerFoot > :first-child {
+  /* Writing: as tall as the open editor, not capped and scrolling as a
+     whole — the editor's own surface scrolls instead. */
+  &:has([data-writing], [data-docked-editor]) {
+    max-height: none;
+  }
+
+  /* The description is being edited here (`IssueDescription`): it takes the
+     spot, the comment line waits until it's done. */
+  &:has(> [data-docked-editor]) > :not([data-docked-editor]) {
     display: none;
   }
 }

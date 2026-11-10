@@ -95,6 +95,7 @@ export const AUDIT_ACTIONS = {
   "customfield.archived": "Custom field archived",
   "customfield.restored": "Custom field restored",
   "customfield.deleted": "Custom field deleted",
+  "view.deleted": "Shared view deleted",
 } as const;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
@@ -129,7 +130,8 @@ export type AuditTargetType =
   | "systemSettings"
   | "issue"
   | "label"
-  | "customField";
+  | "customField"
+  | "view";
 
 export interface AuditTarget {
   type: AuditTargetType;

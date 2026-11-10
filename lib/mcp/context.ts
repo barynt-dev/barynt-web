@@ -88,6 +88,11 @@ export const workspaceCreationDisabledResult = (): CallToolResult =>
     "Workspace creation is currently disabled by the administrator.",
   );
 
+/** Visible, but the caller may not change it (a shared view someone else
+ *  made, BARY-172). */
+export const forbiddenResult = (): CallToolResult =>
+  errorResult("forbidden", "You may see this, but not change it.");
+
 export function jsonResult(data: unknown): CallToolResult {
   return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
 }
@@ -96,6 +101,8 @@ export function jsonResult(data: unknown): CallToolResult {
  *  `CallToolResult`, same 403/404/422 split every route handler already makes. */
 export function mutationResult<T>(result: MutationResult<T>): CallToolResult {
   if (!result.ok) {
+    if (result.error)
+      return errorResult(result.error.code, result.error.message);
     if (result.status === 404) return notFoundResult();
     if (result.status === 403) return workspaceCreationDisabledResult();
     return invalidBodyResult();

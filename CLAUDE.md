@@ -2,6 +2,109 @@
 
 # Barynt — Project Conventions
 
+## Ticket workflow (for Claude)
+
+Applies whenever work starts from a Barynt ticket (`BARY-<n>`, via the
+Barynt MCP tools).
+
+### Status
+
+```
+pick ticket → in_progress → work → in_review → (user OK) → done
+```
+
+1. **Start:** set the ticket to `in_progress` before the first change.
+2. **Ready:** when the work is finished (lint + `bun run test` green, PR
+   open), set it to `in_review` and comment the PR link on the ticket.
+3. **Done:** only after the user says it's fine (or moves it to done
+   themselves) — never on your own. Then set it to `done`.
+
+### Git
+
+- **One branch per ticket**, cut from an up-to-date `main`:
+  `<type>/bary-<n>-<short-slug>` (`feat/`, `fix/`, `refactor/`, `chore/`),
+  e.g. `feat/bary-128-plugin-system`. All changes for the ticket go there.
+  Never commit ticket work directly to `main`.
+- Commits follow the existing style: `type(scope): summary`.
+- **Sub-tickets** get their own branch, cut from the **parent ticket's
+  branch** (not `main`), same naming with the sub-ticket's number. Their PRs
+  target the parent branch; only the parent branch gets a PR into `main`.
+- **PR:** when everything works, push and open a PR (`gh pr create`). Then
+  wait — merge only once the user approves or tells you to merge. This holds
+  for **every** PR, sub-ticket PRs into the parent branch included.
+- **Merge with a merge commit** (`gh pr merge --merge`), not squash or rebase.
+- **After a successful merge:** delete the branch locally and on the remote
+  (`gh pr merge --merge --delete-branch`, plus `git branch -d` if needed),
+  then switch back to the target branch and pull.
+- **Sub-ticket done:** once its PR is merged into the parent branch (with the
+  user's OK), set the sub-ticket to `done`. The parent ticket goes to `done`
+  only after its own PR into `main` is approved and merged.
+
+## Releases (BARY-189)
+
+Versions and release notes are semi-automated, see `releases/README.md`.
+
+- **Commits are Conventional** — `type(scope): summary`, `!` or a
+  `BREAKING CHANGE:` footer for a breaking change. The type decides the
+  proposed bump (`fix` patch, `feat` minor, breaking major; below 1.0 breaking
+  and `feat` both bump the minor); `chore`/`docs`/`test`/… alone propose
+  nothing.
+- A release is started by hand: Actions → **Release** (`release.yml`,
+  `workflow_dispatch`) with optional `version`, `highlights_en`/`highlights_de`
+  and `publish` (off = preview in the job summary). It writes
+  `releases/<version>.md` + `.de.md`, bumps `package.json`, commits to `main`,
+  tags `vX.Y.Z` and creates the GitHub release. The logic is in
+  `scripts/release/notes.ts` (tests: `tests/unit/release/`), the I/O in
+  `scripts/release/cli.ts`.
+- Don't edit `package.json`'s `version` by hand, and never the generated block
+  between the `changes:` markers.
+- If `main` is protected the push needs the secret `RELEASE_TOKEN` (a PAT that
+  may bypass it).
+- The last job rebuilds the website ([barynt-homepage](https://github.com/barynt-dev/barynt-homepage))
+  for the new version via `repository_dispatch`; it needs the secret
+  `SITE_DISPATCH_TOKEN` and only warns without it. The site reads the notes
+  from `releases/<version>.md` / `.de.md` at the tag, so they serve both.
+- The sidebar's update card (`lib/update-check.ts`) looks at the latest GitHub
+  release; `UPDATE_CHECK=false` turns the check off.
+- **Release notes in the app (BARY-191):** the version line under the user card
+  opens a window with the notes (`features/releases`, tabs per version up to the
+  running one). It reads `releases/<version>.md` / `.de.md` at runtime
+  (`lib/releases`; `releases/` is in `outputFileTracingIncludes`), shows the
+  hand-written part only (the generated `changes:` block, the heading and HTML
+  comments are dropped) and serves images from `releases/assets/` through
+  `/api/release-assets/<version>/<file>`. Notes of a version above
+  `package.json`'s are hidden. After an update the window opens once on its own:
+  the cookie `barynt_seen_release` holds the version this browser has seen.
+
+## User docs (`docs/guide/`)
+
+The docs on the website are Markdown in `docs/guide/`, published by
+[barynt-homepage](https://github.com/barynt-dev/barynt-homepage) (Starlight) from the
+release tag — so they ship with the version they describe. How to write a
+page is in `docs/guide/README.md`; in short:
+
+- One file per page, `en/<group>/<page>.md` with `title`, `description` and
+  `sidebar.order` in the front matter; groups and their names in
+  `_groups.json`. The German page sits at the same path under `de/` and is
+  optional (the site falls back to English).
+- Plain Markdown that also reads on GitHub: GitHub alerts (`> [!NOTE]`) for
+  callouts, relative `.md` links, images in `assets/en/` and `assets/de/`
+  (dark theme only; a picture missing in one language falls back to the
+  other), `{{version}}` for the release.
+- **A feature that changes what users see or do updates its page in the same
+  PR.** `tests/unit/docs/` checks front matter, groups, links and images.
+- `docs/guide/{en,de}/api-reference/` is **generated** (`bun run docs:api`)
+  from the in-app API/MCP reference data and the MCP tool schemas. A changed
+  route, tool or webhook event updates the data in
+  `features/account/components/AccountApiKeys/` / `AccountMcp/` and the
+  generated pages; `tests/unit/docs` fails while they are stale.
+- **Developer docs** live in `docs/dev/` (English only, read on GitHub and
+  published by barynt-homepage as the "Development" section; no front matter): setup, architecture, data model, authentication, permissions
+  (`permissions.md`, formerly `docs/rbac.md`), frontend, services, API/MCP
+  internals, testing, build/release, contributing. A change in how something
+  works updates its page in the same PR; `tests/unit/docs` checks that every
+  link and `#anchor` there resolves.
+
 ## Stack
 
 - **Next.js 16** (App Router) with TypeScript
@@ -15,6 +118,7 @@
 This version deviates from older Next.js versions. Always read `node_modules/next/dist/docs/` before writing code.
 
 - `params` and `searchParams` in pages/layouts are now **Promises** → always await them:
+
   ```ts
   export default async function Page({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -67,15 +171,14 @@ components/
 ## Responsive / mobile (BARY-36)
 
 The desktop layout is the base; the mixins in `styles/breakpoints.scss` reach
-*down* (`@use "breakpoints" as bp;`). Test widths: 375 / 768 / 1280px.
+_down_ (`@use "breakpoints" as bp;`). Test widths: 375 / 768 / 1280px.
 
-| Mixin | Applies | JS twin (`lib/utils/useMediaQuery`) |
-|---|---|---|
-| `bp.phone` | ≤ 640px | `PHONE_QUERY` |
-| `bp.tablet-down` | ≤ 1024px (phone + tablet) | `COMPACT_QUERY` |
-| `bp.tablet-only`, `bp.desktop`, `bp.rail` | tablet / > 1024px / collapsed icon rail | — |
-| `bp.coarse`, `bp.no-hover` | touch / no hover (input capability, not width) | — |
-
+| Mixin                                     | Applies                                                                                                       | JS twin (`lib/utils/useMediaQuery`) |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `bp.phone`                                | ≤ 640px                                                                                                       | `PHONE_QUERY`                       |
+| `bp.tablet-down`                          | ≤ 1024px (phone + tablet)                                                                                     | `COMPACT_QUERY`                     |
+| `bp.tablet-only`, `bp.desktop`, `bp.rail` | tablet / > 1024px / collapsed icon rail (inside the sidebar only; `bp.nav-collapsed` for elements outside it) | —                                   |
+| `bp.coarse`, `bp.no-hover`                | touch / no hover (input capability, not width)                                                                | —                                   |
 - **Layout in CSS, behavior in JS.** Width-only differences belong in SCSS;
   `useMediaQuery` is for behavior that has to differ (sheet vs. dialog, one
   column of a matrix). It is `false` on the server and during hydration.
@@ -89,7 +192,7 @@ The desktop layout is the base; the mixins in `styles/breakpoints.scss` reach
   `$upTo: tablet`) turns rows into wrapping flex cards — each cell is found by
   its column id (`td[data-col="…"]`), the page only sets `order` and
   `flex: 1 1 100%`. Give the label `flex: 1 1 calc(100% - 6.5rem)` to keep
-  the actions on its line; `flex: 1 1 0` fits *everything* on one line.
+  the actions on its line; `flex: 1 1 0` fits _everything_ on one line.
   `setting-rows` stacks a settings card's control under its text by the
   page's own width (container query, so a tablet's narrow panel counts too).
   `page-scroll-lists` makes the page scroll instead of each `fill` table
@@ -111,11 +214,10 @@ The desktop layout is the base; the mixins in `styles/breakpoints.scss` reach
 `Issue.description` and `Comment.body` are **ProseMirror documents** (`Json`),
 not strings. Reading and writing are separate:
 
-| | Component | Environment |
-|---|---|---|
-| Display | `components/ui/atoms/RichText` | Server Component, **no** dependency |
-| Edit | `components/ui/atoms/RichTextEditor` | `"use client"`, Tiptap, via `next/dynamic` |
-
+|         | Component                             | Environment                                |
+| ------- | ------------------------------------- | ------------------------------------------ |
+| Display | `components/ui/atoms/RichText`        | Server Component, **no** dependency        |
+| Edit    | `components/ui/layout/RichTextEditor` | `"use client"`, Tiptap, via `next/dynamic` |
 - Display translates the JSON to React by hand — no `generateHTML`, no
   `dangerouslySetInnerHTML`. Whoever adds a node type there must ship the
   matching extension in the editor (and vice versa).
@@ -148,7 +250,7 @@ leaves every icon empty (BARY-45).
 - The scan (`scripts/build-icons.ts`) reads string literals `"prefix:name"`
   from `app/`, `components/`, `features/`, `lib/`. Write icon names as
   literals; a name assembled at runtime isn't seen and always hits the API.
-- A new icon *set* (a prefix other than lucide/logos/material-symbols/mdi)
+- A new icon _set_ (a prefix other than lucide/logos/material-symbols/mdi)
   needs its `@iconify-json/<prefix>` as a devDependency.
 
 ## Personal behavior settings (`UserPreferences`)
@@ -157,19 +259,18 @@ Per-person settings that change how the app acts, not just how it looks.
 Account section **Navigation** (`account/navigation`), plus date/time in
 **Appearance** and own shortcuts / confirmations in **Shortcuts**.
 
-| Setting | Column | Read where |
-|---|---|---|
-| Click on a project name | `projectLanding` (`board`/`list`/`dashboard`) | `Sidebar/NavGroups/Projects` — the row's `href` |
-| Start page after sign-in | `startPage` | `app/[locale]/page.tsx` redirect |
-| Open issue | `issueOpenMode` (`panel`/`page`/`tab`/`browserTab`) | `useIssueOpen().open` (`features/issues/issue-links.ts`) |
-| "Open full page" in the issue header / `O` | `issuePageOpenMode` (`tab`/`browserTab`/`page`) | `useIssueOpen().openFullPage` — `OpenPageButton`, `IssueDetailView` |
-| Default grouping / order | `defaultGrouping`, `defaultSort` | the four view pages + `useTopbar`, as fallback to `?group=`/`?sort=` |
-| Sub-issues default | `defaultShowSubIssues` | `getIssueViewGroups` / `getMyIssuesViewGroups`, only while a view has no row of its own |
-| Sidebar collapsed / project order | `sidebarCollapsed`, `projectOrder` | `AppShell` (cookie wins, then this), `Projects` |
-| Date display, week start, time zone | `dateFormat`, `weekStart`, `timeZone` | `useTimeAgo`, `Calendar`, `i18n/request.ts` (`timeZone`) |
-| Own shortcuts | `shortcutOverrides` (`{ defaultSpec: ownSpec }`) | `useShortcut`, `useShortcutSequence`, `Shortcut` |
-| Ask before deleting | `confirmDestructive` | `useConfirm` — `danger` confirms resolve `true`, unless `always` |
-
+| Setting                                    | Column                                              | Read where                                                                              |
+| ------------------------------------------ | --------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Click on a project name                    | `projectLanding` (`board`/`list`/`dashboard`)       | `Sidebar/NavGroups/Projects` — the row's `href`                                         |
+| Start page after sign-in                   | `startPage`                                         | `app/[locale]/page.tsx` redirect                                                        |
+| Open issue                                 | `issueOpenMode` (`panel`/`page`/`tab`/`browserTab`) | `useIssueOpen().open` (`features/issues/issue-links.ts`)                                |
+| "Open full page" in the issue header / `O` | `issuePageOpenMode` (`tab`/`browserTab`/`page`)     | `useIssueOpen().openFullPage` — `OpenPageButton`, `IssueDetailView`                     |
+| Default grouping / order                   | `defaultGrouping`, `defaultSort`                    | the four view pages + `useTopbar`, as fallback to `?group=`/`?sort=`                    |
+| Sub-issues default                         | `defaultShowSubIssues`                              | `getIssueViewGroups` / `getMyIssuesViewGroups`, only while a view has no row of its own |
+| Sidebar collapsed / project order          | `sidebarCollapsed`, `projectOrder`                  | `AppShell` (cookie wins, then this), `Projects`                                         |
+| Date display, week start, time zone        | `dateFormat`, `weekStart`, `timeZone`               | `useTimeAgo`, `Calendar`, `i18n/request.ts` (`timeZone`)                                |
+| Own shortcuts                              | `shortcutOverrides` (`{ defaultSpec: ownSpec }`)    | `useShortcut`, `useShortcutSequence`, `Shortcut`                                        |
+| Ask before deleting                        | `confirmDestructive`                                | `useConfirm` — `danger` confirms resolve `true`, unless `always`                        |
 - Allowed values live in `features/account/preferences.ts` (one list per
   setting); `updateBehavior` validates against them, `toBehavior` narrows a
   row on read. A new option goes in that list, the settings UI and `messages/*`.
@@ -194,28 +295,28 @@ otherwise an `SMTP_HOST` set locally for Mailpit & co. in `.env` (Bun loads
 `.env` for `bun test` too) would make `isMailConfigured()` come back true in
 the middle of a unit test.
 
-| File | Job |
-|---|---|
-| `lib/mail/config.ts` | Reads the SMTP variables, `isMailConfigured()` |
-| `lib/mail/transport.ts` | `nodemailer` transport, reused as long as the config stays the same |
-| `lib/mail/send.ts` | `sendMail()` — swallows errors, no-op without configuration |
-| `lib/mail/templates/layout.ts` | `renderLayout()` (frame, branding, footer), `renderDetailTable()`, `renderAlertBox()` |
-| `lib/mail/templates/html.ts` | `escapeHtml()`, `humanizeKey()`, `formatDateDe()` |
-| `lib/mail/templates/*.ts` | One pure function per occasion, `(Input) → { subject, html, text }`, no DB access |
-| `lib/mail/index.ts` | Barrel + `sendInvitationEmail()`/`sendMemberRemovedEmail()` (load workspace/project/names themselves) |
+| File                           | Job                                                                                                   |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `lib/mail/config.ts`           | Reads the SMTP variables, `isMailConfigured()`                                                        |
+| `lib/mail/transport.ts`        | `nodemailer` transport, reused as long as the config stays the same                                   |
+| `lib/mail/send.ts`             | `sendMail()` — swallows errors, no-op without configuration                                           |
+| `lib/mail/templates/layout.ts` | `renderLayout()` (frame, branding, footer), `renderDetailTable()`, `renderAlertBox()`                 |
+| `lib/mail/templates/html.ts`   | `escapeHtml()`, `humanizeKey()`, `formatDateDe()`                                                     |
+| `lib/mail/templates/*.ts`      | One pure function per occasion, `(Input) → { subject, html, text }`, no DB access                     |
+| `lib/mail/index.ts`            | Barrel + `sendInvitationEmail()`/`sendMemberRemovedEmail()` (load workspace/project/names themselves) |
 
 Templates, as of today:
 
-| File | Occasion | Send point |
-|---|---|---|
-| `invitation.ts` | Invitation (new account) | `sendInvitationEmail()`, from the invite actions |
-| `memberRemoved.ts` | Removed from workspace/project | `sendMemberRemovedEmail()`, from `removeMember`/`removeProjectMember` |
-| `notification.ts` | assigned/mentioned/comment/status/invite/role | `lib/notify` (per `*Email` column) |
-| `welcome.ts` | Registration with password | **not wired up yet** |
-| `emailVerification.ts` | Confirm email address | **not wired up yet** (no token system) |
-| `passwordReset.ts` | Reset password | **not wired up yet** (no reset token) |
-| `weeklyDigest.ts` | Weekly summary | **not wired up yet** (no job, no query) |
-| `issueUpdate.ts` | Batched mail for title/priority/labels | **not wired up yet** (no `NotificationEvent` for it) |
+| File                   | Occasion                                      | Send point                                                            |
+| ---------------------- | --------------------------------------------- | --------------------------------------------------------------------- |
+| `invitation.ts`        | Invitation (new account)                      | `sendInvitationEmail()`, from the invite actions                      |
+| `memberRemoved.ts`     | Removed from workspace/project                | `sendMemberRemovedEmail()`, from `removeMember`/`removeProjectMember` |
+| `notification.ts`      | assigned/mentioned/comment/status/invite/role | `lib/notify` (per `*Email` column)                                    |
+| `welcome.ts`           | Registration with password                    | **not wired up yet**                                                  |
+| `emailVerification.ts` | Confirm email address                         | **not wired up yet** (no token system)                                |
+| `passwordReset.ts`     | Reset password                                | **not wired up yet** (no reset token)                                 |
+| `weeklyDigest.ts`      | Weekly summary                                | **not wired up yet** (no job, no query)                               |
+| `issueUpdate.ts`       | Batched mail for title/priority/labels        | **not wired up yet** (no `NotificationEvent` for it)                  |
 
 Three active callers:
 
@@ -253,13 +354,13 @@ email was sent to …") belongs in every input interface.
 
 ```ts
 // lib/db.ts
-import { PrismaClient } from "@/app/generated/prisma"
+import { PrismaClient } from "@/app/generated/prisma";
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-export const db = globalForPrisma.prisma ?? new PrismaClient()
+export const db = globalForPrisma.prisma ?? new PrismaClient();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
 ```
 
 ### Changing the schema — mandatory checklist
@@ -273,11 +374,13 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db
 ```
 
 **Why all three?**
+
 - Step 1 alone → client and DB fall out of sync, runtime errors
 - Step 2 alone (without 1) → no migration, DB is missing the field
 - Forgetting step 3 → seed fails, `bun db:reset` breaks
 
 **Adding a field (NOT NULL without a default):**
+
 ```sql
 -- Add this to the generated migration.sql BEFORE migrate deploy runs:
 ALTER TABLE "Model" ADD COLUMN "field" TEXT;
@@ -512,7 +615,7 @@ test against the mock. The DB mock is the smaller assumption and lets the
 real code run.
 
 For the same reason, `notifications/` (with `notify.test.ts`) gets its own
-process: it mocks `@/lib/mail` entirely, to check *whether* and *for whom*
+process: it mocks `@/lib/mail` entirely, to check _whether_ and _for whom_
 `notify()` triggers a mail. `workspace/inviteWorkspaceMember.test.ts` and
 `projects/projectMembers.test.ts` transitively import `sendInvitationEmail`
 from `@/lib/mail` and rely on the real function (which returns immediately
@@ -530,7 +633,7 @@ and `templates.test.ts` (neither of which uses `mock.module`) share one.
 The same conflict exists a third time around `@/lib/project-membership`:
 `workspace/inviteLinks.test.ts`, `workspace/inviteWorkspaceMember.test.ts`,
 `workspace/removeMember.test.ts`, and `workspace/teams.test.ts` all mock it
-away entirely (they only care that it gets *called*, not what it does), while
+away entirely (they only care that it gets _called_, not what it does), while
 `projects/projectMembership.test.ts` (its own tests), `workspace/createWorkspace.test.ts`,
 `auth/userProvisioning.test.ts`, and `auth/acceptInvitation.test.ts` all rely
 on the real implementation running against their own `@/lib/db` mock. The
@@ -591,7 +694,7 @@ the summary script matches XML testcases to log blocks by reconstructing
 the label Bun prints on its `(fail) <describe path> > <name> [<time>]` line
 (`classname`, reversed since Bun nests it innermost-first, plus `name`)
 rather than by file position, and why `classname` gets XML-unescaped
-*twice* — Bun double-escapes the `>` it joins nested describe names with.
+_twice_ — Bun double-escapes the `>` it joins nested describe names with.
 
 ```
 # Correct:
