@@ -246,7 +246,7 @@ export function AdminPlugins({ sources, installed }: AdminPluginsView) {
   }));
 
   const installedColumns: SettingsColumn[] = [
-    { id: "status", header: text.t("colStatus"), width: "130px" },
+    { id: "status", header: text.t("colStatus"), width: "180px" },
     { id: "actions", header: "", width: "max-content" },
   ];
   const installedRows: SettingsRow[] = installed.map((plugin) => ({

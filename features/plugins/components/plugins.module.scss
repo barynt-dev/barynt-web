@@ -47,6 +47,17 @@
   color: var(--on-surface);
 }
 
+/* A sentence that explains why the dialog asks — set apart, not louder. */
+.notice {
+  margin: 0;
+  padding: 0.625rem 0.75rem;
+  border-left: 3px solid var(--tertiary);
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-high);
+  font-size: var(--text-sm);
+  color: var(--on-surface);
+}
+
 .fieldLabel {
   font-size: var(--text-sm);
   font-weight: 550;

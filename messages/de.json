@@ -2498,6 +2498,7 @@
     "mayInWorkspace": "In diesem Workspace darf es",
     "mayInProject": "In diesem Projekt darf es",
     "confirmWorkspace": "Alle in diesem Workspace arbeiten damit. Ich bestätige, was es hier darf.",
-    "confirmProject": "Alle in diesem Projekt arbeiten damit. Ich bestätige, was es hier darf."
+    "confirmProject": "Alle in diesem Projekt arbeiten damit. Ich bestätige, was es hier darf.",
+    "reconfirmTitle": "„{name}“ erneut bestätigen"
   }
 }

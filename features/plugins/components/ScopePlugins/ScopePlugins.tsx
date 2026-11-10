@@ -278,7 +278,11 @@ function ActivateDialog({
 
   return (
     <PluginDialog
-      title={text.t("activateTitle", { name: plugin.name })}
+      title={
+        again
+          ? text.t("reconfirmTitle", { name: plugin.name })
+          : text.t("activateTitle", { name: plugin.name })
+      }
       sheet={sheet}
       close={close}
       footer={
@@ -302,7 +306,7 @@ function ActivateDialog({
       <p className={styles.muted}>
         {plugin.author} · v{plugin.version} · {text.kind(plugin.kind)}
       </p>
-      {again && <p>{text.t("updateAsksMore")}</p>}
+      {again && <p className={styles.notice}>{text.t("updateAsksMore")}</p>}
       <span className={styles.fieldLabel}>
         {scope.projectId ? text.t("mayInProject") : text.t("mayInWorkspace")}
       </span>

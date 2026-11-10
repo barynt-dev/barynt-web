@@ -2498,6 +2498,7 @@
     "mayInWorkspace": "In this workspace it may",
     "mayInProject": "In this project it may",
     "confirmWorkspace": "Everyone in this workspace works with it. I confirm what it may do here.",
-    "confirmProject": "Everyone in this project works with it. I confirm what it may do here."
+    "confirmProject": "Everyone in this project works with it. I confirm what it may do here.",
+    "reconfirmTitle": "Confirm “{name}” again"
   }
 }
