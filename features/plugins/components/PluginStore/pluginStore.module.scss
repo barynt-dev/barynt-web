@@ -1077,8 +1077,13 @@
    large radius, no border, a soft shadow, the accent on icon and title. */
 .kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
+
+  /* Two by two rather than three and a straggler. */
+  @include bp.tablet-down {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .kpi {
@@ -1235,7 +1240,7 @@
 /* Featured: large cards washed in the plugin's own color. */
 .featured {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: 1rem;
 }
 
@@ -1245,7 +1250,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
-  min-height: 13rem;
+  min-height: 11rem;
   padding: 1.125rem;
   border-radius: 1.375rem;
   background: linear-gradient(
@@ -1342,7 +1347,7 @@
 /* Every plugin, by category. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
   gap: 1rem;
 }
 
