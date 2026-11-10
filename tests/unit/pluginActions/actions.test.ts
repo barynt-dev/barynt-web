@@ -28,6 +28,7 @@ mock.module("@/lib/db", () => ({
       updateMany: mock(),
       deleteMany: mock(),
     },
+    pluginGrant: { findUnique: mock(), upsert: mock(), deleteMany: mock() },
     project: { findUnique: mock() },
     $transaction: mock(async (arg: unknown) =>
       typeof arg === "function"
@@ -57,6 +58,7 @@ import {
   installPlugin,
   rollbackPlugin,
   setPluginBlocked,
+  setPluginGrant,
   uninstallPlugin,
   updatePluginSource,
 } from "@/features/plugins/actions";
@@ -69,6 +71,7 @@ type M = ReturnType<typeof mock>;
 const plugin = db.plugin as unknown as Record<string, M>;
 const source = db.pluginSource as unknown as Record<string, M>;
 const activation = db.pluginActivation as unknown as Record<string, M>;
+const grant = db.pluginGrant as unknown as Record<string, M>;
 const project = db.project.findUnique as unknown as M;
 const perm = requirePermission as unknown as M;
 const audit = recordAudit as unknown as M;
@@ -100,7 +103,7 @@ const okRelease = {
 };
 
 beforeEach(() => {
-  for (const group of [plugin, source, activation, tx.plugin])
+  for (const group of [plugin, source, activation, grant, tx.plugin])
     for (const fn of Object.values(group)) (fn as M).mockReset();
   project.mockReset();
   audit.mockClear();
@@ -108,6 +111,8 @@ beforeEach(() => {
   perm.mockReset();
   perm.mockImplementation(async () => "admin-1");
   tx.plugin.create.mockResolvedValue({ id: "row-1" });
+  // Released for projects unless a test says otherwise.
+  grant.findUnique.mockResolvedValue({ pluginId: "gantt-timeline" });
 });
 
 describe("sources", () => {
@@ -356,6 +361,87 @@ describe("activations", () => {
     expect(activation.updateMany).toHaveBeenCalledWith({
       where: { pluginId: "gantt-timeline", scopeKey: "ws:ws-1" },
       data: { enabled: false },
+    });
+  });
+
+  it("needs the workspace's release for a project", async () => {
+    project.mockResolvedValue({ workspaceId: "ws-1" });
+    plugin.findFirst.mockResolvedValue({ manifest });
+    grant.findUnique.mockResolvedValue(null);
+    expect(
+      await activatePlugin({
+        pluginId: "gantt-timeline",
+        workspaceId: "ws-1",
+        projectId: "p1",
+        capabilities: caps,
+      }),
+    ).toEqual({ error: "not_granted" });
+    expect(grant.findUnique).toHaveBeenCalledWith({
+      where: {
+        pluginId_workspaceId: {
+          pluginId: "gantt-timeline",
+          workspaceId: "ws-1",
+        },
+      },
+    });
+    expect(activation.upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("release for projects (BARY-143)", () => {
+  it("grants a plugin that works in projects, checked in the workspace", async () => {
+    plugin.findFirst.mockResolvedValue({ manifest });
+    expect(
+      await setPluginGrant({
+        pluginId: "gantt-timeline",
+        workspaceId: "ws-1",
+        granted: true,
+      }),
+    ).toEqual({ ok: true });
+    expect(perm).toHaveBeenCalledWith("plugin.enable", { workspaceId: "ws-1" });
+    expect(grant.upsert.mock.calls[0][0].create).toMatchObject({
+      pluginId: "gantt-timeline",
+      workspaceId: "ws-1",
+      grantedById: "admin-1",
+    });
+    expect(audit.mock.calls[0][0].action).toBe("plugin.granted");
+  });
+
+  it("won't grant a plugin that has no project level", async () => {
+    plugin.findFirst.mockResolvedValue({
+      manifest: { ...manifest, levels: ["workspace"], contributes: {} },
+    });
+    expect(
+      await setPluginGrant({
+        pluginId: "gantt-timeline",
+        workspaceId: "ws-1",
+        granted: true,
+      }),
+    ).toEqual({ error: "level_not_allowed" });
+    expect(grant.upsert).not.toHaveBeenCalled();
+  });
+
+  it("taking it back switches the projects off, keeping their data", async () => {
+    grant.deleteMany.mockResolvedValue({ count: 1 });
+    activation.updateMany.mockResolvedValue({ count: 2 });
+    plugin.findFirst.mockResolvedValue({ manifest });
+    await setPluginGrant({
+      pluginId: "gantt-timeline",
+      workspaceId: "ws-1",
+      granted: false,
+    });
+    expect(activation.updateMany).toHaveBeenCalledWith({
+      where: {
+        pluginId: "gantt-timeline",
+        workspaceId: "ws-1",
+        projectId: { not: null },
+      },
+      data: { enabled: false },
+    });
+    expect(activation.deleteMany).not.toHaveBeenCalled();
+    expect(audit.mock.calls[0][0]).toMatchObject({
+      action: "plugin.grant.revoked",
+      meta: { projectsSwitchedOff: 2 },
     });
   });
 });

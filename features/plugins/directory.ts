@@ -1,6 +1,7 @@
 import "server-only";
 import { APP_VERSION } from "@/lib/app-info";
 import { db } from "@/lib/db";
+import { isDevUrl, pluginDevBase } from "@/lib/plugins/dev";
 import {
   assetApiUrl,
   DIRECTORY_MAX_BYTES,
@@ -85,6 +86,7 @@ async function readDirectory(source: {
     maxBytes: DIRECTORY_MAX_BYTES,
     types: /^(application\/json|text\/plain)$/,
     protocols: ["https:"],
+    ...(isDevUrl(url) && { localOrigin: url.origin }),
     headers: auth(sourceToken(source)),
     userAgent: USER_AGENT,
     timeoutMs: DIRECTORY_TIMEOUT_MS,
@@ -125,6 +127,20 @@ function releaseFetch(
     }).then((res) => res?.body ?? null);
   // GitHub serves assets as octet streams; a few mirrors label them.
   const anyType = /^[a-z0-9.+-]+\/[a-z0-9.+-]+$/;
+
+  // In development, a local directory serves the releases too.
+  const dev = pluginDevBase();
+  if (dev && !token)
+    return (file, maxBytes) =>
+      fetchPublic(publicAssetUrl(entry.repo, version, file, dev.origin), {
+        accept: "*/*",
+        maxBytes,
+        types: anyType,
+        protocols: ["https:"],
+        localOrigin: dev.origin,
+        userAgent: USER_AGENT,
+        timeoutMs: FILE_TIMEOUT_MS,
+      }).then((res) => res?.body ?? null);
 
   if (!token)
     return (file, maxBytes) =>

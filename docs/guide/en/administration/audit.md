@@ -18,7 +18,7 @@ The same log is shown in four places, each with its own permission:
 | **Issue → Activity tab** | The changes on that one issue. | Everyone who can see the issue. |
 | **Project settings → Activity** | Everything that happened in the project. | Project admins. |
 | **Workspace settings → Activity** | Everything in the workspace. | Owners, admins and managers. |
-| **Admin → Audit log** | Server-wide events: sign-ins, platform roles, workspace suspensions. | Platform administrators. |
+| **Admin → Audit log** | Server-wide events: sign-ins, platform roles, workspace suspensions, plugins. | Platform administrators. |
 
 Every list has an **Event** filter and the switch **Interventions only**, which hides the everyday noise and keeps only the entries that matter for security.
 

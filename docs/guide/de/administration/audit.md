@@ -18,7 +18,7 @@ Dasselbe Protokoll wird an vier Stellen gezeigt, jede mit eigener Berechtigung:
 | **Aufgabe → Tab Aktivität** | Die Änderungen an dieser einen Aufgabe. | Alle, die die Aufgabe sehen können. |
 | **Projekteinstellungen → Aktivität** | Alles, was im Projekt passiert ist. | Project Admins. |
 | **Workspace Einstellungen → Aktivität** | Alles im Workspace. | Owner, Admins und Manager. |
-| **Admin → Protokoll** | Serverweite Ereignisse: Anmeldungen, Plattform-Rollen, Workspace-Sperren. | Plattform-Administration. |
+| **Admin → Protokoll** | Serverweite Ereignisse: Anmeldungen, Plattform-Rollen, Workspace-Sperren, Plugins. | Plattform-Administration. |
 
 Jede Liste hat einen **Ereignis**-Filter und den Schalter **Nur Eingriffe**, der den Alltagslärm ausblendet und nur die Einträge behält, die für die Sicherheit zählen.
 

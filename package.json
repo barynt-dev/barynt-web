@@ -12,6 +12,7 @@
     "postinstall": "bun run scripts/fix-turbopack-bun-externals.ts",
     "format": "biome format --write",
     "icons:build": "bun run scripts/build-icons.ts",
+    "plugins:demo": "bun run scripts/plugins/demo-server.ts",
     "icons:check": "bun run scripts/build-icons.ts --check",
     "db:up": "docker compose up -d --wait && bun prisma generate && bun prisma migrate deploy && bun prisma/bootstrap.ts",
     "db:dev": "docker compose up -d --wait && bun prisma generate && bun prisma migrate deploy && bun prisma db seed",

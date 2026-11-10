@@ -26,6 +26,7 @@ export type NavLabelKey =
   | "labels"
   | "fields"
   | "customFields"
+  | "plugins"
   | "workspaces"
   | "account"
   | "navigation"
@@ -134,12 +135,14 @@ export const WORKSPACE_SETTINGS_PERMISSIONS: Permission[] = [
   "role.manage",
   "label.create",
   "customfield.manage",
+  "plugin.enable",
   "workspace.update",
 ];
 export const PROJECT_SETTINGS_PERMISSIONS: Permission[] = [
   "role.manage",
   "label.create",
   "customfield.manage",
+  "plugin.enable",
   "project.update",
 ];
 
@@ -277,6 +280,12 @@ export const ADMIN_NAV: NavEntry[] = [
     permission: "mail.template.manage",
   },
   {
+    section: "plugins",
+    icon: "lucide:puzzle",
+    labelKey: "plugins",
+    permission: "plugin.manage",
+  },
+  {
     section: "settings",
     icon: "lucide:settings",
     labelKey: "adminSettings",
@@ -362,6 +371,12 @@ export const PROJECT_SETTINGS_NAV: NavEntry[] = [
     permission: "customfield.manage",
   },
   {
+    section: "plugins",
+    icon: "lucide:puzzle",
+    labelKey: "plugins",
+    permission: "plugin.enable",
+  },
+  {
     section: "activity",
     icon: "lucide:scroll-text",
     labelKey: "activity",
@@ -388,6 +403,12 @@ export const WORKSPACE_SETTINGS_NAV: NavEntry[] = [
     icon: "lucide:text-cursor-input",
     labelKey: "customFields",
     permission: "customfield.manage",
+  },
+  {
+    section: "plugins",
+    icon: "lucide:puzzle",
+    labelKey: "plugins",
+    permission: "plugin.enable",
   },
   {
     section: "webhooks",

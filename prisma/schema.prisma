@@ -69,6 +69,7 @@ model Workspace {
   inviteLinks              InviteLink[]
   webhooks                 Webhook[]
   pluginActivations        PluginActivation[]
+  pluginGrants             PluginGrant[]
   // Zeigt hierher, wenn dieser Workspace als globaler Default eingetragen ist
   // (SystemSettings.defaultWorkspaceId) — siehe dort.
   defaultForSystemSettings SystemSettings[]
@@ -197,6 +198,7 @@ model User {
   pluginSourcesAdded      PluginSource[]                 @relation("PluginSourceAddedBy")
   pluginsInstalled        Plugin[]                       @relation("PluginInstalledBy")
   pluginActivationsMade   PluginActivation[]             @relation("PluginActivatedBy")
+  pluginGrantsMade        PluginGrant[]                  @relation("PluginGrantedBy")
   oauthAuthorizationCodes OAuthAuthorizationCode[]
   oauthAccessTokens       OAuthAccessToken[]
   oauthRefreshTokens      OAuthRefreshToken[]
@@ -1942,6 +1944,23 @@ enum PluginStatus {
   superseded
   /// Vom Plattform-Admin gesperrt (Kill-Switch): wird nirgends geladen.
   blocked
+}
+
+/// Ein Workspace gibt ein Plugin für seine Projekte frei: erst dann darf ein
+/// Projekt es mit `plugin.enable` einschalten (BARY-143). Wird die Freigabe
+/// zurückgenommen, gehen die Aktivierungen der Projekte aus, ihre Daten bleiben.
+model PluginGrant {
+  pluginId    String
+  workspaceId String
+
+  grantedById String?
+  grantedAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  grantedBy User?     @relation("PluginGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@id([pluginId, workspaceId])
+  @@index([workspaceId])
 }
 
 /// Die Dateien einer installierten Version (`main.js`, `styles.css`; das

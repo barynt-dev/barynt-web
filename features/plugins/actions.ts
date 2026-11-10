@@ -1,12 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { fetchRelease, sealSourceToken } from "@/features/plugins/directory";
+import {
+  fetchRelease,
+  readSource,
+  sealSourceToken,
+} from "@/features/plugins/directory";
 import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { PLATFORM, requirePermission } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
+import { isDevUrl } from "@/lib/plugins/dev";
 import {
   allowsLevel,
   confirmsExactly,
@@ -14,6 +19,7 @@ import {
   unblockTarget,
 } from "@/lib/plugins/lifecycle";
 import { validateManifest } from "@/lib/plugins/manifest";
+import { compareSemver } from "@/lib/plugins/semver";
 
 // The plugin lifecycle (BARY-142). The platform admin (`plugin.manage`)
 // manages sources and installs, updates, rolls back, blocks and removes
@@ -31,7 +37,10 @@ const done = () => revalidatePath("/", "layout");
 function cleanUrl(input: string): string | null {
   try {
     const url = new URL(input.trim());
-    return url.protocol === "https:" && !url.username && !url.password
+    // https, or the local demo directory in development (`lib/plugins/dev`).
+    return (url.protocol === "https:" || isDevUrl(url)) &&
+      !url.username &&
+      !url.password
       ? url.href
       : null;
   } catch {
@@ -408,6 +417,19 @@ export async function activatePlugin(
   const manifest = parsed.manifest;
   if (!allowsLevel(manifest.levels, scope))
     return { error: "level_not_allowed" };
+  // A project may only switch on what its workspace released for projects.
+  if (
+    scope.projectId &&
+    !(await db.pluginGrant.findUnique({
+      where: {
+        pluginId_workspaceId: {
+          pluginId: manifest.id,
+          workspaceId: scope.workspaceId,
+        },
+      },
+    }))
+  )
+    return { error: "not_granted" };
   if (!confirmsExactly(manifest.capabilities, input.capabilities))
     return { error: "capabilities_not_confirmed" };
 
@@ -497,4 +519,172 @@ export async function deletePluginData(
   });
   done();
   return { ok: true };
+}
+
+// ─── Release for projects (BARY-143) ────────────────────────────────────────
+
+/**
+ * Lets the projects of a workspace switch a plugin on themselves — or stops
+ * them. Taking it back switches the projects' activations off; their
+ * settings and storage stay, so granting again brings them back as they were
+ * once someone switches them on.
+ */
+export async function setPluginGrant(input: {
+  pluginId: string;
+  workspaceId: string;
+  granted: boolean;
+}): Promise<PluginResult> {
+  const actorId = await requirePermission("plugin.enable", {
+    workspaceId: input.workspaceId,
+  });
+  const key = { pluginId: input.pluginId, workspaceId: input.workspaceId };
+  let switchedOff = 0;
+  if (input.granted) {
+    const row = await db.plugin.findFirst({
+      where: { pluginId: input.pluginId, status: "active" },
+      select: { manifest: true },
+    });
+    const parsed = row ? validateManifest(row.manifest) : null;
+    if (!parsed?.ok) return { error: "not_installed" };
+    if (!parsed.manifest.levels.includes("project"))
+      return { error: "level_not_allowed" };
+    await db.pluginGrant.upsert({
+      where: { pluginId_workspaceId: key },
+      create: { ...key, grantedById: actorId },
+      update: {},
+    });
+  } else {
+    const [, off] = await db.$transaction([
+      db.pluginGrant.deleteMany({ where: key }),
+      db.pluginActivation.updateMany({
+        where: { ...key, projectId: { not: null } },
+        data: { enabled: false },
+      }),
+    ]);
+    switchedOff = off.count;
+  }
+  await recordAudit({
+    action: input.granted ? "plugin.granted" : "plugin.grant.revoked",
+    actorId,
+    target: {
+      type: "plugin",
+      id: input.pluginId,
+      label: await pluginLabel(input.pluginId),
+    },
+    workspaceId: input.workspaceId,
+    ...(!input.granted && { meta: { projectsSwitchedOff: switchedOff } }),
+  });
+  done();
+  return { ok: true };
+}
+
+// ─── Looking before installing (BARY-143) ───────────────────────────────────
+
+export interface DirectoryPlugin {
+  id: string;
+  name: string;
+  author: string;
+  description: string;
+  repo: string;
+  kind: string;
+  levels: string[];
+  /** Every version the directory lists, newest first. */
+  versions: string[];
+  /** The installed version that's active (or blocked), if any. */
+  installed: string | null;
+  blocked: boolean;
+}
+
+/** What a source offers, next to what's installed. Reading it also notes
+ *  the outcome on the source (`lastSyncAt`). */
+export async function browseSource(
+  sourceId: string,
+): Promise<PluginResult<{ plugins: DirectoryPlugin[]; skipped: number }>> {
+  await requirePermission("plugin.manage", PLATFORM);
+  const read = await readSource(sourceId);
+  done();
+  if (!read.ok) return { error: read.error };
+  const rows = await db.plugin.findMany({
+    where: {
+      pluginId: { in: read.entries.map((e) => e.id) },
+      status: { in: ["active", "blocked"] },
+    },
+    select: { pluginId: true, version: true, status: true },
+  });
+  return {
+    ok: true,
+    skipped: read.issues.length,
+    plugins: read.entries.map((e) => {
+      const row = rows.find((r) => r.pluginId === e.id);
+      return {
+        id: e.id,
+        name: e.name,
+        author: e.author,
+        description: e.description,
+        repo: e.repo,
+        kind: e.kind,
+        levels: e.levels,
+        versions: Object.keys(e.versions).sort((a, b) => compareSemver(b, a)),
+        installed: row?.version ?? null,
+        blocked: row?.status === "blocked",
+      };
+    }),
+  };
+}
+
+export interface ReleasePreview {
+  id: string;
+  name: string;
+  version: string;
+  author: string;
+  authorUrl: string | null;
+  description: string;
+  license: string;
+  kind: string;
+  levels: string[];
+  capabilities: string[];
+  network: string[];
+  minBaryntVersion: string;
+  hash: string;
+  /** Size of the code, in bytes. */
+  codeSize: number;
+}
+
+/**
+ * Loads and checks a release without installing it — what the install
+ * dialog shows before anyone confirms. Installing loads it again: the
+ * server never trusts what a dialog was shown.
+ */
+export async function previewRelease(input: {
+  sourceId: string;
+  pluginId: string;
+  version: string;
+}): Promise<PluginResult<{ preview: ReleasePreview }>> {
+  await requirePermission("plugin.manage", PLATFORM);
+  const release = await fetchRelease(
+    input.sourceId,
+    input.pluginId,
+    input.version,
+  );
+  if (!release.ok) return { error: release.error };
+  const m = release.manifest;
+  return {
+    ok: true,
+    preview: {
+      id: m.id,
+      name: m.name,
+      version: m.version,
+      author: m.author,
+      authorUrl: m.authorUrl ?? null,
+      description: m.description,
+      license: m.license,
+      kind: m.kind,
+      levels: m.levels,
+      capabilities: m.capabilities,
+      network: m.network,
+      minBaryntVersion: m.minBaryntVersion,
+      hash: release.hash,
+      codeSize: release.files["main.js"]?.byteLength ?? 0,
+    },
+  };
 }
