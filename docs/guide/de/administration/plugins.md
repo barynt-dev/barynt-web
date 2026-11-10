@@ -43,7 +43,7 @@ Die Seite eines Plugins hat vier Tabs:
 
 - **Übersicht:** Screenshots, Beschreibung, was es verlangt und woher es kommt.
 - **Fähigkeiten:** alles, was es darf, nach Daten, Oberfläche und Ereignissen, und welche anderen Server es aufruft. Wartet ein Update, schaltest du zwischen **Jetzt** und **Nach dem Update** um und siehst vorher, was dazukommt (+) und was wegfällt (−).
-- **Versionen:** verfügbare, aktive und frühere Versionen, mit **Aktualisieren**, **Zurück zu v…** und älteren Releases zum Installieren.
+- **Versionen:** verfügbare, aktive und frühere Versionen mit ihren Release Notes, falls das Verzeichnis welche hat, und **Aktualisieren**, **Zurück zu v…** und älteren Releases zum Installieren.
 - **Wo aktiv:** jeder Workspace, der es eingeschaltet oder für Projekte freigegeben hat, und seine Projekte.
 
 ![Fähigkeiten vor einem Update vergleichen](../../assets/de/plugins-capabilities.webp)

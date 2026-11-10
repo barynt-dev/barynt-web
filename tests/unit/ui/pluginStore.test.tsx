@@ -77,6 +77,10 @@ const listing = (versions: string[]) => ({
   categories: ["planning"],
   featured: false,
   added: null,
+  notes: {
+    "1.1.0":
+      "Moves issues on drag.\n- Drag a bar to reschedule\n- <b>not html</b>",
+  },
 });
 
 const timeline: StoreEntry = {
@@ -185,6 +189,14 @@ describe("PluginStore", () => {
     expect(render({ selected: current, tab: "capabilities" })).not.toContain(
       "updateChangesTitle",
     );
+  });
+
+  it("shows a version's release notes as text, bullets as a list", () => {
+    const html = render({ selected: timeline, tab: "versions" });
+    expect(html).toContain("Moves issues on drag.");
+    expect(html).toContain("<li>Drag a bar to reschedule</li>");
+    // Text, never markup.
+    expect(html).toContain("&lt;b&gt;not html&lt;/b&gt;");
   });
 
   it("has only overview and capabilities for a plugin that isn't installed", () => {

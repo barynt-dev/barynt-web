@@ -24,7 +24,10 @@ reported, the others still load.
     },
     "categories": ["planning"],
     "featured": true,
-    "added": "2026-09-14"
+    "added": "2026-09-14",
+    "notes": {
+      "1.2.0": "Bars can be dragged now.\n- Drag to reschedule\n- Weekends are shaded"
+    }
   }
 ]
 ```
@@ -41,5 +44,6 @@ reported, the others still load.
 | `categories` | no | Up to three of `development`, `planning`, `communication`, `reports`, `time`, `automation`, `support` — the store's start page groups by them. |
 | `featured` | no | `true` puts the plugin in the store's "Featured" row (at most three are shown). |
 | `added` | no | Since when it's listed, `YYYY-MM-DD` — the store's "New in the directory" shows the four most recent. |
+| `notes` | no | Release notes per version (`"1.2.0": "…"`), up to 2000 characters each. Plain text: lines starting with `- ` become a list; nothing is read as HTML or Markdown. The store shows them under each version. |
 
-The last three only change how the store presents a plugin, never what it may do.
+The last four only change how the store presents a plugin, never what it may do.

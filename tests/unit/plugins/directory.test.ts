@@ -80,6 +80,21 @@ describe("parseDirectory", () => {
     expect(parseDirectory({ plugins: [] }).issues[0].index).toBe(-1);
   });
 
+  it("takes release notes per listed version (BARY-200)", () => {
+    const good = entry(release());
+    const notes = { "1.2.0": "- Faster\n- Fixed the export" };
+    expect(parseDirectory([{ ...good, notes }]).entries[0].notes).toEqual(
+      notes,
+    );
+    expect(
+      parseDirectory([{ ...good, notes: { latest: "x" } }]).entries,
+    ).toEqual([]);
+    expect(
+      parseDirectory([{ ...good, notes: { "1.2.0": "x".repeat(2001) } }])
+        .entries,
+    ).toEqual([]);
+  });
+
   it("takes categories, featured and a date for the store (BARY-200)", () => {
     const good = entry(release());
     const meta = {

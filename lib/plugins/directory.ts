@@ -64,6 +64,14 @@ export const directoryEntrySchema = z.strictObject({
   categories: z.array(z.enum(PLUGIN_CATEGORIES)).max(3).optional(),
   featured: z.boolean().optional(),
   added: z.iso.date().optional(),
+  /** What changed in a version, per version (`- ` lines are bullets).
+   *  Plain text — the store shows it as text, never as HTML. */
+  notes: z
+    .record(
+      z.string().refine(isSemver, "expected MAJOR.MINOR.PATCH"),
+      z.string().trim().min(1).max(2000),
+    )
+    .optional(),
   levels: z.array(z.enum(PLUGIN_LEVELS)).min(1).max(2),
   kind: z.enum(PLUGIN_KINDS),
   versions: z

@@ -312,6 +312,8 @@ export interface StoreListing {
   featured: boolean;
   /** Since when it's listed (`YYYY-MM-DD`), if the directory says. */
   added: string | null;
+  /** Release notes per version, as the directory gives them. */
+  notes: Record<string, string>;
 }
 
 /** One plugin in the store: installed, listed, or both. */
@@ -383,6 +385,7 @@ export async function getPluginStoreView(): Promise<StoreView | null> {
         categories: entry.categories ?? [],
         featured: entry.featured ?? false,
         added: entry.added ?? null,
+        notes: entry.notes ?? {},
       });
     }
   }

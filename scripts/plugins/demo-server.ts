@@ -49,6 +49,11 @@ const DEMOS: Demo[] = [
       categories: ["planning"],
       featured: true,
       added: "2026-09-14",
+      notes: {
+        "1.1.0":
+          "Bars can now be dragged to reschedule an issue – that's why it asks to change issues.\n- Drag a bar to move start and due date\n- Weekends are shaded\n- Faster with many issues\n- Fixed: today's line was off by a day in some time zones",
+        "1.0.0": "First release.\n- Issues on a time line, per project",
+      },
     },
     manifest: {
       minBaryntVersion: "0.9.0",

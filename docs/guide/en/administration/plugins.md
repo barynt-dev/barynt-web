@@ -43,7 +43,7 @@ A plugin's page has four tabs:
 
 - **Overview:** screenshots, description, what it asks for and where it comes from.
 - **Capabilities:** everything it may do, by data, interface and events, and which other servers it calls. With an update waiting, switch between **Now** and **After the update** to see what's added (+) and what goes (−) before you update.
-- **Versions:** the available, active and earlier versions, with **Update**, **Back to v…** and older releases to install.
+- **Versions:** the available, active and earlier versions with their release notes, if the directory has any, and **Update**, **Back to v…** and older releases to install.
 - **Where it's on:** every workspace that has it on or released it for projects, and its projects.
 
 ![Comparing capabilities before an update](../../assets/en/plugins-capabilities.webp)

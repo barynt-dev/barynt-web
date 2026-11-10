@@ -852,6 +852,75 @@
   }
 }
 
+/* A version's release notes: quiet text under its head. */
+.notes {
+  margin-top: 0.625rem;
+  color: var(--on-surface);
+  font-size: var(--text-sm);
+
+  p {
+    margin: 0 0 0.25rem;
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    margin: 0 0 0.25rem;
+    padding-left: 1.125rem;
+  }
+
+  li::marker {
+    color: var(--on-surface-variant);
+  }
+
+  summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.625rem;
+    cursor: pointer;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+
+  /* Open, the first line is in the list itself. */
+  &[open] summary {
+    margin-bottom: 0.375rem;
+
+    .notesFirst {
+      display: none;
+    }
+  }
+}
+
+.notesFirst {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notesMore,
+.notesLess {
+  color: var(--primary);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+/* Closed: "+ 3 more lines"; open: "Less". */
+.notesLess,
+[open] .notesMore {
+  display: none;
+}
+
+[open] .notesLess {
+  display: inline;
+}
+
 .stepChanges {
   margin: 0.5rem 0 0;
   font-size: var(--text-sm);

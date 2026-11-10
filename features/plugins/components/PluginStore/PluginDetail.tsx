@@ -721,6 +721,9 @@ function Versions({
                   )}
                 </span>
               </div>
+              {entry.listing?.notes[row.version] && (
+                <ReleaseNotes text={entry.listing.notes[row.version]} />
+              )}
               {row.version === entry.update && (
                 <p className={styles.stepChanges}>
                   <ChangeSummary installed={installed} release={release} />{" "}
@@ -736,6 +739,64 @@ function Versions({
         );
       })}
     </ol>
+  );
+}
+
+/** Lines this long and more are folded behind "All changes". */
+const NOTES_FOLD = 4;
+
+/**
+ * A version's release notes from the directory: plain text, where `- ` or
+ * `* ` lines become a list. Never markup — React escapes whatever it says.
+ * Long notes show their first lines and fold the rest away.
+ */
+function ReleaseNotes({ text: notes }: { text: string }) {
+  const text = usePluginText();
+  const lines = notes
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const blocks: (
+    | { list: false; line: string }
+    | { list: true; items: string[] }
+  )[] = [];
+  for (const line of lines) {
+    const item = line.match(/^[-*]\s+(.*)$/);
+    const last = blocks.at(-1);
+    if (item && last?.list) last.items.push(item[1]);
+    else if (item) blocks.push({ list: true, items: [item[1]] });
+    else blocks.push({ list: false, line });
+  }
+  const render = (from: number, to: number) =>
+    blocks.slice(from, to).map((b, i) =>
+      b.list ? (
+        // biome-ignore lint/suspicious/noArrayIndexKey: the notes don't reorder
+        <ul key={from + i}>
+          {b.items.map((item, j) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: as above
+            <li key={j}>{item}</li>
+          ))}
+        </ul>
+      ) : (
+        // biome-ignore lint/suspicious/noArrayIndexKey: as above
+        <p key={from + i}>{b.line}</p>
+      ),
+    );
+  if (lines.length <= NOTES_FOLD)
+    return <div className={styles.notes}>{render(0, blocks.length)}</div>;
+  return (
+    <details className={styles.notes}>
+      <summary>
+        <span className={styles.notesFirst}>
+          {lines[0].replace(/^[-*]\s+/, "")}
+        </span>
+        <span className={styles.notesMore}>
+          {text.t("notesMore", { count: lines.length - 1 })}
+        </span>
+        <span className={styles.notesLess}>{text.t("notesLess")}</span>
+      </summary>
+      {render(0, blocks.length)}
+    </details>
   );
 }
 

@@ -2666,6 +2666,8 @@
     "updateImpactMore": "{count, plural, =0 {Not on anywhere yet – after the update every new activation confirms the new list.} one {# activation has to confirm again afterwards; until then it runs with the old permissions.} other {# activations have to confirm again afterwards; until then they run with the old permissions.}}",
     "updateImpactSame": "Workspaces and projects don’t have to confirm anything again.",
     "capsOfInstalled": "What v{version} may do (installed)",
-    "capsOfVersion": "What v{version} may do"
+    "capsOfVersion": "What v{version} may do",
+    "notesMore": "{count, plural, one {+ # more line} other {+ # more lines}}",
+    "notesLess": "Show less"
   }
 }

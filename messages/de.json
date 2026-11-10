@@ -2666,6 +2666,8 @@
     "updateImpactMore": "{count, plural, =0 {Noch nirgends eingeschaltet – nach dem Update bestätigt jede neue Aktivierung die neue Liste.} one {# Aktivierung muss danach neu bestätigen; bis dahin läuft sie mit den alten Rechten.} other {# Aktivierungen müssen danach neu bestätigen; bis dahin laufen sie mit den alten Rechten.}}",
     "updateImpactSame": "Workspaces und Projekte müssen nichts neu bestätigen.",
     "capsOfInstalled": "Was v{version} darf (installiert)",
-    "capsOfVersion": "Was v{version} darf"
+    "capsOfVersion": "Was v{version} darf",
+    "notesMore": "{count, plural, one {+ # weitere Zeile} other {+ # weitere Zeilen}}",
+    "notesLess": "Weniger anzeigen"
   }
 }
