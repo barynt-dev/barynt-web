@@ -1,6 +1,9 @@
 import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
-import { getWorkspaceCustomFields } from "@/features/custom-fields/queries";
+import {
+  getWorkspaceCustomFields,
+  getWorkspaceFieldKeys,
+} from "@/features/custom-fields/queries";
 import {
   setIssueViewFieldVisibility,
   setIssueViewGroups,
@@ -104,7 +107,13 @@ export async function Topbar({
           workspaceId: workspace.id,
           projectId: project?.id ?? null,
           projectSlug: project?.slug ?? null,
-          lookups: { priorities, members: withHandles(members), labels },
+          lookups: {
+            priorities,
+            members: withHandles(members),
+            labels,
+            // Archived ones too: a view's rule on one must survive.
+            customFields: await getWorkspaceFieldKeys(),
+          },
           members,
           activeView,
         });

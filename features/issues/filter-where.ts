@@ -1,14 +1,18 @@
+import { narrowFieldValue } from "@/lib/custom-fields";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { StatusCategory } from "@/lib/status-category";
 import {
+  customFieldRef,
   type FilterNode,
   type FilterRule,
   type IssueFilter,
+  isCustomFilterField,
   isGroup,
   ME,
   NONE_VALUE,
   type RelativeDate,
 } from "./filter";
+import { type CustomFilterFieldShape, customRuleTest } from "./filter-custom";
 
 type Where = Prisma.IssueWhereInput;
 
@@ -26,6 +30,13 @@ export interface FilterContext {
   statusIdsIn: (categories: StatusCategory[]) => Promise<string[]>;
   /** Full-text matches for a search (`text` rules). */
   searchIds: (q: string) => Promise<string[]>;
+  /** A custom field and every value stored for it (`cf:<id>` rules,
+   *  BARY-196) — `null` for a field that's gone. Without it, those rules
+   *  drop out. */
+  customFieldValues?: (fieldId: string) => Promise<{
+    field: CustomFilterFieldShape;
+    rows: { issueId: string; value: unknown }[];
+  } | null>;
 }
 
 /** Local midnight of `date`, plus `days`. Same local-time convention the
@@ -92,10 +103,35 @@ function list<T>(value: unknown): T[] {
  * is not Mara" includes unassigned issues. A plain SQL `NOT IN` would drop
  * them, since `NULL NOT IN (…)` is never true.
  */
+/**
+ * A rule on a custom field. Its values are JSON of a type only the field
+ * knows, so the match is made in memory over that field's stored values
+ * (`customRuleTest`) and comes back as ids — the rows of one field are few.
+ * When an issue without a value matches too ("is not", "is empty"), the
+ * condition names the ones that don't instead: issues without a row have
+ * no row to find.
+ */
+async function customRuleWhere(
+  rule: FilterRule & { field: `cf:${string}` },
+  ctx: FilterContext,
+): Promise<Where | null> {
+  const found = await ctx.customFieldValues?.(customFieldRef(rule.field));
+  if (!found) return null;
+  const test = customRuleTest(found.field, rule, ctx);
+  if (!test) return null;
+  const matching: string[] = [];
+  const failing: string[] = [];
+  for (const row of found.rows)
+    (test(narrowFieldValue(row.value)) ? matching : failing).push(row.issueId);
+  return test(null) ? { id: { notIn: failing } } : { id: { in: matching } };
+}
+
 async function ruleWhere(
   rule: FilterRule,
   ctx: FilterContext,
 ): Promise<Where | null> {
+  if (isCustomFilterField(rule.field))
+    return customRuleWhere(rule as FilterRule & { field: `cf:${string}` }, ctx);
   const { field, is, value } = rule;
 
   switch (field) {

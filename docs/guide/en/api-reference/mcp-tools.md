@@ -116,7 +116,7 @@ List issues in a project, optionally filtered by status, assignee, a text search
 | --- | --- | --- |
 | `projectId` | `string` | Required unless viewId is given. |
 | `viewId` | `string` | A saved view's id (list_views) — its filter, project and fixed conditions apply. |
-| `filter` | `any` | A filter tree, as views store it: { "op": "and"\|"or", "rules": [ { "field": "priority", "is": "gte", "value": 3 }, { "op": "or", "rules": [...] } ] }. Values like "@me" resolve to you; values are ids, not names. Fields: status, statusCategory, priority, type, assignee, reporter, label, project, storyPoints, estimate, dueDate, created, updated, parent, text. Ignored with viewId. |
+| `filter` | `any` | A filter tree, as views store it: { "op": "and"\|"or", "rules": [ { "field": "priority", "is": "gte", "value": 3 }, { "op": "or", "rules": [...] } ] }. Values like "@me" resolve to you; values are ids, not names. Fields: status, statusCategory, priority, type, assignee, reporter, label, project, storyPoints, estimate, dueDate, created, updated, parent, text. A custom field is "cf:<fieldId>" (list_custom_fields). Ignored with viewId. |
 | `status` | `string` |  |
 | `assignee` | `string` | User id. |
 | `q` | `string` | Case-insensitive substring match against title and description. |

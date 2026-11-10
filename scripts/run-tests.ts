@@ -68,7 +68,6 @@ const SEGMENTS: string[][] = [
     "tests/unit/customfields/datetime.test.ts",
     "tests/unit/customfields/group.test.ts",
     "tests/unit/customfields/favicon.test.ts",
-    "tests/unit/customfields/filter.test.ts",
   ],
   // Release automation (scripts/release) and the published docs (docs/guide):
   // pure functions and file checks, no mocks.
@@ -82,8 +81,6 @@ const SEGMENTS: string[][] = [
   ["tests/unit/customfields/values.test.ts"],
   // Same reason again: its own `@/lib/db` and audit mocks.
   ["tests/unit/customfields/api.test.ts"],
-  // Mocks `@/lib/db` for the filter conditions — a process of its own.
-  ["tests/unit/customfields/filters.test.ts"],
   ["tests/unit/notifications"],
   ["tests/unit/mail/send.test.ts"],
   [

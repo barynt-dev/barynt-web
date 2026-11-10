@@ -246,8 +246,8 @@ export const FILTER_DOC_OPS: Record<
   },
   all: {
     means: {
-      en: "has all of (labels only)",
-      de: "hat alle davon (nur Labels)",
+      en: "has all of (labels and multi-choice custom fields)",
+      de: "hat alle davon (Labels und Custom Fields mit Mehrfachauswahl)",
     },
     value: '["a", "b"]',
   },
@@ -328,10 +328,30 @@ export const FILTER_DOC_SPECIAL: GuideRow[] = [
     name: `"${range}"`,
     desc: RANGE_TEXT[range],
   })),
+  {
+    name: '"cf:<fieldId>"',
+    desc: {
+      en: 'As a field: a custom field, by its id (list_custom_fields, GET …/custom-fields). Choice and person fields take any/none/empty/notEmpty with choice or user ids, "@me" and "_none" — a multi-choice also all; a checkbox any with ["yes"] or ["no"]; a number gte/lte; a date within/before/after; text and links contains; all of them empty/notEmpty.',
+      de: 'Als Feld: ein Custom Field, über seine ID (list_custom_fields, GET …/custom-fields). Auswahl- und Personenfelder nehmen any/none/empty/notEmpty mit Auswahl- oder User-IDs, "@me" und "_none" — eine Mehrfachauswahl auch all; eine Checkbox any mit ["yes"] oder ["no"]; eine Zahl gte/lte; ein Datum within/before/after; Text und Links contains; alle auch empty/notEmpty.',
+    },
+  },
 ];
 
 /** Copy-paste starting points. */
 export const FILTER_DOC_RECIPES: { title: DocText; code: string }[] = [
+  {
+    title: {
+      en: "Custom fields: customer is Acme, deal at least 1000 (ids from list_custom_fields)",
+      de: "Custom Fields: Kunde ist Acme, Auftrag mindestens 1000 (IDs aus list_custom_fields)",
+    },
+    code: `{
+  "op": "and",
+  "rules": [
+    { "field": "cf:f_customer", "is": "any", "value": ["o_acme"] },
+    { "field": "cf:f_deal", "is": "gte", "value": 1000 }
+  ]
+}`,
+  },
   {
     title: { en: "My open issues", de: "Meine offenen Issues" },
     code: `{

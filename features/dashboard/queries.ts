@@ -384,7 +384,7 @@ async function buildCtx(
   const place = await placeOf(resolved.workspaceId, resolved.projectId);
   let slugs: Promise<SlugLookups> | null = null;
   const loadSlugs = async (): Promise<SlugLookups> => {
-    const [members, labels, allProjects] = await Promise.all([
+    const [members, labels, allProjects, customFields] = await Promise.all([
       db.workspaceMember.findMany({
         where: { workspaceId: resolved.workspaceId },
         select: { user: { select: { id: true, handle: true } } },
@@ -397,12 +397,17 @@ async function buildCtx(
         where: { workspaceId: resolved.workspaceId },
         select: { id: true, slug: true },
       }),
+      db.customField.findMany({
+        where: { workspaceId: resolved.workspaceId },
+        select: { id: true, key: true, type: true },
+      }),
     ]);
     return {
       priorities: priorities.map((p) => ({ id: p.id, key: p.key })),
       members: members.map((m) => ({ id: m.user.id, handle: m.user.handle })),
       labels,
       projects: allProjects,
+      customFields,
     };
   };
 
