@@ -411,8 +411,8 @@ function ChangeSummary({
 
 /**
  * The update at a glance: what it may newly do, what it no longer does,
- * which servers it calls now, what that means for the places it's on — and
- * the button to take it.
+ * which servers it calls now and what that means for the places it's on.
+ * The button to take it is in the plugin's header, right above.
  */
 function UpdateChanges({
   entry,
@@ -448,20 +448,6 @@ function UpdateChanges({
         <h3 id="update-changes">
           {text.t("updateChangesTitle", { version: update })}
         </h3>
-        {!installed.blocked && (
-          // A phone has the same button right above, in the plugin's header.
-          <span className={styles.updateAction}>
-            <Button
-              variant="primary"
-              size="sm"
-              icon={<Icon icon="lucide:package-check" width={14} />}
-              disabled={actions.pending}
-              onClick={() => actions.install(entry, update)}
-            >
-              {text.t("updateTo", { version: update })}
-            </Button>
-          </span>
-        )}
       </header>
 
       {release.status === "error" ? (
