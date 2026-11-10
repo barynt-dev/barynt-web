@@ -35,10 +35,6 @@ export function SourcesPane({
   const format = useFormatter();
   return (
     <section className={styles.pane}>
-      <Link href={storeHref({})} className={styles.back}>
-        <Icon icon="lucide:chevron-left" width={18} aria-hidden />
-        {text.t("allPlugins")}
-      </Link>
       <header className={styles.paneHead}>
         <span className={styles.paneIcon} aria-hidden>
           <Icon icon="lucide:database" width={22} />

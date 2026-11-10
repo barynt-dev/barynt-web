@@ -51,11 +51,6 @@ export function PluginDetail({
 
   return (
     <article className={styles.detail}>
-      <Link href={storeHref({})} className={styles.back}>
-        <Icon icon="lucide:chevron-left" width={18} aria-hidden />
-        {text.t("allPlugins")}
-      </Link>
-
       <header className={styles.detailHead}>
         <PluginTile id={entry.id} name={entry.name} size="lg" />
         <div className={styles.headText}>

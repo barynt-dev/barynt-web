@@ -282,16 +282,21 @@
   min-width: 0;
 }
 
-/* Back to the list — a phone has no list beside it. */
-.back {
+/* Back to the list, left of the page title — only a phone needs it, it
+   has no list beside the plugin. */
+.headerBack {
   display: none;
   align-items: center;
-  gap: 0.25rem;
-  align-self: flex-start;
-  min-height: var(--touch-min);
-  color: var(--on-surface-variant);
-  font-size: var(--text-sm);
-  text-decoration: none;
+  justify-content: center;
+  width: var(--touch-min);
+  height: var(--touch-min);
+  margin: 0 -0.25rem 0 -0.75rem;
+  border-radius: var(--radius-pill);
+  color: var(--on-surface);
+
+  &:hover {
+    background: var(--surface-container-high);
+  }
 
   @include bp.phone {
     display: inline-flex;

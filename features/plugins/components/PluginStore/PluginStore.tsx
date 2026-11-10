@@ -241,6 +241,20 @@ export function PluginStore({
       <PageHeader
         divider={false}
         title={text.t("adminTitle")}
+        leading={
+          open !== "home" && (
+            // A phone shows one pane at a time: back to the list, as an
+            // arrow in the header like everywhere on a phone.
+            <Link
+              href={storeHref({})}
+              className={styles.headerBack}
+              aria-label={text.t("allPlugins")}
+              title={text.t("allPlugins")}
+            >
+              <Icon icon="lucide:chevron-left" width={22} aria-hidden />
+            </Link>
+          )
+        }
         actions={
           <Button
             variant="primary"
