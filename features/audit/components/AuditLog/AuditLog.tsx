@@ -262,6 +262,57 @@ export const AUDIT_ACTION_META = {
     message: "customFieldDeleted",
   },
   "view.deleted": { icon: "lucide:layout-grid", message: "viewDeleted" },
+  "plugin.source.added": {
+    icon: "lucide:library",
+    message: "pluginSourceAdded",
+  },
+  "plugin.source.updated": {
+    icon: "lucide:library",
+    message: "pluginSourceUpdated",
+  },
+  "plugin.source.removed": {
+    icon: "lucide:library",
+    message: "pluginSourceRemoved",
+  },
+  "plugin.installed": {
+    icon: "lucide:package-plus",
+    message: "pluginInstalled",
+  },
+  "plugin.updated": {
+    icon: "lucide:package-check",
+    message: "pluginUpdated",
+  },
+  "plugin.rolledback": {
+    icon: "lucide:undo-2",
+    message: "pluginRolledBack",
+  },
+  "plugin.blocked": {
+    icon: "lucide:shield-ban",
+    message: "pluginBlocked",
+    loud: true,
+  },
+  "plugin.unblocked": {
+    icon: "lucide:shield-check",
+    message: "pluginUnblocked",
+  },
+  "plugin.uninstalled": {
+    icon: "lucide:package-x",
+    message: "pluginUninstalled",
+    loud: true,
+  },
+  "plugin.activated": {
+    icon: "lucide:plug",
+    message: "pluginActivated",
+  },
+  "plugin.deactivated": {
+    icon: "lucide:unplug",
+    message: "pluginDeactivated",
+  },
+  "plugin.data.deleted": {
+    icon: "lucide:trash-2",
+    message: "pluginDataDeleted",
+    loud: true,
+  },
 } as const satisfies Record<
   AuditAction,
   { icon: string; message: string; loud?: boolean }

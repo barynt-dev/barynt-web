@@ -96,6 +96,23 @@ export const AUDIT_ACTIONS = {
   "customfield.restored": "Custom field restored",
   "customfield.deleted": "Custom field deleted",
   "view.deleted": "Shared view deleted",
+
+  // ── Plugins (BARY-142) ─────────────────────────────────────────────────────
+  //
+  // The platform's sources and installed versions, and where each plugin is
+  // switched on. Security-relevant: code from outside comes and goes here.
+  "plugin.source.added": "Plugin source added",
+  "plugin.source.updated": "Plugin source changed",
+  "plugin.source.removed": "Plugin source removed",
+  "plugin.installed": "Plugin installed",
+  "plugin.updated": "Plugin updated",
+  "plugin.rolledback": "Plugin rolled back",
+  "plugin.blocked": "Plugin blocked",
+  "plugin.unblocked": "Plugin unblocked",
+  "plugin.uninstalled": "Plugin uninstalled",
+  "plugin.activated": "Plugin switched on",
+  "plugin.deactivated": "Plugin switched off",
+  "plugin.data.deleted": "Plugin data deleted",
 } as const;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
@@ -131,7 +148,9 @@ export type AuditTargetType =
   | "issue"
   | "label"
   | "customField"
-  | "view";
+  | "view"
+  | "plugin"
+  | "pluginSource";
 
 export interface AuditTarget {
   type: AuditTargetType;
