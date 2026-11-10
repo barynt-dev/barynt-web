@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
-import { getWorkspaceFieldKeys } from "@/features/custom-fields/queries";
+import {
+  getWorkspaceCustomFields,
+  getWorkspaceFieldKeys,
+} from "@/features/custom-fields/queries";
 import { getDashboard } from "@/features/dashboard/queries";
 import type { DashboardTarget } from "@/features/dashboard/types";
 import type { SavedView } from "@/features/views/schema";
@@ -14,6 +17,7 @@ import {
 } from "@/features/workspaces/queries";
 import { hasPermission } from "@/lib/permissions";
 import { Dashboard } from "../Dashboard/Dashboard";
+import { WidgetFieldsProvider } from "../Widget/fieldNames";
 
 interface Props {
   target: DashboardTarget;
@@ -54,6 +58,7 @@ export async function DashboardLoader({
     projects,
     canShare,
     fieldKeys,
+    allCustomFields,
   ] = await Promise.all([
     getDashboard(target, params),
     getWorkspaceStatuses(),
@@ -69,7 +74,17 @@ export async function DashboardLoader({
         : { workspaceId: workspace },
     ),
     getWorkspaceFieldKeys(),
+    getWorkspaceCustomFields(),
   ]);
+  // The custom fields that apply here (BARY-197): on a project's dashboard
+  // the workspace's and that project's own, as on its board.
+  const customFields = place.projectId
+    ? allCustomFields.filter(
+        (f) =>
+          (f.projectId === null || f.projectId === place.projectId) &&
+          !f.hiddenInProjects.includes(place.projectId as string),
+      )
+    : allCustomFields;
   if (!view) notFound();
 
   // "Save as new view" from a dashboard view keeps its filter.
@@ -88,22 +103,32 @@ export async function DashboardLoader({
     : {};
 
   return (
-    <Dashboard
-      // A fresh state for every new server answer (saved layout, other
-      // range or scope) — the edit mode's draft and the fetched data reset.
-      key={JSON.stringify([view.range, view.scope, view.layout.widgets])}
-      view={view}
-      issueBase={`/${workspace}/issue`}
-      workspaceSlug={workspace}
-      lookups={{ statuses, priorities, issueTypes, members, labels, projects }}
-      area={area}
-      newView={{
-        workspaceId: workspace,
-        projectId: place.projectId,
-        projectSlug: place.projectSlug,
-        canShare,
-        currentParams,
-      }}
-    />
+    <WidgetFieldsProvider fields={customFields}>
+      <Dashboard
+        // A fresh state for every new server answer (saved layout, other
+        // range or scope) — the edit mode's draft and the fetched data reset.
+        key={JSON.stringify([view.range, view.scope, view.layout.widgets])}
+        view={view}
+        issueBase={`/${workspace}/issue`}
+        workspaceSlug={workspace}
+        lookups={{
+          statuses,
+          priorities,
+          issueTypes,
+          members,
+          labels,
+          projects,
+          customFields,
+        }}
+        area={area}
+        newView={{
+          workspaceId: workspace,
+          projectId: place.projectId,
+          projectSlug: place.projectSlug,
+          canShare,
+          currentParams,
+        }}
+      />
+    </WidgetFieldsProvider>
   );
 }
