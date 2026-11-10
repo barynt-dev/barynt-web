@@ -355,8 +355,15 @@
    topbar's (3rem), the tabs filling it. */
 .tabs {
   min-height: 3rem;
-  margin-top: 0.25rem;
+  /* The divider runs across the whole pane, past the pane's padding. */
+  margin: 0.25rem -2rem 0;
+  padding-inline: 2rem;
   border-bottom: 1px solid var(--outline-variant);
+
+  @include bp.phone {
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+  }
 }
 
 .tabCount {
