@@ -1968,7 +1968,7 @@ model PluginGrant {
 /// Objektspeicher: der ist optional, und jede Replika muss sie haben (BARY-142).
 model PluginFile {
   pluginRowId String
-  /// `main.js` oder `styles.css`.
+  /// `main.js`, `styles.css` oder ein Vorschaubild (`preview-1.webp`, BARY-199).
   name        String
   content     Bytes
   size        Int

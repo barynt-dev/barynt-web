@@ -38,6 +38,7 @@ const base: ScopePlugin = {
   levels: ["workspace", "project"],
   capabilities: ["issues:read"],
   network: [],
+  previews: [],
   version: "1.1.0",
   activation: null,
   offered: true,

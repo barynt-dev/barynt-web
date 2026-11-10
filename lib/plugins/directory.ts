@@ -13,9 +13,11 @@ import { z } from "zod";
 import { GIT_PROVIDERS } from "./git-hosts";
 import {
   isCompatible,
+  MAX_PREVIEWS,
   PLUGIN_KINDS,
   PLUGIN_LEVELS,
   type PluginManifest,
+  PREVIEW_FILE_RE,
   validateManifest,
 } from "./manifest";
 import { isSemver } from "./semver";
@@ -113,7 +115,44 @@ export const RELEASE_FILES = {
   "main.js": 5 * 1024 * 1024,
   "styles.css": 1024 * 1024,
 } as const;
-export type ReleaseFileName = keyof typeof RELEASE_FILES;
+/** A preview image (`preview-1.webp`); the manifest lists them. */
+export type PreviewFileName = `preview-${number}.${"webp" | "png"}`;
+export type ReleaseFileName = keyof typeof RELEASE_FILES | PreviewFileName;
+
+/** A preview image may be this big. */
+export const PREVIEW_MAX_BYTES = 512 * 1024;
+
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+/** Whether the bytes are what the name says — a PNG or a WebP, nothing a
+ *  browser would sniff into something else. */
+export function isPreviewImage(name: string, data: Uint8Array): boolean {
+  if (name.endsWith(".png"))
+    return PNG_MAGIC.every((byte, i) => data[i] === byte);
+  const ascii = (from: number, to: number) =>
+    String.fromCharCode(...data.subarray(from, to));
+  return ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP";
+}
+
+/**
+ * The preview images a manifest names, read before the manifest is checked
+ * — they have to be loaded for the hash. Anything that isn't a well-formed
+ * preview name is skipped; the full check comes after the hash.
+ */
+export function previewFiles(manifestJson: unknown): PreviewFileName[] {
+  if (!manifestJson || typeof manifestJson !== "object") return [];
+  const list = (manifestJson as { previews?: unknown }).previews;
+  if (!Array.isArray(list)) return [];
+  const names = list
+    .map((p) =>
+      p && typeof p === "object" ? (p as { file?: unknown }).file : null,
+    )
+    .filter(
+      (f): f is PreviewFileName =>
+        typeof f === "string" && PREVIEW_FILE_RE.test(f),
+    );
+  return [...new Set(names)].slice(0, MAX_PREVIEWS);
+}
 
 export type ReleaseFiles = Partial<Record<ReleaseFileName, Uint8Array>>;
 
@@ -127,9 +166,9 @@ const sha256 = (data: Uint8Array | string) =>
  * The hash a directory lists for a release: SHA-256 over the `sha256sum`
  * lines of its files, sorted by name — what
  *
- *   sha256sum manifest.json main.js styles.css | sort -k2 | sha256sum
+ *   sha256sum manifest.json main.js styles.css preview-*.* | sort -k2 | sha256sum
  *
- * prints, for the files the release has.
+ * prints, for the files the release has (previews included, BARY-199).
  */
 export function releaseHash(files: ReleaseFiles): string {
   const lines = (Object.keys(files) as ReleaseFileName[])
@@ -142,7 +181,9 @@ export function releaseHash(files: ReleaseFiles): string {
 
 /** Which files a plugin of a kind must have. Code only runs in a sandbox
  *  plugin; the others are a manifest (and a service of their own). */
-export function requiredFiles(kind: DirectoryEntry["kind"]): ReleaseFileName[] {
+export function requiredFiles(
+  kind: DirectoryEntry["kind"],
+): (keyof typeof RELEASE_FILES)[] {
   return kind === "sandbox" ? ["manifest.json", "main.js"] : ["manifest.json"];
 }
 
@@ -193,11 +234,27 @@ export async function loadRelease(
 
   const required = requiredFiles(entry.kind);
   const files: ReleaseFiles = {};
-  for (const name of Object.keys(RELEASE_FILES) as ReleaseFileName[]) {
+  for (const name of Object.keys(
+    RELEASE_FILES,
+  ) as (keyof typeof RELEASE_FILES)[]) {
     const data = await fetchFile(name, RELEASE_FILES[name]);
     if (data) files[name] = data;
     else if (required.includes(name))
       return { ok: false, error: "download_failed", detail: name };
+  }
+
+  // The previews the manifest names belong to the release too: every one
+  // has to arrive and goes into the hash.
+  let raw: unknown;
+  try {
+    raw = JSON.parse(new TextDecoder().decode(files["manifest.json"]));
+  } catch {
+    raw = undefined;
+  }
+  for (const name of previewFiles(raw)) {
+    const data = await fetchFile(name, PREVIEW_MAX_BYTES);
+    if (!data) return { ok: false, error: "download_failed", detail: name };
+    files[name] = data;
   }
 
   // The hash covers whatever arrived — an optional file that failed to
@@ -205,12 +262,8 @@ export async function loadRelease(
   const hash = releaseHash(files);
   if (hash !== expected) return { ok: false, error: "hash_mismatch" };
 
-  let raw: unknown;
-  try {
-    raw = JSON.parse(new TextDecoder().decode(files["manifest.json"]));
-  } catch {
+  if (raw === undefined)
     return { ok: false, error: "invalid_manifest", detail: "not JSON" };
-  }
   const result = validateManifest(raw);
   if (!result.ok)
     return {
@@ -233,6 +286,13 @@ export async function loadRelease(
     return { ok: false, error: "kind_mismatch" };
   if (!isCompatible(manifest, baryntVersion))
     return { ok: false, error: "incompatible" };
+  for (const { file } of manifest.previews ?? [])
+    if (!isPreviewImage(file, files[file as PreviewFileName] as Uint8Array))
+      return {
+        ok: false,
+        error: "invalid_manifest",
+        detail: `${file}: not an image`,
+      };
 
   return { ok: true, manifest, files, hash };
 }

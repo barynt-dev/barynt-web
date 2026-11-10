@@ -25,9 +25,19 @@ export interface PluginSummary {
   levels: string[];
   capabilities: string[];
   network: string[];
+  /** Screenshots, served from the installed version (BARY-199). */
+  previews: { title: string; src: string }[];
 }
 
-function summaryOf(pluginId: string, manifest: unknown): PluginSummary {
+/** Where an installed version's preview image is served. */
+export const previewUrl = (rowId: string, file: string) =>
+  `/api/plugin-previews/${rowId}/${file}`;
+
+function summaryOf(
+  pluginId: string,
+  manifest: unknown,
+  rowId?: string,
+): PluginSummary {
   const parsed = validateManifest(manifest);
   const m: Partial<PluginManifest> = parsed.ok ? parsed.manifest : {};
   return {
@@ -40,10 +50,17 @@ function summaryOf(pluginId: string, manifest: unknown): PluginSummary {
     levels: m.levels ?? [],
     capabilities: m.capabilities ?? [],
     network: m.network ?? [],
+    previews: rowId
+      ? (m.previews ?? []).map(({ file, title }) => ({
+          title,
+          src: previewUrl(rowId, file),
+        }))
+      : [],
   };
 }
 
 type Row = {
+  id: string;
   pluginId: string;
   version: string;
   status: "active" | "superseded" | "blocked";
@@ -125,7 +142,7 @@ export async function getAdminPluginsView(): Promise<AdminPluginsView | null> {
       .map(({ versions, current }) => {
         const shown = current ?? versions[0];
         return {
-          ...summaryOf(shown.pluginId, shown.manifest),
+          ...summaryOf(shown.pluginId, shown.manifest, shown.id),
           version: current?.version ?? null,
           blocked: current?.status === "blocked",
           versions: versions.map((v) => ({
@@ -202,7 +219,8 @@ async function scopePlugins(scope: {
     const summary = group
       ? summaryOf(
           pluginId,
-          group.current?.manifest ?? group.versions[0].manifest,
+          (group.current ?? group.versions[0]).manifest,
+          (group.current ?? group.versions[0]).id,
         )
       : summaryOf(pluginId, null);
     const blocked = group?.current?.status === "blocked";

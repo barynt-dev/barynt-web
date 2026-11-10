@@ -2,8 +2,10 @@ import { describe, expect, it } from "bun:test";
 import { createHash } from "node:crypto";
 import {
   type DirectoryEntry,
+  isPreviewImage,
   loadRelease,
   parseDirectory,
+  previewFiles,
   type ReleaseFileName,
   type ReleaseFiles,
   releaseHash,
@@ -193,5 +195,75 @@ describe("loadRelease", () => {
       "1.0.1",
     );
     expect(result.ok ? "ok" : result.error).toBe("invalid_manifest");
+  });
+});
+
+describe("preview images (BARY-199)", () => {
+  const png = new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2,
+  ]);
+  const webp = encode("RIFF\0\0\0\0WEBPVP8 ");
+  const withPreviews = (files: Partial<ReleaseFiles> = {}) => ({
+    ...release({
+      previews: [
+        { file: "preview-1.png", title: "Timeline" },
+        { file: "preview-2.webp", title: "Settings" },
+      ],
+    }),
+    "preview-1.png": png,
+    "preview-2.webp": webp,
+    ...files,
+  });
+
+  it("loads the ones the manifest names, and hashes them along", async () => {
+    const files = withPreviews();
+    const { fetch, asked } = serve(files);
+    const result = await loadRelease(entry(files), "1.2.0", fetch, "1.0.0");
+    expect(result.ok).toBe(true);
+    expect(asked).toContain("preview-2.webp");
+    if (result.ok) expect(result.files["preview-1.png"]).toEqual(png);
+  });
+
+  it("refuses a swapped or missing preview", async () => {
+    const files = withPreviews();
+    const swapped = serve({
+      ...files,
+      "preview-1.png": new Uint8Array([...png, 9]),
+    });
+    expect(
+      await loadRelease(entry(files), "1.2.0", swapped.fetch, "1.0.0"),
+    ).toMatchObject({ ok: false, error: "hash_mismatch" });
+    const { "preview-2.webp": _, ...missing } = files;
+    expect(
+      await loadRelease(entry(files), "1.2.0", serve(missing).fetch, "1.0.0"),
+    ).toMatchObject({
+      ok: false,
+      error: "download_failed",
+      detail: "preview-2.webp",
+    });
+  });
+
+  it("refuses a preview that isn't the image its name says", async () => {
+    const files = withPreviews({
+      "preview-1.png": encode("<svg onload=alert(1)>"),
+    });
+    expect(
+      await loadRelease(entry(files), "1.2.0", serve(files).fetch, "1.0.0"),
+    ).toMatchObject({ ok: false, error: "invalid_manifest" });
+  });
+
+  it("knows PNG and WebP by their signature", () => {
+    expect(isPreviewImage("preview-1.png", png)).toBe(true);
+    expect(isPreviewImage("preview-1.webp", webp)).toBe(true);
+    expect(isPreviewImage("preview-1.webp", png)).toBe(false);
+    expect(
+      previewFiles({
+        previews: [
+          { file: "../main.js" },
+          { file: "preview-7.png" },
+          { file: "preview-1.png" },
+        ],
+      }),
+    ).toEqual(["preview-1.png"]);
   });
 });

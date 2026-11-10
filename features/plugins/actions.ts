@@ -13,6 +13,7 @@ import type { Prisma } from "@/lib/generated/prisma/client";
 import { PLATFORM, requirePermission } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
 import { isDevUrl } from "@/lib/plugins/dev";
+import type { PreviewFileName } from "@/lib/plugins/directory";
 import {
   detectProvider,
   type GitProvider,
@@ -267,18 +268,21 @@ export async function installPlugin(input: {
         sourceId: input.sourceId,
         installedById: actorId,
         files: {
-          create: (["main.js", "styles.css"] as const).flatMap((name) => {
-            const content = files[name];
-            return content
-              ? [
-                  {
-                    name,
-                    content: Buffer.from(content),
-                    size: content.byteLength,
-                  },
-                ]
-              : [];
-          }),
+          // Code, styles and preview images; the manifest is a column.
+          create: (Object.keys(files) as (keyof typeof files)[]).flatMap(
+            (name) => {
+              const content = name === "manifest.json" ? null : files[name];
+              return content
+                ? [
+                    {
+                      name,
+                      content: Buffer.from(content),
+                      size: content.byteLength,
+                    },
+                  ]
+                : [];
+            },
+          ),
         },
       },
       select: { id: true },
@@ -726,6 +730,9 @@ export interface ReleasePreview {
   hash: string;
   /** Size of the code, in bytes. */
   codeSize: number;
+  /** The release's screenshots as data URLs — it isn't stored yet, so
+   *  there's nowhere else to serve them from. */
+  previews: { title: string; src: string }[];
 }
 
 /**
@@ -763,6 +770,12 @@ export async function previewRelease(input: {
       minBaryntVersion: m.minBaryntVersion,
       hash: release.hash,
       codeSize: release.files["main.js"]?.byteLength ?? 0,
+      previews: (m.previews ?? []).map(({ file, title }) => ({
+        title,
+        src: `data:image/${file.endsWith(".png") ? "png" : "webp"};base64,${Buffer.from(
+          release.files[file as PreviewFileName] as Uint8Array,
+        ).toString("base64")}`,
+      })),
     },
   };
 }

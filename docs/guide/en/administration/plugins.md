@@ -26,7 +26,7 @@ Open **Admin → Plugins**.
    > A Git server on your internal network is blocked unless your operator lists it in `PLUGIN_INTERNAL_HOSTS`.
 2. Click **Browse** next to the source. You see its plugins, who made them and in which versions.
 3. Click **Install** on a plugin. Barynt loads that version and checks it: the files must match what the directory lists, and the version must run on your Barynt. If anything doesn't match, it is not installed.
-4. The dialog shows the author, where the code comes from, its kind, where it can be used, what it asks for and which other servers it may call. Tick the box and install.
+4. The dialog shows the plugin's screenshots, if it has any, then the author, where the code comes from, its kind, where it can be used, what it asks for and which other servers it may call. Tick the box and install.
 
 | Action | What it does |
 | --- | --- |

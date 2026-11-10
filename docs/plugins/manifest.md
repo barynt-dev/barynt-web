@@ -27,7 +27,11 @@ bun scripts/validate-plugin-manifest.ts manifest.json
   "network": [],
   "contributes": {
     "projectViews": [{ "id": "timeline", "title": "Timeline" }]
-  }
+  },
+  "previews": [
+    { "file": "preview-1.webp", "title": "Timeline per project" },
+    { "file": "preview-2.webp", "title": "Drag to reschedule" }
+  ]
 }
 ```
 
@@ -45,6 +49,7 @@ bun scripts/validate-plugin-manifest.ts manifest.json
 | `capabilities` | yes | What it asks for. Closed list, see `CAPABILITIES`. |
 | `network` | yes | Hosts the plugin may call (bare host names, no scheme, port or wildcard). Empty for declarative plugins. |
 | `contributes` | no | What it adds: `navItems`, `projectViews`, `dashboardWidgets`, `issuePanels`, `issueBadges`, `actions`, `fields`, `settings`. |
+| `previews` | no | Up to 6 screenshots for the store, in the order shown: `{ "file", "title" }`. Files are named `preview-1.webp` … `preview-6.png` (WebP or PNG, at most 512 KB each, 16:10 looks best) and are uploaded to the release next to `manifest.json`. They count towards the release hash, are checked to be real PNG/WebP images, and Barynt serves them itself. |
 
 ## Rules checked by the validator
 
