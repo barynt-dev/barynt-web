@@ -2458,7 +2458,7 @@
     "sourceName": "Name",
     "sourceNamePlaceholder": "z. B. Barynt-Plugins",
     "sourceUrl": "Git-Adresse",
-    "sourceUrlHint": "Repository mit einer plugins.json im Hauptverzeichnis, z. B. https://github.com/team/plugins. Bei einem einfachen Webserver die Adresse der Datei selbst.",
+    "sourceUrlHint": "Repository mit einer plugins.json im Hauptverzeichnis. Der Anbieter wird an der Adresse erkannt – sonst wähl ihn oben.",
     "sourceToken": "Zugangsdaten (optional)",
     "sourceTokenHint": "Für ein privates Verzeichnis oder private Plugin-Repositories. Wird verschlüsselt gespeichert.",
     "browseTitle": "Plugins in {source}",
@@ -2503,8 +2503,6 @@
     "confirmProject": "Alle in diesem Projekt arbeiten damit. Ich bestätige, was es hier darf.",
     "reconfirmTitle": "„{name}“ erneut bestätigen",
     "sourceProvider": "Anbieter",
-    "providerAuto": "Automatisch – {provider}",
-    "providerUnknown": "Automatisch – nicht erkannt",
     "provider": {
       "github": "GitHub",
       "gitlab": "GitLab",
@@ -2523,6 +2521,15 @@
     },
     "tokenGoesTo": "Wird verschlüsselt gespeichert und nur an {host} geschickt.",
     "checkSource": "Verbindung prüfen",
-    "checkOk": "plugins.json gefunden: {plugins, plural, one {# Plugin} other {# Plugins}}, {versions, plural, one {# Version} other {# Versionen}}."
+    "checkOk": "plugins.json gefunden: {plugins, plural, one {# Plugin} other {# Plugins}}, {versions, plural, one {# Version} other {# Versionen}}.",
+    "providerDetected": "Erkannt: {provider} · {how}",
+    "providerChosen": "Gewählt: {provider} · {how}",
+    "providerHow": {
+      "github": "Dateien aus Releases, privat über die GitHub-API.",
+      "gitlab": "Dateien aus Releases über die GitLab-API v4.",
+      "gitea": "Dateien aus Releases, privat über die Gitea-API.",
+      "bitbucket": "Dateien aus dem Tag über die Bitbucket-API.",
+      "https": "Die Adresse der plugins.json selbst; Releases liegen unter Adresse/Version/Datei."
+    }
   }
 }

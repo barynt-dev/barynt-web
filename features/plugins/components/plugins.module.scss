@@ -70,16 +70,11 @@
   gap: 0.375rem;
 }
 
-/* Provider and branch side by side; stacked on a phone. */
-.fieldRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0.75rem;
-  align-items: start;
-
-  @include bp.phone {
-    grid-template-columns: minmax(0, 1fr);
-  }
+/* The providers as a row of chips; it wraps rather than scrolls. */
+.providers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .ok {

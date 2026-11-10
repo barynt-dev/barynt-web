@@ -6,8 +6,8 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/atoms/Badge/Badge";
 import { Button } from "@/components/ui/atoms/Button/Button";
+import { Chip } from "@/components/ui/atoms/Chip/Chip";
 import { Input } from "@/components/ui/atoms/Input/Input";
-import { NativeSelect } from "@/components/ui/atoms/NativeSelect/NativeSelect";
 import { Switch } from "@/components/ui/atoms/Switch/Switch";
 import { useConfirm } from "@/components/ui/layout/ConfirmDialog/ConfirmDialog";
 import { PageHeader } from "@/components/ui/layout/PageHeader/PageHeader";
@@ -464,6 +464,33 @@ function AddSourceDialog({
         </>
       }
     >
+      <div className={styles.field}>
+        <span className={styles.fieldLabel} id="source-provider">
+          {text.t("sourceProvider")}
+        </span>
+        <div
+          className={styles.providers}
+          role="group"
+          aria-labelledby="source-provider"
+        >
+          {GIT_PROVIDERS.map((p) => (
+            <Chip
+              key={p}
+              type="filter"
+              selected={provider === p}
+              disabled={isPending}
+              onClick={() => {
+                // Clicking what the address already says goes back to
+                // following the address.
+                setChoice(p === detected ? "auto" : p);
+                reset();
+              }}
+            >
+              {text.t(`provider.${p}`)}
+            </Chip>
+          ))}
+        </div>
+      </div>
       <Input
         autoFocus={!sheet}
         label={text.t("sourceName")}
@@ -474,8 +501,18 @@ function AddSourceDialog({
       />
       <Input
         label={text.t("sourceUrl")}
-        placeholder="https://gitlab.example.com/team/barynt-plugins"
-        hint={text.t("sourceUrlHint")}
+        placeholder={URL_EXAMPLES[provider ?? "github"]}
+        hint={
+          provider
+            ? text.t(
+                choice === "auto" ? "providerDetected" : "providerChosen",
+                {
+                  provider: text.t(`provider.${provider}`),
+                  how: text.t(`providerHow.${provider}`),
+                },
+              )
+            : text.t("sourceUrlHint")
+        }
         value={url}
         disabled={isPending}
         onChange={(e) => {
@@ -483,46 +520,18 @@ function AddSourceDialog({
           reset();
         }}
       />
-      <div className={styles.fieldRow}>
-        <div className={styles.field}>
-          <span className={styles.fieldLabel}>{text.t("sourceProvider")}</span>
-          <NativeSelect
-            label={text.t("sourceProvider")}
-            value={choice}
-            disabled={isPending}
-            onChange={(value) => {
-              setChoice(value as GitProvider | "auto");
-              reset();
-            }}
-            items={[
-              {
-                value: "auto",
-                label: detected
-                  ? text.t("providerAuto", {
-                      provider: text.t(`provider.${detected}`),
-                    })
-                  : text.t("providerUnknown"),
-              },
-              ...GIT_PROVIDERS.map((p) => ({
-                value: p,
-                label: text.t(`provider.${p}`),
-              })),
-            ]}
-          />
-        </div>
-        {provider !== "https" && (
-          <Input
-            label={text.t("sourceRef")}
-            placeholder={text.t("sourceRefPlaceholder")}
-            value={ref}
-            disabled={isPending}
-            onChange={(e) => {
-              setRef(e.target.value);
-              reset();
-            }}
-          />
-        )}
-      </div>
+      {provider !== "https" && (
+        <Input
+          label={text.t("sourceRef")}
+          placeholder={text.t("sourceRefPlaceholder")}
+          value={ref}
+          disabled={isPending}
+          onChange={(e) => {
+            setRef(e.target.value);
+            reset();
+          }}
+        />
+      )}
       <Input
         variant="password"
         autoComplete="off"
@@ -550,6 +559,15 @@ function AddSourceDialog({
     </PluginDialog>
   );
 }
+
+/** What an address looks like per provider, as the field's placeholder. */
+const URL_EXAMPLES: Record<GitProvider, string> = {
+  github: "https://github.com/team/barynt-plugins",
+  gitlab: "https://gitlab.example.com/team/barynt-plugins",
+  gitea: "https://codeberg.org/team/barynt-plugins",
+  bitbucket: "https://bitbucket.org/team/barynt-plugins",
+  https: "https://plugins.example.com/plugins.json",
+};
 
 /** The provider an address names on its own — `null` until it does. */
 function guessProvider(raw: string): GitProvider | null {
