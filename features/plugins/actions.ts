@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   fetchRelease,
+  readDirectory,
   readSource,
   sealSourceToken,
 } from "@/features/plugins/directory";
@@ -12,6 +13,13 @@ import type { Prisma } from "@/lib/generated/prisma/client";
 import { PLATFORM, requirePermission } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
 import { isDevUrl } from "@/lib/plugins/dev";
+import {
+  detectProvider,
+  type GitProvider,
+  isGitProvider,
+  parseGitRepo,
+  repoUrl,
+} from "@/lib/plugins/git-hosts";
 import {
   allowsLevel,
   confirmsExactly,
@@ -34,32 +42,88 @@ const done = () => revalidatePath("/", "layout");
 
 // ─── Sources ────────────────────────────────────────────────────────────────
 
-function cleanUrl(input: string): string | null {
-  try {
-    const url = new URL(input.trim());
-    // https, or the local demo directory in development (`lib/plugins/dev`).
-    return (url.protocol === "https:" || isDevUrl(url)) &&
-      !url.username &&
-      !url.password
-      ? url.href
-      : null;
-  } catch {
-    return null;
-  }
+/** What a source form sends: an address, and — when the address doesn't
+ *  tell — which software runs there. */
+interface SourceInput {
+  url: string;
+  provider?: string | null;
+  ref?: string | null;
+  token?: string | null;
 }
 
-/** Adds a directory (`plugins.json`). A token makes private ones readable;
- *  it's stored sealed. Adding a source releases no code by itself. */
-export async function addPluginSource(input: {
-  name: string;
-  url: string;
-  token?: string | null;
-}): Promise<PluginResult<{ id: string }>> {
+/**
+ * A source's repository as stored: the address normalized for its provider
+ * (`lib/plugins/git-hosts`). Plain http only for the local demo directory.
+ */
+function cleanSource(
+  input: SourceInput,
+):
+  | { url: string; provider: GitProvider; ref: string | null }
+  | { error: string } {
+  const raw = input.url.trim();
+  let http = false;
+  try {
+    http = isDevUrl(new URL(raw));
+  } catch {}
+  const chosen = isGitProvider(input.provider) ? input.provider : null;
+  if (!chosen) {
+    try {
+      if (!detectProvider(new URL(raw))) return { error: "provider_required" };
+    } catch {
+      // `owner/name` isn't a URL — GitHub's short form, parsed below.
+    }
+  }
+  const repo = parseGitRepo(raw, chosen, { allowHttp: http });
+  if (!repo) return { error: "invalid_url" };
+  const ref = input.ref?.trim().slice(0, 200) || null;
+  if (ref && !/^[A-Za-z0-9._/-]+$/.test(ref)) return { error: "invalid_ref" };
+  return { url: repoUrl(repo), provider: repo.provider, ref };
+}
+
+/**
+ * Reads a source's `plugins.json` before it's saved — "Check connection".
+ * Tells which provider was used and how much it lists.
+ */
+export async function checkPluginSource(input: SourceInput): Promise<
+  PluginResult<{
+    provider: GitProvider;
+    plugins: number;
+    versions: number;
+    skipped: number;
+  }>
+> {
+  await requirePermission("plugin.manage", PLATFORM);
+  const clean = cleanSource(input);
+  if ("error" in clean) return clean;
+  const read = await readDirectory({
+    ...clean,
+    token: input.token?.trim() || null,
+  });
+  if (!read.ok) return { error: read.error };
+  return {
+    ok: true,
+    provider: clean.provider,
+    plugins: read.entries.length,
+    versions: read.entries.reduce(
+      (n, e) => n + Object.keys(e.versions).length,
+      0,
+    ),
+    skipped: read.issues.length,
+  };
+}
+
+/** Adds a source: a repository with a `plugins.json` on any Git host, or
+ *  the file's own address. A token makes private ones readable; it's stored
+ *  sealed. Adding a source releases no code by itself. */
+export async function addPluginSource(
+  input: SourceInput & { name: string },
+): Promise<PluginResult<{ id: string }>> {
   const actorId = await requirePermission("plugin.manage", PLATFORM);
   const name = input.name.trim().slice(0, 80);
-  const url = cleanUrl(input.url);
   if (!name) return { error: "name_required" };
-  if (!url) return { error: "invalid_url" };
+  const clean = cleanSource(input);
+  if ("error" in clean) return clean;
+  const { url, provider, ref } = clean;
   if (await db.pluginSource.findUnique({ where: { url } }))
     return { error: "source_exists" };
 
@@ -67,6 +131,8 @@ export async function addPluginSource(input: {
     data: {
       name,
       url,
+      provider,
+      ref,
       tokenCipher: input.token?.trim()
         ? sealSourceToken(input.token.trim())
         : null,
@@ -77,7 +143,7 @@ export async function addPluginSource(input: {
     action: "plugin.source.added",
     actorId,
     target: { type: "pluginSource", id: source.id, label: name },
-    meta: { url, private: !!source.tokenCipher },
+    meta: { url, provider, ...(ref && { ref }), private: !!source.tokenCipher },
   });
   done();
   return { ok: true, id: source.id };
@@ -87,7 +153,12 @@ export async function addPluginSource(input: {
  *  leaving it out keeps it. */
 export async function updatePluginSource(
   id: string,
-  input: { name?: string; enabled?: boolean; token?: string | null },
+  input: {
+    name?: string;
+    enabled?: boolean;
+    ref?: string | null;
+    token?: string | null;
+  },
 ): Promise<PluginResult> {
   const actorId = await requirePermission("plugin.manage", PLATFORM);
   const source = await db.pluginSource.findUnique({ where: { id } });
@@ -98,6 +169,12 @@ export async function updatePluginSource(
   const data: Prisma.PluginSourceUpdateInput = {};
   if (name) data.name = name;
   if (input.enabled !== undefined) data.enabled = input.enabled;
+  const ref =
+    input.ref === undefined
+      ? undefined
+      : input.ref?.trim().slice(0, 200) || null;
+  if (ref && !/^[A-Za-z0-9._/-]+$/.test(ref)) return { error: "invalid_ref" };
+  if (ref !== undefined) data.ref = ref;
   if (input.token !== undefined)
     data.tokenCipher = input.token?.trim()
       ? sealSourceToken(input.token.trim())
@@ -111,6 +188,7 @@ export async function updatePluginSource(
     meta: {
       ...(name && name !== source.name && { name }),
       ...(input.enabled !== undefined && { enabled: input.enabled }),
+      ...(ref !== undefined && ref !== source.ref && { ref }),
       ...(input.token !== undefined && {
         token: input.token ? "set" : "removed",
       }),

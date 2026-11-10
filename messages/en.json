@@ -2392,7 +2392,7 @@
     "error": {
       "not_found": "That doesn't exist (any more).",
       "name_required": "Please enter a name.",
-      "invalid_url": "Enter an https address.",
+      "invalid_url": "Enter the https address of a repository (or owner/name for GitHub).",
       "source_exists": "This source has been added already.",
       "already_installed": "This version is installed already.",
       "blocked": "This plugin is blocked. Unblock it first.",
@@ -2415,10 +2415,12 @@
       "not_granted": "The workspace hasn't released this plugin for projects.",
       "not_activated": "The plugin isn't switched on here.",
       "disabled": "The source is switched off.",
-      "unreachable": "The directory couldn't be reached.",
+      "unreachable": "The directory could not be reached. If the server is on an internal network, it has to be listed in PLUGIN_INTERNAL_HOSTS.",
       "not_json": "The directory isn't JSON.",
       "token_unreadable": "The access token can't be read any more — enter it again.",
-      "unknown": "Something went wrong ({code})."
+      "unknown": "Something went wrong ({code}).",
+      "provider_required": "The address doesn't tell which provider it is. Pick one.",
+      "invalid_ref": "The branch or tag contains characters it can't have."
     },
     "noCapabilities": "Asks for nothing.",
     "newCapability": "New",
@@ -2426,7 +2428,7 @@
     "adminTitle": "Plugins",
     "addSource": "Add source",
     "sources": "Sources",
-    "noSources": "No source yet. Add the address of a directory's plugins.json.",
+    "noSources": "No source yet. Add a Git repository with a plugins.json – GitHub, GitLab, Gitea/Forgejo, Bitbucket or your own server.",
     "installed": "Installed",
     "noneInstalled": "No plugin installed yet.",
     "colEnabled": "On",
@@ -2455,9 +2457,9 @@
     "uninstallDeleteData": "Also delete its data in every workspace and project (settings and stored data). Otherwise it's kept, switched off.",
     "sourceName": "Name",
     "sourceNamePlaceholder": "e.g. Barynt plugins",
-    "sourceUrl": "Address of plugins.json",
-    "sourceUrlHint": "https only. For a GitHub repository, the raw address of the file.",
-    "sourceToken": "Access token (optional)",
+    "sourceUrl": "Git address",
+    "sourceUrlHint": "A repository with a plugins.json in its root, e.g. https://github.com/team/plugins. For a plain web server, the address of the file itself.",
+    "sourceToken": "Credentials (optional)",
     "sourceTokenHint": "For a private directory or plugin repositories. Stored encrypted.",
     "browseTitle": "Plugins in {source}",
     "loadingDirectory": "Reading the directory…",
@@ -2499,6 +2501,28 @@
     "mayInProject": "In this project it may",
     "confirmWorkspace": "Everyone in this workspace works with it. I confirm what it may do here.",
     "confirmProject": "Everyone in this project works with it. I confirm what it may do here.",
-    "reconfirmTitle": "Confirm “{name}” again"
+    "reconfirmTitle": "Confirm “{name}” again",
+    "sourceProvider": "Provider",
+    "providerAuto": "Automatic – {provider}",
+    "providerUnknown": "Automatic – not recognized",
+    "provider": {
+      "github": "GitHub",
+      "gitlab": "GitLab",
+      "gitea": "Gitea / Forgejo",
+      "bitbucket": "Bitbucket",
+      "https": "Web server (HTTPS)"
+    },
+    "sourceRef": "Branch or tag (optional)",
+    "sourceRefPlaceholder": "Default branch",
+    "tokenHint": {
+      "github": "A personal access token that can read contents and releases.",
+      "gitlab": "A personal or project access token with read_api.",
+      "gitea": "An access token that can read repositories.",
+      "bitbucket": "An access token, or user:app password.",
+      "https": "A token (sent as Bearer) or user:password."
+    },
+    "tokenGoesTo": "Stored encrypted and only ever sent to {host}.",
+    "checkSource": "Check connection",
+    "checkOk": "Found plugins.json: {plugins, plural, one {# plugin} other {# plugins}}, {versions, plural, one {# version} other {# versions}}."
   }
 }

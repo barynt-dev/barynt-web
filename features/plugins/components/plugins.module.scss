@@ -64,6 +64,36 @@
   color: var(--on-surface-variant);
 }
 
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+/* Provider and branch side by side; stacked on a phone. */
+.fieldRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+
+  @include bp.phone {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ok {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0.5625rem 0.75rem;
+  border-radius: var(--radius);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  font-size: var(--text-sm);
+}
+
 .empty {
   margin: 0;
   padding: 1.5rem 0;

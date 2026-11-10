@@ -2392,7 +2392,7 @@
     "error": {
       "not_found": "Das gibt es nicht (mehr).",
       "name_required": "Bitte gib einen Namen ein.",
-      "invalid_url": "Gib eine https-Adresse ein.",
+      "invalid_url": "Gib die https-Adresse eines Repositorys ein (oder owner/name für GitHub).",
       "source_exists": "Diese Quelle ist schon eingetragen.",
       "already_installed": "Diese Version ist schon installiert.",
       "blocked": "Dieses Plugin ist gesperrt. Entsperre es zuerst.",
@@ -2415,10 +2415,12 @@
       "not_granted": "Der Workspace hat dieses Plugin nicht für Projekte freigegeben.",
       "not_activated": "Das Plugin ist hier nicht eingeschaltet.",
       "disabled": "Die Quelle ist ausgeschaltet.",
-      "unreachable": "Das Verzeichnis war nicht erreichbar.",
+      "unreachable": "Das Verzeichnis war nicht erreichbar. Liegt der Server in einem internen Netz, muss er in PLUGIN_INTERNAL_HOSTS stehen.",
       "not_json": "Das Verzeichnis ist kein JSON.",
       "token_unreadable": "Das Zugriffstoken lässt sich nicht mehr lesen. Gib es neu ein.",
-      "unknown": "Etwas ist schiefgegangen ({code})."
+      "unknown": "Etwas ist schiefgegangen ({code}).",
+      "provider_required": "Der Anbieter lässt sich an der Adresse nicht erkennen. Wähl ihn aus.",
+      "invalid_ref": "Branch oder Tag enthält Zeichen, die es nicht geben kann."
     },
     "noCapabilities": "Verlangt nichts.",
     "newCapability": "Neu",
@@ -2426,7 +2428,7 @@
     "adminTitle": "Plugins",
     "addSource": "Quelle hinzufügen",
     "sources": "Quellen",
-    "noSources": "Noch keine Quelle. Trag die Adresse der plugins.json eines Verzeichnisses ein.",
+    "noSources": "Noch keine Quelle. Trag ein Git-Repository mit einer plugins.json ein – GitHub, GitLab, Gitea/Forgejo, Bitbucket oder dein eigener Server.",
     "installed": "Installiert",
     "noneInstalled": "Noch kein Plugin installiert.",
     "colEnabled": "An",
@@ -2455,9 +2457,9 @@
     "uninstallDeleteData": "Auch seine Daten in allen Workspaces und Projekten löschen (Einstellungen und gespeicherte Daten). Sonst bleiben sie, ausgeschaltet.",
     "sourceName": "Name",
     "sourceNamePlaceholder": "z. B. Barynt-Plugins",
-    "sourceUrl": "Adresse der plugins.json",
-    "sourceUrlHint": "Nur https. Bei einem GitHub-Repository die Raw-Adresse der Datei.",
-    "sourceToken": "Zugriffstoken (optional)",
+    "sourceUrl": "Git-Adresse",
+    "sourceUrlHint": "Repository mit einer plugins.json im Hauptverzeichnis, z. B. https://github.com/team/plugins. Bei einem einfachen Webserver die Adresse der Datei selbst.",
+    "sourceToken": "Zugangsdaten (optional)",
     "sourceTokenHint": "Für ein privates Verzeichnis oder private Plugin-Repositories. Wird verschlüsselt gespeichert.",
     "browseTitle": "Plugins in {source}",
     "loadingDirectory": "Verzeichnis wird gelesen …",
@@ -2499,6 +2501,28 @@
     "mayInProject": "In diesem Projekt darf es",
     "confirmWorkspace": "Alle in diesem Workspace arbeiten damit. Ich bestätige, was es hier darf.",
     "confirmProject": "Alle in diesem Projekt arbeiten damit. Ich bestätige, was es hier darf.",
-    "reconfirmTitle": "„{name}“ erneut bestätigen"
+    "reconfirmTitle": "„{name}“ erneut bestätigen",
+    "sourceProvider": "Anbieter",
+    "providerAuto": "Automatisch – {provider}",
+    "providerUnknown": "Automatisch – nicht erkannt",
+    "provider": {
+      "github": "GitHub",
+      "gitlab": "GitLab",
+      "gitea": "Gitea / Forgejo",
+      "bitbucket": "Bitbucket",
+      "https": "Webserver (HTTPS)"
+    },
+    "sourceRef": "Branch oder Tag (optional)",
+    "sourceRefPlaceholder": "Standard-Branch",
+    "tokenHint": {
+      "github": "Personal Access Token mit Lesezugriff auf Inhalte und Releases.",
+      "gitlab": "Personal oder Project Access Token mit read_api.",
+      "gitea": "Access Token mit Lesezugriff auf Repositories.",
+      "bitbucket": "Access Token, oder Benutzer:App-Passwort.",
+      "https": "Ein Token (als Bearer gesendet) oder Benutzer:Passwort."
+    },
+    "tokenGoesTo": "Wird verschlüsselt gespeichert und nur an {host} geschickt.",
+    "checkSource": "Verbindung prüfen",
+    "checkOk": "plugins.json gefunden: {plugins, plural, one {# Plugin} other {# Plugins}}, {versions, plural, one {# Version} other {# Versionen}}."
   }
 }

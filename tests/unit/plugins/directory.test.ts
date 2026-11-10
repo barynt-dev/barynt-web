@@ -1,11 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { createHash } from "node:crypto";
 import {
-  assetApiUrl,
   type DirectoryEntry,
   loadRelease,
   parseDirectory,
-  publicAssetUrl,
   type ReleaseFileName,
   type ReleaseFiles,
   releaseHash,
@@ -80,11 +78,17 @@ describe("parseDirectory", () => {
     expect(parseDirectory({ plugins: [] }).issues[0].index).toBe(-1);
   });
 
-  it("wants a GitHub repository and a SHA-256 per version", () => {
+  it("wants a repository address and a SHA-256 per version", () => {
     const good = entry(release());
+    for (const repo of [
+      "https://github.com/acme/x",
+      "https://gitlab.acme.dev/team/sub/x",
+    ])
+      expect(parseDirectory([{ ...good, repo }]).entries).toHaveLength(1);
     expect(
-      parseDirectory([{ ...good, repo: "https://github.com/acme/x" }]).entries,
+      parseDirectory([{ ...good, repo: "ftp://acme.dev/x" }]).entries,
     ).toEqual([]);
+    expect(parseDirectory([{ ...good, provider: "svn" }]).entries).toEqual([]);
     expect(
       parseDirectory([{ ...good, versions: { "1.2.0": "abc" } }]).entries,
     ).toEqual([]);
@@ -189,30 +193,5 @@ describe("loadRelease", () => {
       "1.0.1",
     );
     expect(result.ok ? "ok" : result.error).toBe("invalid_manifest");
-  });
-});
-
-describe("GitHub addresses", () => {
-  it("builds the public download address from repo, tag and file", () => {
-    expect(publicAssetUrl("acme/x", "1.2.0", "main.js").href).toBe(
-      "https://github.com/acme/x/releases/download/1.2.0/main.js",
-    );
-  });
-
-  it("takes an asset's API address, and only from api.github.com", () => {
-    const meta = (url: string) => ({ assets: [{ name: "main.js", url }] });
-    expect(
-      assetApiUrl(
-        meta("https://api.github.com/repos/acme/x/releases/assets/1"),
-        "main.js",
-      )?.href,
-    ).toBe("https://api.github.com/repos/acme/x/releases/assets/1");
-    expect(assetApiUrl(meta("https://evil.example/steal"), "main.js")).toBe(
-      null,
-    );
-    expect(assetApiUrl(meta("https://api.github.com/x"), "styles.css")).toBe(
-      null,
-    );
-    expect(assetApiUrl(null, "main.js")).toBe(null);
   });
 });

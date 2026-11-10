@@ -87,13 +87,24 @@ export async function fetchPublic(
      *  directory in development (`lib/plugins/dev.ts`). A redirect away
      *  from it is checked like any other. */
     localOrigin?: string;
+    /** Hosts (`name` or `name:port`) an admin let through although they
+     *  are on a private network — a company's own Git server
+     *  (`PLUGIN_INTERNAL_HOSTS`). Protocol and credentials are checked as
+     *  always; a redirect away from them is checked like any other. */
+    internalHosts?: readonly string[];
   },
 ): Promise<PublicResponse | null> {
   try {
     let url = start;
     for (let hop = 0; hop <= 3; hop++) {
       const local = !!options.localOrigin && url.origin === options.localOrigin;
-      if (!local) {
+      const internal =
+        !local && !!options.internalHosts?.includes(url.host.toLowerCase());
+      if (internal) {
+        if (!(options.protocols as string[]).includes(url.protocol))
+          return null;
+        if (url.username !== "" || url.password !== "") return null;
+      } else if (!local) {
         if (!(options.protocols as string[]).includes(url.protocol))
           return null;
         if (url.port !== "" || url.username !== "" || url.password !== "") {

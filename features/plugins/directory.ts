@@ -1,24 +1,34 @@
 import "server-only";
 import { APP_VERSION } from "@/lib/app-info";
 import { db } from "@/lib/db";
-import { isDevUrl, pluginDevBase } from "@/lib/plugins/dev";
+import { isDevUrl, pluginInternalHosts } from "@/lib/plugins/dev";
 import {
-  assetApiUrl,
   DIRECTORY_MAX_BYTES,
   type DirectoryEntry,
   type DirectoryIssue,
   loadRelease,
   parseDirectory,
-  publicAssetUrl,
   type ReleaseFetch,
   type ReleaseResult,
-  releaseApiUrl,
 } from "@/lib/plugins/directory";
+import {
+  assetUrl,
+  authHeaders,
+  directoryRequest,
+  type GitRepo,
+  isGitProvider,
+  parseGitRepo,
+  releasePlan,
+  resolvePluginRepo,
+  sameInstance,
+} from "@/lib/plugins/git-hosts";
 import { fetchPublic } from "@/lib/public-fetch";
 import { openSecret, sealSecret } from "@/lib/secret-box";
 
 // The directory client (BARY-141): reads a source's `plugins.json` and loads
-// a release from GitHub, through the same guarded fetch as link previews
+// a release from wherever the plugin lives — GitHub, GitLab, Gitea/Forgejo,
+// Bitbucket or a plain web server (BARY-198, `lib/plugins/git-hosts.ts`) —
+// through the same guarded fetch as link previews
 // (`lib/public-fetch.ts` — public addresses only, every redirect checked,
 // size and time capped). What gets checked lives in `lib/plugins/directory`.
 // Installing what comes back is the lifecycle's job (BARY-142).
@@ -42,8 +52,62 @@ function sourceToken(source: { tokenCipher: string | null }): string | null {
     : null;
 }
 
-const auth = (token: string | null) =>
-  token ? { authorization: `Bearer ${token}` } : undefined;
+const ANY_TYPE = /^[a-z0-9.+-]+\/[a-z0-9.+-]+$/;
+/** What a directory may come back as: JSON, or raw file contents as the
+ *  hosts label them. */
+const DIRECTORY_TYPES =
+  /^(application\/json|text\/plain|application\/octet-stream|application\/vnd\.github\.raw)$/;
+
+/** Every request of the plugin client: the guarded fetch, with the local
+ *  demo directory (development) and the admin's internal hosts let through. */
+function get(
+  url: URL,
+  options: {
+    accept: string;
+    maxBytes: number;
+    types: RegExp;
+    headers?: Record<string, string>;
+    timeoutMs: number;
+  },
+) {
+  return fetchPublic(url, {
+    ...options,
+    protocols: ["https:"],
+    userAgent: USER_AGENT,
+    internalHosts: pluginInternalHosts(),
+    ...(isDevUrl(url) && { localOrigin: url.origin }),
+  });
+}
+
+/** A source's repository — `null` when its address doesn't parse (any
+ *  more) for its provider. Plain http only for the local demo directory. */
+export function sourceRepo(source: {
+  url: string;
+  provider: string;
+}): GitRepo | null {
+  let http = false;
+  try {
+    http = isDevUrl(new URL(source.url));
+  } catch {}
+  return parseGitRepo(
+    source.url,
+    isGitProvider(source.provider) ? source.provider : null,
+    { allowHttp: http },
+  );
+}
+
+/** Where a directory entry's plugin lives (`resolvePluginRepo`); plain http
+ *  only on the local demo directory. */
+export function pluginRepo(
+  entry: DirectoryEntry,
+  source: GitRepo,
+): GitRepo | null {
+  let http = false;
+  try {
+    http = isDevUrl(new URL(entry.repo));
+  } catch {}
+  return resolvePluginRepo(entry, source, { allowHttp: http });
+}
 
 export type DirectoryRead =
   | { ok: true; entries: DirectoryEntry[]; issues: DirectoryIssue[] }
@@ -58,7 +122,7 @@ export async function readSource(sourceId: string): Promise<DirectoryRead> {
   if (!source) return { ok: false, error: "not_found" };
   if (!source.enabled) return { ok: false, error: "disabled" };
 
-  const result = await readDirectory(source);
+  const result = await readStoredDirectory(source);
   await db.pluginSource.update({
     where: { id: source.id },
     data: {
@@ -69,26 +133,36 @@ export async function readSource(sourceId: string): Promise<DirectoryRead> {
   return result;
 }
 
-async function readDirectory(source: {
+function readStoredDirectory(source: {
   url: string;
+  provider: string;
+  ref: string | null;
   tokenCipher: string | null;
 }): Promise<DirectoryRead> {
-  if (source.tokenCipher && !sourceToken(source))
-    return { ok: false, error: "token_unreadable" };
-  let url: URL;
-  try {
-    url = new URL(source.url);
-  } catch {
-    return { ok: false, error: "invalid_url" };
-  }
-  const res = await fetchPublic(url, {
-    accept: "application/json",
+  const token = sourceToken(source);
+  if (source.tokenCipher && !token)
+    return Promise.resolve({ ok: false, error: "token_unreadable" });
+  return readDirectory({ ...source, token });
+}
+
+/**
+ * Reads the `plugins.json` of a source that may not be stored yet — what
+ * "Check connection" does before saving.
+ */
+export async function readDirectory(source: {
+  url: string;
+  provider: string;
+  ref: string | null;
+  token: string | null;
+}): Promise<DirectoryRead> {
+  const repo = sourceRepo(source);
+  if (!repo) return { ok: false, error: "invalid_url" };
+  const request = directoryRequest(repo, source.ref, !!source.token);
+  const res = await get(request.url, {
+    accept: request.accept,
     maxBytes: DIRECTORY_MAX_BYTES,
-    types: /^(application\/json|text\/plain)$/,
-    protocols: ["https:"],
-    ...(isDevUrl(url) && { localOrigin: url.origin }),
-    headers: auth(sourceToken(source)),
-    userAgent: USER_AGENT,
+    types: DIRECTORY_TYPES,
+    headers: authHeaders(repo.provider, source.token),
     timeoutMs: DIRECTORY_TIMEOUT_MS,
   });
   if (!res) return { ok: false, error: "unreachable" };
@@ -105,66 +179,52 @@ async function readDirectory(source: {
 }
 
 /**
- * How a release's files travel: from GitHub's public download address, or —
- * with the source's token, for a private repository — through the API,
- * asset by asset. The token is sent to `api.github.com` only; the signed
- * download it redirects to goes without (`fetchPublic`).
+ * How a release's files travel from wherever the plugin lives
+ * (`releasePlan`): one address per file, or the release's metadata first.
+ * `token` is the source's, and only when the plugin is on the source's own
+ * instance; a download that leads off that instance goes without.
  */
 function releaseFetch(
-  entry: DirectoryEntry,
+  repo: GitRepo,
   version: string,
   token: string | null,
 ): ReleaseFetch {
-  const get = (url: URL, maxBytes: number, accept: string, types: RegExp) =>
-    fetchPublic(url, {
+  const headers = authHeaders(repo.provider, token);
+  const file = (url: URL, maxBytes: number, accept: string, withToken = true) =>
+    get(url, {
       accept,
       maxBytes,
-      types,
-      protocols: ["https:"],
-      headers: auth(token),
-      userAgent: USER_AGENT,
+      types: ANY_TYPE,
+      headers: withToken ? headers : undefined,
       timeoutMs: FILE_TIMEOUT_MS,
     }).then((res) => res?.body ?? null);
-  // GitHub serves assets as octet streams; a few mirrors label them.
-  const anyType = /^[a-z0-9.+-]+\/[a-z0-9.+-]+$/;
 
-  // In development, a local directory serves the releases too.
-  const dev = pluginDevBase();
-  if (dev && !token)
-    return (file, maxBytes) =>
-      fetchPublic(publicAssetUrl(entry.repo, version, file, dev.origin), {
-        accept: "*/*",
-        maxBytes,
-        types: anyType,
-        protocols: ["https:"],
-        localOrigin: dev.origin,
-        userAgent: USER_AGENT,
-        timeoutMs: FILE_TIMEOUT_MS,
-      }).then((res) => res?.body ?? null);
-
-  if (!token)
-    return (file, maxBytes) =>
-      get(publicAssetUrl(entry.repo, version, file), maxBytes, "*/*", anyType);
+  const plan = releasePlan(repo, version, !!token);
+  if (plan.kind === "direct")
+    return (name, maxBytes) => file(plan.url(name), maxBytes, "*/*");
 
   let release: Promise<unknown> | null = null;
   const metadata = () => {
-    release ??= get(
-      releaseApiUrl(entry.repo, version),
-      256 * 1024,
-      "application/vnd.github+json",
-      /^application\/json$/,
-    ).then((body) => {
+    release ??= get(plan.request.url, {
+      accept: plan.request.accept,
+      maxBytes: 256 * 1024,
+      types: /^application\/json$/,
+      headers,
+      timeoutMs: FILE_TIMEOUT_MS,
+    }).then((res) => {
       try {
-        return body ? JSON.parse(new TextDecoder().decode(body)) : null;
+        return res ? JSON.parse(new TextDecoder().decode(res.body)) : null;
       } catch {
         return null;
       }
     });
     return release;
   };
-  return async (file, maxBytes) => {
-    const url = assetApiUrl(await metadata(), file);
-    return url ? get(url, maxBytes, "application/octet-stream", anyType) : null;
+  return async (name, maxBytes) => {
+    const asset = assetUrl(repo, await metadata(), name);
+    return asset
+      ? file(asset.url, maxBytes, asset.accept, asset.withToken)
+      : null;
   };
 }
 
@@ -182,14 +242,18 @@ export async function fetchRelease(
 > {
   const source = await db.pluginSource.findUnique({ where: { id: sourceId } });
   if (!source?.enabled) return { ok: false, error: "source" };
-  const read = await readDirectory(source);
+  const read = await readStoredDirectory(source);
   if (!read.ok) return { ok: false, error: "source", detail: read.error };
   const entry = read.entries.find((e) => e.id === pluginId);
   if (!entry) return { ok: false, error: "not_in_directory" };
+  const home = sourceRepo(source) as GitRepo;
+  const repo = pluginRepo(entry, home);
+  if (!repo) return { ok: false, error: "not_in_directory", detail: "repo" };
+  const token = sameInstance(home, repo) ? sourceToken(source) : null;
   return loadRelease(
     entry,
     version,
-    releaseFetch(entry, version, sourceToken(source)),
+    releaseFetch(repo, version, token),
     APP_VERSION,
   );
 }
