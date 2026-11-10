@@ -166,29 +166,55 @@ internals](api-and-mcp.md#adding-a-webhook-event). For receivers, see the user g
 ## Plugin directory
 
 Part of the plugin system (BARY-128, on its own branch until it ships). A **source**
-(`PluginSource`) is the address of a directory's `plugins.json`: a list of plugins, each
-with its GitHub repository and, per version it vouches for, a SHA-256 of the release's
-files. The format and every check are in `lib/plugins/directory.ts` (no dependency on the
-app, the directory repository's CI can use it); `features/plugins/directory.ts` does the
-fetching.
+(`PluginSource`) is a Git repository with a `plugins.json` in its root, on GitHub, GitLab,
+Gitea/Forgejo or Bitbucket Cloud (self-hosted too), or, with provider `https`, the address
+of a `plugins.json` on a plain web server (BARY-198). The directory is a list of plugins,
+each with its repository (`owner/name` for GitHub, or any Git address plus an optional
+`provider`) and, per version it vouches for, a SHA-256 of the release's files. The format
+and every check are in `lib/plugins/directory.ts` (no dependency on the app, the
+directory repository's CI can use it); `features/plugins/directory.ts` does the fetching.
+
+**Where things are** is `lib/plugins/git-hosts.ts`, pure. Per provider it builds the
+address of the directory (`directoryRequest`: at `PluginSource.ref`, else the default
+branch, `main` for Bitbucket) and of a release's files (`releasePlan`, the tag is the
+version):
+
+| Provider | Directory | Release files |
+| --- | --- | --- |
+| `github` | `raw.githubusercontent.com`, with a token the contents API | the public download address; with a token the release API's assets (`api.github.com` only) |
+| `gitlab` | `/api/v4/projects/:path/repository/files/plugins.json/raw` | the release's links (`/api/v4/projects/:path/releases/:tag`) |
+| `gitea` | `/api/v1/repos/:owner/:repo/raw/plugins.json` | the public download address; with a token the release API's `browser_download_url` |
+| `bitbucket` | `/2.0/repositories/:ws/:repo/src/:ref/plugins.json` | the files at the tag, same API |
+| `https` | the address itself | `<repo address>/<version>/<file>` |
+
+A plugin's provider is its entry's `provider`, GitHub for `owner/name`, the source's own
+provider for an address on the source's host, a known host's (`github.com`, `gitlab.com`,
+`codeberg.org`, …), else `https` (`resolvePluginRepo`).
 
 - `readSource(id)` reads the directory and notes the outcome on the source
   (`lastSyncAt`, `lastSyncError`). A broken entry is left out and reported, it does not
-  take the others down.
+  take the others down. `readDirectory` does the same for a source that isn't stored yet
+  (`checkPluginSource`, "Check connection").
 - `fetchRelease(sourceId, pluginId, version)` loads `manifest.json`, `main.js` (required
-  for a sandbox plugin) and `styles.css` from the GitHub release whose tag is the version,
-  then refuses it unless the files hash to the listed value (`releaseHash`: what
+  for a sandbox plugin) and `styles.css` from the release whose tag is the version, then
+  refuses it unless the files hash to the listed value (`releaseHash`: what
   `sha256sum manifest.json main.js styles.css | sort -k2 | sha256sum` prints), the
   manifest is valid and names the same id, version, kind and levels, and it runs on this
   Barynt (`minBaryntVersion`/`maxBaryntVersion`). It stores nothing; installing is the
   lifecycle's job.
 - All traffic goes through `fetchPublic` (`lib/public-fetch.ts`): `https` only, public
-  addresses only, every redirect checked, size and time capped per file.
+  addresses only, every redirect checked, size and time capped per file. Hosts listed in
+  `PLUGIN_INTERNAL_HOSTS` (`name` or `name:port`, `lib/plugins/dev.ts`) are let through
+  although they are on a private network, for a company's own Git server; still https only.
 - A **private** directory or repository uses the source's access token. It is stored
-  sealed (`lib/secret-box.ts`: AES-256-GCM, key derived from `AUTH_SECRET`) and only ever
-  sent to the first host of a request; the signed download GitHub redirects to goes
-  without it. Changing `AUTH_SECRET` makes sealed tokens unreadable: the source then
-  reports `token_unreadable` and the token has to be entered again.
+  sealed (`lib/secret-box.ts`: AES-256-GCM, key derived from `AUTH_SECRET`) and belongs to
+  the source's instance (provider + origin, `sameInstance`): a plugin hosted elsewhere is
+  loaded without it, and so is a download link that leads off the instance. `fetchPublic`
+  sends it to the first host of a request only. How it travels depends on the provider
+  (`authHeaders`: `Bearer`, GitLab's `PRIVATE-TOKEN`, Gitea's `token`, `user:secret` as
+  Basic for Bitbucket and web servers). Changing `AUTH_SECRET` makes sealed tokens
+  unreadable: the source then reports `token_unreadable` and the token has to be entered
+  again.
 
 The **lifecycle** (BARY-142) is the server actions in `features/plugins/actions.ts`; the
 rules they follow are pure, in `lib/plugins/lifecycle.ts`.
@@ -219,10 +245,12 @@ so the server never trusts what a dialog was shown.
 
 **Trying it locally:** there is no public Barynt plugin directory yet. `bun run plugins:demo`
 serves one on `http://localhost:4555` with three demo plugins (one whose update asks for a
-new capability, one service, one whose files don't match its hash). Set
-`PLUGIN_DEV_BASE="http://localhost:4555"` in `.env`, restart the app and add
-`http://localhost:4555/plugins.json` as a source under **Admin → Plugins**. The variable is
-ignored in production and for anything but localhost (`lib/plugins/dev.ts`).
+new capability, one service, one whose files don't match its hash). It answers like a
+Gitea server and like a plain web server. Set `PLUGIN_DEV_BASE="http://localhost:4555"`
+in `.env`, restart the app and add `http://localhost:4555/barynt-demo/plugins` (provider
+Gitea / Forgejo) or `http://localhost:4555/plugins.json` as a source under
+**Admin → Plugins**. The variable is ignored in production and for anything but
+localhost (`lib/plugins/dev.ts`).
 
 ## Smaller pieces
 

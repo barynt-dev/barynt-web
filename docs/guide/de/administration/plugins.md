@@ -18,7 +18,12 @@ Plugins erweitern Barynt: eine Projektansicht, ein Dashboard-Widget, ein Abgleic
 
 Öffne **Admin → Plugins**.
 
-1. **Quelle hinzufügen:** die Adresse der `plugins.json` eines Verzeichnisses (nur https). Für ein privates Verzeichnis oder private Plugin-Repositories gib auch ein Zugriffstoken an; es wird verschlüsselt gespeichert.
+1. **Quelle hinzufügen:** die Git-Adresse eines Repositorys mit einer `plugins.json` im Hauptverzeichnis, auf GitHub, GitLab, Gitea/Forgejo oder Bitbucket, auch auf selbst gehosteten Servern. Barynt erkennt den Anbieter an der Adresse; wenn nicht, wähl ihn aus. Optional gibst du einen Branch oder Tag an. Bei einem einfachen Webserver trägst du die Adresse der `plugins.json` selbst ein und wählst **Webserver (HTTPS)**. **Verbindung prüfen** liest das Verzeichnis, bevor du speicherst.
+
+   Für ein privates Repository gib Zugangsdaten an (ein Access Token, oder `Benutzer:Passwort` für Bitbucket-App-Passwörter und Webserver). Sie werden verschlüsselt gespeichert und nur an den Server dieser Quelle geschickt, nie an Plugins, die woanders liegen.
+
+   > [!NOTE]
+   > Ein Git-Server in eurem internen Netz ist gesperrt, solange er nicht in `PLUGIN_INTERNAL_HOSTS` steht.
 2. Klicke bei der Quelle auf **Durchsuchen**. Du siehst ihre Plugins, wer sie gebaut hat und in welchen Versionen.
 3. Klicke bei einem Plugin auf **Installieren**. Barynt lädt diese Version und prüft sie: Die Dateien müssen zu dem passen, was das Verzeichnis angibt, und die Version muss auf deinem Barynt laufen. Passt etwas nicht, wird es nicht installiert.
 4. Der Dialog zeigt Autor, Herkunft des Codes, Art, wo es nutzbar ist, was es verlangt und welche anderen Server es aufrufen darf. Setz den Haken und installiere.
