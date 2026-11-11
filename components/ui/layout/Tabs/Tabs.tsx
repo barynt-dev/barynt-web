@@ -30,7 +30,27 @@ export function Tabs({
   const ref = useRef<HTMLElement>(null);
   const shownActive = useRef<Element | null>(null);
 
-  // Which edges have tabs behind them — for the fade, in CSS.
+  // Brings the active tab fully into view; only the row scrolls, never the
+  // page. `force` after another tab became active, otherwise only when the
+  // row's content changed size (a font or a count arriving late).
+  const showActive = (force: boolean) => {
+    const row = ref.current;
+    const active = row?.querySelector(":scope > [data-active]");
+    if (!row || !active) return;
+    if (!force && active !== shownActive.current) return;
+    shownActive.current = active;
+    const bounds = row.getBoundingClientRect();
+    const box = active.getBoundingClientRect();
+    const margin = 24;
+    if (box.left < bounds.left)
+      row.scrollLeft -= bounds.left - box.left + margin;
+    else if (box.right > bounds.right)
+      row.scrollLeft += box.right - bounds.right + margin;
+  };
+
+  // Which edges have tabs behind them — for the fade, in CSS. The row and
+  // every tab are watched: a tab growing changes how far the row reaches.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: set up once; reads the row through its ref
   useEffect(() => {
     const row = ref.current;
     if (!row) return;
@@ -41,30 +61,25 @@ export function Tabs({
       if (more) row.dataset.more = more;
       else delete row.dataset.more;
     };
+    const resized = () => {
+      showActive(false);
+      mark();
+    };
     mark();
     row.addEventListener("scroll", mark, { passive: true });
-    const resize = new ResizeObserver(mark);
+    const resize = new ResizeObserver(resized);
     resize.observe(row);
+    for (const tab of row.children) resize.observe(tab);
     return () => {
       row.removeEventListener("scroll", mark);
       resize.disconnect();
     };
   }, []);
 
-  // The active tab into view, once each time another one becomes active —
-  // only the row scrolls, never the page.
+  // Another tab became active: bring it into view.
   useEffect(() => {
-    const row = ref.current;
-    const active = row?.querySelector(":scope > [data-active]");
-    if (!row || !active || active === shownActive.current) return;
-    shownActive.current = active;
-    const bounds = row.getBoundingClientRect();
-    const box = active.getBoundingClientRect();
-    const margin = 24;
-    if (box.left < bounds.left)
-      row.scrollLeft -= bounds.left - box.left + margin;
-    else if (box.right > bounds.right)
-      row.scrollLeft += box.right - bounds.right + margin;
+    const active = ref.current?.querySelector(":scope > [data-active]");
+    if (active && active !== shownActive.current) showActive(true);
   });
 
   return (
