@@ -15,6 +15,12 @@ import type {
 import { Link } from "@/i18n/navigation";
 import { compareSemver } from "@/lib/plugins/semver";
 import { ErrorLine, PluginBadges, usePluginText } from "../shared";
+import {
+  asksMore,
+  CapabilityCards,
+  ChangeRows,
+  changesOf,
+} from "./capabilities";
 import { OriginLink } from "./dialogs";
 import { type StoreActions, storeHref } from "./PluginStore";
 import { PluginTile } from "./PluginTile";
@@ -344,47 +350,6 @@ function Overview({
   );
 }
 
-/** Capabilities by what they touch. */
-const GROUPS: { id: string; icon: string; test: (cap: string) => boolean }[] = [
-  {
-    id: "data",
-    icon: "lucide:database",
-    test: (c) => !/^(ui|events|notify):/.test(c),
-  },
-  {
-    id: "ui",
-    icon: "lucide:layout-dashboard",
-    test: (c) => c.startsWith("ui:"),
-  },
-  {
-    id: "events",
-    icon: "lucide:activity",
-    test: (c) => /^(events|notify):/.test(c),
-  },
-];
-
-/** What an update changes against the installed version. */
-interface Changes {
-  added: string[];
-  removed: string[];
-  hostsAdded: string[];
-  hostsRemoved: string[];
-}
-
-function changesOf(
-  installed: InstalledPlugin,
-  next: { capabilities: string[]; network: string[] },
-): Changes {
-  return {
-    added: next.capabilities.filter((c) => !installed.capabilities.includes(c)),
-    removed: installed.capabilities.filter(
-      (c) => !next.capabilities.includes(c),
-    ),
-    hostsAdded: next.network.filter((h) => !installed.network.includes(h)),
-    hostsRemoved: installed.network.filter((h) => !next.network.includes(h)),
-  };
-}
-
 /** One line: "asks for 1 new capability" — or that it asks for nothing new. */
 function ChangeSummary({
   installed,
@@ -429,17 +394,7 @@ function UpdateChanges({
   const update = entry.update as string;
   const c =
     release.status === "ready" ? changesOf(installed, release.preview) : null;
-  const rows = c
-    ? (
-        [
-          ["added", "lucide:plus", c.added.map(text.capability)],
-          ["removed", "lucide:minus", c.removed.map(text.capability)],
-          ["hostsAdded", "lucide:globe", c.hostsAdded],
-          ["hostsRemoved", "lucide:globe-lock", c.hostsRemoved],
-        ] as const
-      ).filter(([, , items]) => items.length > 0)
-    : [];
-  const asksMore = !!c && c.added.length + c.hostsAdded.length > 0;
+  const more = !!c && asksMore(c);
 
   return (
     <section className={styles.updateCard} aria-labelledby="update-changes">
@@ -461,35 +416,14 @@ function UpdateChanges({
           />{" "}
           {text.t("checkingRelease")}
         </p>
-      ) : rows.length === 0 ? (
-        <p className={styles.updateSame}>
-          <Icon icon="lucide:circle-check" width={16} aria-hidden />
-          {text.t("updateSame", { version: installed.version ?? "" })}
-        </p>
       ) : (
-        <dl className={styles.updateRows}>
-          {rows.map(([kind, icon, items]) => (
-            <div key={kind} className={styles.updateRow} data-kind={kind}>
-              <dt>
-                <Icon icon={icon} width={14} aria-hidden />
-                {text.t(`updateRow.${kind}` as "updateRow.added")}
-              </dt>
-              <dd>
-                {items.map((item) => (
-                  <span key={item} className={styles.updateItem}>
-                    {item}
-                  </span>
-                ))}
-              </dd>
-            </div>
-          ))}
-        </dl>
+        <ChangeRows changes={c} from={installed.version ?? ""} />
       )}
 
       {c && (
         <p className={styles.updateImpact}>
           <Icon icon="lucide:users" width={15} aria-hidden />
-          {asksMore
+          {more
             ? text.t("updateImpactMore", { count: installed.activations })
             : text.t("updateImpactSame")}
         </p>
@@ -554,48 +488,7 @@ function Capabilities({
           </p>
         )
       ) : (
-        <div className={styles.capGrid}>
-          {GROUPS.map((group) => {
-            const caps = shown.capabilities.filter(group.test);
-            if (caps.length === 0) return null;
-            return (
-              <section key={group.id} className={styles.card}>
-                <h3 className={styles.cardTitle}>
-                  <Icon icon={group.icon} width={14} aria-hidden />
-                  {text.t(`capGroup.${group.id}` as "capGroup.data")}
-                </h3>
-                <ul className={styles.capRows}>
-                  {caps.map((cap) => (
-                    <li key={cap} className={styles.capRow}>
-                      <span className={styles.capLabel}>
-                        {text.capability(cap)}
-                      </span>
-                      <code>{cap}</code>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            );
-          })}
-          <section className={styles.card} data-tone="warning">
-            <h3 className={styles.cardTitle}>
-              <Icon icon="lucide:globe" width={14} aria-hidden />
-              {text.t("networkTitle")}
-            </h3>
-            {shown.network.length === 0 ? (
-              <p className={styles.muted}>{text.t("noNetwork")}</p>
-            ) : (
-              <ul className={styles.capRows}>
-                {shown.network.map((host) => (
-                  <li key={host} className={styles.capRow}>
-                    <code className={styles.host}>{host}</code>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <p className={styles.muted}>{text.t("networkNote")}</p>
-          </section>
-        </div>
+        <CapabilityCards {...shown} />
       )}
 
       {installed && (

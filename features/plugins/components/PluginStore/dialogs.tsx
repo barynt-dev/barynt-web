@@ -3,6 +3,7 @@
 import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
+import { Badge } from "@/components/ui/atoms/Badge/Badge";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import { Chip } from "@/components/ui/atoms/Chip/Chip";
 import { Input } from "@/components/ui/atoms/Input/Input";
@@ -22,12 +23,21 @@ import {
 } from "@/lib/plugins/git-hosts";
 import styles from "../plugins.module.scss";
 import {
-  CapabilityList,
   ErrorLine,
+  PluginBadges,
   PluginDialog,
   PreviewStrip,
   usePluginText,
 } from "../shared";
+import {
+  asksMore,
+  CapabilityCards,
+  ChangeRows,
+  type Changes,
+  changesOf,
+  type Permissions,
+} from "./capabilities";
+import store from "./pluginStore.module.scss";
 
 // The admin store's windows (BARY-200, from the B5 page): adding a source,
 // installing a release after a look at it, uninstalling.
@@ -266,8 +276,11 @@ export interface InstallTarget {
   name: string;
   /** The version installed now; `null` for a first install. */
   installed: string | null;
+  /** What the installed version may do — an update shows what changes. */
+  current: (Permissions & { activations: number }) | null;
   repoUrl: string | null;
   releaseUrls: Record<string, string>;
+  categories: string[];
 }
 
 /**
@@ -322,6 +335,9 @@ export function InstallDialog({
       close();
     });
 
+  const changes =
+    preview && target.current ? changesOf(target.current, preview) : null;
+
   return (
     <PluginDialog
       title={text.t("installTitle", { name: target.name })}
@@ -333,6 +349,10 @@ export function InstallDialog({
             <Button variant="ghost" onClick={close} disabled={isPending}>
               {t("actions.cancel")}
             </Button>
+          )}
+          {sheet && preview && !confirmed && (
+            // The box to tick is at the end of a long sheet.
+            <span className={store.confirmHint}>{text.t("confirmHint")}</span>
           )}
           <Button
             variant="primary"
@@ -374,7 +394,41 @@ export function InstallDialog({
               </li>
             ))}
           </ul>
+          {target.current && target.installed && (
+            <section className={store.updateCard}>
+              <header className={store.updateHead}>
+                <Icon icon="lucide:sparkles" width={18} aria-hidden />
+                <h3>{text.t("updateChangesTitle", { version })}</h3>
+              </header>
+              <ChangeRows
+                changes={changes as Changes}
+                from={target.installed}
+              />
+              <p className={store.updateImpact}>
+                <Icon icon="lucide:users" width={15} aria-hidden />
+                {asksMore(changes as Changes)
+                  ? text.t("updateImpactMore", {
+                      count: target.current.activations,
+                    })
+                  : text.t("updateImpactSame")}
+              </p>
+            </section>
+          )}
           <PreviewStrip previews={preview.previews} />
+          <div className={store.dialogLabels}>
+            <PluginBadges
+              kind={preview.kind}
+              levels={preview.levels}
+              size="md"
+            />
+            {target.categories.map((c) => (
+              <Badge key={c} mono={false}>
+                <Icon icon="lucide:tag" width={12} aria-hidden />{" "}
+                {text.t(`category.${c}` as "category.planning")}
+              </Badge>
+            ))}
+          </div>
+          <p className={styles.description}>{preview.description}</p>
           <dl className={styles.facts}>
             <dt>{text.t("author")}</dt>
             <dd>
@@ -396,15 +450,7 @@ export function InstallDialog({
               {target.sourceName}
             </dd>
             <dt>{text.t("kindLabel")}</dt>
-            <dd>
-              {text.kind(preview.kind)}
-              <span className={styles.muted}>
-                {" "}
-                — {text.kindHint(preview.kind)}
-              </span>
-            </dd>
-            <dt>{text.t("levels")}</dt>
-            <dd>{preview.levels.map(text.level).join(", ")}</dd>
+            <dd>{text.kindHint(preview.kind)}</dd>
             <dt>{text.t("license")}</dt>
             <dd>{preview.license}</dd>
             <dt>{text.t("hash")}</dt>
@@ -420,9 +466,11 @@ export function InstallDialog({
               )}
             </dd>
           </dl>
-          <p className={styles.description}>{preview.description}</p>
-          <span className={styles.fieldLabel}>{text.t("asksFor")}</span>
-          <CapabilityList
+          <header className={store.capHead}>
+            <h3>{text.t("capsOfVersion", { version })}</h3>
+            <p>{text.t("capabilitiesIntro")}</p>
+          </header>
+          <CapabilityCards
             capabilities={preview.capabilities}
             network={preview.network}
           />

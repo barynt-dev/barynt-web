@@ -2668,6 +2668,7 @@
     "capsOfInstalled": "Was v{version} darf (installiert)",
     "capsOfVersion": "Was v{version} darf",
     "notesMore": "{count, plural, one {+ # weitere Zeile} other {+ # weitere Zeilen}}",
-    "notesLess": "Weniger anzeigen"
+    "notesLess": "Weniger anzeigen",
+    "confirmHint": "Unten bestätigen, dann installieren."
   }
 }

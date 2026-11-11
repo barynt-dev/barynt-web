@@ -130,8 +130,14 @@ export function PluginStore({
       pluginId: entry.id,
       name: entry.name,
       installed: entry.installed?.version ?? null,
+      current: entry.installed && {
+        capabilities: entry.installed.capabilities,
+        network: entry.installed.network,
+        activations: entry.installed.activations,
+      },
       repoUrl: entry.listing.repoUrl,
       releaseUrls: entry.listing.releaseUrls,
+      categories: entry.listing.categories,
     };
 
   const actions: StoreActions = {

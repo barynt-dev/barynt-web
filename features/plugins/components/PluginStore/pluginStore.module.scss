@@ -926,6 +926,21 @@
   font-size: var(--text-sm);
 }
 
+/* In the install dialog: kind, levels and categories as labels. */
+.dialogLabels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* Next to the disabled install button on a phone: why it's disabled. */
+.confirmHint {
+  flex: 1;
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+}
+
 .capHead {
   display: flex;
   flex-direction: column;

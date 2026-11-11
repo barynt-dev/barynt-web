@@ -2668,6 +2668,7 @@
     "capsOfInstalled": "What v{version} may do (installed)",
     "capsOfVersion": "What v{version} may do",
     "notesMore": "{count, plural, one {+ # more line} other {+ # more lines}}",
-    "notesLess": "Show less"
+    "notesLess": "Show less",
+    "confirmHint": "Confirm at the end, then install."
   }
 }
