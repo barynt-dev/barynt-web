@@ -362,10 +362,9 @@
   color: var(--on-surface-variant);
 }
 
-/* A destructive action that isn't the main one: red outline, red text.
-   Doubled class to outrank the button's own outline colors. */
-.dangerOutline.dangerOutline {
-  border-color: color-mix(in oklab, var(--error) 55%, transparent);
+/* Uninstall as an icon button: red, so it doesn't read as just another
+   action. Doubled class to outrank the button's own colors. */
+.dangerIcon.dangerIcon {
   color: var(--error);
 
   &:hover:not(:disabled) {
