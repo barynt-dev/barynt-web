@@ -2669,6 +2669,7 @@
     "capsOfVersion": "What v{version} may do",
     "notesMore": "{count, plural, one {+ # more line} other {+ # more lines}}",
     "notesLess": "Show less",
-    "confirmHint": "Confirm at the end, then install."
+    "confirmHint": "Confirm at the end, then install.",
+    "updateTitle": "Update “{name}” to v{version}"
   }
 }

@@ -340,7 +340,11 @@ export function InstallDialog({
 
   return (
     <PluginDialog
-      title={text.t("installTitle", { name: target.name })}
+      title={
+        target.installed
+          ? text.t("updateTitle", { name: target.name, version })
+          : text.t("installTitle", { name: target.name })
+      }
       sheet={sheet}
       close={close}
       footer={

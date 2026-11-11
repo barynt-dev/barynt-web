@@ -155,7 +155,12 @@ export function PluginStore({
             onDone={refresh}
           />
         ),
-        { ...modal, label: text.t("installTitle", { name: entry.name }) },
+        {
+          ...modal,
+          label: entry.installed
+            ? text.t("updateTitle", { name: entry.name, version })
+            : text.t("installTitle", { name: entry.name }),
+        },
       );
     },
     block: async (entry, blocked) => {

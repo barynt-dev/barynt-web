@@ -2669,6 +2669,7 @@
     "capsOfVersion": "Was v{version} darf",
     "notesMore": "{count, plural, one {+ # weitere Zeile} other {+ # weitere Zeilen}}",
     "notesLess": "Weniger anzeigen",
-    "confirmHint": "Unten bestätigen, dann installieren."
+    "confirmHint": "Unten bestätigen, dann installieren.",
+    "updateTitle": "„{name}“ auf v{version} aktualisieren"
   }
 }
