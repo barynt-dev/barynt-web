@@ -2450,7 +2450,7 @@
     "block": "Sperren",
     "unblock": "Entsperren",
     "blockTitle": "„{name}“ sperren?",
-    "blockDesc": "Es läuft sofort nirgends mehr, egal wo es eingeschaltet ist. Aktivierungen und Daten bleiben und gelten wieder, sobald es entsperrt ist.",
+    "blockDesc": "Ab sofort läuft es nirgends mehr. Aktivierungen und Daten bleiben und gelten wieder, sobald es entsperrt ist.",
     "uninstall": "Deinstallieren",
     "uninstallTitle": "„{name}“ deinstallieren?",
     "uninstallDesc": "Alle installierten Versionen und ihre Dateien werden entfernt. Workspaces und Projekte, die es nutzen, verlieren es.",
@@ -2670,6 +2670,7 @@
     "notesMore": "{count, plural, one {+ # weitere Zeile} other {+ # weitere Zeilen}}",
     "notesLess": "Weniger anzeigen",
     "confirmHint": "Unten bestätigen, dann installieren.",
-    "updateTitle": "„{name}“ auf v{version} aktualisieren"
+    "updateTitle": "„{name}“ auf v{version} aktualisieren",
+    "blockWhere": "{count, plural, =0 {Es ist gerade nirgends eingeschaltet.} one {Es läuft gerade an # Stelle (Workspace oder Projekt).} other {Es läuft gerade an # Stellen (Workspaces und Projekte).}}"
   }
 }

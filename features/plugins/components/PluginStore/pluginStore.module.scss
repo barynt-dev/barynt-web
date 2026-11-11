@@ -362,6 +362,17 @@
   color: var(--on-surface-variant);
 }
 
+/* A destructive action that isn't the main one: red outline, red text.
+   Doubled class to outrank the button's own outline colors. */
+.dangerOutline.dangerOutline {
+  border-color: color-mix(in oklab, var(--error) 55%, transparent);
+  color: var(--error);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--error) 12%, transparent);
+  }
+}
+
 .headActions {
   display: flex;
   flex-wrap: wrap;

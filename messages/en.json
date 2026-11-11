@@ -2450,7 +2450,7 @@
     "block": "Block",
     "unblock": "Unblock",
     "blockTitle": "Block “{name}”?",
-    "blockDesc": "It stops running everywhere at once, whatever was switched on. Activations and data stay and apply again once it's unblocked.",
+    "blockDesc": "From now on it runs nowhere. Activations and data stay and apply again once it’s unblocked.",
     "uninstall": "Uninstall",
     "uninstallTitle": "Uninstall “{name}”?",
     "uninstallDesc": "Every installed version and its files are removed. Workspaces and projects that use it lose it.",
@@ -2670,6 +2670,7 @@
     "notesMore": "{count, plural, one {+ # more line} other {+ # more lines}}",
     "notesLess": "Show less",
     "confirmHint": "Confirm at the end, then install.",
-    "updateTitle": "Update “{name}” to v{version}"
+    "updateTitle": "Update “{name}” to v{version}",
+    "blockWhere": "{count, plural, =0 {It isn’t switched on anywhere right now.} one {It runs in # place right now (a workspace or project).} other {It runs in # places right now (workspaces and projects).}}"
   }
 }

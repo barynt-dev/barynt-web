@@ -101,13 +101,14 @@ export function PluginDetail({
                 </Button>
               )}
               <Button
-                variant="text"
+                variant="outline"
+                className={styles.dangerOutline}
                 icon={<Icon icon="lucide:package-x" width={15} />}
-                aria-label={text.t("uninstall")}
-                title={text.t("uninstall")}
                 disabled={actions.pending}
                 onClick={() => actions.uninstall(entry)}
-              />
+              >
+                {text.t("uninstall")}
+              </Button>
             </>
           ) : (
             entry.listing &&

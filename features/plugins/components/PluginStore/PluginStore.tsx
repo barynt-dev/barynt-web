@@ -167,7 +167,10 @@ export function PluginStore({
       if (blocked) {
         const ok = await confirm({
           title: text.t("blockTitle", { name: entry.name }),
-          description: text.t("blockDesc"),
+          // How far it reaches first: where it stops running.
+          description: `${text.t("blockWhere", {
+            count: entry.installed?.activations ?? 0,
+          })} ${text.t("blockDesc")}`,
           confirmLabel: text.t("block"),
           cancelLabel: t("actions.cancel"),
           danger: true,
