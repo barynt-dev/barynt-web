@@ -56,13 +56,15 @@ Jeder Schritt steht im [Protokoll](audit.md).
 
 Öffne die **Einstellungen** und wähle im Umschalter oben **Plugin Store**, neben Persönlich, Projekt und Workspace. Du siehst ihn, wenn du im Workspace oder in einem seiner Projekte die Berechtigung _Switch installed plugins on and off and configure them_ hast; Owner, Admins, Manager und Projekt-Admins haben sie.
 
-Der Store zeigt alle Plugins, die deine Plattform-Admins installiert haben, mit Suche, Kategorien, Screenshots und dem, was sie dürfen. Öffne eins; eine Zeile unter dem Namen zeigt, wo es läuft.
+Der Store zeigt alle Plugins, die deine Plattform-Admins installiert haben, mit Suche, Kategorien, Screenshots und dem, was sie dürfen. Bist du in mehreren Workspaces, wählst du oben in der Liste einen aus – wie in den Workspace-Einstellungen. Öffne ein Plugin; eine Zeile unter dem Namen zeigt, ob es in diesem Workspace freigeschaltet ist und in welchen Projekten es an ist.
 
-- **Hinzufügen** und **Bearbeiten** öffnen ein Fenster: Hake an, wo es laufen soll – den Workspace (nur Workspace-Admins) und jedes Projekt, das du verwaltest. Abgewählte Stellen werden ausgeschaltet; Einstellungen und Daten bleiben, der Papierkorb daneben löscht sie.
-- **Projekte dürfen es einschalten:** Ein Workspace-Admin gibt es für Projekte frei; wählst du ein Projekt, passiert das gleich mit.
-- Wo es neu läuft, bestätigst du einmal, was es darf. Nach einem Update, das mehr verlangt, warten diese Stellen auf eine Bestätigung, und das Fenster bietet sie an.
+**Hinzufügen** und **Bearbeiten** öffnen ein Fenster mit zwei Schritten:
 
-Nimmst du die Freigabe für Projekte zurück, wird das Plugin in allen Projekten des Workspaces ausgeschaltet; ihre Daten bleiben.
+1. **Freischalten:** Ein Workspace-Admin schaltet das Plugin für den Workspace frei. Dann läuft es im Workspace (wenn es dort etwas tut), und Projekte dürfen es einschalten.
+2. **In Projekten aktivieren:** Hake jedes Projekt an, das du verwaltest und in dem es laufen soll. Solange es nicht freigeschaltet ist, ist dieser Schritt gesperrt. Abgewählte Projekte werden ausgeschaltet; Einstellungen und Daten bleiben, der Papierkorb daneben löscht sie.
+
+Wo es neu läuft, bestätigst du einmal, was es darf. Nach einem Update, das mehr verlangt, warten diese Stellen auf eine Bestätigung, und das Fenster bietet sie an.
+Nimmst du die Freischaltung zurück, wird das Plugin im Workspace und in allen seinen Projekten ausgeschaltet; ihre Daten bleiben.
 
 ### Einstellungen eines Plugins
 
