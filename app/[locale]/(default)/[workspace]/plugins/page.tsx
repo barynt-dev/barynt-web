@@ -8,11 +8,13 @@ import {
 import { getScopeStoreView } from "@/features/plugins/queries";
 import {
   getCurrentWorkspace,
+  getMyWorkspaces,
   getWorkspaceProjects,
 } from "@/features/workspaces/queries";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
 import {
   PROJECT_SETTINGS_PERMISSIONS,
+  pluginStorePath,
   settingsScopeItems,
   visibleSettingsScope,
   WORKSPACE_SETTINGS_PERMISSIONS,
@@ -41,11 +43,12 @@ export default async function WorkspacePluginStorePage({
   const query = await searchParams;
   setCurrentWorkspaceId(workspace);
 
-  const [t, current, projects, access] = await Promise.all([
+  const [t, current, projects, access, myWorkspaces] = await Promise.all([
     getTranslations(),
     getCurrentWorkspace(),
     getWorkspaceProjects(),
     getAccess({ workspaceId: workspace }),
+    getMyWorkspaces(),
   ]);
   if (!current) notFound();
   const view = await getScopeStoreView(workspace, projects);
@@ -85,6 +88,16 @@ export default async function WorkspacePluginStorePage({
     ? (query.category as string)
     : null;
 
+  // The switcher at the top of the list: the same plugin store, in another
+  // workspace. Whoever may manage nothing there gets a 404 on arrival.
+  const siblings = myWorkspaces.map((ws) => ({
+    id: ws.id,
+    name: ws.name,
+    color: ws.color,
+    image: ws.avatarUrl ?? undefined,
+    href: pluginStorePath(ws.id, {}),
+  }));
+
   return (
     <div className={styles.shell}>
       <SettingsHeader
@@ -94,7 +107,13 @@ export default async function WorkspacePluginStorePage({
       />
       <ScopeStore
         view={view}
-        workspaceName={current.name}
+        workspace={{
+          name: current.name,
+          color: current.color,
+          image: current.avatarUrl ?? undefined,
+          siblings,
+          label: t("settings.scopeWorkspace"),
+        }}
         selected={selected}
         tab={tab}
         category={category}

@@ -94,7 +94,12 @@ const render = (v: ScopeStoreView, selected: ScopeStorePlugin | null) =>
   renderToStaticMarkup(
     <ScopeStore
       view={v}
-      workspaceName="Nimbus"
+      workspace={{
+        name: "Nimbus",
+        color: "#a274d9",
+        siblings: [],
+        label: "Workspace",
+      }}
       selected={selected}
       tab="overview"
       category={null}
@@ -116,7 +121,7 @@ describe("ScopeStore", () => {
     const html = render(view(), base);
     expect(html).not.toContain("placesAdd");
     expect(html).toContain("placesEdit");
-    expect(html).toContain("onIn");
+    expect(html).toContain("releasedIn");
     // A project waits for a confirmation; a way to confirm is right there.
     expect(html).toContain("placesWaiting");
     // On with a settings form: its place leads to the settings.
@@ -127,7 +132,7 @@ describe("ScopeStore", () => {
     const html = render(view(), notify);
     expect(html).toContain("placesAdd");
     expect(html).not.toContain("placesEdit");
-    expect(html).toContain("onNowhere");
+    expect(html).toContain("notReleasedIn");
   });
 
   it("offers nothing for a blocked plugin", () => {

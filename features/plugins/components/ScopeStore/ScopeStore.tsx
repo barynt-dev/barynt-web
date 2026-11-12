@@ -3,9 +3,14 @@
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Avatar } from "@/components/ui/atoms/Avatar/Avatar";
 import { Chip } from "@/components/ui/atoms/Chip/Chip";
 import { Input } from "@/components/ui/atoms/Input/Input";
 import { PageHeader } from "@/components/ui/layout/PageHeader/PageHeader";
+import {
+  type SettingsNavSubject,
+  SettingsSubjectMenu,
+} from "@/components/ui/layout/SettingsNav/SettingsSubjectMenu";
 import { Tab, Tabs } from "@/components/ui/layout/Tabs/Tabs";
 import type {
   ScopeStorePlugin,
@@ -19,7 +24,7 @@ import { PluginTile } from "../PluginStore/PluginTile";
 import { PreviewGallery } from "../PluginStore/PreviewGallery";
 import store from "../PluginStore/pluginStore.module.scss";
 import { PluginBadges, usePluginText } from "../shared";
-import { PlacesActions, PlacesSummary } from "./ScopeActivation";
+import { isReleased, PlacesActions, PlacesSummary } from "./ScopeActivation";
 import scope from "./scopeStore.module.scss";
 
 // The workspace's plugin store (BARY-201): what the platform has installed,
@@ -30,31 +35,42 @@ import scope from "./scopeStore.module.scss";
 export type ScopeStoreTab = "overview" | "capabilities";
 type Filter = "all" | "on" | "available";
 
-/** Switched on in the workspace or in any project here. */
+/** Released in this workspace, or switched on in one of its projects. */
 const isOn = (p: ScopeStorePlugin) =>
-  [p.workspace, ...Object.values(p.projects)].some(
-    (a) => a?.state === "active" || a?.state === "needsConfirmation",
+  isReleased(p) ||
+  Object.values(p.projects).some(
+    (a) => a.state === "active" || a.state === "needsConfirmation",
   );
 const waits = (p: ScopeStorePlugin) =>
   [p.workspace, ...Object.values(p.projects)].some(
     (a) => a?.state === "needsConfirmation",
   );
 
+/** The workspace the store is for, and the others to switch to. */
+export interface StoreWorkspace {
+  name: string;
+  color: string;
+  image?: string;
+  siblings: SettingsNavSubject[];
+  label: string;
+}
+
 export function ScopeStore({
   view,
-  workspaceName,
+  workspace,
   selected,
   tab,
   category,
 }: {
   view: ScopeStoreView;
-  workspaceName: string;
+  workspace: StoreWorkspace;
   selected: ScopeStorePlugin | null;
   tab: ScopeStoreTab;
   category: string | null;
 }) {
   const text = usePluginText();
   const router = useRouter();
+  const workspaceName = workspace.name;
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const href = (to: Parameters<typeof pluginStorePath>[1]) =>
@@ -106,6 +122,32 @@ export function ScopeStore({
         data-open={selected ? "plugin" : "home"}
       >
         <aside className={store.list} aria-label={text.t("storeList")}>
+          {/* Which workspace this is for — the same switcher as in the
+              workspace's settings. */}
+          <div className={scope.subject}>
+            {workspace.siblings.length > 1 ? (
+              <SettingsSubjectMenu
+                name={workspace.name}
+                color={workspace.color}
+                image={workspace.image}
+                siblings={workspace.siblings}
+                label={workspace.label}
+              />
+            ) : (
+              <span className={scope.subjectFixed}>
+                <Avatar
+                  avatar={{
+                    name: workspace.name,
+                    color: workspace.color,
+                    image: workspace.image,
+                  }}
+                  shape="square"
+                  size={20}
+                />
+                {workspace.name}
+              </span>
+            )}
+          </div>
           <Input
             variant="search"
             placeholder={text.t("searchPlugins")}
