@@ -19,7 +19,7 @@ import { PluginTile } from "../PluginStore/PluginTile";
 import { PreviewGallery } from "../PluginStore/PreviewGallery";
 import store from "../PluginStore/pluginStore.module.scss";
 import { PluginBadges, usePluginText } from "../shared";
-import { ScopeActivation } from "./ScopeActivation";
+import { PlacesActions, PlacesSummary } from "./ScopeActivation";
 import scope from "./scopeStore.module.scss";
 
 // The workspace's plugin store (BARY-201): what the platform has installed,
@@ -364,14 +364,17 @@ function Detail({
             ))}
           </span>
         </div>
+        <PlacesActions
+          plugin={plugin}
+          view={view}
+          workspaceName={workspaceName}
+        />
       </header>
 
-      <ScopeActivation
+      <PlacesSummary
         plugin={plugin}
-        workspaceId={view.workspaceId}
+        view={view}
         workspaceName={workspaceName}
-        canWorkspace={view.canWorkspace}
-        projects={view.projects}
       />
 
       <Tabs label={text.t("detailTabs")} className={store.tabs}>

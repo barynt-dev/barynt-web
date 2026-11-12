@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
-import { Switch } from "@/components/ui/atoms/Switch/Switch";
 import { useConfirm } from "@/components/ui/layout/ConfirmDialog/ConfirmDialog";
 import {
   activatePlugin,
@@ -18,6 +17,7 @@ import type {
   ScopeActivation as Activation,
   ScopeStorePlugin,
   ScopeStoreProject,
+  ScopeStoreView,
 } from "@/features/plugins/queries";
 import { Link } from "@/i18n/navigation";
 import { useModal } from "@/lib/context";
@@ -29,346 +29,423 @@ import styles from "../plugins.module.scss";
 import { ErrorLine, PluginDialog, usePluginText } from "../shared";
 import scope from "./scopeStore.module.scss";
 
-// Where a plugin is on in this workspace, and the switches to change it
-// (BARY-201): the workspace itself, the release for its projects, and each
-// project the person may manage.
+// Where in this workspace a plugin runs (BARY-201). The plugin's header has
+// "Add" and "Edit"; both open one window that lists the places — the
+// workspace and each project the person manages — to tick, and asks to
+// confirm what the plugin may do wherever it newly goes. Below the header a
+// short line says where it's on now.
 
-type Target =
-  | { kind: "workspace"; name: string }
-  | { kind: "project"; project: ScopeStoreProject };
+const running = (a: Activation | null | undefined) =>
+  a?.state === "active" || a?.state === "needsConfirmation";
 
-export function ScopeActivation({
-  plugin,
-  workspaceId,
-  workspaceName,
-  canWorkspace,
-  projects,
-}: {
-  plugin: ScopeStorePlugin;
-  workspaceId: string;
-  workspaceName: string;
-  canWorkspace: boolean;
-  projects: ScopeStoreProject[];
-}) {
-  const t = useTranslations();
+/** The places this person may switch the plugin on in, by key: `ws` for the
+ *  workspace, a project's id for a project. */
+function placesOf(plugin: ScopeStorePlugin, view: ScopeStoreView) {
+  const out: {
+    key: string;
+    projectId: string | null;
+    project: ScopeStoreProject | null;
+    activation: Activation | null;
+  }[] = [];
+  if (plugin.levels.includes("workspace") && view.canWorkspace)
+    out.push({
+      key: "ws",
+      projectId: null,
+      project: null,
+      activation: plugin.workspace,
+    });
+  if (plugin.levels.includes("project"))
+    for (const project of view.projects)
+      out.push({
+        key: project.id,
+        projectId: project.id,
+        project,
+        activation: plugin.projects[project.id] ?? null,
+      });
+  return out;
+}
+
+function usePlacesDialog(
+  plugin: ScopeStorePlugin,
+  view: ScopeStoreView,
+  workspaceName: string,
+) {
   const text = usePluginText();
   const router = useRouter();
-  const confirm = useConfirm();
   const { openModal } = useModal();
   const isPhone = useMediaQuery(PHONE_QUERY);
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState("");
-  const forWorkspace = plugin.levels.includes("workspace");
-  const forProjects = plugin.levels.includes("project");
-
-  const run = (action: () => Promise<PluginResult>) =>
-    startTransition(async () => {
-      const result = await action();
-      if ("error" in result) setError(text.error(result.error));
-      else {
-        setError("");
-        router.refresh();
-      }
-    });
-
-  const projectIdOf = (target: Target) =>
-    target.kind === "project" ? target.project.id : null;
-
-  const switchOn = (target: Target, again: boolean) =>
+  return (mode: "add" | "edit") =>
     openModal(
       ({ close }) => (
-        <ActivateDialog
+        <PlacesDialog
+          mode={mode}
           plugin={plugin}
-          target={target}
-          again={again}
-          pending={
-            (target.kind === "workspace"
-              ? plugin.workspace
-              : plugin.projects[target.project.id]
-            )?.pending ?? []
-          }
+          view={view}
+          workspaceName={workspaceName}
           sheet={isPhone}
           close={close}
           onDone={() => router.refresh()}
-          workspaceId={workspaceId}
         />
       ),
       {
         ...(isPhone ? { placement: "bottom" as const } : {}),
-        label: text.t("activateTitle", { name: plugin.name }),
+        label: text.t(mode === "add" ? "placesAddTitle" : "placesEditTitle", {
+          name: plugin.name,
+        }),
       },
     );
+}
 
-  const switchOff = (target: Target) =>
-    run(() =>
-      deactivatePlugin({
-        pluginId: plugin.pluginId,
-        workspaceId,
-        projectId: projectIdOf(target),
-      }),
-    );
+/** "Add" while there's a place it isn't on, "Edit" once it's on somewhere —
+ *  for the plugin's header. */
+export function PlacesActions({
+  plugin,
+  view,
+  workspaceName,
+}: {
+  plugin: ScopeStorePlugin;
+  view: ScopeStoreView;
+  workspaceName: string;
+}) {
+  const text = usePluginText();
+  const open = usePlacesDialog(plugin, view, workspaceName);
+  const places = placesOf(plugin, view);
+  if (plugin.blocked || places.length === 0) return null;
+  const onSomewhere = places.some((p) => running(p.activation));
+  const offSomewhere = places.some((p) => !running(p.activation));
+  return (
+    <div className={store.headActions}>
+      {onSomewhere && (
+        <Button
+          variant="outline"
+          icon={<Icon icon="lucide:pencil" width={15} />}
+          onClick={() => open("edit")}
+        >
+          {text.t("placesEdit")}
+        </Button>
+      )}
+      {offSomewhere && (
+        <Button
+          variant="primary"
+          icon={<Icon icon="lucide:plus" width={15} />}
+          onClick={() => open("add")}
+        >
+          {text.t("placesAdd")}
+        </Button>
+      )}
+    </div>
+  );
+}
 
-  const removeData = async (target: Target) => {
-    const ok = await confirm({
-      title: text.t("deleteDataTitle", { name: plugin.name }),
-      description: text.t("deleteDataDesc"),
-      confirmLabel: t("actions.delete"),
-      cancelLabel: t("actions.cancel"),
-      danger: true,
+/** One line under the header: where it's on, what waits for a
+ *  confirmation, and the way to its settings. */
+export function PlacesSummary({
+  plugin,
+  view,
+  workspaceName,
+}: {
+  plugin: ScopeStorePlugin;
+  view: ScopeStoreView;
+  workspaceName: string;
+}) {
+  const text = usePluginText();
+  const open = usePlacesDialog(plugin, view, workspaceName);
+  const on: {
+    key: string;
+    name: string;
+    color: string | null;
+    activation: Activation;
+    settingsHref: string | null;
+  }[] = [];
+  const settingsOf = (a: Activation, slug: string | null) =>
+    a.hasSettings
+      ? pluginSettingsPath(view.workspaceId, slug, plugin.pluginId)
+      : null;
+  if (running(plugin.workspace) && plugin.workspace)
+    on.push({
+      key: "ws",
+      name: workspaceName,
+      color: null,
+      activation: plugin.workspace,
+      settingsHref: view.canWorkspace
+        ? settingsOf(plugin.workspace, null)
+        : null,
     });
-    if (ok)
-      run(() =>
-        deletePluginData({
-          pluginId: plugin.pluginId,
-          workspaceId,
-          projectId: projectIdOf(target),
-        }),
-      );
-  };
-
-  const projectsOn = Object.values(plugin.projects).filter(
-    (a) => a.state === "active" || a.state === "needsConfirmation",
-  ).length;
-  const grant = async (granted: boolean) => {
-    if (!granted && projectsOn > 0) {
-      const ok = await confirm({
-        title: text.t("revokeGrantTitle", { name: plugin.name }),
-        description: text.t("revokeGrantDesc", { count: projectsOn }),
-        confirmLabel: text.t("revokeGrant"),
-        cancelLabel: t("actions.cancel"),
-        danger: true,
+  for (const project of view.projects) {
+    const a = plugin.projects[project.id];
+    if (running(a) && a)
+      on.push({
+        key: project.id,
+        name: project.name,
+        color: project.color,
+        activation: a,
+        settingsHref: settingsOf(a, project.slug),
       });
-      if (!ok) return;
-    }
-    run(() =>
-      setPluginGrant({ pluginId: plugin.pluginId, workspaceId, granted }),
-    );
-  };
+  }
+  const waiting = on.filter((p) => p.activation.state === "needsConfirmation");
 
-  const row = (
-    target: Target,
-    activation: Activation | null,
-    allowed: boolean,
-    hint: string | null,
-  ) => {
-    const key = target.kind === "workspace" ? "workspace" : target.project.id;
-    const name =
-      target.kind === "workspace" ? target.name : target.project.name;
-    const settingsHref =
-      activation?.hasSettings && activation.state !== "notInstalled"
-        ? pluginSettingsPath(
-            workspaceId,
-            target.kind === "project" ? target.project.slug : null,
-            plugin.pluginId,
-          )
-        : null;
-    const state = activation?.state ?? "off";
+  if (plugin.blocked)
     return (
-      <li key={key} className={scope.row}>
-        <span className={scope.rowName}>
-          {target.kind === "workspace" ? (
-            <Icon icon="lucide:building-2" width={16} aria-hidden />
-          ) : (
-            <span
-              className={scope.dot}
-              // The project's own color — the only dynamic value here.
-              style={{ background: target.project.color }}
-              aria-hidden
-            />
-          )}
-          <span>{name}</span>
-        </span>
-        <span className={scope.rowState} data-state={state}>
-          {text.t(`scopeState.${state}` as "scopeState.off")}
-        </span>
-        <span className={scope.rowActions}>
-          {hint ? (
-            <span className={store.muted}>{hint}</span>
-          ) : !allowed ? null : plugin.blocked ? (
-            activation && (
-              <Button
-                variant="text"
-                size="sm"
-                icon={<Icon icon="lucide:trash-2" width={14} />}
-                disabled={isPending}
-                onClick={() => removeData(target)}
-              >
-                {text.t("deleteData")}
-              </Button>
-            )
-          ) : (
-            <>
-              {settingsHref && (
-                <Link href={settingsHref} className={scope.settingsLink}>
-                  <Icon
-                    icon="lucide:sliders-horizontal"
-                    width={14}
-                    aria-hidden
-                  />
-                  {text.t("pluginSettings")}
-                </Link>
-              )}
-              {state === "needsConfirmation" && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={isPending}
-                  onClick={() => switchOn(target, true)}
-                >
-                  {text.t("confirmAgain")}
-                </Button>
-              )}
-              {state === "active" || state === "needsConfirmation" ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isPending}
-                  onClick={() => switchOff(target)}
-                >
-                  {text.t("switchOff")}
-                </Button>
-              ) : (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  icon={<Icon icon="lucide:power" width={14} />}
-                  disabled={isPending}
-                  onClick={() => switchOn(target, false)}
-                >
-                  {state === "disabled"
-                    ? text.t("switchOnAgain")
-                    : text.t("activate")}
-                </Button>
-              )}
-              {state === "disabled" && (
-                <Button
-                  variant="text"
-                  size="sm"
-                  className={store.dangerIcon}
-                  icon={<Icon icon="lucide:trash-2" width={14} />}
-                  aria-label={text.t("deleteData")}
-                  title={text.t("deleteData")}
-                  disabled={isPending}
-                  onClick={() => removeData(target)}
-                />
-              )}
-            </>
-          )}
-        </span>
-      </li>
+      <p className={scope.blocked}>
+        <Icon icon="lucide:shield-ban" width={16} aria-hidden />
+        {text.t("blockedByAdmin")}
+      </p>
     );
-  };
 
   return (
-    <section className={scope.card} aria-labelledby="scope-activation">
-      <h3 id="scope-activation" className={store.cardTitle}>
+    <section className={scope.summary} aria-label={text.t("onIn")}>
+      <span className={scope.summaryLabel}>
         <Icon icon="lucide:power" width={14} aria-hidden />
-        {text.t("switchOnHere")}
-      </h3>
-      {plugin.blocked && (
-        <p className={scope.blocked}>
-          <Icon icon="lucide:shield-ban" width={16} aria-hidden />
-          {text.t("blockedByAdmin")}
-        </p>
-      )}
-      <ErrorLine message={error} />
-
-      {forWorkspace && (
-        <ul className={scope.rows}>
-          {row(
-            { kind: "workspace", name: workspaceName },
-            plugin.workspace,
-            canWorkspace,
-            canWorkspace ? null : text.t("onlyWorkspaceAdmins"),
-          )}
-        </ul>
-      )}
-
-      {forProjects && (
-        <>
-          {canWorkspace && (
-            <div className={scope.grant}>
-              <Switch
-                id={`grant-${plugin.pluginId}`}
-                label={text.t("grantLabel", { name: plugin.name })}
-                checked={plugin.granted}
-                disabled={isPending || plugin.blocked}
-                onChange={grant}
-              />
-              <span className={store.muted}>{text.t("grantHint")}</span>
-            </div>
-          )}
-          {projects.length > 0 && (
-            <>
-              <p className={scope.subhead}>{text.t("projectsHeading")}</p>
-              <ul className={scope.rows}>
-                {projects.map((project) =>
-                  row(
-                    { kind: "project", project },
-                    plugin.projects[project.id] ?? null,
-                    true,
-                    plugin.granted || plugin.projects[project.id]
-                      ? null
-                      : text.t("notGrantedYet"),
-                  ),
+        {on.length > 0 ? text.t("onIn") : text.t("onNowhere")}
+      </span>
+      {on.length > 0 && (
+        <span className={scope.places}>
+          {on.map((p) => {
+            const content = (
+              <>
+                {p.color ? (
+                  <span
+                    className={scope.dot}
+                    // The project's own color — the only dynamic value here.
+                    style={{ background: p.color }}
+                    aria-hidden
+                  />
+                ) : (
+                  <Icon icon="lucide:building-2" width={13} aria-hidden />
                 )}
-              </ul>
-            </>
-          )}
-        </>
+                {p.name}
+                {p.settingsHref && (
+                  <Icon
+                    icon="lucide:sliders-horizontal"
+                    width={12}
+                    aria-hidden
+                  />
+                )}
+              </>
+            );
+            return p.settingsHref ? (
+              <Link
+                key={p.key}
+                href={p.settingsHref}
+                className={scope.place}
+                data-waiting={
+                  p.activation.state === "needsConfirmation" || undefined
+                }
+                title={text.t("pluginSettings")}
+              >
+                {content}
+              </Link>
+            ) : (
+              <span
+                key={p.key}
+                className={scope.place}
+                data-waiting={
+                  p.activation.state === "needsConfirmation" || undefined
+                }
+              >
+                {content}
+              </span>
+            );
+          })}
+        </span>
+      )}
+      {waiting.length > 0 && (
+        <span className={scope.waiting}>
+          <Icon icon="lucide:sparkles" width={14} aria-hidden />
+          {text.t("placesWaiting", { count: waiting.length })}
+          <button
+            type="button"
+            className={scope.waitingButton}
+            onClick={() => open("edit")}
+          >
+            {text.t("confirmAgain")}
+          </button>
+        </span>
       )}
     </section>
   );
 }
 
-/** Switching it on — or confirming again after an update asked for more:
- *  what it may do there, and a box to tick. */
-function ActivateDialog({
+/**
+ * Where the plugin runs, to tick: the workspace and each project. For a
+ * workspace admin, picking a project releases it for projects too. Whatever
+ * newly gets it — or waits for a confirmation — confirms what it may do,
+ * once, in the same window. Saving switches on and off what changed.
+ */
+function PlacesDialog({
+  mode,
   plugin,
-  target,
-  again,
-  pending,
-  workspaceId,
+  view,
+  workspaceName,
   sheet,
   close,
   onDone,
 }: {
+  mode: "add" | "edit";
   plugin: ScopeStorePlugin;
-  target: Target;
-  again: boolean;
-  pending: string[];
-  workspaceId: string;
+  view: ScopeStoreView;
+  workspaceName: string;
   sheet: boolean;
   close: () => void;
   onDone: () => void;
 }) {
   const t = useTranslations();
   const text = usePluginText();
+  const confirmDelete = useConfirm();
+  const places = placesOf(plugin, view);
+  const [picked, setPicked] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(places.map((p) => [p.key, running(p.activation)])),
+  );
+  const [granted, setGranted] = useState(plugin.granted);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
-  const inProject = target.kind === "project";
+  const forProjects = plugin.levels.includes("project");
 
-  const activate = () =>
+  const projectBlocked = (p: (typeof places)[number]) =>
+    p.projectId !== null && !granted && !view.canWorkspace;
+  const toOn = places.filter(
+    (p) =>
+      picked[p.key] &&
+      (!running(p.activation) || p.activation?.state === "needsConfirmation"),
+  );
+  const toOff = places.filter((p) => !picked[p.key] && running(p.activation));
+  // A workspace admin picking a project releases it for projects as well.
+  const grantNow =
+    view.canWorkspace &&
+    forProjects &&
+    (granted || toOn.some((p) => p.projectId !== null));
+  const grantChanged =
+    view.canWorkspace && forProjects && grantNow !== plugin.granted;
+  const changed = toOn.length + toOff.length > 0 || grantChanged;
+  const needsConfirm = toOn.length > 0;
+
+  const nameOf = (p: (typeof places)[number]) =>
+    p.project ? p.project.name : workspaceName;
+
+  const save = () =>
     startTransition(async () => {
-      const result = await activatePlugin({
+      const steps: (() => Promise<PluginResult>)[] = [];
+      if (grantChanged && grantNow)
+        steps.push(() =>
+          setPluginGrant({
+            pluginId: plugin.pluginId,
+            workspaceId: view.workspaceId,
+            granted: true,
+          }),
+        );
+      for (const p of toOn)
+        steps.push(() =>
+          activatePlugin({
+            pluginId: plugin.pluginId,
+            workspaceId: view.workspaceId,
+            projectId: p.projectId,
+            capabilities: plugin.capabilities,
+          }),
+        );
+      for (const p of toOff)
+        steps.push(() =>
+          deactivatePlugin({
+            pluginId: plugin.pluginId,
+            workspaceId: view.workspaceId,
+            projectId: p.projectId,
+          }),
+        );
+      if (grantChanged && !grantNow)
+        steps.push(() =>
+          setPluginGrant({
+            pluginId: plugin.pluginId,
+            workspaceId: view.workspaceId,
+            granted: false,
+          }),
+        );
+      for (const step of steps) {
+        const result = await step();
+        if ("error" in result) {
+          onDone();
+          return setError(text.error(result.error));
+        }
+      }
+      onDone();
+      close();
+    });
+
+  const removeData = async (p: (typeof places)[number]) => {
+    const ok = await confirmDelete({
+      title: text.t("deleteDataTitle", { name: plugin.name }),
+      description: text.t("deleteDataDesc"),
+      confirmLabel: t("actions.delete"),
+      cancelLabel: t("actions.cancel"),
+      danger: true,
+    });
+    if (!ok) return;
+    startTransition(async () => {
+      const result = await deletePluginData({
         pluginId: plugin.pluginId,
-        workspaceId,
-        projectId: inProject ? target.project.id : null,
-        capabilities: plugin.capabilities,
+        workspaceId: view.workspaceId,
+        projectId: p.projectId,
       });
       if ("error" in result) return setError(text.error(result.error));
       onDone();
       close();
     });
+  };
+
+  const row = (p: (typeof places)[number]) => {
+    const disabled = isPending || projectBlocked(p);
+    const state = p.activation?.state ?? "off";
+    return (
+      <li key={p.key}>
+        <label className={scope.pick} data-disabled={disabled || undefined}>
+          <input
+            type="checkbox"
+            checked={!!picked[p.key]}
+            disabled={disabled}
+            onChange={(e) =>
+              setPicked((v) => ({ ...v, [p.key]: e.target.checked }))
+            }
+          />
+          {p.project ? (
+            <span
+              className={scope.dot}
+              // The project's own color — the only dynamic value here.
+              style={{ background: p.project.color }}
+              aria-hidden
+            />
+          ) : (
+            <Icon icon="lucide:building-2" width={16} aria-hidden />
+          )}
+          <span className={scope.pickName}>{nameOf(p)}</span>
+          {state !== "off" && state !== "active" && (
+            <span className={scope.rowState} data-state={state}>
+              {text.t(`scopeState.${state}` as "scopeState.off")}
+            </span>
+          )}
+        </label>
+        {state === "disabled" && (
+          <Button
+            variant="text"
+            size="sm"
+            className={store.dangerIcon}
+            icon={<Icon icon="lucide:trash-2" width={14} />}
+            aria-label={text.t("deleteData")}
+            title={text.t("deleteData")}
+            disabled={isPending}
+            onClick={() => removeData(p)}
+          />
+        )}
+      </li>
+    );
+  };
+
+  const workspacePlace = places.find((p) => p.projectId === null);
+  const projectPlaces = places.filter((p) => p.projectId !== null);
 
   return (
     <PluginDialog
-      title={
-        again
-          ? text.t("reconfirmTitle", { name: plugin.name })
-          : text.t("activateTitle", { name: plugin.name })
-      }
+      title={text.t(mode === "add" ? "placesAddTitle" : "placesEditTitle", {
+        name: plugin.name,
+      })}
       sheet={sheet}
       close={close}
       footer={
@@ -380,53 +457,93 @@ function ActivateDialog({
           )}
           <Button
             variant="primary"
-            disabled={!confirmed || isPending}
-            onClick={activate}
+            disabled={!changed || (needsConfirm && !confirmed) || isPending}
+            onClick={save}
           >
-            {again ? text.t("confirmAgain") : text.t("activate")}
+            {text.t("placesSave")}
           </Button>
         </>
       }
     >
-      <p className={scope.where}>
-        <Icon
-          icon={inProject ? "lucide:folder" : "lucide:building-2"}
-          width={16}
-          aria-hidden
-        />
-        {inProject
-          ? text.t("inProject", { name: target.project.name })
-          : text.t("inWorkspace", { name: target.name })}
-      </p>
-      {again && (
-        <p className={styles.notice}>
-          {text.t("updateAsksMore")}
-          {pending.length > 0 && (
-            <>
-              {" "}
-              <strong>{pending.map(text.capability).join(", ")}</strong>
-            </>
+      <p className={styles.description}>{text.t("placesPickIntro")}</p>
+
+      {workspacePlace && (
+        <section className={scope.pickGroup}>
+          <h3 className={scope.subhead}>{text.t("placesWorkspace")}</h3>
+          <ul className={scope.picks}>{row(workspacePlace)}</ul>
+        </section>
+      )}
+
+      {forProjects && (
+        <section className={scope.pickGroup}>
+          <h3 className={scope.subhead}>{text.t("projectsHeading")}</h3>
+          {view.canWorkspace ? (
+            <label className={scope.pick}>
+              <input
+                type="checkbox"
+                checked={grantNow}
+                disabled={isPending}
+                onChange={(e) => {
+                  setGranted(e.target.checked);
+                  // Taking the release back switches the projects off.
+                  if (!e.target.checked)
+                    setPicked((v) =>
+                      Object.fromEntries(
+                        Object.entries(v).map(([k, on]) => [
+                          k,
+                          k === "ws" ? on : false,
+                        ]),
+                      ),
+                    );
+                }}
+              />
+              <span className={scope.pickName}>
+                {text.t("grantLabel", { name: plugin.name })}
+              </span>
+            </label>
+          ) : (
+            !granted && (
+              <p className={store.muted}>{text.t("notGrantedAskAdmin")}</p>
+            )
           )}
+          {projectPlaces.length > 0 ? (
+            <ul className={scope.picks}>{projectPlaces.map(row)}</ul>
+          ) : (
+            <p className={store.muted}>{text.t("noProjectsToManage")}</p>
+          )}
+        </section>
+      )}
+
+      {needsConfirm && (
+        <>
+          <header className={store.capHead}>
+            <h3>
+              {text.t("placesMayThere", {
+                places: toOn.map(nameOf).join(", "),
+              })}
+            </h3>
+          </header>
+          <CapabilityCards
+            capabilities={plugin.capabilities}
+            network={plugin.network}
+          />
+          <label className={styles.confirm}>
+            <input
+              type="checkbox"
+              checked={confirmed}
+              disabled={isPending}
+              onChange={(e) => setConfirmed(e.target.checked)}
+            />
+            <span>{text.t("placesConfirm")}</span>
+          </label>
+        </>
+      )}
+      {toOff.length > 0 && (
+        <p className={scope.offNote}>
+          <Icon icon="lucide:power-off" width={14} aria-hidden />
+          {text.t("placesOffNote", { places: toOff.map(nameOf).join(", ") })}
         </p>
       )}
-      <header className={store.capHead}>
-        <h3>{inProject ? text.t("mayInProject") : text.t("mayInWorkspace")}</h3>
-      </header>
-      <CapabilityCards
-        capabilities={plugin.capabilities}
-        network={plugin.network}
-      />
-      <label className={styles.confirm}>
-        <input
-          type="checkbox"
-          checked={confirmed}
-          disabled={isPending}
-          onChange={(e) => setConfirmed(e.target.checked)}
-        />
-        <span>
-          {inProject ? text.t("confirmProject") : text.t("confirmWorkspace")}
-        </span>
-      </label>
       <ErrorLine message={error} />
     </PluginDialog>
   );

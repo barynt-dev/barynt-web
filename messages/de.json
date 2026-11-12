@@ -2685,15 +2685,8 @@
     },
     "pluginSettings": "Einstellungen",
     "switchOff": "Ausschalten",
-    "switchOnAgain": "Wieder einschalten",
-    "switchOnHere": "Hier einschalten",
     "blockedByAdmin": "Ein Plattform-Admin hat dieses Plugin gesperrt. Es läuft nirgends, bis es entsperrt ist.",
-    "onlyWorkspaceAdmins": "Nur Workspace-Admins",
-    "grantHint": "Erst dann können Projekte es einschalten.",
     "projectsHeading": "Projekte",
-    "notGrantedYet": "Noch nicht für Projekte freigegeben",
-    "inProject": "Im Projekt „{name}“",
-    "inWorkspace": "Im Workspace „{name}“",
     "scopeStoreTitle": "Plugin Store",
     "scopeStoreEmpty": "Auf diesem Server ist noch kein Plugin installiert. Plattform-Admins installieren Plugins unter Admin → Plugins.",
     "scopeFilter": {
@@ -2712,6 +2705,21 @@
     "settingsSaved": "Gespeichert",
     "offInWorkspace": "In diesem Workspace ausschalten",
     "offInProject": "In diesem Projekt ausschalten",
-    "offHint": "Ausgeschaltet bleiben Einstellungen und Daten erhalten. „Daten löschen“ entfernt beides."
+    "offHint": "Ausgeschaltet bleiben Einstellungen und Daten erhalten. „Daten löschen“ entfernt beides.",
+    "placesAdd": "Hinzufügen",
+    "placesEdit": "Bearbeiten",
+    "placesAddTitle": "„{name}“ hinzufügen",
+    "placesEditTitle": "Wo „{name}“ läuft",
+    "placesSave": "Übernehmen",
+    "placesPickIntro": "Wähle, wo es laufen soll. Abgewählte Stellen werden ausgeschaltet, ihre Daten bleiben.",
+    "placesWorkspace": "Workspace",
+    "notGrantedAskAdmin": "Ein Workspace-Admin muss es erst für Projekte freigeben.",
+    "noProjectsToManage": "Du verwaltest in diesem Workspace kein Projekt.",
+    "placesMayThere": "Es darf dann in: {places}",
+    "placesConfirm": "Ich habe geprüft, was es darf, und bestätige es für diese Stellen.",
+    "placesOffNote": "Wird ausgeschaltet in: {places}",
+    "onIn": "Läuft in",
+    "onNowhere": "Läuft hier noch nirgends",
+    "placesWaiting": "{count, plural, one {# Stelle wartet auf Bestätigung} other {# Stellen warten auf Bestätigung}}"
   }
 }

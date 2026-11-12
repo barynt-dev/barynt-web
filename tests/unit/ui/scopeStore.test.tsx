@@ -112,34 +112,32 @@ describe("ScopeStore", () => {
     expect(html).toContain("stateConfirm");
   });
 
-  it("offers the workspace, the release and each project", () => {
+  it("offers Add and Edit in the header, and says where it runs", () => {
     const html = render(view(), base);
-    expect(html).toContain("switchOnHere");
-    expect(html).toContain('id="grant-timeline"');
-    expect(html).toContain("Web App");
-    expect(html).toContain("Mobile");
-    expect(html).toContain("confirmAgain");
-    // On with a settings form: a way to its settings.
+    expect(html).toContain("placesAdd");
+    expect(html).toContain("placesEdit");
+    expect(html).toContain("onIn");
+    // A project waits for a confirmation; a way to confirm is right there.
+    expect(html).toContain("placesWaiting");
+    // On with a settings form: its place leads to the settings.
     expect(html).toContain('href="/ws-1/settings/plugins/timeline"');
   });
 
-  it("keeps a project admin to their projects", () => {
-    const html = render(
-      view({
-        canWorkspace: false,
-        projects: [
-          { id: "p1", name: "Web App", slug: "web-app", color: "#7c86ff" },
-        ],
-      }),
-      base,
-    );
-    expect(html).not.toContain('id="grant-timeline"');
-    expect(html).toContain("onlyWorkspaceAdmins");
-    expect(html).not.toContain("Mobile");
+  it("only offers Add while it runs nowhere", () => {
+    const html = render(view(), notify);
+    expect(html).toContain("placesAdd");
+    expect(html).not.toContain("placesEdit");
+    expect(html).toContain("onNowhere");
   });
 
-  it("waits for the release before a project can switch it on", () => {
-    const html = render(view(), { ...base, granted: false, projects: {} });
-    expect(html).toContain("notGrantedYet");
+  it("offers nothing for a blocked plugin", () => {
+    const html = render(view(), { ...base, blocked: true });
+    expect(html).not.toContain("placesAdd");
+    expect(html).toContain("blockedByAdmin");
+  });
+
+  it("offers nothing to someone who manages no place for it", () => {
+    const html = render(view({ canWorkspace: false, projects: [] }), notify);
+    expect(html).not.toContain("placesAdd");
   });
 });

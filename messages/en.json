@@ -2685,15 +2685,8 @@
     },
     "pluginSettings": "Settings",
     "switchOff": "Switch off",
-    "switchOnAgain": "Switch on again",
-    "switchOnHere": "Switch on here",
     "blockedByAdmin": "A platform admin blocked this plugin. It runs nowhere until it’s unblocked.",
-    "onlyWorkspaceAdmins": "Workspace admins only",
-    "grantHint": "Only then can projects switch it on.",
     "projectsHeading": "Projects",
-    "notGrantedYet": "Not released for projects yet",
-    "inProject": "In the project “{name}”",
-    "inWorkspace": "In the workspace “{name}”",
     "scopeStoreTitle": "Plugin store",
     "scopeStoreEmpty": "No plugin is installed on this server yet. Platform admins install plugins under Admin → Plugins.",
     "scopeFilter": {
@@ -2712,6 +2705,21 @@
     "settingsSaved": "Saved",
     "offInWorkspace": "Switch off in this workspace",
     "offInProject": "Switch off in this project",
-    "offHint": "Switched off, its settings and data stay. “Delete data” removes both."
+    "offHint": "Switched off, its settings and data stay. “Delete data” removes both.",
+    "placesAdd": "Add",
+    "placesEdit": "Edit",
+    "placesAddTitle": "Add “{name}”",
+    "placesEditTitle": "Where “{name}” runs",
+    "placesSave": "Apply",
+    "placesPickIntro": "Pick where it should run. Places you untick are switched off; their data stays.",
+    "placesWorkspace": "Workspace",
+    "notGrantedAskAdmin": "A workspace admin has to release it for projects first.",
+    "noProjectsToManage": "You don’t manage any project in this workspace.",
+    "placesMayThere": "It may then, in: {places}",
+    "placesConfirm": "I checked what it may do and confirm it for these places.",
+    "placesOffNote": "Switched off in: {places}",
+    "onIn": "Runs in",
+    "onNowhere": "Not running here yet",
+    "placesWaiting": "{count, plural, one {# place waits for a confirmation} other {# places wait for a confirmation}}"
   }
 }
