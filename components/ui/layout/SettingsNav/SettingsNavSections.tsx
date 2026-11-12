@@ -30,7 +30,9 @@ export function SettingsNavSections({
 
   return (
     <>
-      <SettingsSearchField className={styles.search} />
+      <div className={styles.search}>
+        <SettingsSearchField />
+      </div>
       {searching && shown.length === 0 && (
         <p className={styles.noHits}>{search?.noHitsLabel}</p>
       )}
