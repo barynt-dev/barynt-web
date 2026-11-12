@@ -26,7 +26,7 @@ describe("settings nav groups", () => {
       const runs: { group: string; count: number }[] = [];
       for (const e of nav) {
         const last = runs.at(-1);
-        if (last?.group === e.group) last.count++;
+        if (last && last.group === e.group) last.count++;
         else runs.push({ group: e.group ?? "", count: 1 });
       }
       const groups = runs.map((r) => r.group);

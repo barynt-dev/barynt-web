@@ -231,13 +231,11 @@
     "scopeNoProject": "No visible project",
     "scopeStore": "Plugin store",
     "group": {
-      "account": "Profile",
+      "general": "General",
       "preferences": "Preferences",
       "developer": "Developers",
-      "project": "Project",
       "access": "Members & access",
-      "issues": "Issues",
-      "workspace": "Workspace"
+      "issues": "Issues"
     }
   },
   "members": {

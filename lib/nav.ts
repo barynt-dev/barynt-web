@@ -73,13 +73,11 @@ export interface NavEntry {
 
 /** The headings the settings navs sort their sections under. */
 export type SettingsGroupKey =
-  | "account"
+  | "general"
   | "preferences"
   | "developer"
-  | "project"
   | "access"
-  | "issues"
-  | "workspace";
+  | "issues";
 
 /** May a nav entry be offered? No permission required = always yes. */
 export function navEntryAllowed(
@@ -362,14 +360,14 @@ export const PROJECT_SETTINGS_NAV: NavEntry[] = [
     section: "",
     icon: "lucide:settings",
     labelKey: "general",
-    group: "project",
+    group: "general",
   },
   {
     section: "activity",
     icon: "lucide:scroll-text",
     labelKey: "activity",
     permission: "audit.view",
-    group: "project",
+    group: "general",
   },
   // The same page as under `…/project/<slug>/members`: whoever's looking
   // for members sometimes looks under the project and sometimes under its
@@ -433,27 +431,27 @@ export const WORKSPACE_SETTINGS_NAV: NavEntry[] = [
     section: "",
     icon: "lucide:settings",
     labelKey: "general",
-    group: "workspace",
+    group: "general",
   },
   {
     section: "projects",
     icon: "lucide:folders",
     labelKey: "projects",
-    group: "workspace",
+    group: "general",
   },
   {
     section: "webhooks",
     icon: "lucide:webhook",
     labelKey: "webhooks",
     permission: "webhook.manage",
-    group: "workspace",
+    group: "general",
   },
   {
     section: "activity",
     icon: "lucide:scroll-text",
     labelKey: "activity",
     permission: "audit.view",
-    group: "workspace",
+    group: "general",
   },
   // Who's in it, and what they may do.
   {
@@ -514,18 +512,18 @@ export const WORKSPACE_SETTINGS_NAV: NavEntry[] = [
  */
 export const ACCOUNT_SETTINGS_NAV: NavEntry[] = [
   // Who you are and how you sign in.
-  { section: "", icon: "lucide:user", labelKey: "general", group: "account" },
+  { section: "", icon: "lucide:user", labelKey: "general", group: "general" },
   {
     section: "security",
     icon: "lucide:shield-check",
     labelKey: "security",
-    group: "account",
+    group: "general",
   },
   {
     section: "connections",
     icon: "lucide:link",
     labelKey: "connections",
-    group: "account",
+    group: "general",
   },
   // How the app behaves for you.
   {
