@@ -32,6 +32,7 @@ barynt config SMTP_HOST=smtp.example.com UPDATE_CHECK=false
 | `DOMAIN` | The domain the bundled web server (Caddy) gets a certificate for. |
 | `POSTGRES_PASSWORD` | The password of the bundled database. Set once at the first start, it cannot be changed afterwards. |
 | `UPDATE_CHECK` | `false` stops Barynt from asking GitHub whether a newer version exists. It is the only call Barynt makes on its own. |
+| `PLUGIN_INTERNAL_HOSTS` | Git servers on your internal network that plugin sources may reach, comma-separated (`gitlab.acme.internal,git.acme.internal:8443`). Without it, sources on private addresses are refused. See [Plugins](../administration/plugins.md). |
 
 ## Sign-in
 

@@ -14,6 +14,7 @@ add-on is not configured.
 | [Audit log](#audit-log) | `lib/audit` | Built in |
 | [Notifications](#notifications) | `lib/notify` | Built in |
 | [Webhooks](#webhooks) | `lib/webhooks` | Built in |
+| [Plugin directory](#plugin-directory) | `lib/plugins`, `features/plugins` | Only with plugin sources |
 | [Smaller pieces](#smaller-pieces) | various | Built in |
 
 ## Mail
@@ -161,6 +162,123 @@ which the app does not have, so the outcome (status or error) is stored on the w
 `lib/webhooks/events.ts`. Payload shapes and how to add an event: [API and MCP
 internals](api-and-mcp.md#adding-a-webhook-event). For receivers, see the user guide's
 [Webhooks](../guide/en/integrations/webhooks.md).
+
+## Plugin directory
+
+Part of the plugin system (BARY-128, on its own branch until it ships). A **source**
+(`PluginSource`) is a Git repository with a `plugins.json` in its root, on GitHub, GitLab,
+Gitea/Forgejo or Bitbucket Cloud (self-hosted too), or, with provider `https`, the address
+of a `plugins.json` on a plain web server (BARY-198). The directory is a list of plugins,
+each with its repository (`owner/name` for GitHub, or any Git address plus an optional
+`provider`) and, per version it vouches for, a SHA-256 of the release's files. The format
+and every check are in `lib/plugins/directory.ts` (no dependency on the app, the
+directory repository's CI can use it); `features/plugins/directory.ts` does the fetching.
+
+**Where things are** is `lib/plugins/git-hosts.ts`, pure. Per provider it builds the
+address of the directory (`directoryRequest`: at `PluginSource.ref`, else the default
+branch, `main` for Bitbucket) and of a release's files (`releasePlan`, the tag is the
+version):
+
+| Provider | Directory | Release files |
+| --- | --- | --- |
+| `github` | `raw.githubusercontent.com`, with a token the contents API | the public download address; with a token the release API's assets (`api.github.com` only) |
+| `gitlab` | `/api/v4/projects/:path/repository/files/plugins.json/raw` | the release's links (`/api/v4/projects/:path/releases/:tag`) |
+| `gitea` | `/api/v1/repos/:owner/:repo/raw/plugins.json` | the public download address; with a token the release API's `browser_download_url` |
+| `bitbucket` | `/2.0/repositories/:ws/:repo/src/:ref/plugins.json` | the files at the tag, same API |
+| `https` | the address itself | `<repo address>/<version>/<file>` |
+
+A plugin's provider is its entry's `provider`, GitHub for `owner/name`, the source's own
+provider for an address on the source's host, a known host's (`github.com`, `gitlab.com`,
+`codeberg.org`, …), else `https` (`resolvePluginRepo`).
+
+- `readSource(id)` reads the directory and notes the outcome on the source
+  (`lastSyncAt`, `lastSyncError`). A broken entry is left out and reported, it does not
+  take the others down. `readDirectory` does the same for a source that isn't stored yet
+  (`checkPluginSource`, "Check connection").
+- `fetchRelease(sourceId, pluginId, version)` loads `manifest.json`, `main.js` (required
+  for a sandbox plugin) and `styles.css` from the release whose tag is the version, then
+  refuses it unless the files hash to the listed value (`releaseHash`: what
+  `sha256sum manifest.json main.js styles.css preview-*.* | sort -k2 | sha256sum` prints), the
+  manifest is valid and names the same id, version, kind and levels, and it runs on this
+  Barynt (`minBaryntVersion`/`maxBaryntVersion`). It stores nothing; installing is the
+  lifecycle's job.
+- **Preview images** (BARY-199): the manifest's `previews` name up to six files
+  `preview-N.webp|png` in the release. `loadRelease` reads their names from the manifest
+  before checking it, loads them (512 KB each), hashes them with the other files and,
+  after the manifest check, refuses any whose bytes aren't a PNG or WebP signature.
+  Installing stores them in `PluginFile` with the code; `/api/plugin-previews/<row>/<file>`
+  serves them to signed-in people (`nosniff`, `sandbox` CSP, cached for good — a version's
+  files never change). `previewRelease` returns them as data URLs, since nothing is stored
+  yet. The browser never loads a preview from the plugin's Git host.
+- All traffic goes through `fetchPublic` (`lib/public-fetch.ts`): `https` only, public
+  addresses only, every redirect checked, size and time capped per file. Hosts listed in
+  `PLUGIN_INTERNAL_HOSTS` (`name` or `name:port`, `lib/plugins/dev.ts`) are let through
+  although they are on a private network, for a company's own Git server; still https only.
+- A **private** directory or repository uses the source's access token. It is stored
+  sealed (`lib/secret-box.ts`: AES-256-GCM, key derived from `AUTH_SECRET`) and belongs to
+  the source's instance (provider + origin, `sameInstance`): a plugin hosted elsewhere is
+  loaded without it, and so is a download link that leads off the instance. `fetchPublic`
+  sends it to the first host of a request only. How it travels depends on the provider
+  (`authHeaders`: `Bearer`, GitLab's `PRIVATE-TOKEN`, Gitea's `token`, `user:secret` as
+  Basic for Bitbucket and web servers). Changing `AUTH_SECRET` makes sealed tokens
+  unreadable: the source then reports `token_unreadable` and the token has to be entered
+  again.
+
+The **lifecycle** (BARY-142) is the server actions in `features/plugins/actions.ts`; the
+rules they follow are pure, in `lib/plugins/lifecycle.ts`.
+
+| Step | Permission | What happens |
+| --- | --- | --- |
+| Add, change, remove a source | `plugin.manage` (platform) | The token is sealed; the audit entry says whether one is set, never the token. |
+| Install / update | `plugin.manage` | `fetchRelease`, then the admin's confirmed capabilities must equal the manifest's exactly (checked on the server). A new `Plugin` row becomes `active`, the previous one `superseded`. `main.js` and `styles.css` go into `PluginFile` (the database: object storage is optional and every replica needs them); the manifest is `Plugin.manifest`. |
+| Roll back | `plugin.manage` | The newest older `superseded` version becomes `active` again. |
+| Block / unblock | `plugin.manage` | The kill switch: the active version becomes `blocked` and runs nowhere; unblocking brings back the newest blocked one. |
+| Uninstall | `plugin.manage` | Deletes every version with its files. Activations are deleted with their settings and storage, or, if the admin keeps the data, switched off. |
+| Switch on / confirm again | `plugin.enable` in that workspace or project | Only on a level the manifest names; the confirmed capabilities must equal the active version's. The workspace of a project comes from the project, never from the request. |
+| Switch off / delete data | `plugin.enable` | Off keeps settings and storage; deleting removes the activation with both. |
+
+An activation stores the capabilities it confirmed. After an update that asks for more,
+`activationState` reports `needsConfirmation` until someone switches it on again; until
+then it may only use what was confirmed. Every step writes a `plugin.*` audit entry
+(`lib/audit/actions.ts`), with the workspace and project for activations.
+
+A **project** may only switch on what its workspace released for projects (`PluginGrant`,
+`setPluginGrant`, `plugin.enable` in the workspace); taking the release back switches the
+projects' activations off and keeps their data. The pages are **Admin → Plugins**, the
+store (`features/plugins/components/PluginStore`, `plugin.manage`, BARY-200) and the
+workspace's **Plugin store** (`/<workspace>/plugins`, `ScopeStore`, BARY-201) — a fourth
+entry in the settings switcher, only for `plugin.enable` in the workspace, and while
+nothing is installed only for a platform admin, who gets a start page (`canUsePluginStore`); each loads its view through `features/plugins/queries.ts`,
+which checks the permission again. `getScopeStoreView` lists the installed plugins with
+their activations in the workspace and its projects. The store's one switch is the
+**release**: activating in the workspace where the plugin has that level, plus the
+`PluginGrant` where it has the project level. A project switches a released plugin on
+from its own settings: `getPluginSettingsNav` lists every granted plugin under the
+project's **Plugins** group, and `settings/plugins/<pluginId>` (`PluginSettings`) switches
+it on (`activatePlugin`, confirming the capabilities), holds its settings form
+(`contributes.settings`) and switches it off. In the workspace, the group lists only the
+plugins running there with a settings form (the nav
+group); `savePluginSettings` keeps only the declared keys, checked by type
+(`lib/plugins/settings.ts#checkSettings`), into `PluginSettings.values`, and audits which
+keys changed (`plugin.settings.updated`), never their values.
+The store's view (`getPluginStoreView`) merges what's installed with every enabled
+source's directory, read through `readSourceRecent` (at most once per source every five
+minutes, per server process; `refreshPluginSource` and every source change forget it).
+What's open is in the address (`?plugin=`, `?tab=overview|capabilities|versions|places`,
+`?view=sources`); "where it's on" comes from `getPluginPlaces`, only for that tab. The
+start page uses the directory's optional `categories`, `featured` and `added`
+([directory format](../plugins/directory.md)). The install dialog shows
+`previewRelease` (loaded and checked, not stored); installing loads the release once more,
+so the server never trusts what a dialog was shown.
+
+**Trying it locally:** there is no public Barynt plugin directory yet. `bun run plugins:demo`
+serves one on `http://localhost:4555` with three demo plugins (one whose update asks for a
+new capability, one service, one whose files don't match its hash). It answers like a
+Gitea server and like a plain web server. Set `PLUGIN_DEV_BASE="http://localhost:4555"`
+in `.env`, restart the app and add `http://localhost:4555/barynt-demo/plugins` (provider
+Gitea / Forgejo) or `http://localhost:4555/plugins.json` as a source under
+**Admin → Plugins**. The variable is ignored in production and for anything but
+localhost (`lib/plugins/dev.ts`).
 
 ## Smaller pieces
 

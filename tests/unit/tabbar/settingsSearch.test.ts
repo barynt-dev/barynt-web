@@ -1,0 +1,140 @@
+import { describe, expect, it } from "bun:test";
+import {
+  preferSettings,
+  searchSections,
+} from "@/components/ui/layout/SettingsNav/searchSections";
+import {
+  ACCOUNT_SETTINGS_NAV,
+  PROJECT_SETTINGS_NAV,
+  SEARCHABLE_SETTINGS,
+  WORKSPACE_SETTINGS_NAV,
+} from "@/lib/nav";
+import de from "@/messages/de.json";
+import en from "@/messages/en.json";
+
+// Searching the settings nav (BARY-201): by a row's name, by the words on
+// its page, or by a heading — which keeps its whole section.
+
+const item = (label: string, keywords: string[] = []) => ({
+  href: `/${label}`,
+  label,
+  icon: "lucide:circle",
+  keywords,
+});
+const sections = [
+  {
+    title: "Allgemein",
+    items: [
+      item("Profil", ["Name"]),
+      item("Sicherheit", ["Passwort", "Passkey"]),
+    ],
+  },
+  {
+    title: "Bedienung",
+    items: [item("Aussehen", ["Theme"]), item("Shortcuts")],
+  },
+];
+
+describe("searchSections", () => {
+  it("keeps everything without a query", () => {
+    expect(searchSections(sections, "  ")).toBe(sections);
+  });
+
+  it("finds a row by the words on its page, ignoring case", () => {
+    const hits = searchSections(sections, "passKEY");
+    expect(hits.map((s) => s.items.map((i) => i.label))).toEqual([
+      ["Sicherheit"],
+    ]);
+  });
+
+  it("keeps a whole section when its heading matches", () => {
+    const hits = searchSections(sections, "bedien");
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.items).toHaveLength(2);
+  });
+
+  it("ignores accents", () => {
+    expect(
+      searchSections([{ title: "X", items: [item("Präferenz")] }], "praferenz"),
+    ).toHaveLength(1);
+  });
+
+  it("drops sections without a hit", () => {
+    expect(searchSections(sections, "zzz")).toEqual([]);
+  });
+});
+
+describe("settings keywords", () => {
+  const scopes = {
+    account: ACCOUNT_SETTINGS_NAV,
+    project: PROJECT_SETTINGS_NAV,
+    workspace: WORKSPACE_SETTINGS_NAV,
+  } as const;
+  for (const [lang, messages] of [
+    ["de", de],
+    ["en", en],
+  ] as const)
+    for (const [scope, nav] of Object.entries(scopes))
+      it(`${lang}: every ${scope} section has a label, a group and keywords`, () => {
+        const words =
+          (
+            messages.settings.keywords as Record<string, Record<string, string>>
+          )[scope] ?? {};
+        const nav_ = messages.nav as Record<string, string>;
+        const groups = messages.settings.group as Record<string, string>;
+        for (const entry of nav) {
+          expect(words[entry.labelKey]).toBeString();
+          expect(nav_[entry.labelKey]).toBeString();
+          expect(groups[entry.group ?? ""]).toBeString();
+        }
+      });
+});
+
+describe("searchable settings", () => {
+  const navs = {
+    account: ACCOUNT_SETTINGS_NAV,
+    project: PROJECT_SETTINGS_NAV,
+    workspace: WORKSPACE_SETTINGS_NAV,
+  } as const;
+  const lookup = (messages: unknown, key: string) =>
+    key
+      .split(".")
+      .reduce<unknown>(
+        (node, part) =>
+          node && typeof node === "object"
+            ? (node as Record<string, unknown>)[part]
+            : undefined,
+        messages,
+      );
+
+  for (const [scope, sections] of Object.entries(SEARCHABLE_SETTINGS))
+    for (const [section, keys] of Object.entries(sections)) {
+      it(`${scope}/${section || "general"} is a section of its nav`, () => {
+        expect(
+          navs[scope as keyof typeof navs].some((e) => e.section === section),
+        ).toBe(true);
+      });
+      it(`${scope}/${section || "general"}: every label exists in de and en`, () => {
+        for (const key of keys) {
+          expect(lookup(de, key)).toBeString();
+          expect(lookup(en, key)).toBeString();
+        }
+      });
+    }
+});
+
+describe("preferSettings", () => {
+  const page = { href: "/account", label: "Allgemein", icon: "x" };
+  const first = { ...page, label: "Vorname", focus: "Vorname" };
+  const members = { href: "/members", label: "Mitglieder", icon: "x" };
+
+  it("drops a page whose own setting is a hit too", () => {
+    const [section] = preferSettings([
+      { title: "Persönlich", items: [page, members, first] },
+    ]);
+    expect(section?.items.map((i) => i.label)).toEqual([
+      "Mitglieder",
+      "Vorname",
+    ]);
+  });
+});

@@ -76,22 +76,49 @@ export async function fetchPublic(
     types: RegExp;
     protocols: ("https:" | "http:")[];
     truncate?: boolean;
+    /** Extra request headers — an access token. Sent to the first host
+     *  only: a redirect elsewhere (a CDN, a signed download) goes without. */
+    headers?: Record<string, string>;
+    /** Who's asking; the link preview by default. */
+    userAgent?: string;
+    /** Per request, in milliseconds; 3 s by default. */
+    timeoutMs?: number;
+    /** One origin exempt from the public-address rules — the local plugin
+     *  directory in development (`lib/plugins/dev.ts`). A redirect away
+     *  from it is checked like any other. */
+    localOrigin?: string;
+    /** Hosts (`name` or `name:port`) an admin let through although they
+     *  are on a private network — a company's own Git server
+     *  (`PLUGIN_INTERNAL_HOSTS`). Protocol and credentials are checked as
+     *  always; a redirect away from them is checked like any other. */
+    internalHosts?: readonly string[];
   },
 ): Promise<PublicResponse | null> {
   try {
     let url = start;
     for (let hop = 0; hop <= 3; hop++) {
-      if (!(options.protocols as string[]).includes(url.protocol)) return null;
-      if (url.port !== "" || url.username !== "" || url.password !== "") {
-        return null;
+      const local = !!options.localOrigin && url.origin === options.localOrigin;
+      const internal =
+        !local && !!options.internalHosts?.includes(url.host.toLowerCase());
+      if (internal) {
+        if (!(options.protocols as string[]).includes(url.protocol))
+          return null;
+        if (url.username !== "" || url.password !== "") return null;
+      } else if (!local) {
+        if (!(options.protocols as string[]).includes(url.protocol))
+          return null;
+        if (url.port !== "" || url.username !== "" || url.password !== "") {
+          return null;
+        }
+        if (!(await isPublicHost(url.hostname))) return null;
       }
-      if (!(await isPublicHost(url.hostname))) return null;
       const res = await fetch(url, {
         redirect: "manual",
-        signal: AbortSignal.timeout(TIMEOUT_MS),
+        signal: AbortSignal.timeout(options.timeoutMs ?? TIMEOUT_MS),
         headers: {
+          ...(url.host === start.host ? options.headers : undefined),
           accept: options.accept,
-          "user-agent": "Barynt-link-preview",
+          "user-agent": options.userAgent ?? "Barynt-link-preview",
         },
       });
       if (res.status >= 300 && res.status < 400) {

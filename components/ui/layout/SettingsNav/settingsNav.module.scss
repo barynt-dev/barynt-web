@@ -126,8 +126,69 @@
   color: var(--on-surface-variant);
 }
 
+/* The search above the sections — below a desktop only; on a desktop it's
+   at the right of the scope tabs (`SettingsHeader`). */
+.search {
+  margin: 0.25rem 0 0.75rem;
+
+  @include bp.desktop {
+    display: none;
+  }
+}
+
+/* A heading that folds its list away (`<details>`): the whole heading is
+   the switch, a chevron after it shows which way. */
+.section {
+  & > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: var(--radius-sm, 4px);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &:hover {
+      color: var(--on-surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+  }
+
+  &:not([open]) > summary {
+    margin-bottom: 0.25rem;
+  }
+}
+
+.fold {
+  flex: none;
+  margin-inline-start: auto;
+  color: var(--outline);
+  transition: rotate 0.15s ease;
+
+  .section:not([open]) & {
+    rotate: -90deg;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
 /* The rows bring their own look (`components/ui/layout/NavLink`) — this
    file only holds how they're stacked. */
+/* A group after the main list: its own heading, a little air above. */
+.group {
+  margin-top: 1.25rem;
+}
+
 .list {
   list-style: none;
   margin: 0;

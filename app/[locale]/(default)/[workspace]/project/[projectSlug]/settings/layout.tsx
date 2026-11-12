@@ -4,17 +4,23 @@ import { SettingsHeader } from "@/components/ui/layout/SettingsHeader/SettingsHe
 import { SettingsBody } from "@/components/ui/layout/SettingsNav/SettingsBody";
 import {
   SettingsNav,
-  type SettingsNavItem,
   type SettingsNavSubject,
 } from "@/components/ui/layout/SettingsNav/SettingsNav";
+import {
+  SettingsSearchField,
+  SettingsSearchProvider,
+} from "@/components/ui/layout/SettingsNav/SettingsSearch";
+import { canUsePluginStore } from "@/features/plugins/queries";
+import {
+  projectNav,
+  settingsSearchIndex,
+} from "@/features/settings/navigation";
 import {
   getMyProjects,
   getWorkspaceProjects,
 } from "@/features/workspaces/queries";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
 import {
-  navEntryAllowed,
-  PROJECT_SETTINGS_NAV,
   PROJECT_SETTINGS_PERMISSIONS,
   projectSettingsPath,
   settingsScopeItems,
@@ -66,11 +72,13 @@ export default async function ProjectSettingsLayout({
         workspace: t("settings.scopeWorkspace"),
         project: t("settings.scopeProject"),
         account: t("settings.scopeAccount"),
+        store: t("settings.scopeStore"),
       },
     }),
     {
       workspace: WORKSPACE_SETTINGS_PERMISSIONS.some(workspaceAccess.has),
       project: PROJECT_SETTINGS_PERMISSIONS.some(access.has),
+      store: await canUsePluginStore(workspace),
     },
   );
 
@@ -90,42 +98,58 @@ export default async function ProjectSettingsLayout({
 
   // Roles is the only section with its own gate: it holds the rules that
   // decide everything else. General and Labels stay visible even without
-  // write access — they then show what's in effect, just read-only.
-  const items: SettingsNavItem[] = PROJECT_SETTINGS_NAV.filter((entry) =>
-    navEntryAllowed(access.has, entry),
-  ).map((entry) => ({
-    href: projectSettingsPath(workspace, projectSlug, entry.section),
-    label: t(`nav.${entry.labelKey}`),
-    icon: entry.icon,
-  }));
+  // write access — they then show what's in effect, just read-only. The
+  // plugins the workspace released for projects follow, on here or not:
+  // each page switches it on and holds its settings (BARY-201).
+  const [nav, searchIndex] = await Promise.all([
+    projectNav(t, workspace, project, access),
+    settingsSearchIndex(t, {
+      workspaceId: workspace,
+      workspaceAccess,
+      project,
+      projectAccess: access,
+    }),
+  ]);
 
   return (
     <div className={styles.shell}>
-      {/* Only "Personal" remaining means: nothing to switch between. */}
-      {scope.length > 1 && (
+      <SettingsSearchProvider
+        index={searchIndex}
+        label={t("settings.search")}
+        noHitsLabel={t("settings.noHits")}
+      >
         <SettingsHeader
-          items={scope}
+          // Only "Personal" remaining means nothing to switch between: no
+          // tabs then, just the search.
+          items={scope.length > 1 ? scope : []}
           active="project"
           label={t("settings.scopeLabel")}
+          trailing={<SettingsSearchField />}
         />
-      )}
-      <SettingsBody
-        className={styles.body}
-        basePath={projectSettingsPath(workspace, projectSlug, "")}
-        backLabel={t("nav.settings")}
-      >
-        <SettingsNav
-          subject={project.name}
-          color={project.color}
-          image={project.avatarUrl ?? undefined}
-          siblings={siblings}
-          siblingsLabel={t("settings.scopeProject")}
-          title={t("nav.settings")}
-          items={items}
+        <SettingsBody
+          className={styles.body}
           basePath={projectSettingsPath(workspace, projectSlug, "")}
-        />
-        <div className={styles.panel}>{children}</div>
-      </SettingsBody>
+          backLabel={t("nav.settings")}
+        >
+          <SettingsNav
+            subject={project.name}
+            color={project.color}
+            image={project.avatarUrl ?? undefined}
+            siblings={siblings}
+            siblingsLabel={t("settings.scopeProject")}
+            title={t("nav.settings")}
+            items={nav.items}
+            groups={
+              nav.plugins.length > 0
+                ? [{ title: t("nav.plugins"), items: nav.plugins }]
+                : undefined
+            }
+          />
+          <div className={styles.panel} data-settings-panel>
+            {children}
+          </div>
+        </SettingsBody>
+      </SettingsSearchProvider>
     </div>
   );
 }

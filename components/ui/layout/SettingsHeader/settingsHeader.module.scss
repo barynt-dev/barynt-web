@@ -1,144 +1,47 @@
-/* The topmost row of the settings — it only carries the scope switcher.
+@use "breakpoints" as bp;
+
+/* The topmost row of the settings — the scope tabs, and at the right end
+   the settings search on a desktop.
 
    No bottom edge, and no reason to have one: the line below it comes from
    the top edges of the two columns (`SettingsNav`, `PageHeader`), and a
-   second edge here would produce a doubled line. So this row isn't a box,
-   it's a bench — whatever sits in it has to stand out on its own.
+   second edge here would produce a doubled line. The active tab's
+   indicator sits right on that line.
 
    It does draw its own top border, though. Everywhere else in the app, the
    tab strip is closed off with exactly this line — only there it's laid
    down by whatever follows (`PageHeader`, `Topbar`) via its own top edge.
    Here, this row follows first, so it has to bring the line itself;
-   otherwise the tabs and the switcher would merge into one doubled-height
-   band. The line therefore sits here and not on the `TabBar` itself: there
-   it would show up a second time on every page. */
+   otherwise the app's tab strip and these tabs would merge into one band. */
 .bar {
-  /* Two knobs, both here: how tall the switcher is and how much breathing
-     room surrounds it. The row's height derives from both — that keeps it
-     centered without three numbers needing to line up with each other. */
-  --scope-h: 2rem;
-  --scope-air: 1.375rem;
-
   flex: none;
   display: flex;
-  align-items: center;
-  border-top: 1px solid var(--outline-variant);
-  /* A touch taller than the tab strip above it, and not the same height:
-     two exactly matching bands stacked read as one. The difference signals
-     which of the two belongs to which page. */
-  height: calc(var(--scope-h) + var(--scope-air));
-  /* Flush on the left with the rows of the nav below: 10px of the nav's
-     padding plus the 0.1875rem well here add up to the same alignment as its
-     buttons. */
-  padding: 0 0.8125rem;
-  /* "Workspace", "Project", "Personal" are too short to truncate — nothing
-     of "Perso…" would remain a word. If the window gets narrower than the
-     three of them, the row therefore scrolls internally instead of being
-     squeezed or clipping the third field. That's exactly what the tab strip
-     above it does with its tabs (`TabBar .strip`), scrollbar included: it
-     would make this row taller than the band next to it. */
-  overflow-x: auto;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-/* Well and raised field like the `SegmentedControl` under the atoms.
-   Nevertheless a separate thing, not an invocation of that one: this one
-   doesn't toggle a state, it navigates, and three links behave differently
-   than three buttons (middle-click, context menu, prefetch).
-
-   The well rests on `--surface-container-low` and thus sits deeper than
-   the surface around it; the open field sits above it with
-   `--surface-container-high`. The same step marks the open row in the
-   sidebar — so the switcher doesn't add a new color to the app, just a
-   familiar one in a new place. */
-.scope {
-  display: inline-flex;
   align-items: stretch;
-  gap: 0.125rem;
-  padding: 0.1875rem;
-  background: var(--surface-container-low);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-sm);
+  gap: 1rem;
+  height: 3rem;
+  /* Flush on the left with the rows of the nav below. */
+  padding: 0 0.75rem 0 0.125rem;
+  border-top: 1px solid var(--outline-variant);
 }
 
-.segment {
-  position: relative;
-  /* Each field as wide as its word. Equal widths would have stretched
-     "Project" to the length of "Personal" — the switcher would then look
-     like something was missing there. */
-  flex: none;
-  display: inline-flex;
+/* The tabs take what the search leaves; with too little, they scroll
+   (`Tabs`). */
+.scope {
+  flex: 1 1 auto;
+}
+
+.trailing {
+  flex: 0 1 18rem;
+  display: flex;
   align-items: center;
-  gap: 0.4375rem;
-  height: var(--scope-h);
-  padding: 0 0.875rem;
-  border-radius: calc(var(--radius-sm) - 0.125rem);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
-  color: var(--on-surface-variant);
-  text-decoration: none;
-  transition:
-    background-color 0.12s ease,
-    color 0.12s ease;
+  min-width: 10rem;
 
-  /* A veil over the field instead of a second background color: this way
-     the same rule lightens both the resting and the open field without
-     needing to know its color. Same approach as with the buttons. */
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: var(--on-surface);
-    opacity: 0;
-    transition: opacity 0.12s ease;
-    pointer-events: none;
+  & > * {
+    flex: 1;
   }
 
-  &:hover {
-    color: var(--on-surface);
-  }
-
-  &:hover::after {
-    opacity: var(--opacity-hover);
-  }
-
-  // Focus is always `--tertiary` across the app, never another accent.
-  &:focus-visible {
-    outline: 0.125rem solid var(--tertiary);
-    outline-offset: -1px;
-  }
-}
-
-/* The icon stays more reserved than the word — it should make the scope
-   recognizable, not announce it. It brightens along in the open field. */
-.icon {
-  flex: none;
-  opacity: 0.75;
-}
-
-/* The open scope. It stands out rather than glows: a row in the nav below
-   is already marked anyway — two bold markers stacked would compete for
-   the same glance. */
-.segment[data-active] {
-  background: var(--surface-container-high);
-  color: var(--on-surface);
-  font-weight: 600;
-  box-shadow: 0 1px 0.125rem rgb(0 0 0 / 0.18);
-
-  .icon {
-    opacity: 1;
-    color: var(--primary);
-  }
-
-  /* Already on this one; the veil only confirms the hit area. */
-  &:hover::after {
-    opacity: var(--opacity-selected);
+  /* Below a desktop the search sits above the nav instead. */
+  @include bp.tablet-down {
+    display: none;
   }
 }
