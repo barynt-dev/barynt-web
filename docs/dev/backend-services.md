@@ -292,7 +292,11 @@ confirmed ones) and answers through the same `*ForUser` functions as the REST AP
 (`countRequest` in `lib/api/rateLimit.ts`, the API keys' Redis window), the plugin's own
 storage (`PluginStorage`, per activation, with the limits in `STORAGE_LIMITS`), and for
 every write an audit entry `plugin.acted` with the plugin and the person. What it writes
-is the person's (`source: APP`, no badge); the audit entry is where the plugin shows. For plugin authors: `docs/plugins/runtime.md`.
+is the person's (`source: APP`, no badge); the audit entry is where the plugin shows.
+Plugin authors build against `packages/plugin-sdk` (BARY-146): a `Plugin` class over that
+host, its typed API (`METHODS` — `tests/unit/plugins/sdk.test.ts` keeps it equal to
+`BRIDGE_METHODS`) and a test host. The app resolves it through `tsconfig.json`'s `paths`;
+`bun run --cwd packages/plugin-sdk build` writes `dist/` with types. For plugin authors: `docs/plugins/runtime.md`.
 
 ## Smaller pieces
 

@@ -35,7 +35,38 @@ export default class Timeline {
 }
 ```
 
+## With the SDK
+
+The easy way is `@barynt/plugin-sdk` (in this repository under
+`packages/plugin-sdk`, not on npm yet): a `Plugin` class with `onload()`
+and `onunload()`, `register*` methods that clean up after themselves, and a
+typed `this.api` instead of `host.call` with strings.
+
+```ts
+import { Plugin } from "@barynt/plugin-sdk";
+
+export default class Timeline extends Plugin {
+  async onload() {
+    this.registerProjectView({
+      id: "timeline",
+      render: async (el) => {
+        const { issues } = await this.api.issues.list({ take: 50 });
+        el.textContent = `${issues.length} issues`;
+      },
+    });
+  }
+}
+```
+
+Bundle it into one ES module — `bun build src/main.ts --outfile main.js
+--format esm --target browser` — and ship that as the release's `main.js`.
+`@barynt/plugin-sdk/testing` runs a plugin on a test host, without Barynt.
+The SDK's README has the rest; `scripts/plugins/demo-plugins/timeline.ts`
+is a whole plugin.
+
 ## The host object
+
+Without the SDK, a plugin's default export gets the host directly:
 
 | Member | What it is |
 | --- | --- |

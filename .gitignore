@@ -59,3 +59,6 @@ yarn-error.log*
 next-env.d.ts
 
 /lib/generated
+
+# plugin SDK build output
+/packages/*/dist
