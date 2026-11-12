@@ -313,6 +313,10 @@ export const AUDIT_ACTION_META = {
     message: "pluginDataDeleted",
     loud: true,
   },
+  "plugin.settings.updated": {
+    icon: "lucide:sliders-horizontal",
+    message: "pluginSettingsUpdated",
+  },
   "plugin.granted": {
     icon: "lucide:badge-check",
     message: "pluginGranted",

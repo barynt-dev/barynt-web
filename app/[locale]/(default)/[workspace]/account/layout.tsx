@@ -8,6 +8,7 @@ import {
   type SettingsNavItem,
 } from "@/components/ui/layout/SettingsNav/SettingsNav";
 import { getMyProfile } from "@/features/account/queries";
+import { canUsePluginStore } from "@/features/plugins/queries";
 import { getWorkspaceProjects } from "@/features/workspaces/queries";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
 import {
@@ -71,6 +72,7 @@ export default async function AccountLayout({
         workspace: t("settings.scopeWorkspace"),
         project: t("settings.scopeProject"),
         account: t("settings.scopeAccount"),
+        store: t("settings.scopeStore"),
       },
     }),
     {
@@ -78,6 +80,7 @@ export default async function AccountLayout({
       project: projectAccess
         ? PROJECT_SETTINGS_PERMISSIONS.some(projectAccess.has)
         : false,
+      store: await canUsePluginStore(workspace, projects),
     },
   );
 

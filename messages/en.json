@@ -228,7 +228,8 @@
     "scopeWorkspace": "Workspace",
     "scopeProject": "Project",
     "scopeAccount": "Personal",
-    "scopeNoProject": "No visible project"
+    "scopeNoProject": "No visible project",
+    "scopeStore": "Plugin store"
   },
   "members": {
     "title": "Members",
@@ -1490,6 +1491,7 @@
       "pluginActivated": "Plugin switched on",
       "pluginDeactivated": "Plugin switched off",
       "pluginDataDeleted": "Plugin data deleted",
+      "pluginSettingsUpdated": "Plugin settings changed",
       "pluginGranted": "Plugin released for projects",
       "pluginGrantRevoked": "Plugin release for projects withdrawn"
     }
@@ -2420,7 +2422,8 @@
       "token_unreadable": "The access token can't be read any more — enter it again.",
       "unknown": "Something went wrong ({code}).",
       "provider_required": "The address doesn't tell which provider it is. Pick one.",
-      "invalid_ref": "The branch or tag contains characters it can't have."
+      "invalid_ref": "The branch or tag contains characters it can't have.",
+      "invalid_setting": "A setting has a value the plugin doesn’t know."
     },
     "noCapabilities": "Asks for nothing.",
     "newCapability": "New",
@@ -2671,6 +2674,44 @@
     "notesLess": "Show less",
     "confirmHint": "Confirm at the end, then install.",
     "updateTitle": "Update “{name}” to v{version}",
-    "blockWhere": "{count, plural, =0 {It isn’t switched on anywhere right now.} one {It runs in # place right now (a workspace or project).} other {It runs in # places right now (workspaces and projects).}}"
+    "blockWhere": "{count, plural, =0 {It isn’t switched on anywhere right now.} one {It runs in # place right now (a workspace or project).} other {It runs in # places right now (workspaces and projects).}}",
+    "scopeState": {
+      "off": "Off",
+      "active": "On",
+      "disabled": "Off · data kept",
+      "needsConfirmation": "Waiting for confirmation",
+      "blocked": "Blocked",
+      "notInstalled": "Not installed"
+    },
+    "pluginSettings": "Settings",
+    "switchOff": "Switch off",
+    "switchOnAgain": "Switch on again",
+    "switchOnHere": "Switch on here",
+    "blockedByAdmin": "A platform admin blocked this plugin. It runs nowhere until it’s unblocked.",
+    "onlyWorkspaceAdmins": "Workspace admins only",
+    "grantHint": "Only then can projects switch it on.",
+    "projectsHeading": "Projects",
+    "notGrantedYet": "Not released for projects yet",
+    "inProject": "In the project “{name}”",
+    "inWorkspace": "In the workspace “{name}”",
+    "scopeStoreTitle": "Plugin store",
+    "scopeStoreEmpty": "No plugin is installed on this server yet. Platform admins install plugins under Admin → Plugins.",
+    "scopeFilter": {
+      "all": "All · {count}",
+      "on": "Switched on · {count}",
+      "available": "Available · {count}"
+    },
+    "groupOnHere": "Switched on here",
+    "groupAvailable": "Available",
+    "stateConfirm": "Confirm",
+    "statePlaces": "{count, plural, one {On in # place} other {On in # places}}",
+    "scopeStoreIntroTitle": "Plugins for this workspace",
+    "scopeStoreIntro": "What’s listed here, a platform admin installed and checked. Switch a plugin on for the workspace or for single projects – you confirm what it may do as you do.",
+    "openInStore": "In the plugin store",
+    "confirmInStore": "Confirm in the plugin store",
+    "settingsSaved": "Saved",
+    "offInWorkspace": "Switch off in this workspace",
+    "offInProject": "Switch off in this project",
+    "offHint": "Switched off, its settings and data stay. “Delete data” removes both."
   }
 }

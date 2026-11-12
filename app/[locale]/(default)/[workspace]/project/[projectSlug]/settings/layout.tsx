@@ -8,6 +8,10 @@ import {
   type SettingsNavSubject,
 } from "@/components/ui/layout/SettingsNav/SettingsNav";
 import {
+  canUsePluginStore,
+  getPluginSettingsNav,
+} from "@/features/plugins/queries";
+import {
   getMyProjects,
   getWorkspaceProjects,
 } from "@/features/workspaces/queries";
@@ -16,6 +20,7 @@ import {
   navEntryAllowed,
   PROJECT_SETTINGS_NAV,
   PROJECT_SETTINGS_PERMISSIONS,
+  pluginSettingsPath,
   projectSettingsPath,
   settingsScopeItems,
   visibleSettingsScope,
@@ -66,11 +71,13 @@ export default async function ProjectSettingsLayout({
         workspace: t("settings.scopeWorkspace"),
         project: t("settings.scopeProject"),
         account: t("settings.scopeAccount"),
+        store: t("settings.scopeStore"),
       },
     }),
     {
       workspace: WORKSPACE_SETTINGS_PERMISSIONS.some(workspaceAccess.has),
       project: PROJECT_SETTINGS_PERMISSIONS.some(access.has),
+      store: await canUsePluginStore(workspace, projects),
     },
   );
 
@@ -99,6 +106,20 @@ export default async function ProjectSettingsLayout({
     icon: entry.icon,
   }));
 
+  // The plugins switched on in this project that have settings (BARY-201).
+  const pluginItems: SettingsNavItem[] = access.has("plugin.enable")
+    ? (
+        await getPluginSettingsNav({
+          workspaceId: workspace,
+          projectId: project.id,
+        })
+      ).map((p) => ({
+        href: pluginSettingsPath(workspace, projectSlug, p.pluginId),
+        label: p.name,
+        icon: "lucide:puzzle",
+      }))
+    : [];
+
   return (
     <div className={styles.shell}>
       {/* Only "Personal" remaining means: nothing to switch between. */}
@@ -122,6 +143,11 @@ export default async function ProjectSettingsLayout({
           siblingsLabel={t("settings.scopeProject")}
           title={t("nav.settings")}
           items={items}
+          groups={
+            pluginItems.length > 0
+              ? [{ title: t("nav.plugins"), items: pluginItems }]
+              : undefined
+          }
           basePath={projectSettingsPath(workspace, projectSlug, "")}
         />
         <div className={styles.panel}>{children}</div>

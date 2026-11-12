@@ -228,7 +228,8 @@
     "scopeWorkspace": "Workspace",
     "scopeProject": "Projekt",
     "scopeAccount": "Persönlich",
-    "scopeNoProject": "Kein sichtbares Projekt"
+    "scopeNoProject": "Kein sichtbares Projekt",
+    "scopeStore": "Plugin Store"
   },
   "members": {
     "title": "Mitglieder",
@@ -1490,6 +1491,7 @@
       "pluginActivated": "Plugin eingeschaltet",
       "pluginDeactivated": "Plugin ausgeschaltet",
       "pluginDataDeleted": "Plugin-Daten gelöscht",
+      "pluginSettingsUpdated": "Plugin-Einstellungen geändert",
       "pluginGranted": "Plugin für Projekte freigegeben",
       "pluginGrantRevoked": "Plugin-Freigabe für Projekte zurückgenommen"
     }
@@ -2420,7 +2422,8 @@
       "token_unreadable": "Das Zugriffstoken lässt sich nicht mehr lesen. Gib es neu ein.",
       "unknown": "Etwas ist schiefgegangen ({code}).",
       "provider_required": "Der Anbieter lässt sich an der Adresse nicht erkennen. Wähl ihn aus.",
-      "invalid_ref": "Branch oder Tag enthält Zeichen, die es nicht geben kann."
+      "invalid_ref": "Branch oder Tag enthält Zeichen, die es nicht geben kann.",
+      "invalid_setting": "Eine Einstellung hat einen Wert, den das Plugin nicht kennt."
     },
     "noCapabilities": "Verlangt nichts.",
     "newCapability": "Neu",
@@ -2671,6 +2674,44 @@
     "notesLess": "Weniger anzeigen",
     "confirmHint": "Unten bestätigen, dann installieren.",
     "updateTitle": "„{name}“ auf v{version} aktualisieren",
-    "blockWhere": "{count, plural, =0 {Es ist gerade nirgends eingeschaltet.} one {Es läuft gerade an # Stelle (Workspace oder Projekt).} other {Es läuft gerade an # Stellen (Workspaces und Projekte).}}"
+    "blockWhere": "{count, plural, =0 {Es ist gerade nirgends eingeschaltet.} one {Es läuft gerade an # Stelle (Workspace oder Projekt).} other {Es läuft gerade an # Stellen (Workspaces und Projekte).}}",
+    "scopeState": {
+      "off": "Aus",
+      "active": "An",
+      "disabled": "Aus · Daten bleiben",
+      "needsConfirmation": "Wartet auf Bestätigung",
+      "blocked": "Gesperrt",
+      "notInstalled": "Nicht installiert"
+    },
+    "pluginSettings": "Einstellungen",
+    "switchOff": "Ausschalten",
+    "switchOnAgain": "Wieder einschalten",
+    "switchOnHere": "Hier einschalten",
+    "blockedByAdmin": "Ein Plattform-Admin hat dieses Plugin gesperrt. Es läuft nirgends, bis es entsperrt ist.",
+    "onlyWorkspaceAdmins": "Nur Workspace-Admins",
+    "grantHint": "Erst dann können Projekte es einschalten.",
+    "projectsHeading": "Projekte",
+    "notGrantedYet": "Noch nicht für Projekte freigegeben",
+    "inProject": "Im Projekt „{name}“",
+    "inWorkspace": "Im Workspace „{name}“",
+    "scopeStoreTitle": "Plugin Store",
+    "scopeStoreEmpty": "Auf diesem Server ist noch kein Plugin installiert. Plattform-Admins installieren Plugins unter Admin → Plugins.",
+    "scopeFilter": {
+      "all": "Alle · {count}",
+      "on": "Eingeschaltet · {count}",
+      "available": "Verfügbar · {count}"
+    },
+    "groupOnHere": "Hier eingeschaltet",
+    "groupAvailable": "Verfügbar",
+    "stateConfirm": "Bestätigen",
+    "statePlaces": "{count, plural, one {An # Stelle} other {An # Stellen}}",
+    "scopeStoreIntroTitle": "Plugins für diesen Workspace",
+    "scopeStoreIntro": "Was hier steht, hat ein Plattform-Admin installiert und geprüft. Schalte ein Plugin für den Workspace oder für einzelne Projekte ein – du bestätigst dabei, was es darf.",
+    "openInStore": "Im Plugin Store",
+    "confirmInStore": "Im Plugin Store bestätigen",
+    "settingsSaved": "Gespeichert",
+    "offInWorkspace": "In diesem Workspace ausschalten",
+    "offInProject": "In diesem Projekt ausschalten",
+    "offHint": "Ausgeschaltet bleiben Einstellungen und Daten erhalten. „Daten löschen“ entfernt beides."
   }
 }

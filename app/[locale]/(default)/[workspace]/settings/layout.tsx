@@ -8,6 +8,10 @@ import {
   type SettingsNavSubject,
 } from "@/components/ui/layout/SettingsNav/SettingsNav";
 import {
+  canUsePluginStore,
+  getPluginSettingsNav,
+} from "@/features/plugins/queries";
+import {
   getCurrentWorkspace,
   getMyWorkspaces,
   getWorkspaceProjects,
@@ -16,6 +20,7 @@ import { setCurrentWorkspaceId } from "@/lib/current-workspace";
 import {
   navEntryAllowed,
   PROJECT_SETTINGS_PERMISSIONS,
+  pluginSettingsPath,
   settingsScopeItems,
   visibleSettingsScope,
   WORKSPACE_SETTINGS_NAV,
@@ -86,6 +91,7 @@ export default async function WorkspaceSettingsLayout({
         workspace: t("settings.scopeWorkspace"),
         project: t("settings.scopeProject"),
         account: t("settings.scopeAccount"),
+        store: t("settings.scopeStore"),
       },
     }),
     {
@@ -93,6 +99,7 @@ export default async function WorkspaceSettingsLayout({
       project: projectAccess
         ? PROJECT_SETTINGS_PERMISSIONS.some(projectAccess.has)
         : false,
+      store: await canUsePluginStore(workspace, projects),
     },
   );
 
@@ -106,6 +113,18 @@ export default async function WorkspaceSettingsLayout({
     label: t(`nav.${entry.labelKey}`),
     icon: entry.icon,
   }));
+
+  // The plugins switched on here that have settings, each a page of its own
+  // (BARY-201) — for whoever may change them.
+  const pluginItems: SettingsNavItem[] = access.has("plugin.enable")
+    ? (
+        await getPluginSettingsNav({ workspaceId: workspace, projectId: null })
+      ).map((p) => ({
+        href: pluginSettingsPath(workspace, null, p.pluginId),
+        label: p.name,
+        icon: "lucide:puzzle",
+      }))
+    : [];
 
   return (
     <div className={styles.shell}>
@@ -131,6 +150,11 @@ export default async function WorkspaceSettingsLayout({
           siblingsLabel={t("settings.scopeWorkspace")}
           title={t("nav.settings")}
           items={items}
+          groups={
+            pluginItems.length > 0
+              ? [{ title: t("nav.plugins"), items: pluginItems }]
+              : undefined
+          }
           basePath={workspaceSettingsPath(workspace, "")}
         />
         <div className={styles.panel}>{children}</div>

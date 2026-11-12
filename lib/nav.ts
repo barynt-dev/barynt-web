@@ -371,12 +371,6 @@ export const PROJECT_SETTINGS_NAV: NavEntry[] = [
     permission: "customfield.manage",
   },
   {
-    section: "plugins",
-    icon: "lucide:puzzle",
-    labelKey: "plugins",
-    permission: "plugin.enable",
-  },
-  {
     section: "activity",
     icon: "lucide:scroll-text",
     labelKey: "activity",
@@ -403,12 +397,6 @@ export const WORKSPACE_SETTINGS_NAV: NavEntry[] = [
     icon: "lucide:text-cursor-input",
     labelKey: "customFields",
     permission: "customfield.manage",
-  },
-  {
-    section: "plugins",
-    icon: "lucide:puzzle",
-    labelKey: "plugins",
-    permission: "plugin.enable",
   },
   {
     section: "webhooks",
@@ -493,7 +481,7 @@ export function accountPath(workspaceId: string, section: string): string {
  * workspace, what applies to a project, and what only concerns you
  * yourself.
  */
-export type SettingsScopeKey = "workspace" | "project" | "account";
+export type SettingsScopeKey = "workspace" | "project" | "account" | "store";
 
 export interface SettingsScopeEntry {
   key: SettingsScopeKey;
@@ -557,7 +545,40 @@ export function settingsScopeItems({
       icon: "lucide:building-2",
       href: workspaceSettingsPath(workspaceId, ""),
     },
+    // The plugins a workspace or its projects can switch on (BARY-201) —
+    // not a level of settings but what's on offer for all of them.
+    {
+      key: "store",
+      label: labels.store,
+      icon: "lucide:store",
+      href: pluginStorePath(workspaceId, {}),
+    },
   ];
+}
+
+/** The workspace's plugin store — `/<workspaceId>/plugins`, with the open
+ *  plugin and tab in the address. */
+export function pluginStorePath(
+  workspaceId: string,
+  to: { plugin?: string; tab?: string; category?: string },
+): string {
+  const params = new URLSearchParams();
+  if (to.plugin) params.set("plugin", to.plugin);
+  if (to.tab && to.tab !== "overview") params.set("tab", to.tab);
+  if (to.category) params.set("category", to.category);
+  const query = params.toString();
+  return `/${workspaceId}/plugins${query ? `?${query}` : ""}`;
+}
+
+/** A switched-on plugin's settings in a workspace or project. */
+export function pluginSettingsPath(
+  workspaceId: string,
+  projectSlug: string | null,
+  pluginId: string,
+): string {
+  return projectSlug
+    ? projectSettingsPath(workspaceId, projectSlug, `plugins/${pluginId}`)
+    : workspaceSettingsPath(workspaceId, `plugins/${pluginId}`);
 }
 
 /**
@@ -572,7 +593,7 @@ export function settingsScopeItems({
  */
 export function visibleSettingsScope(
   items: SettingsScopeEntry[],
-  allowed: { workspace: boolean; project: boolean },
+  allowed: { workspace: boolean; project: boolean; store: boolean },
 ): VisibleSettingsScopeEntry[] {
   return items.filter((item): item is VisibleSettingsScopeEntry => {
     if (!item.href) return false;

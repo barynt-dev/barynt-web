@@ -128,6 +128,11 @@
 
 /* The rows bring their own look (`components/ui/layout/NavLink`) — this
    file only holds how they're stacked. */
+/* A group after the main list: its own heading, a little air above. */
+.group {
+  margin-top: 1.25rem;
+}
+
 .list {
   list-style: none;
   margin: 0;

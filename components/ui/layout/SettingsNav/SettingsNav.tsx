@@ -40,6 +40,10 @@ interface Props {
    * for. This component checks nothing — it renders whatever it receives.
    */
   items: SettingsNavItem[];
+  /** More sections under a heading of their own, after `items` — the
+   *  plugins switched on here that have settings, say. Empty ones aren't
+   *  passed. */
+  groups?: { title: string; items: SettingsNavItem[] }[];
   /**
    * Address of the settings' start page — the first entry ("General") lives
    * there too. On a phone that address is the section list, so this entry
@@ -74,6 +78,7 @@ export function SettingsNav({
   siblingsLabel,
   title,
   items,
+  groups = [],
   basePath,
 }: Props) {
   // The header only becomes a switcher when there's something to switch
@@ -131,6 +136,24 @@ export function SettingsNav({
           );
         })}
       </ul>
+
+      {groups.map((group) => (
+        <section key={group.title} className={styles.group}>
+          <p className={styles.title}>{group.title}</p>
+          <ul className={styles.list}>
+            {group.items.map((item) => (
+              <li key={item.href}>
+                <NavLink
+                  href={item.href}
+                  activeHref={item.href}
+                  icon={item.icon}
+                  label={item.label}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </nav>
   );
 }

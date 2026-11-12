@@ -45,6 +45,7 @@ const KNOWN_ERRORS = [
   "not_json",
   "token_unreadable",
   "provider_required",
+  "invalid_setting",
   "invalid_ref",
 ] as const;
 
@@ -102,58 +103,6 @@ export function PluginBadges({
         </Badge>
       ))}
     </span>
-  );
-}
-
-/**
- * What a plugin may do once confirmed — and, under it, the hosts its code
- * may call. `highlight` marks the capabilities an update added.
- */
-export function CapabilityList({
-  capabilities,
-  network = [],
-  highlight = [],
-}: {
-  capabilities: string[];
-  network?: string[];
-  highlight?: string[];
-}) {
-  const text = usePluginText();
-  return (
-    <div className={styles.capabilities}>
-      {capabilities.length === 0 ? (
-        <p className={styles.muted}>{text.t("noCapabilities")}</p>
-      ) : (
-        <ul className={styles.capList}>
-          {capabilities.map((cap) => (
-            <li
-              key={cap}
-              className={styles.cap}
-              data-new={highlight.includes(cap) || undefined}
-            >
-              <Icon icon="lucide:shield-check" width={14} aria-hidden />
-              <span>{text.capability(cap)}</span>
-              <code>{cap}</code>
-              {highlight.includes(cap) && (
-                <Badge size="sm" mono={false} active>
-                  {text.t("newCapability")}
-                </Badge>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      {network.length > 0 && (
-        <div className={styles.hosts}>
-          <span className={styles.fieldLabel}>{text.t("networkHosts")}</span>
-          <span className={styles.hostList}>
-            {network.map((host) => (
-              <code key={host}>{host}</code>
-            ))}
-          </span>
-        </div>
-      )}
-    </div>
   );
 }
 
