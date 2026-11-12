@@ -121,7 +121,9 @@ export default async function AccountLayout({
             title={t("nav.settings")}
             items={accountNav(t, workspace).items}
           />
-          <div className={styles.panel}>{children}</div>
+          <div className={styles.panel} data-settings-panel>
+            {children}
+          </div>
         </SettingsBody>
       </SettingsSearchProvider>
     </div>

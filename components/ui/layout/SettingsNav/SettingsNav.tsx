@@ -26,6 +26,11 @@ export interface SettingsNavItem {
   /** A scope's start page ("General"). On a phone that address is the
    *  section list, so the row links with `?open` — the page, not the list. */
   start?: boolean;
+  /** A single setting on the page rather than the page: its label, which
+   *  the page is searched for on arrival (`SettingsFocus`). */
+  focus?: string;
+  /** Under the label in the search's dropdown — the page a setting is on. */
+  context?: string;
 }
 
 interface Props {

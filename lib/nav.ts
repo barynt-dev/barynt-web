@@ -565,6 +565,73 @@ export const ACCOUNT_SETTINGS_NAV: NavEntry[] = [
   },
 ];
 
+/**
+ * The single settings the search finds, by scope and section: the message
+ * keys of their labels, exactly as the page shows them — the page is
+ * searched for that text on arrival (`SettingsFocus`, BARY-201). A label renamed on
+ * its page is renamed here with it, through the shared key.
+ */
+export const SEARCHABLE_SETTINGS: Record<
+  "account" | "project" | "workspace",
+  Record<string, string[]>
+> = {
+  account: {
+    "": [
+      "account.firstName",
+      "account.lastName",
+      "account.handle",
+      "fields.color",
+      "fields.email",
+    ],
+    security: ["account.passkeys", "account.addPasskey", "account.signIn"],
+    navigation: [
+      "behavior.projectLanding",
+      "behavior.startPage",
+      "behavior.projectOrder",
+      "behavior.sidebarCollapsed",
+      "behavior.issueOpenMode",
+      "behavior.issuePageOpenMode",
+      "behavior.defaultGrouping",
+      "behavior.defaultSort",
+      "behavior.defaultShowSubIssues",
+    ],
+    appearance: [
+      "settings.theme",
+      "settings.language",
+      "behavior.dateFormat",
+      "behavior.weekStart",
+      "behavior.timeZone",
+      "behavior.fieldLabelMode",
+      "behavior.fieldDateFormat",
+      "behavior.fieldTimeFormat",
+    ],
+    "api-keys": ["apiKeys.baseUrlLabel", "apiKeys.authHeaderLabel"],
+    mcp: ["mcp.serverUrlLabel", "mcp.authLabel", "mcp.transportLabel"],
+  },
+  project: {
+    "": [
+      "fields.name",
+      "fields.description",
+      "projects.identifier",
+      "fields.color",
+      "projectSettings.url",
+      "projectSettings.visibility",
+      "projectSettings.deleteTitle",
+    ],
+  },
+  workspace: {
+    "": [
+      "fields.name",
+      "fields.description",
+      "fields.color",
+      "workspaceSettings.url",
+      "workspaceSettings.links",
+      "workspaceSettings.domains",
+      "workspaceSettings.deleteTitle",
+    ],
+  },
+};
+
 export function workspacePath(workspaceId: string, section: string): string {
   return section ? `/${workspaceId}/${section}` : `/${workspaceId}`;
 }

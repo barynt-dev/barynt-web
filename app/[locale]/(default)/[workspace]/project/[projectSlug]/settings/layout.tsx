@@ -145,7 +145,9 @@ export default async function ProjectSettingsLayout({
                 : undefined
             }
           />
-          <div className={styles.panel}>{children}</div>
+          <div className={styles.panel} data-settings-panel>
+            {children}
+          </div>
         </SettingsBody>
       </SettingsSearchProvider>
     </div>

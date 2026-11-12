@@ -13,6 +13,7 @@ import {
   PROJECT_SETTINGS_PERMISSIONS,
   pluginSettingsPath,
   projectSettingsPath,
+  SEARCHABLE_SETTINGS,
   WORKSPACE_SETTINGS_NAV,
   WORKSPACE_SETTINGS_PERMISSIONS,
   workspaceSettingsPath,
@@ -33,6 +34,31 @@ export interface ScopeNav {
   items: SettingsNavItem[];
   /** The plugins with a page here — the nav's "Plugins" group. */
   plugins: SettingsNavItem[];
+  /** Single settings on the pages of `items`, for the search only. */
+  settings: SettingsNavItem[];
+}
+
+/** The single settings on the pages of `entries`, each leading to its page
+ *  with the setting to show there. */
+function settingRowsOf(
+  t: T,
+  scope: Scope,
+  entries: NavEntry[],
+  href: (section: string) => string,
+): SettingsNavItem[] {
+  return entries.flatMap((entry) =>
+    (SEARCHABLE_SETTINGS[scope][entry.section] ?? []).map((key) => {
+      const label = t(key as never);
+      return {
+        href: href(entry.section),
+        label,
+        icon: entry.icon,
+        focus: label,
+        context: t(`nav.${entry.labelKey}` as never),
+        start: entry.section === "" || undefined,
+      };
+    }),
+  );
 }
 
 function rowsOf(
@@ -80,9 +106,11 @@ export function accountNav(t: T, workspaceId: string): ScopeNav {
     (entry) =>
       entry.section !== "connections" || enabledOAuthProviders.length > 0,
   );
+  const href = (s: string) => accountPath(workspaceId, s);
   return {
-    items: rowsOf(t, "account", entries, (s) => accountPath(workspaceId, s)),
+    items: rowsOf(t, "account", entries, href),
     plugins: [],
+    settings: settingRowsOf(t, "account", entries, href),
   };
 }
 
@@ -95,10 +123,10 @@ export async function workspaceNav(
   const entries = WORKSPACE_SETTINGS_NAV.filter((entry) =>
     navEntryAllowed(access.has, entry),
   );
+  const href = (s: string) => workspaceSettingsPath(workspaceId, s);
   return {
-    items: rowsOf(t, "workspace", entries, (s) =>
-      workspaceSettingsPath(workspaceId, s),
-    ),
+    items: rowsOf(t, "workspace", entries, href),
+    settings: settingRowsOf(t, "workspace", entries, href),
     plugins: access.has("plugin.enable")
       ? pluginRows(
           t,
@@ -119,10 +147,10 @@ export async function projectNav(
   const entries = PROJECT_SETTINGS_NAV.filter((entry) =>
     navEntryAllowed(access.has, entry),
   );
+  const href = (s: string) => projectSettingsPath(workspaceId, project.slug, s);
   return {
-    items: rowsOf(t, "project", entries, (s) =>
-      projectSettingsPath(workspaceId, project.slug, s),
-    ),
+    items: rowsOf(t, "project", entries, href),
+    settings: settingRowsOf(t, "project", entries, href),
     plugins: access.has("plugin.enable")
       ? pluginRows(
           t,
@@ -150,7 +178,11 @@ export async function settingsSearchIndex(
   },
 ): Promise<SettingsNavSection[]> {
   const { workspaceId, workspaceAccess, project, projectAccess } = input;
-  const all = (nav: ScopeNav) => [...nav.items, ...nav.plugins];
+  const all = (nav: ScopeNav) => [
+    ...nav.items,
+    ...nav.plugins,
+    ...nav.settings,
+  ];
   const sections: SettingsNavSection[] = [
     {
       title: t("settings.scopeAccount" as never),

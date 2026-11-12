@@ -151,7 +151,9 @@ export default async function WorkspaceSettingsLayout({
                 : undefined
             }
           />
-          <div className={styles.panel}>{children}</div>
+          <div className={styles.panel} data-settings-panel>
+            {children}
+          </div>
         </SettingsBody>
       </SettingsSearchProvider>
     </div>

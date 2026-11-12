@@ -3,6 +3,7 @@ import { searchSections } from "@/components/ui/layout/SettingsNav/searchSection
 import {
   ACCOUNT_SETTINGS_NAV,
   PROJECT_SETTINGS_NAV,
+  SEARCHABLE_SETTINGS,
   WORKSPACE_SETTINGS_NAV,
 } from "@/lib/nav";
 import de from "@/messages/de.json";
@@ -84,4 +85,37 @@ describe("settings keywords", () => {
           expect(groups[entry.group ?? ""]).toBeString();
         }
       });
+});
+
+describe("searchable settings", () => {
+  const navs = {
+    account: ACCOUNT_SETTINGS_NAV,
+    project: PROJECT_SETTINGS_NAV,
+    workspace: WORKSPACE_SETTINGS_NAV,
+  } as const;
+  const lookup = (messages: unknown, key: string) =>
+    key
+      .split(".")
+      .reduce<unknown>(
+        (node, part) =>
+          node && typeof node === "object"
+            ? (node as Record<string, unknown>)[part]
+            : undefined,
+        messages,
+      );
+
+  for (const [scope, sections] of Object.entries(SEARCHABLE_SETTINGS))
+    for (const [section, keys] of Object.entries(sections)) {
+      it(`${scope}/${section || "general"} is a section of its nav`, () => {
+        expect(
+          navs[scope as keyof typeof navs].some((e) => e.section === section),
+        ).toBe(true);
+      });
+      it(`${scope}/${section || "general"}: every label exists in de and en`, () => {
+        for (const key of keys) {
+          expect(lookup(de, key)).toBeString();
+          expect(lookup(en, key)).toBeString();
+        }
+      });
+    }
 });
