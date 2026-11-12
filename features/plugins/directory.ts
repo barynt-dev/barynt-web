@@ -113,6 +113,25 @@ export type DirectoryRead =
   | { ok: true; entries: DirectoryEntry[]; issues: DirectoryIssue[] }
   | { ok: false; error: string };
 
+/** What the store page read last, per source — the directory lives on
+ *  another server and the page shouldn't wait for it on every visit. */
+const recent = new Map<string, { at: number; read: DirectoryRead }>();
+const RECENT_MS = 5 * 60_000;
+
+/** `readSource`, unless it was read in the last few minutes. */
+export async function readSourceRecent(
+  sourceId: string,
+): Promise<DirectoryRead> {
+  const hit = recent.get(sourceId);
+  if (hit && Date.now() - hit.at < RECENT_MS) return hit.read;
+  return readSource(sourceId);
+}
+
+/** Forgets what was read — after the source changed or on "Fetch now". */
+export function forgetSource(sourceId: string): void {
+  recent.delete(sourceId);
+}
+
 /**
  * Reads a source's directory and notes the outcome on the source
  * (`lastSyncAt`, `lastSyncError`). A disabled source isn't read.
@@ -123,6 +142,7 @@ export async function readSource(sourceId: string): Promise<DirectoryRead> {
   if (!source.enabled) return { ok: false, error: "disabled" };
 
   const result = await readStoredDirectory(source);
+  recent.set(source.id, { at: Date.now(), read: result });
   await db.pluginSource.update({
     where: { id: source.id },
     data: {

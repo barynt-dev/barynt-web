@@ -12,6 +12,29 @@
   &::-webkit-scrollbar {
     display: none;
   }
+
+  /* An edge with more tabs behind it fades out (`data-more`, set by the
+     component as the row scrolls). */
+  --fade-start: 0px;
+  --fade-end: 0px;
+
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--fade-start),
+    #000 calc(100% - var(--fade-end)),
+    transparent
+  );
+
+  &[data-more="start"],
+  &[data-more="both"] {
+    --fade-start: 2rem;
+  }
+
+  &[data-more="end"],
+  &[data-more="both"] {
+    --fade-end: 2rem;
+  }
 }
 
 .tab {

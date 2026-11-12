@@ -18,15 +18,13 @@ mock.module("@/lib/context", () => ({
 mock.module("@/components/ui/layout/ConfirmDialog/ConfirmDialog", () => ({
   useConfirm: () => async () => false,
 }));
-mock.module("@/features/plugins/actions", () => ({
-  activatePlugin: mock(),
-  deactivatePlugin: mock(),
-  deletePluginData: mock(),
-  setPluginGrant: mock(),
-}));
+// Every export the plugin pages use — `pluginStore.test.tsx` runs in the
+// same process and replaces this module too.
+mock.module("@/features/plugins/actions", () => pluginActionsMock());
 
 import { ScopePlugins } from "@/features/plugins/components/ScopePlugins/ScopePlugins";
 import type { ScopePlugin } from "@/features/plugins/queries";
+import { pluginActionsMock } from "./pluginActionsMock";
 
 const base: ScopePlugin = {
   pluginId: "gantt-timeline",

@@ -80,6 +80,40 @@ describe("parseDirectory", () => {
     expect(parseDirectory({ plugins: [] }).issues[0].index).toBe(-1);
   });
 
+  it("takes release notes per listed version (BARY-200)", () => {
+    const good = entry(release());
+    const notes = { "1.2.0": "- Faster\n- Fixed the export" };
+    expect(parseDirectory([{ ...good, notes }]).entries[0].notes).toEqual(
+      notes,
+    );
+    expect(
+      parseDirectory([{ ...good, notes: { latest: "x" } }]).entries,
+    ).toEqual([]);
+    expect(
+      parseDirectory([{ ...good, notes: { "1.2.0": "x".repeat(2001) } }])
+        .entries,
+    ).toEqual([]);
+  });
+
+  it("takes categories, featured and a date for the store (BARY-200)", () => {
+    const good = entry(release());
+    const meta = {
+      categories: ["planning", "time"],
+      featured: true,
+      added: "2026-11-02",
+    };
+    expect(parseDirectory([{ ...good, ...meta }]).entries[0]).toMatchObject(
+      meta,
+    );
+    for (const bad of [
+      { categories: ["games"] },
+      { categories: ["planning", "time", "reports", "support"] },
+      { added: "02.11.2026" },
+      { featured: "yes" },
+    ])
+      expect(parseDirectory([{ ...good, ...bad }]).entries).toEqual([]);
+  });
+
   it("wants a repository address and a SHA-256 per version", () => {
     const good = entry(release());
     for (const repo of [

@@ -80,20 +80,24 @@ export function usePluginText() {
 export function PluginBadges({
   kind,
   levels,
+  size = "sm",
 }: {
   kind: string;
   levels: string[];
+  /** `md` in the store's cards and plugin header, where they're read
+   *  rather than skimmed. */
+  size?: "sm" | "md";
 }) {
   const text = usePluginText();
   return (
     <span className={styles.badges}>
       <span title={text.kindHint(kind)}>
-        <Badge size="sm" mono={false}>
+        <Badge size={size} mono={false}>
           {text.kind(kind)}
         </Badge>
       </span>
       {levels.map((level) => (
-        <Badge key={level} size="sm" mono={false}>
+        <Badge key={level} size={size} mono={false}>
           {text.level(level)}
         </Badge>
       ))}

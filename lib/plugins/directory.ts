@@ -31,6 +31,19 @@ const REPO_RE =
   /^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]{1,100}|https?:\/\/\S{3,290})$/;
 const SHA256_RE = /^[0-9a-f]{64}$/;
 
+/** What a plugin is for, so the store can group it (BARY-200). A closed
+ *  list — the store has a name for each one. */
+export const PLUGIN_CATEGORIES = [
+  "development",
+  "planning",
+  "communication",
+  "reports",
+  "time",
+  "automation",
+  "support",
+] as const;
+export type PluginCategory = (typeof PLUGIN_CATEGORIES)[number];
+
 /**
  * One plugin in a directory. `versions` maps every release the directory
  * vouches for to the hash of its files (`releaseHash`) — a release tag that
@@ -46,6 +59,19 @@ export const directoryEntrySchema = z.strictObject({
     .regex(REPO_RE, 'expected a repository address or "owner/name"'),
   /** The repository's host software, when its address doesn't tell. */
   provider: z.enum(GIT_PROVIDERS).optional(),
+  /** For the store's start page (BARY-200): what it's for, whether the
+   *  directory puts it forward, and since when it's listed. */
+  categories: z.array(z.enum(PLUGIN_CATEGORIES)).max(3).optional(),
+  featured: z.boolean().optional(),
+  added: z.iso.date().optional(),
+  /** What changed in a version, per version (`- ` lines are bullets).
+   *  Plain text — the store shows it as text, never as HTML. */
+  notes: z
+    .record(
+      z.string().refine(isSemver, "expected MAJOR.MINOR.PATCH"),
+      z.string().trim().min(1).max(2000),
+    )
+    .optional(),
   levels: z.array(z.enum(PLUGIN_LEVELS)).min(1).max(2),
   kind: z.enum(PLUGIN_KINDS),
   versions: z
