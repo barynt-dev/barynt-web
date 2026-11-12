@@ -13,17 +13,21 @@ import { OPEN_PARAM } from "./settingsView";
 
 /**
  * The settings nav's sections with a search above them (BARY-201): typing
- * narrows the rows to the ones whose name — or what's on their page
- * (`keywords`) — matches, Enter opens the first. Each heading folds its list
+ * swaps them for the rows of every scope (`searchIndex`: Personal, Project,
+ * Workspace) whose name — or what's on their page (`keywords`) — matches,
+ * under the scope's name; Enter opens the first. Each heading folds its list
  * away (a native `<details>`); while searching, every hit is shown open.
  */
 export function SettingsNavSections({
   sections,
+  searchIndex,
   basePath,
   searchLabel,
   emptyLabel,
 }: {
   sections: SettingsNavSection[];
+  /** What a search looks through; `sections` without it. */
+  searchIndex?: SettingsNavSection[];
   basePath: string;
   searchLabel: string;
   emptyLabel: string;
@@ -31,7 +35,9 @@ export function SettingsNavSections({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const searching = query.trim() !== "";
-  const shown = searchSections(sections, query);
+  const shown = searching
+    ? searchSections(searchIndex ?? sections, query)
+    : sections;
   const hrefOf = (item: SettingsNavItem) =>
     item.href === basePath ? `${item.href}?${OPEN_PARAM}=1` : item.href;
 

@@ -71,11 +71,17 @@ describe("settings keywords", () => {
     ["en", en],
   ] as const)
     for (const [scope, nav] of Object.entries(scopes))
-      it(`${lang}: every ${scope} section has keywords`, () => {
+      it(`${lang}: every ${scope} section has a label, a group and keywords`, () => {
         const words =
           (
             messages.settings.keywords as Record<string, Record<string, string>>
           )[scope] ?? {};
-        for (const entry of nav) expect(words[entry.labelKey]).toBeString();
+        const nav_ = messages.nav as Record<string, string>;
+        const groups = messages.settings.group as Record<string, string>;
+        for (const entry of nav) {
+          expect(words[entry.labelKey]).toBeString();
+          expect(nav_[entry.labelKey]).toBeString();
+          expect(groups[entry.group ?? ""]).toBeString();
+        }
       });
 });

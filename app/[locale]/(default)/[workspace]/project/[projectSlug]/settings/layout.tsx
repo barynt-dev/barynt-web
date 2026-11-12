@@ -4,24 +4,20 @@ import { SettingsHeader } from "@/components/ui/layout/SettingsHeader/SettingsHe
 import { SettingsBody } from "@/components/ui/layout/SettingsNav/SettingsBody";
 import {
   SettingsNav,
-  type SettingsNavItem,
   type SettingsNavSubject,
 } from "@/components/ui/layout/SettingsNav/SettingsNav";
-import { PluginTile } from "@/features/plugins/components/PluginStore/PluginTile";
+import { canUsePluginStore } from "@/features/plugins/queries";
 import {
-  canUsePluginStore,
-  getPluginSettingsNav,
-} from "@/features/plugins/queries";
+  projectNav,
+  settingsSearchIndex,
+} from "@/features/settings/navigation";
 import {
   getMyProjects,
   getWorkspaceProjects,
 } from "@/features/workspaces/queries";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
 import {
-  navEntryAllowed,
-  PROJECT_SETTINGS_NAV,
   PROJECT_SETTINGS_PERMISSIONS,
-  pluginSettingsPath,
   projectSettingsPath,
   settingsScopeItems,
   visibleSettingsScope,
@@ -98,35 +94,18 @@ export default async function ProjectSettingsLayout({
 
   // Roles is the only section with its own gate: it holds the rules that
   // decide everything else. General and Labels stay visible even without
-  // write access — they then show what's in effect, just read-only.
-  const items: SettingsNavItem[] = PROJECT_SETTINGS_NAV.filter((entry) =>
-    navEntryAllowed(access.has, entry),
-  ).map((entry) => ({
-    href: projectSettingsPath(workspace, projectSlug, entry.section),
-    label: t(`nav.${entry.labelKey}`),
-    icon: entry.icon,
-    group: entry.group && t(`settings.group.${entry.group}`),
-    keywords: t(
-      `settings.keywords.project.${entry.labelKey}` as "settings.keywords.project.general",
-    ).split(", "),
-  }));
-
-  // The plugins the workspace released for projects, on here or not: each
-  // page switches it on and holds its settings (BARY-201).
-  const pluginItems: SettingsNavItem[] = access.has("plugin.enable")
-    ? (
-        await getPluginSettingsNav({
-          workspaceId: workspace,
-          projectId: project.id,
-        })
-      ).map((p) => ({
-        href: pluginSettingsPath(workspace, projectSlug, p.pluginId),
-        label: p.name,
-        icon: "lucide:puzzle",
-        keywords: ["Plugin"],
-        leading: <PluginTile id={p.pluginId} name={p.name} size="sm" />,
-      }))
-    : [];
+  // write access — they then show what's in effect, just read-only. The
+  // plugins the workspace released for projects follow, on here or not:
+  // each page switches it on and holds its settings (BARY-201).
+  const [nav, searchIndex] = await Promise.all([
+    projectNav(t, workspace, project, access),
+    settingsSearchIndex(t, {
+      workspaceId: workspace,
+      workspaceAccess,
+      project,
+      projectAccess: access,
+    }),
+  ]);
 
   return (
     <div className={styles.shell}>
@@ -150,12 +129,13 @@ export default async function ProjectSettingsLayout({
           siblings={siblings}
           siblingsLabel={t("settings.scopeProject")}
           title={t("nav.settings")}
-          items={items}
+          items={nav.items}
           groups={
-            pluginItems.length > 0
-              ? [{ title: t("nav.plugins"), items: pluginItems }]
+            nav.plugins.length > 0
+              ? [{ title: t("nav.plugins"), items: nav.plugins }]
               : undefined
           }
+          searchIndex={searchIndex}
           searchLabel={t("settings.search")}
           noHitsLabel={t("settings.noHits")}
           basePath={projectSettingsPath(workspace, projectSlug, "")}

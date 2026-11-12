@@ -51,6 +51,9 @@ interface Props {
    *  plugins switched on here that have settings, say. Empty ones aren't
    *  passed. */
   groups?: SettingsNavSection[];
+  /** What the search looks through — every scope the person may open,
+   *  one section each. Without it, the search stays within this nav. */
+  searchIndex?: SettingsNavSection[];
   /** The search field's placeholder, and what it says without a hit. */
   searchLabel: string;
   noHitsLabel: string;
@@ -89,6 +92,7 @@ export function SettingsNav({
   title,
   items,
   groups = [],
+  searchIndex,
   searchLabel,
   noHitsLabel,
   basePath,
@@ -125,6 +129,7 @@ export function SettingsNav({
       )}
       <SettingsNavSections
         sections={[...sectionsOf(items, title), ...groups]}
+        searchIndex={searchIndex}
         basePath={basePath}
         searchLabel={searchLabel}
         emptyLabel={noHitsLabel}

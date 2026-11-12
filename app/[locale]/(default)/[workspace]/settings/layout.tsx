@@ -4,14 +4,13 @@ import { SettingsHeader } from "@/components/ui/layout/SettingsHeader/SettingsHe
 import { SettingsBody } from "@/components/ui/layout/SettingsNav/SettingsBody";
 import {
   SettingsNav,
-  type SettingsNavItem,
   type SettingsNavSubject,
 } from "@/components/ui/layout/SettingsNav/SettingsNav";
-import { PluginTile } from "@/features/plugins/components/PluginStore/PluginTile";
+import { canUsePluginStore } from "@/features/plugins/queries";
 import {
-  canUsePluginStore,
-  getPluginSettingsNav,
-} from "@/features/plugins/queries";
+  settingsSearchIndex,
+  workspaceNav,
+} from "@/features/settings/navigation";
 import {
   getCurrentWorkspace,
   getMyWorkspaces,
@@ -19,12 +18,9 @@ import {
 } from "@/features/workspaces/queries";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
 import {
-  navEntryAllowed,
   PROJECT_SETTINGS_PERMISSIONS,
-  pluginSettingsPath,
   settingsScopeItems,
   visibleSettingsScope,
-  WORKSPACE_SETTINGS_NAV,
   WORKSPACE_SETTINGS_PERMISSIONS,
   workspaceSettingsPath,
 } from "@/lib/nav";
@@ -107,31 +103,15 @@ export default async function WorkspaceSettingsLayout({
   // Roles and members are the only sections with their own gate (`role.manage`
   // and `member.view` respectively) — the rest stay visible even without
   // write access; they then show what's in effect, just read-only.
-  const items: SettingsNavItem[] = WORKSPACE_SETTINGS_NAV.filter((entry) =>
-    navEntryAllowed(access.has, entry),
-  ).map((entry) => ({
-    href: workspaceSettingsPath(workspace, entry.section),
-    label: t(`nav.${entry.labelKey}`),
-    icon: entry.icon,
-    group: entry.group && t(`settings.group.${entry.group}`),
-    keywords: t(
-      `settings.keywords.workspace.${entry.labelKey}` as "settings.keywords.workspace.general",
-    ).split(", "),
-  }));
-
-  // The plugins switched on here that have settings, each a page of its own
-  // (BARY-201) — for whoever may change them.
-  const pluginItems: SettingsNavItem[] = access.has("plugin.enable")
-    ? (
-        await getPluginSettingsNav({ workspaceId: workspace, projectId: null })
-      ).map((p) => ({
-        href: pluginSettingsPath(workspace, null, p.pluginId),
-        label: p.name,
-        icon: "lucide:puzzle",
-        keywords: ["Plugin"],
-        leading: <PluginTile id={p.pluginId} name={p.name} size="sm" />,
-      }))
-    : [];
+  const [nav, searchIndex] = await Promise.all([
+    workspaceNav(t, workspace, access),
+    settingsSearchIndex(t, {
+      workspaceId: workspace,
+      workspaceAccess: access,
+      project: firstProject ?? null,
+      projectAccess,
+    }),
+  ]);
 
   return (
     <div className={styles.shell}>
@@ -156,12 +136,13 @@ export default async function WorkspaceSettingsLayout({
           siblings={siblings}
           siblingsLabel={t("settings.scopeWorkspace")}
           title={t("nav.settings")}
-          items={items}
+          items={nav.items}
           groups={
-            pluginItems.length > 0
-              ? [{ title: t("nav.plugins"), items: pluginItems }]
+            nav.plugins.length > 0
+              ? [{ title: t("nav.plugins"), items: nav.plugins }]
               : undefined
           }
+          searchIndex={searchIndex}
           searchLabel={t("settings.search")}
           noHitsLabel={t("settings.noHits")}
           basePath={workspaceSettingsPath(workspace, "")}
