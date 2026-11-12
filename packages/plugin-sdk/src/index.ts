@@ -1,5 +1,5 @@
 // @barynt/plugin-sdk — build sandboxed plugins for Barynt (BARY-146).
-// How a plugin runs and what it may call: docs/plugins/runtime.md.
+// The docs: docs/guide/en/plugin-development/ (sdk.md for this package).
 
 export { type Api, BaryntError, createApi, METHODS } from "./api";
 export { type Cleanup, Plugin, type ProjectView } from "./plugin";

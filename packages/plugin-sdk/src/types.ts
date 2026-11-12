@@ -1,5 +1,5 @@
 // What a plugin gets from Barynt and sends to it — the shapes of the host
-// bridge's methods (`docs/plugins/runtime.md`). Kept to the fields a plugin
+// bridge's methods (`docs/guide/en/plugin-development/host-api.md`). Kept to the fields a plugin
 // is likely to use; the objects carry more.
 
 /** Where a plugin's frame runs. */

@@ -53,7 +53,6 @@ expect(host.calls[0].method).toBe("issues.list");
 unload();
 ```
 
-The runtime contract, every method and its limits:
-[docs/plugins/runtime.md](../../docs/plugins/runtime.md).
+The full docs are the [plugin development docs](../../docs/guide/en/plugin-development/overview.md) — start with [Your first plugin](../../docs/guide/en/plugin-development/first-plugin.md); every member of this package is in [Plugin SDK](../../docs/guide/en/plugin-development/sdk.md).
 
 Not on npm yet — it lives in the Barynt repository for now.

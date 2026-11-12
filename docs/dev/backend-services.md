@@ -267,7 +267,7 @@ minutes, per server process; `refreshPluginSource` and every source change forge
 What's open is in the address (`?plugin=`, `?tab=overview|capabilities|versions|places`,
 `?view=sources`); "where it's on" comes from `getPluginPlaces`, only for that tab. The
 start page uses the directory's optional `categories`, `featured` and `added`
-([directory format](../plugins/directory.md)). The install dialog shows
+([directory format](../guide/en/plugin-development/publishing.md#the-directory-entry)). The install dialog shows
 `previewRelease` (loaded and checked, not stored); installing loads the release once more,
 so the server never trusts what a dialog was shown.
 
@@ -296,7 +296,7 @@ is the person's (`source: APP`, no badge); the audit entry is where the plugin s
 Plugin authors build against `packages/plugin-sdk` (BARY-146): a `Plugin` class over that
 host, its typed API (`METHODS` — `tests/unit/plugins/sdk.test.ts` keeps it equal to
 `BRIDGE_METHODS`) and a test host. The app resolves it through `tsconfig.json`'s `paths`;
-`bun run --cwd packages/plugin-sdk build` writes `dist/` with types. For plugin authors: `docs/plugins/runtime.md`.
+`bun run --cwd packages/plugin-sdk build` writes `dist/` with types. For plugin authors: the [plugin development docs](../guide/en/plugin-development/overview.md).
 
 ## Smaller pieces
 
