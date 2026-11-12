@@ -287,8 +287,12 @@ private `MessageChannel` with its context and the design tokens, and forwards ea
 to `/api/plugins/bridge`. `features/plugins/runtime.ts` checks every request there
 (`findRunningPlugin`: switched on in that place, active version, place visible to the
 person; then the method's capability from `lib/plugins/bridge.ts#BRIDGE_METHODS` among the
-confirmed ones) and answers through the same `*ForUser` functions as the REST API. For
-plugin authors: `docs/plugins/runtime.md`.
+confirmed ones) and answers through the same `*ForUser` functions as the REST API
+(`features/plugins/bridge-methods.ts`, BARY-145). On top: a budget per person and plugin
+(`countRequest` in `lib/api/rateLimit.ts`, the API keys' Redis window), the plugin's own
+storage (`PluginStorage`, per activation, with the limits in `STORAGE_LIMITS`), and for
+every write an audit entry `plugin.acted` with the plugin and the person; issues and
+comments it writes carry `source: PLUGIN`. For plugin authors: `docs/plugins/runtime.md`.
 
 ## Smaller pieces
 

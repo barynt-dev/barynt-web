@@ -14,14 +14,49 @@ export const BRIDGE_MAX_PENDING = 20;
 /** How long a frame may take from loading to `ready`. */
 export const FRAME_READY_TIMEOUT_MS = 10_000;
 
-/** The methods a plugin can call, and the capability each needs. A method
- *  missing here doesn't exist. */
+/** The methods a plugin can call, and the capability each needs — `null`
+ *  for its own settings, which need none. A method missing here doesn't
+ *  exist. */
 export const BRIDGE_METHODS = {
   "issues.list": "issues:read",
   "issues.get": "issues:read",
-} as const satisfies Record<string, Capability>;
+  "issues.create": "issues:write",
+  "issues.update": "issues:write",
+  "comments.list": "comments:read",
+  "comments.create": "comments:write",
+  "labels.list": "labels:read",
+  "projects.list": "projects:read",
+  "members.list": "members:read",
+  "fields.list": "fields:read",
+  "storage.get": "storage:own",
+  "storage.set": "storage:own",
+  "storage.delete": "storage:own",
+  "storage.list": "storage:own",
+  "settings.get": null,
+} as const satisfies Record<string, Capability | null>;
 
 export type BridgeMethod = keyof typeof BRIDGE_METHODS;
+
+/** The methods that change something in someone's name — each lands in the
+ *  audit log with the plugin and the person (BARY-145). */
+export const WRITE_METHODS: readonly BridgeMethod[] = [
+  "issues.create",
+  "issues.update",
+  "comments.create",
+];
+
+/** Requests a plugin may make per person and minute. */
+export const BRIDGE_RATE_LIMIT = 300;
+
+/** A plugin's own storage, per place it's on in (`storage:own`). */
+export const STORAGE_LIMITS = {
+  keyLength: 128,
+  /** One value, as JSON. */
+  valueBytes: 64 * 1024,
+  keys: 500,
+  /** All values together, as JSON. */
+  totalBytes: 1024 * 1024,
+} as const;
 
 export const isBridgeMethod = (method: unknown): method is BridgeMethod =>
   typeof method === "string" && Object.hasOwn(BRIDGE_METHODS, method);
@@ -66,6 +101,7 @@ export type BridgeError =
   | "capability_not_confirmed"
   | "forbidden"
   | "not_found"
+  | "storage_full"
   | "timeout"
   | "too_many_requests";
 

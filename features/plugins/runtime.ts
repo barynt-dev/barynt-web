@@ -1,17 +1,21 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { getIssueForUser, listIssuesForUser } from "@/features/api-v1/queries";
+import { countRequest } from "@/lib/api/rateLimit";
+import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { can, canEnterWorkspace } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
 import {
   BRIDGE_METHODS,
+  BRIDGE_RATE_LIMIT,
   type BridgeResponse,
   type FrameContext,
   isBridgeMethod,
+  WRITE_METHODS,
 } from "@/lib/plugins/bridge";
 import { buildFrameDocument, frameCsp } from "@/lib/plugins/frame";
 import { type PluginManifest, validateManifest } from "@/lib/plugins/manifest";
+import { HANDLERS } from "./bridge-methods";
 
 // Running a sandboxed plugin (BARY-144): which plugin may run where for
 // whom, the document its frame loads, and what its requests over the host
@@ -25,6 +29,8 @@ import { type PluginManifest, validateManifest } from "@/lib/plugins/manifest";
 export interface RunningPlugin {
   pluginId: string;
   rowId: string;
+  /** Its activation here — what its storage and settings hang off. */
+  activationId: string;
   manifest: PluginManifest;
   /** The capabilities confirmed in this place — what counts, not the
    *  manifest's. */
@@ -70,7 +76,7 @@ export async function findRunningPlugin(
           scopeKey: activationScopeKey(place),
         },
       },
-      select: { enabled: true, capabilities: true },
+      select: { id: true, enabled: true, capabilities: true },
     }),
     db.plugin.findFirst({
       where: { pluginId: place.pluginId, status: "active" },
@@ -83,6 +89,7 @@ export async function findRunningPlugin(
   return {
     pluginId: place.pluginId,
     rowId: row.id,
+    activationId: activation.id,
     manifest: parsed.manifest,
     capabilities: activation.capabilities,
     workspaceId: place.workspaceId,
@@ -139,18 +146,12 @@ export async function getPluginFrame(
   };
 }
 
-const MAX_TAKE = 100;
-
-const str = (value: unknown, max = 200) =>
-  typeof value === "string" && value.length > 0 && value.length <= max
-    ? value
-    : undefined;
-
 /**
  * One request over the host bridge, as the person whose page the frame is
- * on. The method must exist, its capability be confirmed in this place,
- * and the data inside the place: a project's plugin sees its project, a
- * workspace's plugin the workspace's projects the person can see.
+ * on. The method must exist, the person stay within the plugin's budget
+ * (`BRIDGE_RATE_LIMIT` a minute), and the method's capability be confirmed
+ * in this place; what it does is in `bridge-methods.ts`. A change made in
+ * someone's name lands in the audit log with the plugin and the person.
  */
 export async function callBridge(
   userId: string,
@@ -159,59 +160,44 @@ export async function callBridge(
   params: unknown,
 ): Promise<BridgeResponse> {
   if (!isBridgeMethod(method)) return { ok: false, error: "unknown_method" };
+  const budget = await countRequest(
+    `ratelimit:plugin:${place.pluginId}:${userId}`,
+    BRIDGE_RATE_LIMIT,
+  );
+  if (!budget.ok) return { ok: false, error: "too_many_requests" };
   const plugin = await findRunningPlugin(userId, place);
   if (!plugin) return { ok: false, error: "not_active" };
-  if (!plugin.capabilities.includes(BRIDGE_METHODS[method]))
+  const needs = BRIDGE_METHODS[method];
+  if (needs !== null && !plugin.capabilities.includes(needs))
     return { ok: false, error: "capability_not_confirmed" };
-  const p = (params && typeof params === "object" ? params : {}) as Record<
-    string,
-    unknown
-  >;
 
-  /** A project this plugin may look into: its own, or — for a workspace's
-   *  plugin — any of the workspace's. */
-  const inPlace = async (projectId: string) => {
-    if (plugin.projectId) return projectId === plugin.projectId;
-    const project = await db.project.findUnique({
-      where: { id: projectId },
-      select: { workspaceId: true },
+  const p = (
+    params && typeof params === "object" && !Array.isArray(params) ? params : {}
+  ) as Record<string, unknown>;
+  const result = await HANDLERS[method](userId, plugin, p);
+
+  if (result.ok && WRITE_METHODS.includes(method)) {
+    const target = result.result as { id?: unknown; ref?: unknown } | null;
+    await recordAudit({
+      action: "plugin.acted",
+      actorId: userId,
+      target: {
+        type: "plugin",
+        id: plugin.pluginId,
+        label: plugin.manifest.name,
+      },
+      workspaceId: plugin.workspaceId,
+      projectId: plugin.projectId,
+      meta: {
+        method,
+        ...(typeof target?.ref === "string" && { ref: target.ref }),
+        ...(typeof target?.id === "string" && { id: target.id }),
+        ...(typeof p.id === "string" && { id: p.id }),
+        ...(typeof p.issueId === "string" && { issueId: p.issueId }),
+      },
     });
-    return project?.workspaceId === plugin.workspaceId;
-  };
-
-  switch (method) {
-    case "issues.list": {
-      const projectId = str(p.projectId) ?? plugin.projectId;
-      if (!projectId) return { ok: false, error: "invalid_params" };
-      if (!(await inPlace(projectId))) return { ok: false, error: "forbidden" };
-      const take = Math.min(
-        Math.max(Number.isInteger(p.take) ? (p.take as number) : 50, 1),
-        MAX_TAKE,
-      );
-      const page = await listIssuesForUser(userId, projectId, {
-        q: str(p.q),
-        status: str(p.status),
-        cursor: str(p.cursor),
-        take,
-      });
-      if (!page) return { ok: false, error: "not_found" };
-      return {
-        ok: true,
-        result: {
-          issues: page.rows,
-          nextCursor: page.hasMore ? (page.rows.at(-1)?.id ?? null) : null,
-        },
-      };
-    }
-    case "issues.get": {
-      const id = str(p.id);
-      if (!id) return { ok: false, error: "invalid_params" };
-      const issue = await getIssueForUser(userId, id);
-      if (!issue || !(await inPlace(issue.project.id)))
-        return { ok: false, error: "not_found" };
-      return { ok: true, result: issue };
-    }
   }
+  return result;
 }
 
 /** A project view a plugin contributes, for its page in the project — the

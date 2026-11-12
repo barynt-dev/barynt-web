@@ -9,6 +9,14 @@ const db = {
   pluginActivation: { findUnique: mock() },
   plugin: { findFirst: mock() },
   pluginFile: { findMany: mock() },
+  pluginStorage: {
+    findUnique: mock(),
+    aggregate: mock(),
+    upsert: mock(),
+    deleteMany: mock(),
+    findMany: mock(),
+  },
+  pluginSettings: { findUnique: mock() },
 };
 mock.module("@/lib/db", () => ({ db }));
 const can = mock(async () => true);
@@ -19,7 +27,25 @@ const getIssueForUser = mock();
 mock.module("@/features/api-v1/queries", () => ({
   listIssuesForUser,
   getIssueForUser,
+  listCommentsForUser: mock(),
+  listLabelsForUser: mock(),
+  listProjectCustomFieldsForUser: mock(),
+  listProjectMembersForUser: mock(),
+  listProjectsForUser: mock(),
+  listWorkspaceMembersForUser: mock(),
 }));
+const createIssueForUser = mock();
+const updateIssueForUser = mock();
+const createCommentForUser = mock();
+mock.module("@/features/api-v1/mutations", () => ({
+  createIssueForUser,
+  updateIssueForUser,
+  createCommentForUser,
+}));
+const countRequest = mock(async () => ({ ok: true, info: {} }));
+mock.module("@/lib/api/rateLimit", () => ({ countRequest }));
+const recordAudit = mock(async (_input: unknown) => {});
+mock.module("@/lib/audit", () => ({ recordAudit }));
 
 const { callBridge, getPluginFrame } = await import(
   "@/features/plugins/runtime"
@@ -46,10 +72,19 @@ beforeEach(() => {
     for (const fn of Object.values(group))
       (fn as ReturnType<typeof mock>).mockReset();
   can.mockImplementation(async () => true);
-  listIssuesForUser.mockReset();
-  getIssueForUser.mockReset();
+  countRequest.mockImplementation(async () => ({ ok: true, info: {} }));
+  for (const fn of [
+    listIssuesForUser,
+    getIssueForUser,
+    createIssueForUser,
+    updateIssueForUser,
+    createCommentForUser,
+    recordAudit,
+  ])
+    fn.mockReset();
   db.project.findUnique.mockResolvedValue({ workspaceId: "ws1" });
   db.pluginActivation.findUnique.mockResolvedValue({
+    id: "act1",
     enabled: true,
     capabilities: ["issues:read", "ui:project-view"],
   });
@@ -131,6 +166,120 @@ describe("callBridge", () => {
     expect(await callBridge("u1", place, "issues.list", {})).toEqual({
       ok: false,
       error: "not_active",
+    });
+  });
+});
+
+describe("callBridge (BARY-145)", () => {
+  const confirm = (...capabilities: string[]) =>
+    db.pluginActivation.findUnique.mockResolvedValue({
+      id: "act1",
+      enabled: true,
+      capabilities,
+    });
+
+  it("stops a plugin over its budget before anything else", async () => {
+    countRequest.mockImplementation(async () => ({ ok: false, info: {} }));
+    expect(await callBridge("u1", place, "issues.list", {})).toEqual({
+      ok: false,
+      error: "too_many_requests",
+    });
+    expect(listIssuesForUser).not.toHaveBeenCalled();
+  });
+
+  it("writes as the plugin, in the person's name, and logs it", async () => {
+    confirm("issues:write");
+    createIssueForUser.mockResolvedValue({
+      ok: true,
+      data: { id: "i1", ref: "WEB-1" },
+    });
+    const res = await callBridge("u1", place, "issues.create", {
+      title: "From a plugin",
+    });
+    expect(res.ok).toBe(true);
+    expect(createIssueForUser.mock.calls[0]?.[0]).toBe("u1");
+    expect(createIssueForUser.mock.calls[0]?.[1]).toBe("p1");
+    expect(createIssueForUser.mock.calls[0]?.[3]).toBe("PLUGIN");
+    expect(recordAudit).toHaveBeenCalledTimes(1);
+    expect(recordAudit.mock.calls[0]?.[0]).toMatchObject({
+      action: "plugin.acted",
+      actorId: "u1",
+      target: { type: "plugin", id: "timeline" },
+      meta: { method: "issues.create", ref: "WEB-1" },
+    });
+  });
+
+  it("logs nothing for a read, or a refused write", async () => {
+    confirm("issues:read", "issues:write");
+    listIssuesForUser.mockResolvedValue({ rows: [], hasMore: false });
+    await callBridge("u1", place, "issues.list", {});
+    createIssueForUser.mockResolvedValue({ ok: false, status: 404 });
+    expect(
+      await callBridge("u1", place, "issues.create", { title: "x" }),
+    ).toEqual({ ok: false, error: "not_found" });
+    expect(recordAudit).not.toHaveBeenCalled();
+  });
+
+  it("needs fields:write to set custom field values", async () => {
+    confirm("issues:write");
+    expect(
+      await callBridge("u1", place, "issues.create", {
+        title: "x",
+        customFields: { size: 3 },
+      }),
+    ).toEqual({ ok: false, error: "capability_not_confirmed" });
+  });
+
+  it("keeps a plugin's storage within its limits", async () => {
+    confirm("storage:own");
+    db.pluginStorage.aggregate.mockResolvedValue({
+      _sum: { size: 0 },
+      _count: 0,
+    });
+    db.pluginStorage.findUnique.mockResolvedValue(null);
+    expect(
+      await callBridge("u1", place, "storage.set", {
+        key: "a",
+        value: { n: 1 },
+      }),
+    ).toEqual({ ok: true, result: null });
+    expect(db.pluginStorage.upsert.mock.calls[0]?.[0]).toMatchObject({
+      create: { activationId: "act1", key: "a" },
+    });
+    expect(
+      await callBridge("u1", place, "storage.set", {
+        key: "big",
+        value: "x".repeat(70 * 1024),
+      }),
+    ).toEqual({ ok: false, error: "storage_full" });
+    db.pluginStorage.aggregate.mockResolvedValue({
+      _sum: { size: 0 },
+      _count: 500,
+    });
+    expect(
+      await callBridge("u1", place, "storage.set", { key: "new", value: 1 }),
+    ).toEqual({ ok: false, error: "storage_full" });
+  });
+
+  it("gives a plugin its own settings, defaults filled in", async () => {
+    confirm();
+    db.plugin.findFirst.mockResolvedValue({
+      id: "row1",
+      manifest: {
+        ...manifest,
+        contributes: {
+          ...manifest.contributes,
+          settings: [
+            { key: "zoom", type: "number", label: "Zoom", default: 2 },
+            { key: "title", type: "text", label: "Title" },
+          ],
+        },
+      },
+    });
+    db.pluginSettings.findUnique.mockResolvedValue({ values: { title: "Hi" } });
+    expect(await callBridge("u1", place, "settings.get", {})).toEqual({
+      ok: true,
+      result: { zoom: 2, title: "Hi" },
     });
   });
 });
