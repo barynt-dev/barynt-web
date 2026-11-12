@@ -231,7 +231,7 @@
     "scopeNoProject": "No visible project",
     "scopeStore": "Plugin store",
     "group": {
-      "account": "Account",
+      "account": "Profile",
       "preferences": "Preferences",
       "developer": "Developers",
       "project": "Project",
