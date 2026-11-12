@@ -58,7 +58,7 @@ Zwei Schritte: Der Workspace schaltet ein Plugin frei, dann schaltet jedes Proje
 
 ### Freischalten im Plugin Store
 
-Öffne die **Einstellungen** und wähle im Umschalter oben **Plugin Store**, neben Persönlich, Projekt und Workspace. Ihn sehen nur die Manager des Workspaces – wer im Workspace die Berechtigung _Switch installed plugins on and off and configure them_ hat (Owner, Admins und Manager).
+Öffne die **Einstellungen** und wähle im Umschalter oben **Plugin Store**, neben Persönlich, Projekt und Workspace. Ihn sehen nur die Manager des Workspaces – wer im Workspace die Berechtigung _Switch installed plugins on and off and configure them_ hat (Owner, Admins und Manager) – und erst, wenn auf dem Server ein Plugin installiert ist. Plattform-Admins sehen ihn schon vorher, mit einer Startseite, die erklärt, wie Plugins installiert werden.
 
 Der Store zeigt alle Plugins, die deine Plattform-Admins installiert haben, mit Suche, Kategorien, Screenshots und dem, was sie dürfen. Bist du in mehreren Workspaces, wählst du oben in der Liste einen aus – wie in den Workspace-Einstellungen. Öffne ein Plugin; eine Zeile unter dem Namen zeigt, ob es in diesem Workspace freigeschaltet ist und in welchen Projekten es an ist.
 

@@ -2732,7 +2732,6 @@
     "blockedByAdmin": "A platform admin blocked this plugin. It runs nowhere until it’s unblocked.",
     "projectsHeading": "Projects",
     "scopeStoreTitle": "Plugin store",
-    "scopeStoreEmpty": "No plugin is installed on this server yet. Platform admins install plugins under Admin → Plugins.",
     "scopeFilter": {
       "all": "All · {count}",
       "on": "Released · {count}",
@@ -2769,6 +2768,15 @@
     "switchOnHint": "Your workspace released “{name}”. Check what it may do in this project and switch it on.",
     "switchOnConfirm": "I've checked what it may do and confirm it for this project.",
     "switchOn": "Switch on",
-    "noSettings": "This plugin has no settings. It runs in this project."
+    "noSettings": "This plugin has no settings. It runs in this project.",
+    "scopeWelcomeTitle": "No plugins installed yet",
+    "scopeWelcomeText": "Plugins add views, widgets and connections to other tools to Barynt. As a platform admin you install them from a source in the admin area — they then show up here, and you release them for this workspace.",
+    "scopeWelcomeAction": "Go to Admin → Plugins",
+    "scopeStepInstallTitle": "Add a source and install",
+    "scopeStepInstallText": "Under Admin → Plugins, add a Git repository or a web server with a plugins.json and install the plugins you want.",
+    "scopeStepReleaseTitle": "Release for the workspace",
+    "scopeStepReleaseText": "Here in the plugin store you check what a plugin may do and release it for the workspace.",
+    "scopeStepProjectsTitle": "Switch on in projects",
+    "scopeStepProjectsText": "Released plugins are listed under Plugins in every project's settings — project admins switch them on there."
   }
 }

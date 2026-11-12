@@ -140,4 +140,11 @@ describe("ScopeStore", () => {
     expect(html).not.toMatch(/>release</);
     expect(html).toContain("blockedByAdmin");
   });
+
+  it("explains how plugins come in while nothing is installed", () => {
+    const html = render(view({ plugins: [] }), null);
+    expect(html).toContain("scopeWelcomeTitle");
+    expect(html).toContain('href="/admin/plugins"');
+    expect(html).not.toContain("groupAvailable");
+  });
 });

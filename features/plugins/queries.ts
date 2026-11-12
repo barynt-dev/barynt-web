@@ -452,11 +452,16 @@ const hasSettingsForm = (manifest: unknown) => {
 
 /**
  * Whether the person may open the workspace's plugin store: `plugin.enable`
- * in the workspace — the workspace's managers. They release plugins here;
- * the projects switch released ones on in their own settings.
+ * in the workspace — the workspace's managers, who release plugins here; the
+ * projects switch released ones on in their own settings. While the platform
+ * has nothing installed, the store has nothing to offer either: then only a
+ * platform admin (`plugin.manage`) sees it, with a start page on how to
+ * install plugins.
  */
 export async function canUsePluginStore(workspaceId: string): Promise<boolean> {
-  return hasPermission("plugin.enable", { workspaceId });
+  if (!(await hasPermission("plugin.enable", { workspaceId }))) return false;
+  const installed = await db.plugin.count({ where: { status: "active" } });
+  return installed > 0 || hasPermission("plugin.manage", PLATFORM);
 }
 
 /**

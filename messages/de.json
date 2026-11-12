@@ -2732,7 +2732,6 @@
     "blockedByAdmin": "Ein Plattform-Admin hat dieses Plugin gesperrt. Es läuft nirgends, bis es entsperrt ist.",
     "projectsHeading": "Projekte",
     "scopeStoreTitle": "Plugin Store",
-    "scopeStoreEmpty": "Auf diesem Server ist noch kein Plugin installiert. Plattform-Admins installieren Plugins unter Admin → Plugins.",
     "scopeFilter": {
       "all": "Alle · {count}",
       "on": "Freigeschaltet · {count}",
@@ -2769,6 +2768,15 @@
     "switchOnHint": "Dein Workspace hat „{name}“ freigeschaltet. Prüfe, was es in diesem Projekt darf, und schalte es ein.",
     "switchOnConfirm": "Ich habe geprüft, was es darf, und bestätige es für dieses Projekt.",
     "switchOn": "Einschalten",
-    "noSettings": "Dieses Plugin hat keine Einstellungen. Es läuft in diesem Projekt."
+    "noSettings": "Dieses Plugin hat keine Einstellungen. Es läuft in diesem Projekt.",
+    "scopeWelcomeTitle": "Noch keine Plugins installiert",
+    "scopeWelcomeText": "Plugins erweitern Barynt um Ansichten, Widgets und Verbindungen zu anderen Tools. Als Plattform-Admin installierst du sie im Admin-Bereich aus einer Quelle – danach erscheinen sie hier, und du schaltest sie für diesen Workspace frei.",
+    "scopeWelcomeAction": "Zu Admin → Plugins",
+    "scopeStepInstallTitle": "Quelle hinzufügen und installieren",
+    "scopeStepInstallText": "Unter Admin → Plugins ein Git-Repository oder einen Webserver mit einer plugins.json hinzufügen und die gewünschten Plugins installieren.",
+    "scopeStepReleaseTitle": "Für den Workspace freischalten",
+    "scopeStepReleaseText": "Hier im Plugin Store prüfst du, was ein Plugin darf, und schaltest es für den Workspace frei.",
+    "scopeStepProjectsTitle": "In Projekten einschalten",
+    "scopeStepProjectsText": "Freigeschaltete Plugins stehen in den Einstellungen jedes Projekts unter Plugins – dort schalten Projekt-Admins sie ein."
   }
 }

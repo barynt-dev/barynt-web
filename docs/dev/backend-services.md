@@ -247,8 +247,8 @@ A **project** may only switch on what its workspace released for projects (`Plug
 projects' activations off and keeps their data. The pages are **Admin → Plugins**, the
 store (`features/plugins/components/PluginStore`, `plugin.manage`, BARY-200) and the
 workspace's **Plugin store** (`/<workspace>/plugins`, `ScopeStore`, BARY-201) — a fourth
-entry in the settings switcher, only for `plugin.enable` in the workspace
-(`canUsePluginStore`); each loads its view through `features/plugins/queries.ts`,
+entry in the settings switcher, only for `plugin.enable` in the workspace, and while
+nothing is installed only for a platform admin, who gets a start page (`canUsePluginStore`); each loads its view through `features/plugins/queries.ts`,
 which checks the permission again. `getScopeStoreView` lists the installed plugins with
 their activations in the workspace and its projects. The store's one switch is the
 **release**: activating in the workspace where the plugin has that level, plus the

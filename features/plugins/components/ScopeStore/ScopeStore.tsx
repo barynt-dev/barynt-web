@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Avatar } from "@/components/ui/atoms/Avatar/Avatar";
+import buttonStyles from "@/components/ui/atoms/Button/button.module.scss";
 import { Chip } from "@/components/ui/atoms/Chip/Chip";
 import { Input } from "@/components/ui/atoms/Input/Input";
 import { PageHeader } from "@/components/ui/layout/PageHeader/PageHeader";
@@ -17,7 +18,7 @@ import type {
   ScopeStoreView,
 } from "@/features/plugins/queries";
 import { Link } from "@/i18n/navigation";
-import { pluginStorePath } from "@/lib/nav";
+import { adminPath, pluginStorePath } from "@/lib/nav";
 import { PLUGIN_CATEGORIES } from "@/lib/plugins/directory";
 import { CapabilityCards } from "../PluginStore/capabilities";
 import { PluginTile } from "../PluginStore/PluginTile";
@@ -93,6 +94,16 @@ export function ScopeStore({
     on: view.plugins.filter(isOn).length,
     available: view.plugins.filter((p) => !isOn(p)).length,
   };
+
+  // Nothing installed yet — only a platform admin gets here then
+  // (`canUsePluginStore`): how plugins come in, and where to start.
+  if (view.plugins.length === 0)
+    return (
+      <>
+        <PageHeader divider={false} title={text.t("scopeStoreTitle")} />
+        <ScopeStoreWelcome />
+      </>
+    );
 
   return (
     <>
@@ -177,11 +188,7 @@ export function ScopeStore({
             </div>
           )}
           {shown.length === 0 && (
-            <p className={store.listEmpty}>
-              {view.plugins.length === 0
-                ? text.t("scopeStoreEmpty")
-                : text.t("noMatches")}
-            </p>
+            <p className={store.listEmpty}>{text.t("noMatches")}</p>
           )}
           <ListGroup
             title={text.t("groupOnHere")}
@@ -216,6 +223,63 @@ export function ScopeStore({
 }
 
 type Href = (to: Parameters<typeof pluginStorePath>[1]) => string;
+
+/** The store's start page while the platform has no plugin installed: what
+ *  plugins are, the three steps from a source to a project, and the way to
+ *  the first one — the admin store. Built like that store's own start page
+ *  (`StoreWelcome`). */
+function ScopeStoreWelcome() {
+  const text = usePluginText();
+  return (
+    <section className={`${store.welcome} ${scope.welcome}`}>
+      <div className={store.hero}>
+        <div className={store.heroText}>
+          <span className={store.heroKicker}>
+            <Icon icon="lucide:store" width={14} aria-hidden />
+            {text.t("scopeStoreTitle")}
+          </span>
+          <h2 className={store.heroTitle}>{text.t("scopeWelcomeTitle")}</h2>
+          <p>{text.t("scopeWelcomeText")}</p>
+          <div className={store.heroActions}>
+            <Link
+              href={adminPath("plugins")}
+              className={[
+                buttonStyles.btn,
+                buttonStyles.primary,
+                buttonStyles.md,
+                buttonStyles.hasIcon,
+              ].join(" ")}
+            >
+              <Icon icon="lucide:shield" width={15} aria-hidden />
+              {text.t("scopeWelcomeAction")}
+            </Link>
+          </div>
+        </div>
+        <div className={store.heroTiles} aria-hidden>
+          {["git", "chat", "zeit", "sync", "kpi", "plus"].map((id) => (
+            <PluginTile
+              key={id}
+              id={id}
+              name={id === "plus" ? "+" : id}
+              size="lg"
+            />
+          ))}
+        </div>
+      </div>
+      <ol className={store.steps}>
+        {(
+          ["scopeStepInstall", "scopeStepRelease", "scopeStepProjects"] as const
+        ).map((key, i) => (
+          <li key={key} className={store.stepCard}>
+            <span className={store.stepNumber}>{i + 1}</span>
+            <strong>{text.t(`${key}Title`)}</strong>
+            <span className={store.muted}>{text.t(`${key}Text`)}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
 
 function ListGroup({
   title,
@@ -293,59 +357,55 @@ function Home({
         <h2>{text.t("scopeStoreIntroTitle")}</h2>
         <p>{text.t("scopeStoreIntro")}</p>
       </header>
-      {view.plugins.length === 0 ? (
-        <p className={store.listEmpty}>{text.t("scopeStoreEmpty")}</p>
-      ) : (
-        <section className={store.homeSection}>
-          {used.length > 0 && (
-            <div className={store.filters}>
+      <section className={store.homeSection}>
+        {used.length > 0 && (
+          <div className={store.filters}>
+            <Chip
+              type="filter"
+              selected={picked === null}
+              onClick={() => setPicked(null)}
+            >
+              {text.t("categoryAll")}
+            </Chip>
+            {used.map((c) => (
               <Chip
+                key={c}
                 type="filter"
-                selected={picked === null}
-                onClick={() => setPicked(null)}
+                selected={picked === c}
+                onClick={() => setPicked(c)}
               >
-                {text.t("categoryAll")}
+                {text.t(`category.${c}` as "category.planning")}
               </Chip>
-              {used.map((c) => (
-                <Chip
-                  key={c}
-                  type="filter"
-                  selected={picked === c}
-                  onClick={() => setPicked(c)}
-                >
-                  {text.t(`category.${c}` as "category.planning")}
-                </Chip>
-              ))}
-            </div>
-          )}
-          <div className={store.grid}>
-            {shown.map((p) => (
-              <Link
-                key={p.pluginId}
-                href={href({ plugin: p.pluginId })}
-                className={store.gridCard}
-              >
-                <span className={store.cardTop}>
-                  <PluginTile id={p.pluginId} name={p.name} />
-                  <span className={store.itemText}>
-                    <span className={store.itemName}>{p.name}</span>
-                    <span className={store.itemSub}>{p.author}</span>
-                  </span>
-                </span>
-                <span className={store.gridText}>{p.description}</span>
-                <span className={store.cardFoot}>
-                  <PluginBadges kind={p.kind} levels={p.levels} size="md" />
-                  {isOn(p) && (
-                    <span className={store.cardState} data-state="installed">
-                      {text.t("groupOnHere")}
-                    </span>
-                  )}
-                </span>
-              </Link>
             ))}
           </div>
-        </section>
-      )}
+        )}
+        <div className={store.grid}>
+          {shown.map((p) => (
+            <Link
+              key={p.pluginId}
+              href={href({ plugin: p.pluginId })}
+              className={store.gridCard}
+            >
+              <span className={store.cardTop}>
+                <PluginTile id={p.pluginId} name={p.name} />
+                <span className={store.itemText}>
+                  <span className={store.itemName}>{p.name}</span>
+                  <span className={store.itemSub}>{p.author}</span>
+                </span>
+              </span>
+              <span className={store.gridText}>{p.description}</span>
+              <span className={store.cardFoot}>
+                <PluginBadges kind={p.kind} levels={p.levels} size="md" />
+                {isOn(p) && (
+                  <span className={store.cardState} data-state="installed">
+                    {text.t("groupOnHere")}
+                  </span>
+                )}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
     </section>
   );
 }
