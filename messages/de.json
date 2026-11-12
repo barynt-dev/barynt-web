@@ -2777,6 +2777,11 @@
     "scopeStepReleaseTitle": "Für den Workspace freischalten",
     "scopeStepReleaseText": "Hier im Plugin Store prüfst du, was ein Plugin darf, und schaltest es für den Workspace frei.",
     "scopeStepProjectsTitle": "In Projekten einschalten",
-    "scopeStepProjectsText": "Freigeschaltete Plugins stehen in den Einstellungen jedes Projekts unter Plugins – dort schalten Projekt-Admins sie ein."
+    "scopeStepProjectsText": "Freigeschaltete Plugins stehen in den Einstellungen jedes Projekts unter Plugins – dort schalten Projekt-Admins sie ein.",
+    "frameError": "„{name}“ hat einen Fehler",
+    "frameTimeout": "„{name}“ antwortet nicht",
+    "frameReload": "Neu laden",
+    "projectViews": "Ansichten",
+    "openView": "Öffnen"
   }
 }

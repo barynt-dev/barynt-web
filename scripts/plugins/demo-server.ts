@@ -11,8 +11,10 @@
 //     http://localhost:4555/barynt-demo/plugins   (provider Gitea / Forgejo)
 //     http://localhost:4555/plugins.json          (web server)
 //
-// The plugins only exist to be installed and switched on — they run nothing.
+// Most plugins only exist to be installed and switched on. Demo Timeline
+// runs for real (BARY-144): its code is `demo-plugins/timeline.js`.
 
+import { readFileSync } from "node:fs";
 import {
   type DirectoryEntry,
   type ReleaseFiles,
@@ -24,6 +26,8 @@ import { type DemoScreen, demoScreenshot } from "./demo-images";
 const PORT = Number(process.env.PORT ?? 4555);
 const ORIGIN = `http://localhost:${PORT}`;
 const enc = (s: string) => new TextEncoder().encode(s);
+const demoFile = (name: string) =>
+  readFileSync(new URL(`./demo-plugins/${name}`, import.meta.url), "utf8");
 
 interface Demo {
   entry: Omit<DirectoryEntry, "versions">;
@@ -34,6 +38,9 @@ interface Demo {
   tampered?: boolean;
   /** Screenshots in the release (BARY-199). */
   previews?: { title: string; screen: DemoScreen; accent: string }[];
+  /** Real code instead of the placeholder: `demo-plugins/<name>.js` and
+   *  `.css` (BARY-144). */
+  code?: string;
 }
 
 const DEMOS: Demo[] = [
@@ -68,6 +75,7 @@ const DEMOS: Demo[] = [
         capabilities: ["issues:read", "issues:write", "ui:project-view"],
       },
     },
+    code: "timeline",
     previews: [
       { title: "Timeline per project", screen: "timeline", accent: "#e8743b" },
       { title: "Drag to reschedule", screen: "board", accent: "#e8743b" },
@@ -256,12 +264,18 @@ const directory = DEMOS.map((demo) => {
       );
     const files: ReleaseFiles = {
       "manifest.json": enc(JSON.stringify(manifest, null, 2)),
-      ...(demo.entry.kind === "sandbox" && {
-        "main.js": enc(
-          `// ${demo.entry.name} ${version} — a demo, it runs nothing.\nexport default class {}\n`,
-        ),
-        "styles.css": enc(".demo { color: inherit; }\n"),
-      }),
+      ...(demo.entry.kind === "sandbox" &&
+        (demo.code
+          ? {
+              "main.js": enc(demoFile(`${demo.code}.js`)),
+              "styles.css": enc(demoFile(`${demo.code}.css`)),
+            }
+          : {
+              "main.js": enc(
+                `// ${demo.entry.name} ${version} — a demo, it runs nothing.\nexport default class {}\n`,
+              ),
+              "styles.css": enc(".demo { color: inherit; }\n"),
+            })),
       ...Object.fromEntries(
         (demo.previews ?? []).map((p, i) => [
           `preview-${i + 1}.png`,

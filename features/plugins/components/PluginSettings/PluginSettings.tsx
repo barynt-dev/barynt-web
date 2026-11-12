@@ -49,9 +49,12 @@ function initial(field: PluginSettingField, stored: unknown): Value {
 export function PluginSettings({
   view,
   scope,
+  viewsHref,
 }: {
   view: PluginSettingsView;
   scope: { workspaceId: string; projectId: string | null };
+  /** Where the plugin's project views open, `<viewsHref>/<viewId>`. */
+  viewsHref?: string;
 }) {
   const t = useTranslations();
   const text = usePluginText();
@@ -198,6 +201,30 @@ export function PluginSettings({
                 {running ? text.t("confirmAgain") : text.t("switchOn")}
               </Button>
             </div>
+          </section>
+        )}
+
+        {running && viewsHref && view.views.length > 0 && (
+          <section className={styles.views} aria-labelledby="plugin-views">
+            <h2 id="plugin-views">{text.t("projectViews")}</h2>
+            <ul>
+              {view.views.map((v) => (
+                <li key={v.id}>
+                  <Link
+                    href={`${viewsHref}/${v.id}`}
+                    className={styles.viewLink}
+                  >
+                    <Icon
+                      icon="lucide:layout-panel-top"
+                      width={16}
+                      aria-hidden
+                    />
+                    <span>{v.title}</span>
+                    <Icon icon="lucide:arrow-right" width={15} aria-hidden />
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 

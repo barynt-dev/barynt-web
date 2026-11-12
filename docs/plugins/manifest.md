@@ -61,3 +61,5 @@ bun scripts/validate-plugin-manifest.ts manifest.json
 
 Execution inside the Barynt server process is not a plugin kind. That is
 reserved for Barynt's own code.
+
+How a sandboxed plugin's code runs, and what it can call: [runtime.md](runtime.md).
