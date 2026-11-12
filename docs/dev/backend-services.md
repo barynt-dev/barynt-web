@@ -280,6 +280,16 @@ Gitea / Forgejo) or `http://localhost:4555/plugins.json` as a source under
 **Admin → Plugins**. The variable is ignored in production and for anything but
 localhost (`lib/plugins/dev.ts`).
 
+**Running a sandboxed plugin (BARY-144).** `/api/plugins/frame` serves a plugin's frame:
+`main.js` and `styles.css` inline (`lib/plugins/frame.ts`) under a CSP that makes it a sandbox
+with an opaque origin and no network. The host component (`PluginFrame`) hands the frame a
+private `MessageChannel` with its context and the design tokens, and forwards each request
+to `/api/plugins/bridge`. `features/plugins/runtime.ts` checks every request there
+(`findRunningPlugin`: switched on in that place, active version, place visible to the
+person; then the method's capability from `lib/plugins/bridge.ts#BRIDGE_METHODS` among the
+confirmed ones) and answers through the same `*ForUser` functions as the REST API. For
+plugin authors: `docs/plugins/runtime.md`.
+
 ## Smaller pieces
 
 | Piece | File | What it does |

@@ -152,6 +152,9 @@ export function PluginFrame({
     };
 
     el.addEventListener("load", start);
+    // The address only now, with the listener in place: a frame that loads
+    // fast would otherwise be done before anyone hears it.
+    el.src = src;
 
     // Light or dark switched: the frame follows.
     const sendTheme = () => post({ type: "theme", theme: readTheme() });
@@ -179,7 +182,6 @@ export function PluginFrame({
         key={attempt}
         ref={frame}
         className={styles.frame}
-        src={src}
         title={name}
         sandbox="allow-scripts"
         referrerPolicy="no-referrer"
