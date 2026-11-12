@@ -37,3 +37,20 @@ export function searchSections(
     )
     .filter((section) => section.items.length > 0);
 }
+
+/** The hits as the dropdown lists them: a page drops out where one of its
+ *  own settings is a hit too — "Name" finds First name and Last name, not
+ *  General above them. A page without a setting hit stays (Members). */
+export function preferSettings(
+  sections: SettingsNavSection[],
+): SettingsNavSection[] {
+  return sections.map((section) => {
+    const withSetting = new Set(
+      section.items.filter((i) => i.focus).map((i) => i.href),
+    );
+    return {
+      ...section,
+      items: section.items.filter((i) => i.focus || !withSetting.has(i.href)),
+    };
+  });
+}

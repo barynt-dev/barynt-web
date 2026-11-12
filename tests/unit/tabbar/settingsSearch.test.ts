@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { searchSections } from "@/components/ui/layout/SettingsNav/searchSections";
+import {
+  preferSettings,
+  searchSections,
+} from "@/components/ui/layout/SettingsNav/searchSections";
 import {
   ACCOUNT_SETTINGS_NAV,
   PROJECT_SETTINGS_NAV,
@@ -118,4 +121,20 @@ describe("searchable settings", () => {
         }
       });
     }
+});
+
+describe("preferSettings", () => {
+  const page = { href: "/account", label: "Allgemein", icon: "x" };
+  const first = { ...page, label: "Vorname", focus: "Vorname" };
+  const members = { href: "/members", label: "Mitglieder", icon: "x" };
+
+  it("drops a page whose own setting is a hit too", () => {
+    const [section] = preferSettings([
+      { title: "Persönlich", items: [page, members, first] },
+    ]);
+    expect(section?.items.map((i) => i.label)).toEqual([
+      "Mitglieder",
+      "Vorname",
+    ]);
+  });
 });

@@ -12,7 +12,11 @@ import {
 } from "react";
 import { Input } from "@/components/ui/atoms/Input/Input";
 import type { SettingsNavItem } from "./SettingsNav";
-import { type SettingsNavSection, searchSections } from "./searchSections";
+import {
+  preferSettings,
+  type SettingsNavSection,
+  searchSections,
+} from "./searchSections";
 import styles from "./settingsSearch.module.scss";
 import { OPEN_PARAM } from "./settingsView";
 
@@ -96,7 +100,7 @@ export function SettingsSearchField() {
   const groups: SettingsNavSection[] = [];
   let left = MAX_HITS;
   for (const section of query.trim()
-    ? searchSections(search.index, query)
+    ? preferSettings(searchSections(search.index, query))
     : []) {
     if (left <= 0) break;
     const items = section.items.slice(0, left);
