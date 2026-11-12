@@ -14,6 +14,7 @@ export const pluginActionsMock = () => ({
   refreshPluginSource: mock(),
   removePluginSource: mock(),
   rollbackPlugin: mock(),
+  savePluginSettings: mock(),
   setPluginBlocked: mock(),
   setPluginGrant: mock(),
   uninstallPlugin: mock(),

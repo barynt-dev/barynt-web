@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@iconify/react";
+import type { ReactNode } from "react";
 import { Avatar, type AvatarShape } from "@/components/ui/atoms/Avatar/Avatar";
 import { Badge } from "@/components/ui/atoms/Badge/Badge";
 import styles from "@/components/ui/atoms/Button/button.module.scss";
@@ -11,6 +12,8 @@ import navStyles from "./navLink.module.scss";
 export interface NavLinkProps {
   href: string;
   icon?: string;
+  /** A mark of its own in place of `icon` — a plugin's tile, say. */
+  leading?: ReactNode;
   label: string;
   activeHref?: string;
   badge?: number;
@@ -37,6 +40,7 @@ export interface NavLinkProps {
 export function NavLink({
   href,
   icon,
+  leading,
   label,
   activeHref,
   badge,
@@ -52,6 +56,7 @@ export function NavLink({
     return isNavActive(pathname, href, activeHref);
   }
   function renderLeadingIcon() {
+    if (leading) return leading;
     // Without its own icon, the entry represents a named entity (project,
     // workspace, ...) rather than a route — the same image-or-initials logic
     // used everywhere else entities show up (`Avatar`), instead of an

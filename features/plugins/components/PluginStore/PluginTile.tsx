@@ -19,7 +19,7 @@ export function PluginTile({
 }: {
   id: string;
   name: string;
-  size?: "md" | "lg";
+  size?: "sm" | "md" | "lg";
 }) {
   return (
     <span

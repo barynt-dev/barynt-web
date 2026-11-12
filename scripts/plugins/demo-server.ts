@@ -92,7 +92,37 @@ const DEMOS: Demo[] = [
       license: "Apache-2.0",
       network: ["hooks.example.com"],
       contributes: {
-        settings: [{ key: "channel", type: "text", label: "Channel" }],
+        settings: [
+          {
+            key: "channel",
+            type: "text",
+            label: "Channel",
+            description: "Where new issues are posted, e.g. #dev.",
+          },
+          {
+            key: "events",
+            type: "select",
+            label: "What to post",
+            default: "new",
+            options: [
+              { id: "new", label: "New issues" },
+              { id: "done", label: "New and done issues" },
+              { id: "all", label: "Every change" },
+            ],
+          },
+          {
+            key: "mentionAssignee",
+            type: "boolean",
+            label: "Mention the assignee",
+            default: true,
+          },
+          {
+            key: "quietHours",
+            type: "number",
+            label: "Quiet after (hour, 0–23)",
+            description: "No posts after this hour until 8 am.",
+          },
+        ],
       },
     },
     versions: { "1.0.0": { capabilities: ["events:issue", "notify:send"] } },

@@ -1,5 +1,6 @@
 import { Icon } from "@iconify/react";
-import { Link } from "@/i18n/navigation";
+import type { ReactNode } from "react";
+import { Tab, Tabs } from "@/components/ui/layout/Tabs/Tabs";
 import type { SettingsScopeKey, VisibleSettingsScopeEntry } from "@/lib/nav";
 import styles from "./settingsHeader.module.scss";
 
@@ -15,6 +16,8 @@ interface Props {
   active: SettingsScopeKey;
   /** Names the switcher for screen readers, e.g. "Settings scope". */
   label: string;
+  /** At the right end of the row — the settings search, on a desktop. */
+  trailing?: ReactNode;
 }
 
 /**
@@ -31,37 +34,27 @@ interface Props {
  * edges of the two columns (`SettingsNav`, `PageHeader`) — that way it runs
  * across the full width and stays one line instead of two.
  *
- * Deliberately built from links rather than buttons: each scope has its own
- * address, and a link can be opened in a new tab. That means the row needs
- * no `"use client"` — which scope is active is known by the layout that
- * renders it, not by the browser.
+ * The scopes are tabs (`Tabs`, BARY-201), links each: every scope has its
+ * own address, and a link can be opened in a new tab. Which one is active is
+ * known by the layout that renders the row, not by the browser. At its right
+ * end there's room for the settings search (`trailing`).
  */
-export function SettingsHeader({ items, active, label }: Props) {
+export function SettingsHeader({ items, active, label, trailing }: Props) {
   return (
     <header className={styles.bar}>
-      <nav className={styles.scope} aria-label={label}>
-        {items.map((item) => {
-          const content = (
-            <>
-              <Icon className={styles.icon} icon={item.icon} width={15} />
-              {item.label}
-            </>
-          );
-
-          const isActive = item.key === active;
-          return (
-            <Link
-              key={item.key}
-              href={item.href}
-              className={styles.segment}
-              data-active={isActive || undefined}
-              aria-current={isActive ? "page" : undefined}
-            >
-              {content}
-            </Link>
-          );
-        })}
-      </nav>
+      <Tabs label={label} className={styles.scope}>
+        {items.map((item) => (
+          <Tab
+            key={item.key}
+            href={item.href}
+            active={item.key === active}
+            icon={<Icon icon={item.icon} width={15} />}
+          >
+            {item.label}
+          </Tab>
+        ))}
+      </Tabs>
+      {trailing && <div className={styles.trailing}>{trailing}</div>}
     </header>
   );
 }

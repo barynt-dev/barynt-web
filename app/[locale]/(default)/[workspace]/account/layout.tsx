@@ -1,17 +1,21 @@
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { enabledOAuthProviders } from "@/auth.config";
 import { SettingsHeader } from "@/components/ui/layout/SettingsHeader/SettingsHeader";
 import { SettingsBody } from "@/components/ui/layout/SettingsNav/SettingsBody";
+import { SettingsNav } from "@/components/ui/layout/SettingsNav/SettingsNav";
 import {
-  SettingsNav,
-  type SettingsNavItem,
-} from "@/components/ui/layout/SettingsNav/SettingsNav";
+  SettingsSearchField,
+  SettingsSearchProvider,
+} from "@/components/ui/layout/SettingsNav/SettingsSearch";
 import { getMyProfile } from "@/features/account/queries";
+import { canUsePluginStore } from "@/features/plugins/queries";
+import {
+  accountNav,
+  settingsSearchIndex,
+} from "@/features/settings/navigation";
 import { getWorkspaceProjects } from "@/features/workspaces/queries";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
 import {
-  ACCOUNT_SETTINGS_NAV,
   accountPath,
   PROJECT_SETTINGS_PERMISSIONS,
   settingsScopeItems,
@@ -71,6 +75,7 @@ export default async function AccountLayout({
         workspace: t("settings.scopeWorkspace"),
         project: t("settings.scopeProject"),
         account: t("settings.scopeAccount"),
+        store: t("settings.scopeStore"),
       },
     }),
     {
@@ -78,47 +83,49 @@ export default async function AccountLayout({
       project: projectAccess
         ? PROJECT_SETTINGS_PERMISSIONS.some(projectAccess.has)
         : false,
+      store: await canUsePluginStore(workspace),
     },
   );
 
-  // No provider configured → no list to show. The tab drops out entirely
-  // instead of standing there empty (see security/page.tsx for the matching
-  // case in the security view).
-  const hasOAuthProviders = enabledOAuthProviders.length > 0;
-
-  const items: SettingsNavItem[] = ACCOUNT_SETTINGS_NAV.filter(
-    (entry) => entry.section !== "connections" || hasOAuthProviders,
-  ).map((entry) => ({
-    href: accountPath(workspace, entry.section),
-    label: t(`nav.${entry.labelKey}`),
-    icon: entry.icon,
-    // Without a keyboard there's nothing to press shortcuts on.
-    needsKeyboard: entry.section === "shortcuts" || undefined,
-  }));
+  // The search looks through Project and Workspace too, as far as the
+  // switcher above leads there (BARY-201).
+  const searchIndex = await settingsSearchIndex(t, {
+    workspaceId: workspace,
+    workspaceAccess,
+    project: firstProject ?? null,
+    projectAccess,
+  });
 
   return (
     <div className={styles.shell}>
-      {/* Only "Personal" remaining means: nothing to switch between. */}
-      {scope.length > 1 && (
+      <SettingsSearchProvider
+        index={searchIndex}
+        label={t("settings.search")}
+        noHitsLabel={t("settings.noHits")}
+      >
         <SettingsHeader
-          items={scope}
+          // Only "Personal" remaining means nothing to switch between: no
+          // tabs then, just the search.
+          items={scope.length > 1 ? scope : []}
           active="account"
           label={t("settings.scopeLabel")}
+          trailing={<SettingsSearchField />}
         />
-      )}
-      <SettingsBody
-        className={styles.body}
-        basePath={accountPath(workspace, "")}
-        backLabel={t("nav.settings")}
-      >
-        <SettingsNav
-          subject={t("nav.account")}
-          title={t("nav.settings")}
-          items={items}
+        <SettingsBody
+          className={styles.body}
           basePath={accountPath(workspace, "")}
-        />
-        <div className={styles.panel}>{children}</div>
-      </SettingsBody>
+          backLabel={t("nav.settings")}
+        >
+          <SettingsNav
+            subject={t("nav.account")}
+            title={t("nav.settings")}
+            items={accountNav(t, workspace).items}
+          />
+          <div className={styles.panel} data-settings-panel>
+            {children}
+          </div>
+        </SettingsBody>
+      </SettingsSearchProvider>
     </div>
   );
 }
