@@ -245,9 +245,22 @@ then it may only use what was confirmed. Every step writes a `plugin.*` audit en
 A **project** may only switch on what its workspace released for projects (`PluginGrant`,
 `setPluginGrant`, `plugin.enable` in the workspace); taking the release back switches the
 projects' activations off and keeps their data. The pages are **Admin → Plugins**, the
-store (`features/plugins/components/PluginStore`, `plugin.manage`, BARY-200) and
-**Settings → Plugins** of a workspace or project (`ScopePlugins`, `plugin.enable`); each
-loads its view through `features/plugins/queries.ts`, which checks the permission again.
+store (`features/plugins/components/PluginStore`, `plugin.manage`, BARY-200) and the
+workspace's **Plugin store** (`/<workspace>/plugins`, `ScopeStore`, BARY-201) — a fourth
+entry in the settings switcher, only for `plugin.enable` in the workspace, and while
+nothing is installed only for a platform admin, who gets a start page (`canUsePluginStore`); each loads its view through `features/plugins/queries.ts`,
+which checks the permission again. `getScopeStoreView` lists the installed plugins with
+their activations in the workspace and its projects. The store's one switch is the
+**release**: activating in the workspace where the plugin has that level, plus the
+`PluginGrant` where it has the project level. A project switches a released plugin on
+from its own settings: `getPluginSettingsNav` lists every granted plugin under the
+project's **Plugins** group, and `settings/plugins/<pluginId>` (`PluginSettings`) switches
+it on (`activatePlugin`, confirming the capabilities), holds its settings form
+(`contributes.settings`) and switches it off. In the workspace, the group lists only the
+plugins running there with a settings form (the nav
+group); `savePluginSettings` keeps only the declared keys, checked by type
+(`lib/plugins/settings.ts#checkSettings`), into `PluginSettings.values`, and audits which
+keys changed (`plugin.settings.updated`), never their values.
 The store's view (`getPluginStoreView`) merges what's installed with every enabled
 source's directory, read through `readSourceRecent` (at most once per source every five
 minutes, per server process; `refreshPluginSource` and every source change forget it).

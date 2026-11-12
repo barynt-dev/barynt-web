@@ -1,12 +1,12 @@
+import type { ReactNode } from "react";
 import { Avatar } from "@/components/ui/atoms/Avatar/Avatar";
-import { NavLink } from "@/components/ui/layout/NavLink/NavLink";
-import { KeyboardOnly } from "./KeyboardOnly";
+import { SettingsNavSections } from "./SettingsNavSections";
 import {
   type SettingsNavSubject,
   SettingsSubjectMenu,
 } from "./SettingsSubjectMenu";
+import type { SettingsNavSection } from "./searchSections";
 import styles from "./settingsNav.module.scss";
-import { OPEN_PARAM } from "./settingsView";
 
 export type { SettingsNavSubject };
 
@@ -14,8 +14,23 @@ export interface SettingsNavItem {
   href: string;
   label: string;
   icon: string;
+  /** A mark of its own in place of `icon` — a plugin's tile, say. */
+  leading?: ReactNode;
   /** Shown only where there's a keyboard — the shortcuts page, say. */
   needsKeyboard?: boolean;
+  /** The heading it sits under. Neighbors with the same one share a
+   *  section; without one, the nav's `title`. */
+  group?: string;
+  /** What else finds it in the search — words from its page. */
+  keywords?: string[];
+  /** A scope's start page ("General"). On a phone that address is the
+   *  section list, so the row links with `?open` — the page, not the list. */
+  start?: boolean;
+  /** A single setting on the page rather than the page: its label, which
+   *  the page is searched for on arrival (`SettingsFocus`). */
+  focus?: string;
+  /** Under the label in the search's dropdown — the page a setting is on. */
+  context?: string;
 }
 
 interface Props {
@@ -40,12 +55,10 @@ interface Props {
    * for. This component checks nothing — it renders whatever it receives.
    */
   items: SettingsNavItem[];
-  /**
-   * Address of the settings' start page — the first entry ("General") lives
-   * there too. On a phone that address is the section list, so this entry
-   * links with `?open` to say "the page, not the list".
-   */
-  basePath: string;
+  /** More sections under a heading of their own, after `items` — the
+   *  plugins switched on here that have settings, say. Empty ones aren't
+   *  passed. */
+  groups?: SettingsNavSection[];
 }
 
 /**
@@ -74,7 +87,7 @@ export function SettingsNav({
   siblingsLabel,
   title,
   items,
-  basePath,
+  groups = [],
 }: Props) {
   // The header only becomes a switcher when there's something to switch
   // between: one's own account has no siblings, and a single project isn't
@@ -106,31 +119,24 @@ export function SettingsNav({
           </span>
         </div>
       )}
-      <p className={styles.title}>{title}</p>
-
-      <ul className={styles.list}>
-        {items.map((item) => {
-          const row = (
-            <li key={item.href}>
-              <NavLink
-                href={
-                  item.href === basePath
-                    ? `${item.href}?${OPEN_PARAM}=1`
-                    : item.href
-                }
-                activeHref={item.href}
-                icon={item.icon}
-                label={item.label}
-              />
-            </li>
-          );
-          return item.needsKeyboard ? (
-            <KeyboardOnly key={item.href}>{row}</KeyboardOnly>
-          ) : (
-            row
-          );
-        })}
-      </ul>
+      <SettingsNavSections
+        sections={[...sectionsOf(items, title), ...groups]}
+      />
     </nav>
   );
+}
+
+/** The items, cut into sections where their `group` changes. */
+function sectionsOf(
+  items: SettingsNavItem[],
+  fallback: string,
+): SettingsNavSection[] {
+  const sections: SettingsNavSection[] = [];
+  for (const item of items) {
+    const title = item.group ?? fallback;
+    const last = sections.at(-1);
+    if (last?.title === title) last.items.push(item);
+    else sections.push({ title, items: [item] });
+  }
+  return sections;
 }

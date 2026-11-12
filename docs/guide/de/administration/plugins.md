@@ -52,14 +52,80 @@ Die Seite eines Plugins hat vier Tabs:
 
 Jeder Schritt steht im [Protokoll](audit.md).
 
+## Einschalten (Workspace-Manager und Projekt-Admins)
+
+Zwei Schritte: Der Workspace schaltet ein Plugin frei, dann schaltet jedes Projekt es in seinen eigenen Einstellungen ein.
+
+### Freischalten im Plugin Store
+
+Öffne die **Einstellungen** und wähle im Umschalter oben **Plugin Store**, neben Persönlich, Projekt und Workspace. Ihn sehen nur die Manager des Workspaces – wer im Workspace die Berechtigung _Switch installed plugins on and off and configure them_ hat (Owner, Admins und Manager) – und erst, wenn auf dem Server ein Plugin installiert ist. Plattform-Admins sehen ihn schon vorher, mit einer Startseite, die erklärt, wie Plugins installiert werden.
+
+Der Store zeigt alle Plugins, die deine Plattform-Admins installiert haben, mit Suche, Kategorien, Screenshots und dem, was sie dürfen. Bist du in mehreren Workspaces, wählst du oben in der Liste einen aus – wie in den Workspace-Einstellungen. Öffne ein Plugin; eine Zeile unter dem Namen zeigt, ob es in diesem Workspace freigeschaltet ist und in welchen Projekten es an ist.
+
+**Freischalten** zeigt, was das Plugin darf; bestätigst du es, ist es freigeschaltet. Ein Plugin für Workspaces läuft dann im Workspace, ein Plugin für Projekte erscheint in den Einstellungen jedes Projekts. Nach einem Update, das mehr verlangt, bietet die Zeile unter dem Namen **Erneut bestätigen** an.
+
+**Freischaltung aufheben** schaltet das Plugin im Workspace und in allen seinen Projekten aus, und es verschwindet aus den Projekteinstellungen. Einstellungen und Daten bleiben.
+
+### Einschalten in einem Projekt
+
+Ein freigeschaltetes Plugin für Projekte hat in den Einstellungen jedes Projekts einen Eintrag unter **Plugins**, unterhalb der anderen Bereiche. Projekt-Admins öffnen ihn, prüfen, was es im Projekt darf, und klicken **Einschalten**. Läuft es, enthält die Seite das Formular, das das Plugin mitbringt (ein Kanalname, was gepostet wird, …), und unten das Ausschalten – Einstellungen und Daten bleiben, bis du **Daten löschen** wählst.
+
+### Einstellungen eines Plugins im Workspace
+
+Ein Plugin, das im Workspace läuft und Einstellungen hat, bekommt in den Workspace-Einstellungen einen Eintrag unter **Plugins** mit seinem Formular.
+
+## Installieren (Plattform-Admins)
+
+Öffne **Admin → Plugins**. Links stehen alle Plugins: was **Aufmerksamkeit braucht** (ein Update, ein gesperrtes Plugin), was **installiert** ist und was deine Quellen **im Verzeichnis** anbieten, mit Suche und Filtern. Rechts steht das Plugin, das du gewählt hast.
+
+![Der Plugin-Store: links die Liste, rechts ein Plugin mit seinen Screenshots](../../assets/de/plugins-store.webp)
+
+Ist kein Plugin gewählt, zeigt die rechte Seite die Startseite des Stores: wie viele Plugins installiert und eingeschaltet sind, wartende Updates, was das Verzeichnis anbietet und ob jede Quelle lesbar ist. Darunter stehen die Plugins, die das Verzeichnis **vorstellt**, was **neu im Verzeichnis** ist und **alle Plugins** nach Kategorie.
+
+1. **Quelle hinzufügen:** die Git-Adresse eines Repositorys mit einer `plugins.json` im Hauptverzeichnis, auf GitHub, GitLab, Gitea/Forgejo oder Bitbucket, auch auf selbst gehosteten Servern. Barynt erkennt den Anbieter an der Adresse; wenn nicht, wähl ihn aus. Optional gibst du einen Branch oder Tag an. Bei einem einfachen Webserver trägst du die Adresse der `plugins.json` selbst ein und wählst **Webserver (HTTPS)**. **Verbindung prüfen** liest das Verzeichnis, bevor du speicherst.
+
+   Für ein privates Repository gib Zugangsdaten an (ein Access Token, oder `Benutzer:Passwort` für Bitbucket-App-Passwörter und Webserver). Sie werden verschlüsselt gespeichert und nur an den Server dieser Quelle geschickt, nie an Plugins, die woanders liegen.
+
+   > [!NOTE]
+   > Ein Git-Server in eurem internen Netz ist gesperrt, solange er nicht in `PLUGIN_INTERNAL_HOSTS` steht.
+2. Wähl ein Plugin unter **Im Verzeichnis**. Seine Seite zeigt die Screenshots, was es verlangt und woher der Code kommt. Wähl eine Version, wenn du nicht die neueste willst.
+3. Klicke auf **Installieren**. Barynt lädt diese Version und prüft sie: Die Dateien müssen zu dem passen, was das Verzeichnis angibt, und die Version muss auf deinem Barynt laufen. Passt etwas nicht, wird es nicht installiert.
+4. Der Dialog zeigt die Screenshots des Plugins, falls es welche hat, dann Autor, Herkunft des Codes, Art, wo es nutzbar ist, was es verlangt und welche anderen Server es aufrufen darf. Setz den Haken und installiere.
+
+| Aktion | Was sie tut |
+| --- | --- |
+| **Aktualisieren** | Ein Plugin mit neuerer Version steht unter **Braucht Aufmerksamkeit** und zeigt **Auf … aktualisieren**. Workspaces und Projekte nutzen es weiter. Verlangt das Update mehr als vorher, müssen sie erneut bestätigen; bis dahin tut es nur, was bestätigt war. |
+| **Zurück zu v…** | Geht zur vorigen Version zurück. Die neuere bleibt installiert. |
+| **Sperren** | Stoppt das Plugin sofort überall. Aktivierungen und Daten bleiben und gelten wieder, sobald du es entsperrst. |
+| **Deinstallieren** | Entfernt alle Versionen. Du wählst, ob seine Daten in Workspaces und Projekten mit gelöscht werden oder ausgeschaltet erhalten bleiben. |
+
+Die Seite eines Plugins hat vier Tabs:
+
+- **Übersicht:** Screenshots, Beschreibung, was es verlangt und woher es kommt.
+- **Fähigkeiten:** alles, was es darf, nach Daten, Oberfläche und Ereignissen, und welche anderen Server es aufruft. Wartet ein Update, schaltest du zwischen **Jetzt** und **Nach dem Update** um und siehst vorher, was dazukommt (+) und was wegfällt (−).
+- **Versionen:** verfügbare, aktive und frühere Versionen mit ihren Release Notes, falls das Verzeichnis welche hat, und **Aktualisieren**, **Zurück zu v…** und älteren Releases zum Installieren.
+- **Wo aktiv:** jeder Workspace, der es eingeschaltet oder für Projekte freigegeben hat, und seine Projekte.
+
+![Fähigkeiten vor einem Update vergleichen](../../assets/de/plugins-capabilities.webp)
+
+**Quellen** unten in der Liste zeigt jede Quelle mit Anbieter, wann sie zuletzt gelesen wurde und ob es einen Fehler gab. Ein Verzeichnis wird höchstens alle paar Minuten gelesen; **Jetzt abrufen** liest es sofort neu.
+
+Jeder Schritt steht im [Protokoll](audit.md).
+
 ## Einschalten (Workspace- und Projekt-Admins)
 
-Öffne **Einstellungen → Plugins** im Workspace oder in einem Projekt. Du brauchst die Berechtigung _Switch installed plugins on and off and configure them_; Owner, Admins, Manager und Projekt-Admins haben sie.
+Öffne die **Einstellungen** und wähle im Umschalter oben **Plugin Store**, neben Persönlich, Projekt und Workspace. Du siehst ihn, wenn du im Workspace oder in einem seiner Projekte die Berechtigung _Switch installed plugins on and off and configure them_ hast; Owner, Admins, Manager und Projekt-Admins haben sie.
 
-- Schalte ein Plugin **ein** und bestätige, was es in diesem Workspace oder Projekt darf.
-- **Erneut bestätigen** erscheint nach einem Update, das mehr verlangt.
-- **Ausschalten** behält seine Einstellungen und Daten. **Daten löschen** (der Papierkorb) entfernt sie.
+Der Store zeigt alle Plugins, die deine Plattform-Admins installiert haben, mit Suche, Kategorien, Screenshots und dem, was sie dürfen. Bist du in mehreren Workspaces, wählst du oben in der Liste einen aus – wie in den Workspace-Einstellungen. Öffne ein Plugin; eine Zeile unter dem Namen zeigt, ob es in diesem Workspace freigeschaltet ist und in welchen Projekten es an ist.
 
-### Plugins für Projekte
+**Hinzufügen** und **Bearbeiten** öffnen ein Fenster mit zwei Schritten:
 
-Ein Projekt kann nur einschalten, was sein Workspace freigegeben hat. In den **Einstellungen → Plugins** des Workspaces legt die Spalte **Für Projekte** das je Plugin fest. Zurücknehmen schaltet das Plugin in allen Projekten des Workspaces aus; ihre Daten bleiben.
+1. **Freischalten:** Ein Workspace-Admin schaltet das Plugin für den Workspace frei. Dann läuft es im Workspace (wenn es dort etwas tut), und Projekte dürfen es einschalten.
+2. **In Projekten aktivieren:** Hake jedes Projekt an, das du verwaltest und in dem es laufen soll. Solange es nicht freigeschaltet ist, ist dieser Schritt gesperrt. Abgewählte Projekte werden ausgeschaltet; Einstellungen und Daten bleiben, der Papierkorb daneben löscht sie.
+
+Wo es neu läuft, bestätigst du einmal, was es darf. Nach einem Update, das mehr verlangt, warten diese Stellen auf eine Bestätigung, und das Fenster bietet sie an.
+Nimmst du die Freischaltung zurück, wird das Plugin im Workspace und in allen seinen Projekten ausgeschaltet; ihre Daten bleiben.
+
+### Einstellungen eines Plugins
+
+Ein eingeschaltetes Plugin mit Einstellungen bekommt in den Einstellungen des Workspaces oder Projekts einen Eintrag unter **Plugins**, unterhalb der anderen Bereiche. Seine Seite enthält das Formular, das das Plugin mitbringt (ein Kanalname, was gepostet wird, …), und unten das Ausschalten an dieser Stelle.

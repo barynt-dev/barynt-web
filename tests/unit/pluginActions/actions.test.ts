@@ -27,7 +27,9 @@ mock.module("@/lib/db", () => ({
       upsert: mock(),
       updateMany: mock(),
       deleteMany: mock(),
+      findUnique: mock(),
     },
+    pluginSettings: { upsert: mock() },
     pluginGrant: { findUnique: mock(), upsert: mock(), deleteMany: mock() },
     project: { findUnique: mock() },
     $transaction: mock(async (arg: unknown) =>
@@ -61,6 +63,7 @@ import {
   installPlugin,
   previewRelease,
   rollbackPlugin,
+  savePluginSettings,
   setPluginBlocked,
   setPluginGrant,
   uninstallPlugin,
@@ -75,6 +78,7 @@ type M = ReturnType<typeof mock>;
 const plugin = db.plugin as unknown as Record<string, M>;
 const source = db.pluginSource as unknown as Record<string, M>;
 const activation = db.pluginActivation as unknown as Record<string, M>;
+const settingsRow = db.pluginSettings as unknown as Record<string, M>;
 const grant = db.pluginGrant as unknown as Record<string, M>;
 const project = db.project.findUnique as unknown as M;
 const perm = requirePermission as unknown as M;
@@ -107,7 +111,14 @@ const okRelease = {
 };
 
 beforeEach(() => {
-  for (const group of [plugin, source, activation, grant, tx.plugin])
+  for (const group of [
+    plugin,
+    source,
+    activation,
+    grant,
+    settingsRow,
+    tx.plugin,
+  ])
     for (const fn of Object.values(group)) (fn as M).mockReset();
   project.mockReset();
   audit.mockClear();
@@ -485,6 +496,66 @@ describe("activations", () => {
       },
     });
     expect(activation.upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("settings (BARY-201)", () => {
+  const withSettings = {
+    ...manifest,
+    contributes: {
+      ...manifest.contributes,
+      settings: [
+        { key: "channel", type: "text", label: "Channel" },
+        { key: "loud", type: "boolean", label: "Loud" },
+      ],
+    },
+  };
+
+  it("saves what the manifest declares, checked where it's on", async () => {
+    project.mockResolvedValue({ workspaceId: "ws-1" });
+    activation.findUnique.mockResolvedValue({ id: "act-1" });
+    plugin.findFirst.mockResolvedValue({ manifest: withSettings });
+    const result = await savePluginSettings({
+      pluginId: "gantt-timeline",
+      workspaceId: "ws-other",
+      projectId: "p1",
+      values: { channel: " #dev ", loud: true, sneaky: "x" },
+    });
+    expect(result).toEqual({ ok: true });
+    expect(perm).toHaveBeenCalledWith("plugin.enable", { projectId: "p1" });
+    expect(activation.findUnique.mock.calls[0][0].where).toEqual({
+      pluginId_scopeKey: { pluginId: "gantt-timeline", scopeKey: "pr:p1" },
+    });
+    expect(settingsRow.upsert.mock.calls[0][0].update).toEqual({
+      values: { channel: "#dev", loud: true },
+    });
+    // Which keys, never what they hold.
+    expect(audit.mock.calls[0][0]).toMatchObject({
+      action: "plugin.settings.updated",
+      meta: { keys: ["channel", "loud"] },
+    });
+    expect(JSON.stringify(audit.mock.calls[0][0])).not.toContain("#dev");
+  });
+
+  it("refuses a value the manifest doesn't allow, and a plugin that's off", async () => {
+    activation.findUnique.mockResolvedValue({ id: "act-1" });
+    plugin.findFirst.mockResolvedValue({ manifest: withSettings });
+    expect(
+      await savePluginSettings({
+        pluginId: "gantt-timeline",
+        workspaceId: "ws-1",
+        values: { loud: "very" },
+      }),
+    ).toEqual({ error: "invalid_setting" });
+    activation.findUnique.mockResolvedValue(null);
+    expect(
+      await savePluginSettings({
+        pluginId: "gantt-timeline",
+        workspaceId: "ws-1",
+        values: {},
+      }),
+    ).toEqual({ error: "not_activated" });
+    expect(settingsRow.upsert).not.toHaveBeenCalled();
   });
 });
 

@@ -30,6 +30,7 @@ import {
 } from "@/lib/plugins/lifecycle";
 import { validateManifest } from "@/lib/plugins/manifest";
 import { compareSemver } from "@/lib/plugins/semver";
+import { checkSettings } from "@/lib/plugins/settings";
 
 // The plugin lifecycle (BARY-142). The platform admin (`plugin.manage`)
 // manages sources and installs, updates, rolls back, blocks and removes
@@ -582,6 +583,65 @@ export async function deactivatePlugin(
       label: await pluginLabel(input.pluginId),
     },
     ...auditScope(scope),
+  });
+  done();
+  return { ok: true };
+}
+
+/**
+ * Saves a switched-on plugin's settings here (BARY-201). Only what its
+ * active version's manifest declares is kept, checked by type
+ * (`checkSettings`); the form's other fields are ignored.
+ */
+export async function savePluginSettings(
+  input: ActivationInput & { values: Record<string, unknown> },
+): Promise<PluginResult> {
+  const scope = await resolveScope(input);
+  if (!scope) return { error: "not_found" };
+  const actorId = await requirePermission(
+    "plugin.enable",
+    permissionCtx(scope),
+  );
+  const [activation, active] = await Promise.all([
+    db.pluginActivation.findUnique({
+      where: {
+        pluginId_scopeKey: {
+          pluginId: input.pluginId,
+          scopeKey: activationScopeKey(scope),
+        },
+      },
+      select: { id: true },
+    }),
+    db.plugin.findFirst({
+      where: { pluginId: input.pluginId, status: "active" },
+      select: { manifest: true },
+    }),
+  ]);
+  if (!activation) return { error: "not_activated" };
+  const parsed = active ? validateManifest(active.manifest) : null;
+  if (!parsed?.ok) return { error: "not_installed" };
+  const checked = checkSettings(
+    parsed.manifest.contributes.settings ?? [],
+    input.values,
+  );
+  if (!checked.ok) return { error: "invalid_setting" };
+  await db.pluginSettings.upsert({
+    where: { activationId: activation.id },
+    create: { activationId: activation.id, values: checked.values },
+    update: { values: checked.values },
+  });
+  await recordAudit({
+    action: "plugin.settings.updated",
+    actorId,
+    target: {
+      type: "plugin",
+      id: input.pluginId,
+      label: await pluginLabel(input.pluginId),
+    },
+    ...auditScope(scope),
+    // Which settings changed hands, not what they hold — a channel name or
+    // an address may be nobody else's business.
+    meta: { keys: Object.keys(checked.values) },
   });
   done();
   return { ok: true };

@@ -83,6 +83,11 @@ describe("tabTitle()", () => {
     expect(tabTitle(`${BASE}/teams`, projects, t)).toBe("Teams");
     expect(tabTitle(`${BASE}/settings`, projects, t)).toBe("Einstellungen");
     expect(tabTitle(`${BASE}/projects`, projects, t)).toBe("Projekte");
+    // The workspace's plugin store (BARY-201).
+    expect(tabTitle(`${BASE}/plugins`, projects, t)).toBe(
+      "settings.scopeStore",
+    );
+    expect(tabIcon(`${BASE}/plugins`)).toBe("lucide:store");
   });
 });
 

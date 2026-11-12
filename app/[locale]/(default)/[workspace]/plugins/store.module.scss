@@ -1,0 +1,9 @@
+/* Like the settings frame (`../settings/settings.module.scss`): the scope
+   switcher on top, the store filling what's below it. */
+.shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}

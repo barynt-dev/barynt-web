@@ -228,7 +228,52 @@
     "scopeWorkspace": "Workspace",
     "scopeProject": "Projekt",
     "scopeAccount": "Persönlich",
-    "scopeNoProject": "Kein sichtbares Projekt"
+    "scopeNoProject": "Kein sichtbares Projekt",
+    "scopeStore": "Plugin Store",
+    "group": {
+      "general": "Allgemein",
+      "preferences": "Bedienung",
+      "developer": "Entwickler",
+      "access": "Mitglieder & Rechte",
+      "issues": "Aufgaben"
+    },
+    "search": "Suchen…",
+    "noHits": "Keine Einstellung gefunden",
+    "keywords": {
+      "account": {
+        "general": "Profil, Name, Vorname, Nachname, Benutzername, Profilbild, Avatar, Farbe, E-Mail, Sprache, Konto löschen",
+        "security": "Passwort, Passkey, Anmeldung, Sitzungen, Login",
+        "connections": "Google, GitHub, OAuth, Anmelden mit, verbinden, trennen",
+        "navigation": "Startseite, Projekt öffnen, Aufgabe öffnen, Panel, Tab, Gruppierung, Sortierung, Unteraufgaben, Seitenleiste",
+        "appearance": "Theme, Design, dunkel, hell, Farben, Datum, Uhrzeit, Zeitzone, Wochenstart",
+        "notifications": "E-Mail, Benachrichtigung, Erwähnung, Kommentar, Zuweisung, Status, Posteingang",
+        "shortcuts": "Tastenkürzel, Tastatur, Kürzel, Hotkeys, Bestätigen vor dem Löschen",
+        "apiKeys": "API, Token, Schlüssel, REST, Zugriff, Integration",
+        "mcp": "KI, AI, Claude, Assistent, Tools, Model Context Protocol"
+      },
+      "project": {
+        "general": "Name, Beschreibung, Bezeichner, Kürzel, Farbe, Adresse, Sichtbarkeit, öffentlich, privat, Projekt löschen",
+        "activity": "Audit, Protokoll, Verlauf, Änderungen, Log",
+        "members": "Personen, Team, Rolle, entfernen",
+        "invitations": "einladen, Einladungslink, E-Mail",
+        "roles": "Rechte, Berechtigungen, Rolle, Admin",
+        "labels": "Label, Tags, Schlagwörter",
+        "fields": "Felder, Status, Priorität, Typ, Spalten",
+        "customFields": "eigene Felder, benutzerdefiniert, Feld"
+      },
+      "workspace": {
+        "general": "Name, Beschreibung, Farbe, Logo, Adresse, Links, Domain, Auto-Join, Workspace löschen",
+        "projects": "Projekte, archivieren, Projekt anlegen",
+        "webhooks": "Webhook, Ereignisse, Integration, URL, Signatur",
+        "activity": "Audit, Protokoll, Verlauf, Änderungen, Log",
+        "members": "Personen, Rolle, entfernen",
+        "invitations": "einladen, Einladungslink, E-Mail",
+        "teams": "Team, Gruppen",
+        "roles": "Rechte, Berechtigungen, Rolle, Admin, Manager",
+        "labels": "Label, Tags, Schlagwörter",
+        "customFields": "eigene Felder, benutzerdefiniert, Feld"
+      }
+    }
   },
   "members": {
     "title": "Mitglieder",
@@ -1490,6 +1535,7 @@
       "pluginActivated": "Plugin eingeschaltet",
       "pluginDeactivated": "Plugin ausgeschaltet",
       "pluginDataDeleted": "Plugin-Daten gelöscht",
+      "pluginSettingsUpdated": "Plugin-Einstellungen geändert",
       "pluginGranted": "Plugin für Projekte freigegeben",
       "pluginGrantRevoked": "Plugin-Freigabe für Projekte zurückgenommen"
     }
@@ -2420,7 +2466,8 @@
       "token_unreadable": "Das Zugriffstoken lässt sich nicht mehr lesen. Gib es neu ein.",
       "unknown": "Etwas ist schiefgegangen ({code}).",
       "provider_required": "Der Anbieter lässt sich an der Adresse nicht erkennen. Wähl ihn aus.",
-      "invalid_ref": "Branch oder Tag enthält Zeichen, die es nicht geben kann."
+      "invalid_ref": "Branch oder Tag enthält Zeichen, die es nicht geben kann.",
+      "invalid_setting": "Eine Einstellung hat einen Wert, den das Plugin nicht kennt."
     },
     "noCapabilities": "Verlangt nichts.",
     "newCapability": "Neu",
@@ -2671,6 +2718,65 @@
     "notesLess": "Weniger anzeigen",
     "confirmHint": "Unten bestätigen, dann installieren.",
     "updateTitle": "„{name}“ auf v{version} aktualisieren",
-    "blockWhere": "{count, plural, =0 {Es ist gerade nirgends eingeschaltet.} one {Es läuft gerade an # Stelle (Workspace oder Projekt).} other {Es läuft gerade an # Stellen (Workspaces und Projekte).}}"
+    "blockWhere": "{count, plural, =0 {Es ist gerade nirgends eingeschaltet.} one {Es läuft gerade an # Stelle (Workspace oder Projekt).} other {Es läuft gerade an # Stellen (Workspaces und Projekte).}}",
+    "scopeState": {
+      "off": "Aus",
+      "active": "An",
+      "disabled": "Aus · Daten bleiben",
+      "needsConfirmation": "Wartet auf Bestätigung",
+      "blocked": "Gesperrt",
+      "notInstalled": "Nicht installiert"
+    },
+    "pluginSettings": "Einstellungen",
+    "switchOff": "Ausschalten",
+    "blockedByAdmin": "Ein Plattform-Admin hat dieses Plugin gesperrt. Es läuft nirgends, bis es entsperrt ist.",
+    "projectsHeading": "Projekte",
+    "scopeStoreTitle": "Plugin Store",
+    "scopeFilter": {
+      "all": "Alle · {count}",
+      "on": "Freigeschaltet · {count}",
+      "available": "Verfügbar · {count}"
+    },
+    "groupOnHere": "Freigeschaltet",
+    "groupAvailable": "Verfügbar",
+    "stateConfirm": "Bestätigen",
+    "scopeStoreIntroTitle": "Plugins für diesen Workspace",
+    "scopeStoreIntro": "Was hier steht, hat ein Plattform-Admin installiert und geprüft. Schalte ein Plugin für den Workspace frei – danach erscheint es in den Projekteinstellungen, und jedes Projekt schaltet es selbst ein.",
+    "openInStore": "Im Plugin Store",
+    "settingsSaved": "Gespeichert",
+    "offInProject": "In diesem Projekt ausschalten",
+    "offHint": "Ausgeschaltet bleiben Einstellungen und Daten erhalten. „Daten löschen“ entfernt beides.",
+    "releaseState": "Freigabe",
+    "releasedIn": "Freigeschaltet in {name}",
+    "notReleasedIn": "In {name} noch nicht freigeschaltet",
+    "onInProjects": "· an in",
+    "onInNoProject": "· noch in keinem Projekt an",
+    "releaseHintWorkspace": "Es läuft dann im ganzen Workspace {name}.",
+    "releaseHintProjects": "Es erscheint dann in den Einstellungen jedes Projekts in {name}. Dort schalten die Projekte es selbst ein.",
+    "releaseHintBoth": "Es läuft dann im Workspace {name} und erscheint in den Einstellungen jedes Projekts, wo die Projekte es selbst einschalten.",
+    "release": "Freischalten",
+    "releaseTitle": "„{name}“ freischalten",
+    "releaseMay": "Was es darf",
+    "releaseConfirm": "Ich habe geprüft, was es darf, und schalte es für {name} frei.",
+    "unrelease": "Freischaltung aufheben",
+    "unreleaseTitle": "Freischaltung von „{name}“ aufheben?",
+    "unreleaseDesc": "Es wird in {name} und allen Projekten ausgeschaltet und verschwindet aus den Projekteinstellungen. Einstellungen und Daten bleiben.",
+    "workspaceWaits": "Ein Update verlangt mehr",
+    "dataKept": "Einstellungen und Daten sind noch da ·",
+    "confirmAgainTitle": "Ein Update verlangt mehr",
+    "switchOnInProject": "In diesem Projekt einschalten",
+    "switchOnHint": "Dein Workspace hat „{name}“ freigeschaltet. Prüfe, was es in diesem Projekt darf, und schalte es ein.",
+    "switchOnConfirm": "Ich habe geprüft, was es darf, und bestätige es für dieses Projekt.",
+    "switchOn": "Einschalten",
+    "noSettings": "Dieses Plugin hat keine Einstellungen. Es läuft in diesem Projekt.",
+    "scopeWelcomeTitle": "Noch keine Plugins installiert",
+    "scopeWelcomeText": "Plugins erweitern Barynt um Ansichten, Widgets und Verbindungen zu anderen Tools. Als Plattform-Admin installierst du sie im Admin-Bereich aus einer Quelle – danach erscheinen sie hier, und du schaltest sie für diesen Workspace frei.",
+    "scopeWelcomeAction": "Zu Admin → Plugins",
+    "scopeStepInstallTitle": "Quelle hinzufügen und installieren",
+    "scopeStepInstallText": "Unter Admin → Plugins ein Git-Repository oder einen Webserver mit einer plugins.json hinzufügen und die gewünschten Plugins installieren.",
+    "scopeStepReleaseTitle": "Für den Workspace freischalten",
+    "scopeStepReleaseText": "Hier im Plugin Store prüfst du, was ein Plugin darf, und schaltest es für den Workspace frei.",
+    "scopeStepProjectsTitle": "In Projekten einschalten",
+    "scopeStepProjectsText": "Freigeschaltete Plugins stehen in den Einstellungen jedes Projekts unter Plugins – dort schalten Projekt-Admins sie ein."
   }
 }
