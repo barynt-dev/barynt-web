@@ -3,6 +3,7 @@ import { PluginSettings } from "@/features/plugins/components/PluginSettings/Plu
 import { getPluginSettingsView } from "@/features/plugins/queries";
 import { getWorkspaceProjects } from "@/features/workspaces/queries";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
+import { projectPath } from "@/lib/nav";
 
 export const dynamic = "force-dynamic";
 
@@ -22,5 +23,11 @@ export default async function ProjectPluginSettingsPage({
   const scope = { workspaceId: workspace, projectId: project.id };
   const view = await getPluginSettingsView(scope, pluginId);
   if (!view) notFound();
-  return <PluginSettings view={view} scope={scope} />;
+  return (
+    <PluginSettings
+      view={view}
+      scope={scope}
+      viewsHref={projectPath(workspace, projectSlug, `plugin/${pluginId}`)}
+    />
+  );
 }

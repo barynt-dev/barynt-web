@@ -1,0 +1,77 @@
+.tl {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem 2rem;
+}
+.tl-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+.tl-muted {
+  color: var(--on-surface-variant);
+}
+.tl-grid {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.tl-row {
+  display: grid;
+  grid-template-columns: minmax(10rem, 18rem) 1fr;
+  align-items: center;
+  gap: 1rem;
+  min-height: 2rem;
+}
+.tl-label {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tl-label span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tl-ref {
+  flex: none;
+  color: var(--on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+.tl-lane {
+  position: relative;
+  height: 1.25rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-low);
+}
+.tl-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 0.375rem;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  opacity: 0.85;
+}
+.tl-bar[data-category="completed"] {
+  background: var(--outline);
+}
+.tl-bar[data-category="canceled"] {
+  background: var(--outline-variant);
+}
+.tl-bar[data-category="started"] {
+  background: var(--warning);
+}
+.tl-today {
+  position: absolute;
+  top: -0.125rem;
+  bottom: -0.125rem;
+  width: 2px;
+  background: var(--error);
+  opacity: 0.6;
+  pointer-events: none;
+}

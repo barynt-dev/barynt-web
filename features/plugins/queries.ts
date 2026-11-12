@@ -569,6 +569,9 @@ export interface PluginSettingsView {
   values: Record<string, unknown>;
   /** `off` in a project that never switched it on. */
   state: ActivationState | "off";
+  /** The project views it contributes, while it runs here with them
+   *  confirmed (BARY-144). */
+  views: { id: string; title: string }[];
 }
 
 /** A plugin's page in a workspace or project — `plugin.enable` there. In a
@@ -632,5 +635,15 @@ export async function getPluginSettingsView(
           parsed.manifest.capabilities,
         )
       : "off",
+    views:
+      scope.projectId &&
+      activation?.enabled &&
+      parsed.manifest.kind === "sandbox" &&
+      activation.capabilities.includes("ui:project-view")
+        ? (parsed.manifest.contributes.projectViews ?? []).map((v) => ({
+            id: v.id,
+            title: v.title,
+          }))
+        : [],
   };
 }

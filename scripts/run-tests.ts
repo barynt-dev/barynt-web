@@ -78,6 +78,8 @@ const SEGMENTS: string[][] = [
   // Mocks `@/lib/db`, `@/lib/permissions`, `@/lib/audit` and the plugin
   // directory client to drive the lifecycle actions — a process of its own.
   ["tests/unit/pluginActions"],
+  // Mocks `@/lib/permissions` and the API queries the bridge calls.
+  ["tests/unit/pluginRuntime"],
   ["tests/unit/account"],
   // Mocks `@/lib/db`, `@/lib/permissions` and `@/lib/audit` — own process,
   // like the other action tests that replace `@/lib/permissions`.

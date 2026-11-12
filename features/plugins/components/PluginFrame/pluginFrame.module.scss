@@ -1,0 +1,47 @@
+/* A sandboxed plugin's frame (BARY-144): it fills its slot; its error
+   covers it, so a broken plugin never leaves a blank area. */
+
+.host {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.frame {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+
+  /* Not shown until it says it's ready — no flash of an unstyled plugin. */
+  .host[data-state="loading"] &,
+  .host[data-state="error"] & {
+    visibility: hidden;
+  }
+}
+
+.error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: var(--on-surface-variant);
+  text-align: center;
+
+  strong {
+    color: var(--on-surface);
+  }
+}
+
+.detail {
+  max-width: 40rem;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}

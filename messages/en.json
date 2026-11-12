@@ -2777,6 +2777,11 @@
     "scopeStepReleaseTitle": "Release for the workspace",
     "scopeStepReleaseText": "Here in the plugin store you check what a plugin may do and release it for the workspace.",
     "scopeStepProjectsTitle": "Switch on in projects",
-    "scopeStepProjectsText": "Released plugins are listed under Plugins in every project's settings — project admins switch them on there."
+    "scopeStepProjectsText": "Released plugins are listed under Plugins in every project's settings — project admins switch them on there.",
+    "frameError": "“{name}” ran into an error",
+    "frameTimeout": "“{name}” isn't responding",
+    "frameReload": "Load again",
+    "projectViews": "Views",
+    "openView": "Open"
   }
 }
