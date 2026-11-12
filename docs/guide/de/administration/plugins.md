@@ -54,12 +54,18 @@ Jeder Schritt steht im [Protokoll](audit.md).
 
 ## Einschalten (Workspace- und Projekt-Admins)
 
-Öffne **Einstellungen → Plugins** im Workspace oder in einem Projekt. Du brauchst die Berechtigung _Switch installed plugins on and off and configure them_; Owner, Admins, Manager und Projekt-Admins haben sie.
+Öffne die **Einstellungen** und wähle im Umschalter oben **Plugin Store**, neben Persönlich, Projekt und Workspace. Du siehst ihn, wenn du im Workspace oder in einem seiner Projekte die Berechtigung _Switch installed plugins on and off and configure them_ hast; Owner, Admins, Manager und Projekt-Admins haben sie.
 
-- Schalte ein Plugin **ein** und bestätige, was es in diesem Workspace oder Projekt darf.
+Der Store zeigt alle Plugins, die deine Plattform-Admins installiert haben, mit Suche, Kategorien, Screenshots und dem, was sie dürfen. Öffne eins; seine Karte **Hier einschalten** zeigt, wo es an ist:
+
+- **Der Workspace:** einschalten und bestätigen, was es hier darf. Nur für Workspace-Admins.
+- **Projekte dürfen es einschalten:** Ein Workspace-Admin gibt es zuerst für Projekte frei.
+- **Projekte:** jedes Projekt, das du verwaltest, mit eigenem Schalter.
 - **Erneut bestätigen** erscheint nach einem Update, das mehr verlangt.
 - **Ausschalten** behält seine Einstellungen und Daten. **Daten löschen** (der Papierkorb) entfernt sie.
 
-### Plugins für Projekte
+Nimmst du die Freigabe für Projekte zurück, wird das Plugin in allen Projekten des Workspaces ausgeschaltet; ihre Daten bleiben.
 
-Ein Projekt kann nur einschalten, was sein Workspace freigegeben hat. In den **Einstellungen → Plugins** des Workspaces legt die Spalte **Für Projekte** das je Plugin fest. Zurücknehmen schaltet das Plugin in allen Projekten des Workspaces aus; ihre Daten bleiben.
+### Einstellungen eines Plugins
+
+Ein eingeschaltetes Plugin mit Einstellungen bekommt in den Einstellungen des Workspaces oder Projekts einen Eintrag unter **Plugins**, unterhalb der anderen Bereiche. Seine Seite enthält das Formular, das das Plugin mitbringt (ein Kanalname, was gepostet wird, …), und unten das Ausschalten an dieser Stelle.

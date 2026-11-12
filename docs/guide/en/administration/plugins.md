@@ -54,12 +54,18 @@ Every step is recorded in the [audit log](audit.md).
 
 ## Switching on (workspace and project admins)
 
-Open **Settings → Plugins** in the workspace or in a project. You need the permission _Switch installed plugins on and off and configure them_, which owners, admins, managers and project admins have.
+Open **Settings** and pick **Plugin store** in the switcher at the top, next to Personal, Project and Workspace. You see it if you have the permission _Switch installed plugins on and off and configure them_ in the workspace or in one of its projects; owners, admins, managers and project admins have it.
 
-- Turn a plugin **on** and confirm what it may do in this workspace or project.
+The store lists every plugin your platform admin installed, with search, categories, screenshots and what it may do. Open one; its card **Switch on here** shows where it's on:
+
+- **The workspace:** switch it on and confirm what it may do here. Workspace admins only.
+- **Projects may switch it on:** a workspace admin releases it for projects first.
+- **Projects:** every project you manage, each with its own switch.
 - **Confirm again** appears after an update that asks for more.
-- Turning it **off** keeps its settings and data. **Delete data** (the bin) removes them.
+- **Switch off** keeps its settings and data. **Delete data** (the bin) removes them.
 
-### Plugins for projects
+Taking the release for projects back switches the plugin off in every project of the workspace; their data stays.
 
-A project can only switch on what its workspace released. In the workspace's **Settings → Plugins**, the column **For projects** decides that per plugin. Taking it back switches the plugin off in every project of the workspace; their data stays.
+### A plugin's settings
+
+A switched-on plugin that has settings gets an entry under **Plugins** in the workspace's or project's settings, below the other sections. Its page holds the form the plugin brings (a channel name, what to post, …) and, at the bottom, switching it off there.

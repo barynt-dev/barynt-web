@@ -245,9 +245,17 @@ then it may only use what was confirmed. Every step writes a `plugin.*` audit en
 A **project** may only switch on what its workspace released for projects (`PluginGrant`,
 `setPluginGrant`, `plugin.enable` in the workspace); taking the release back switches the
 projects' activations off and keeps their data. The pages are **Admin → Plugins**, the
-store (`features/plugins/components/PluginStore`, `plugin.manage`, BARY-200) and
-**Settings → Plugins** of a workspace or project (`ScopePlugins`, `plugin.enable`); each
-loads its view through `features/plugins/queries.ts`, which checks the permission again.
+store (`features/plugins/components/PluginStore`, `plugin.manage`, BARY-200) and the
+workspace's **Plugin store** (`/<workspace>/plugins`, `ScopeStore`, BARY-201) — a fourth
+entry in the settings switcher, for `plugin.enable` in the workspace or one of its
+projects (`canUsePluginStore`); each loads its view through `features/plugins/queries.ts`,
+which checks the permission again. `getScopeStoreView` lists the installed plugins with
+their activations in the workspace and in the projects the person manages. A switched-on
+plugin with a settings form (`contributes.settings`) gets a page under the workspace's or
+project's settings (`settings/plugins/<pluginId>`, `getPluginSettingsNav` builds the nav
+group); `savePluginSettings` keeps only the declared keys, checked by type
+(`lib/plugins/settings.ts#checkSettings`), into `PluginSettings.values`, and audits which
+keys changed (`plugin.settings.updated`), never their values.
 The store's view (`getPluginStoreView`) merges what's installed with every enabled
 source's directory, read through `readSourceRecent` (at most once per source every five
 minutes, per server process; `refreshPluginSource` and every source change forget it).
