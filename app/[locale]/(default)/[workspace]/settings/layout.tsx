@@ -114,6 +114,9 @@ export default async function WorkspaceSettingsLayout({
     label: t(`nav.${entry.labelKey}`),
     icon: entry.icon,
     group: entry.group && t(`settings.group.${entry.group}`),
+    keywords: t(
+      `settings.keywords.workspace.${entry.labelKey}` as "settings.keywords.workspace.general",
+    ).split(", "),
   }));
 
   // The plugins switched on here that have settings, each a page of its own
@@ -125,6 +128,7 @@ export default async function WorkspaceSettingsLayout({
         href: pluginSettingsPath(workspace, null, p.pluginId),
         label: p.name,
         icon: "lucide:puzzle",
+        keywords: ["Plugin"],
         leading: <PluginTile id={p.pluginId} name={p.name} size="sm" />,
       }))
     : [];
@@ -158,6 +162,8 @@ export default async function WorkspaceSettingsLayout({
               ? [{ title: t("nav.plugins"), items: pluginItems }]
               : undefined
           }
+          searchLabel={t("settings.search")}
+          noHitsLabel={t("settings.noHits")}
           basePath={workspaceSettingsPath(workspace, "")}
         />
         <div className={styles.panel}>{children}</div>

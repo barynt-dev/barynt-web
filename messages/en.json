@@ -236,6 +236,43 @@
       "developer": "Developers",
       "access": "Members & access",
       "issues": "Issues"
+    },
+    "search": "Search settings",
+    "noHits": "No setting found",
+    "keywords": {
+      "account": {
+        "general": "profile, name, first name, last name, username, picture, avatar, color, email, language, delete account",
+        "security": "password, passkey, sign-in, sessions, login",
+        "connections": "Google, GitHub, OAuth, sign in with, connect, disconnect",
+        "navigation": "start page, open project, open issue, panel, tab, grouping, sorting, sub-issues, sidebar",
+        "appearance": "theme, dark, light, colors, date, time, time zone, week start",
+        "notifications": "email, notification, mention, comment, assigned, status, inbox",
+        "shortcuts": "keyboard, keys, hotkeys, confirm before deleting",
+        "apiKeys": "API, token, key, REST, access, integration",
+        "mcp": "AI, Claude, assistant, tools, Model Context Protocol"
+      },
+      "project": {
+        "general": "name, description, identifier, key, color, address, visibility, public, private, delete project",
+        "activity": "audit, log, history, changes",
+        "members": "people, team, role, remove",
+        "invitations": "invite, invite link, email",
+        "roles": "permissions, access, role, admin",
+        "labels": "label, tags",
+        "fields": "fields, status, priority, type, columns",
+        "customFields": "own fields, custom, field"
+      },
+      "workspace": {
+        "general": "name, description, color, logo, address, links, domain, auto-join, delete workspace",
+        "projects": "projects, archive, create project",
+        "webhooks": "webhook, events, integration, URL, signature",
+        "activity": "audit, log, history, changes",
+        "members": "people, role, remove",
+        "invitations": "invite, invite link, email",
+        "teams": "team, groups",
+        "roles": "permissions, access, role, admin, manager",
+        "labels": "label, tags",
+        "customFields": "own fields, custom, field"
+      }
     }
   },
   "members": {

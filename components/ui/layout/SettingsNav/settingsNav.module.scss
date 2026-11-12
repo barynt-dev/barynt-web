@@ -126,6 +126,18 @@
   color: var(--on-surface-variant);
 }
 
+/* The search above the sections. */
+.search {
+  margin: 0.25rem 0 0.75rem;
+}
+
+.noHits {
+  margin: 0;
+  padding: 0 0.5rem;
+  color: var(--on-surface-variant);
+  font-size: var(--text-sm);
+}
+
 /* A heading that folds its list away (`<details>`): the whole heading is
    the switch, a chevron after it shows which way. */
 .section {

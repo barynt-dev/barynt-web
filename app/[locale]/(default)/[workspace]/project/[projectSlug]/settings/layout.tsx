@@ -106,6 +106,9 @@ export default async function ProjectSettingsLayout({
     label: t(`nav.${entry.labelKey}`),
     icon: entry.icon,
     group: entry.group && t(`settings.group.${entry.group}`),
+    keywords: t(
+      `settings.keywords.project.${entry.labelKey}` as "settings.keywords.project.general",
+    ).split(", "),
   }));
 
   // The plugins the workspace released for projects, on here or not: each
@@ -120,6 +123,7 @@ export default async function ProjectSettingsLayout({
         href: pluginSettingsPath(workspace, projectSlug, p.pluginId),
         label: p.name,
         icon: "lucide:puzzle",
+        keywords: ["Plugin"],
         leading: <PluginTile id={p.pluginId} name={p.name} size="sm" />,
       }))
     : [];
@@ -152,6 +156,8 @@ export default async function ProjectSettingsLayout({
               ? [{ title: t("nav.plugins"), items: pluginItems }]
               : undefined
           }
+          searchLabel={t("settings.search")}
+          noHitsLabel={t("settings.noHits")}
           basePath={projectSettingsPath(workspace, projectSlug, "")}
         />
         <div className={styles.panel}>{children}</div>

@@ -1,14 +1,12 @@
-import { Icon } from "@iconify/react";
 import type { ReactNode } from "react";
 import { Avatar } from "@/components/ui/atoms/Avatar/Avatar";
-import { NavLink } from "@/components/ui/layout/NavLink/NavLink";
-import { KeyboardOnly } from "./KeyboardOnly";
+import { SettingsNavSections } from "./SettingsNavSections";
 import {
   type SettingsNavSubject,
   SettingsSubjectMenu,
 } from "./SettingsSubjectMenu";
 import styles from "./settingsNav.module.scss";
-import { OPEN_PARAM } from "./settingsView";
+import type { SettingsNavSection } from "./settingsSearch";
 
 export type { SettingsNavSubject };
 
@@ -23,6 +21,8 @@ export interface SettingsNavItem {
   /** The heading it sits under. Neighbors with the same one share a
    *  section; without one, the nav's `title`. */
   group?: string;
+  /** What else finds it in the search — words from its page. */
+  keywords?: string[];
 }
 
 interface Props {
@@ -50,7 +50,10 @@ interface Props {
   /** More sections under a heading of their own, after `items` — the
    *  plugins switched on here that have settings, say. Empty ones aren't
    *  passed. */
-  groups?: { title: string; items: SettingsNavItem[] }[];
+  groups?: SettingsNavSection[];
+  /** The search field's placeholder, and what it says without a hit. */
+  searchLabel: string;
+  noHitsLabel: string;
   /**
    * Address of the settings' start page — the first entry ("General") lives
    * there too. On a phone that address is the section list, so this entry
@@ -86,6 +89,8 @@ export function SettingsNav({
   title,
   items,
   groups = [],
+  searchLabel,
+  noHitsLabel,
   basePath,
 }: Props) {
   // The header only becomes a switcher when there's something to switch
@@ -118,50 +123,12 @@ export function SettingsNav({
           </span>
         </div>
       )}
-      {/* Each heading folds its list away — a native `<details>`, so this
-          stays a Server Component. The layout outlives a click on a row, so
-          what's folded stays folded while moving between sections. */}
-      {[...sectionsOf(items, title), ...groups].map((section, i) => (
-        <details
-          key={section.title}
-          className={`${styles.section}${i > 0 ? ` ${styles.group}` : ""}`}
-          open
-        >
-          <summary className={styles.title}>
-            {section.title}
-            <Icon
-              icon="lucide:chevron-down"
-              width={14}
-              className={styles.fold}
-              aria-hidden
-            />
-          </summary>
-          <ul className={styles.list}>
-            {section.items.map((item) => {
-              const row = (
-                <li key={item.href}>
-                  <NavLink
-                    href={
-                      item.href === basePath
-                        ? `${item.href}?${OPEN_PARAM}=1`
-                        : item.href
-                    }
-                    activeHref={item.href}
-                    icon={item.icon}
-                    leading={item.leading}
-                    label={item.label}
-                  />
-                </li>
-              );
-              return item.needsKeyboard ? (
-                <KeyboardOnly key={item.href}>{row}</KeyboardOnly>
-              ) : (
-                row
-              );
-            })}
-          </ul>
-        </details>
-      ))}
+      <SettingsNavSections
+        sections={[...sectionsOf(items, title), ...groups]}
+        basePath={basePath}
+        searchLabel={searchLabel}
+        emptyLabel={noHitsLabel}
+      />
     </nav>
   );
 }
@@ -170,8 +137,8 @@ export function SettingsNav({
 function sectionsOf(
   items: SettingsNavItem[],
   fallback: string,
-): { title: string; items: SettingsNavItem[] }[] {
-  const sections: { title: string; items: SettingsNavItem[] }[] = [];
+): SettingsNavSection[] {
+  const sections: SettingsNavSection[] = [];
   for (const item of items) {
     const title = item.group ?? fallback;
     const last = sections.at(-1);

@@ -236,6 +236,43 @@
       "developer": "Entwickler",
       "access": "Mitglieder & Rechte",
       "issues": "Aufgaben"
+    },
+    "search": "Einstellungen durchsuchen",
+    "noHits": "Keine Einstellung gefunden",
+    "keywords": {
+      "account": {
+        "general": "Profil, Name, Vorname, Nachname, Benutzername, Profilbild, Avatar, Farbe, E-Mail, Sprache, Konto löschen",
+        "security": "Passwort, Passkey, Anmeldung, Sitzungen, Login",
+        "connections": "Google, GitHub, OAuth, Anmelden mit, verbinden, trennen",
+        "navigation": "Startseite, Projekt öffnen, Aufgabe öffnen, Panel, Tab, Gruppierung, Sortierung, Unteraufgaben, Seitenleiste",
+        "appearance": "Theme, Design, dunkel, hell, Farben, Datum, Uhrzeit, Zeitzone, Wochenstart",
+        "notifications": "E-Mail, Benachrichtigung, Erwähnung, Kommentar, Zuweisung, Status, Posteingang",
+        "shortcuts": "Tastenkürzel, Tastatur, Kürzel, Hotkeys, Bestätigen vor dem Löschen",
+        "apiKeys": "API, Token, Schlüssel, REST, Zugriff, Integration",
+        "mcp": "KI, AI, Claude, Assistent, Tools, Model Context Protocol"
+      },
+      "project": {
+        "general": "Name, Beschreibung, Bezeichner, Kürzel, Farbe, Adresse, Sichtbarkeit, öffentlich, privat, Projekt löschen",
+        "activity": "Audit, Protokoll, Verlauf, Änderungen, Log",
+        "members": "Personen, Team, Rolle, entfernen",
+        "invitations": "einladen, Einladungslink, E-Mail",
+        "roles": "Rechte, Berechtigungen, Rolle, Admin",
+        "labels": "Label, Tags, Schlagwörter",
+        "fields": "Felder, Status, Priorität, Typ, Spalten",
+        "customFields": "eigene Felder, benutzerdefiniert, Feld"
+      },
+      "workspace": {
+        "general": "Name, Beschreibung, Farbe, Logo, Adresse, Links, Domain, Auto-Join, Workspace löschen",
+        "projects": "Projekte, archivieren, Projekt anlegen",
+        "webhooks": "Webhook, Ereignisse, Integration, URL, Signatur",
+        "activity": "Audit, Protokoll, Verlauf, Änderungen, Log",
+        "members": "Personen, Rolle, entfernen",
+        "invitations": "einladen, Einladungslink, E-Mail",
+        "teams": "Team, Gruppen",
+        "roles": "Rechte, Berechtigungen, Rolle, Admin, Manager",
+        "labels": "Label, Tags, Schlagwörter",
+        "customFields": "eigene Felder, benutzerdefiniert, Feld"
+      }
     }
   },
   "members": {

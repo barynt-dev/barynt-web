@@ -96,6 +96,9 @@ export default async function AccountLayout({
     label: t(`nav.${entry.labelKey}`),
     icon: entry.icon,
     group: entry.group && t(`settings.group.${entry.group}`),
+    keywords: t(
+      `settings.keywords.account.${entry.labelKey}` as "settings.keywords.account.general",
+    ).split(", "),
     // Without a keyboard there's nothing to press shortcuts on.
     needsKeyboard: entry.section === "shortcuts" || undefined,
   }));
@@ -119,6 +122,8 @@ export default async function AccountLayout({
           subject={t("nav.account")}
           title={t("nav.settings")}
           items={items}
+          searchLabel={t("settings.search")}
+          noHitsLabel={t("settings.noHits")}
           basePath={accountPath(workspace, "")}
         />
         <div className={styles.panel}>{children}</div>
