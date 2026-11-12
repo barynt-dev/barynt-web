@@ -29,7 +29,9 @@ import type { RunningPlugin } from "./runtime";
 // the request through: the plugin is on here, the capability confirmed. The
 // person's own permissions are checked by the same `*ForUser` functions the
 // REST API uses; what's left here is the place — a project's plugin works in
-// its project, a workspace's plugin in the workspace's projects.
+// its project, a workspace's plugin in the workspace's projects. What it
+// writes is the person's, like Jira's `asUser()`: source `APP`, no badge;
+// which plugin it was is in the audit log (`plugin.acted`).
 
 type Params = Record<string, unknown>;
 type Handler = (
@@ -145,7 +147,7 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
         userId,
         projectId,
         input as unknown as Parameters<typeof createIssueForUser>[2],
-        "PLUGIN",
+        "APP",
       ),
     );
   },
@@ -181,7 +183,7 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
         userId,
         issue.id,
         { body, ...(str(p.parentId) && { parentId: str(p.parentId) }) },
-        "PLUGIN",
+        "APP",
       ),
     );
   },

@@ -291,8 +291,8 @@ confirmed ones) and answers through the same `*ForUser` functions as the REST AP
 (`features/plugins/bridge-methods.ts`, BARY-145). On top: a budget per person and plugin
 (`countRequest` in `lib/api/rateLimit.ts`, the API keys' Redis window), the plugin's own
 storage (`PluginStorage`, per activation, with the limits in `STORAGE_LIMITS`), and for
-every write an audit entry `plugin.acted` with the plugin and the person; issues and
-comments it writes carry `source: PLUGIN`. For plugin authors: `docs/plugins/runtime.md`.
+every write an audit entry `plugin.acted` with the plugin and the person. What it writes
+is the person's (`source: APP`, no badge); the audit entry is where the plugin shows. For plugin authors: `docs/plugins/runtime.md`.
 
 ## Smaller pieces
 

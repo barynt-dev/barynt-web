@@ -1458,8 +1458,6 @@ enum ContentSource {
   APP
   API
   MCP
-  /// Written by a sandboxed plugin, in someone's name (BARY-145).
-  PLUGIN
 }
 
 // ─── Issues ──────────────────────────────────────────────────────────────────

@@ -92,7 +92,7 @@ export function mapUserRef(user: {
  *  (`app/api/v1`, `app/api/mcp`). Mirrors the `ContentSource` Prisma enum as
  *  a plain string union, same convention as `ProjectVisibility`
  *  (`features/projects/types.ts`) — callers never see the generated enum. */
-export type ApiContentSource = "APP" | "API" | "MCP" | "PLUGIN";
+export type ApiContentSource = "APP" | "API" | "MCP";
 
 /** A label as embedded in `ApiIssue.labels` — just enough to identify it.
  *  Its color is a display detail of the label itself, not something an

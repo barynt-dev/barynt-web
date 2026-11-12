@@ -10,7 +10,7 @@ import type { SearchableIssue } from "./workspace";
  *  reporter/author (`IssueMeta`, `CommentThread`). Mirrors the
  *  `ContentSource` Prisma enum as a plain string union, same convention as
  *  every other enum in this file. */
-export type ContentSource = "APP" | "API" | "MCP" | "PLUGIN";
+export type ContentSource = "APP" | "API" | "MCP";
 
 /** Unit a time estimate was entered in (BARY-4) — `Issue.estimateHours`
  *  itself always stores the value normalized to hours; this says which

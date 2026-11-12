@@ -72,9 +72,10 @@ workspace's projects the person can see. Setting custom field values
 characters, a value up to 64 KB as JSON, at most 500 keys and 1 MB together.
 
 **In someone's name.** What a plugin writes, it writes as the person whose
-page it runs on: Barynt shows such issues and comments with the source
-*Plugin*, and every change lands in the audit log as "Plugin changed
-something in their name", with the plugin and the person.
+page it runs on, and Barynt shows it as theirs — no badge, the same as
+GitHub Apps or Jira's `asUser()`. Which plugin did it is in the audit log:
+every change lands there as "Plugin changed something in their name", with
+the plugin and the person.
 
 **Budget.** 300 requests per person and minute; after that the plugin gets
 `too_many_requests` until the minute is over.

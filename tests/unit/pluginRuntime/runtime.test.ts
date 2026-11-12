@@ -199,7 +199,8 @@ describe("callBridge (BARY-145)", () => {
     expect(res.ok).toBe(true);
     expect(createIssueForUser.mock.calls[0]?.[0]).toBe("u1");
     expect(createIssueForUser.mock.calls[0]?.[1]).toBe("p1");
-    expect(createIssueForUser.mock.calls[0]?.[3]).toBe("PLUGIN");
+    // Shown as the person's own, like the app's: no badge.
+    expect(createIssueForUser.mock.calls[0]?.[3]).toBe("APP");
     expect(recordAudit).toHaveBeenCalledTimes(1);
     expect(recordAudit.mock.calls[0]?.[0]).toMatchObject({
       action: "plugin.acted",
