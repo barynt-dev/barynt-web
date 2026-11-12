@@ -1,3 +1,4 @@
+import { Icon } from "@iconify/react";
 import { Avatar } from "@/components/ui/atoms/Avatar/Avatar";
 import { NavLink } from "@/components/ui/layout/NavLink/NavLink";
 import { KeyboardOnly } from "./KeyboardOnly";
@@ -111,35 +112,59 @@ export function SettingsNav({
           </span>
         </div>
       )}
-      <p className={styles.title}>{title}</p>
-
-      <ul className={styles.list}>
-        {items.map((item) => {
-          const row = (
-            <li key={item.href}>
-              <NavLink
-                href={
-                  item.href === basePath
-                    ? `${item.href}?${OPEN_PARAM}=1`
-                    : item.href
-                }
-                activeHref={item.href}
-                icon={item.icon}
-                label={item.label}
-              />
-            </li>
-          );
-          return item.needsKeyboard ? (
-            <KeyboardOnly key={item.href}>{row}</KeyboardOnly>
-          ) : (
-            row
-          );
-        })}
-      </ul>
+      {/* Each heading folds its list away — a native `<details>`, so this
+          stays a Server Component. The layout outlives a click on a row, so
+          what's folded stays folded while moving between sections. */}
+      <details className={styles.section} open>
+        <summary className={styles.title}>
+          {title}
+          <Icon
+            icon="lucide:chevron-down"
+            width={14}
+            className={styles.fold}
+            aria-hidden
+          />
+        </summary>
+        <ul className={styles.list}>
+          {items.map((item) => {
+            const row = (
+              <li key={item.href}>
+                <NavLink
+                  href={
+                    item.href === basePath
+                      ? `${item.href}?${OPEN_PARAM}=1`
+                      : item.href
+                  }
+                  activeHref={item.href}
+                  icon={item.icon}
+                  label={item.label}
+                />
+              </li>
+            );
+            return item.needsKeyboard ? (
+              <KeyboardOnly key={item.href}>{row}</KeyboardOnly>
+            ) : (
+              row
+            );
+          })}
+        </ul>
+      </details>
 
       {groups.map((group) => (
-        <section key={group.title} className={styles.group}>
-          <p className={styles.title}>{group.title}</p>
+        <details
+          key={group.title}
+          className={`${styles.section} ${styles.group}`}
+          open
+        >
+          <summary className={styles.title}>
+            {group.title}
+            <Icon
+              icon="lucide:chevron-down"
+              width={14}
+              className={styles.fold}
+              aria-hidden
+            />
+          </summary>
           <ul className={styles.list}>
             {group.items.map((item) => (
               <li key={item.href}>
@@ -152,7 +177,7 @@ export function SettingsNav({
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       ))}
     </nav>
   );
