@@ -132,4 +132,4 @@ Ein eingeschaltetes Plugin mit Einstellungen bekommt in den Einstellungen des Wo
 
 ## Eigene Plugins bauen
 
-Wie man selbst ein Plugin schreibt, steht unter [Plugin-Entwicklung](../plugin-development/overview.md) (auf Englisch).
+Wie man selbst ein Plugin schreibt, steht unter [Plugin-Entwicklung](../../en/plugin-development/overview.md) (auf Englisch).
