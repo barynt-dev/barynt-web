@@ -56,13 +56,11 @@ Jeder Schritt steht im [Protokoll](audit.md).
 
 Öffne die **Einstellungen** und wähle im Umschalter oben **Plugin Store**, neben Persönlich, Projekt und Workspace. Du siehst ihn, wenn du im Workspace oder in einem seiner Projekte die Berechtigung _Switch installed plugins on and off and configure them_ hast; Owner, Admins, Manager und Projekt-Admins haben sie.
 
-Der Store zeigt alle Plugins, die deine Plattform-Admins installiert haben, mit Suche, Kategorien, Screenshots und dem, was sie dürfen. Öffne eins; seine Karte **Hier einschalten** zeigt, wo es an ist:
+Der Store zeigt alle Plugins, die deine Plattform-Admins installiert haben, mit Suche, Kategorien, Screenshots und dem, was sie dürfen. Öffne eins; eine Zeile unter dem Namen zeigt, wo es läuft.
 
-- **Der Workspace:** einschalten und bestätigen, was es hier darf. Nur für Workspace-Admins.
-- **Projekte dürfen es einschalten:** Ein Workspace-Admin gibt es zuerst für Projekte frei.
-- **Projekte:** jedes Projekt, das du verwaltest, mit eigenem Schalter.
-- **Erneut bestätigen** erscheint nach einem Update, das mehr verlangt.
-- **Ausschalten** behält seine Einstellungen und Daten. **Daten löschen** (der Papierkorb) entfernt sie.
+- **Hinzufügen** und **Bearbeiten** öffnen ein Fenster: Hake an, wo es laufen soll – den Workspace (nur Workspace-Admins) und jedes Projekt, das du verwaltest. Abgewählte Stellen werden ausgeschaltet; Einstellungen und Daten bleiben, der Papierkorb daneben löscht sie.
+- **Projekte dürfen es einschalten:** Ein Workspace-Admin gibt es für Projekte frei; wählst du ein Projekt, passiert das gleich mit.
+- Wo es neu läuft, bestätigst du einmal, was es darf. Nach einem Update, das mehr verlangt, warten diese Stellen auf eine Bestätigung, und das Fenster bietet sie an.
 
 Nimmst du die Freigabe für Projekte zurück, wird das Plugin in allen Projekten des Workspaces ausgeschaltet; ihre Daten bleiben.
 

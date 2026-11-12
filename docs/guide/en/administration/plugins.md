@@ -56,13 +56,11 @@ Every step is recorded in the [audit log](audit.md).
 
 Open **Settings** and pick **Plugin store** in the switcher at the top, next to Personal, Project and Workspace. You see it if you have the permission _Switch installed plugins on and off and configure them_ in the workspace or in one of its projects; owners, admins, managers and project admins have it.
 
-The store lists every plugin your platform admin installed, with search, categories, screenshots and what it may do. Open one; its card **Switch on here** shows where it's on:
+The store lists every plugin your platform admin installed, with search, categories, screenshots and what it may do. Open one; a line under its name says where it runs.
 
-- **The workspace:** switch it on and confirm what it may do here. Workspace admins only.
-- **Projects may switch it on:** a workspace admin releases it for projects first.
-- **Projects:** every project you manage, each with its own switch.
-- **Confirm again** appears after an update that asks for more.
-- **Switch off** keeps its settings and data. **Delete data** (the bin) removes them.
+- **Add** and **Edit** open one window: tick where it should run — the workspace (workspace admins only) and each project you manage. Untick a place to switch it off there; its settings and data stay, and a bin next to it deletes them.
+- **Projects may switch it on:** a workspace admin releases it for projects; picking a project releases it on the way.
+- Wherever it newly runs, you confirm once what it may do. After an update that asks for more, those places wait for a confirmation and the window offers it.
 
 Taking the release for projects back switches the plugin off in every project of the workspace; their data stays.
 
