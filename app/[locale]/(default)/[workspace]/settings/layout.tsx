@@ -7,6 +7,7 @@ import {
   type SettingsNavItem,
   type SettingsNavSubject,
 } from "@/components/ui/layout/SettingsNav/SettingsNav";
+import { PluginTile } from "@/features/plugins/components/PluginStore/PluginTile";
 import {
   canUsePluginStore,
   getPluginSettingsNav,
@@ -123,6 +124,7 @@ export default async function WorkspaceSettingsLayout({
         href: pluginSettingsPath(workspace, null, p.pluginId),
         label: p.name,
         icon: "lucide:puzzle",
+        leading: <PluginTile id={p.pluginId} name={p.name} size="sm" />,
       }))
     : [];
 

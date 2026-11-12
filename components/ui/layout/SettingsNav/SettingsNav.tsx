@@ -1,4 +1,5 @@
 import { Icon } from "@iconify/react";
+import type { ReactNode } from "react";
 import { Avatar } from "@/components/ui/atoms/Avatar/Avatar";
 import { NavLink } from "@/components/ui/layout/NavLink/NavLink";
 import { KeyboardOnly } from "./KeyboardOnly";
@@ -15,6 +16,8 @@ export interface SettingsNavItem {
   href: string;
   label: string;
   icon: string;
+  /** A mark of its own in place of `icon` — a plugin's tile, say. */
+  leading?: ReactNode;
   /** Shown only where there's a keyboard — the shortcuts page, say. */
   needsKeyboard?: boolean;
 }
@@ -172,6 +175,7 @@ export function SettingsNav({
                   href={item.href}
                   activeHref={item.href}
                   icon={item.icon}
+                  leading={item.leading}
                   label={item.label}
                 />
               </li>
