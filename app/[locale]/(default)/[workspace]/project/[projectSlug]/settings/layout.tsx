@@ -105,6 +105,7 @@ export default async function ProjectSettingsLayout({
     href: projectSettingsPath(workspace, projectSlug, entry.section),
     label: t(`nav.${entry.labelKey}`),
     icon: entry.icon,
+    group: entry.group && t(`settings.group.${entry.group}`),
   }));
 
   // The plugins the workspace released for projects, on here or not: each

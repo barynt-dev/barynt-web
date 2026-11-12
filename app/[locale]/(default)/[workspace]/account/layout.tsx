@@ -95,6 +95,7 @@ export default async function AccountLayout({
     href: accountPath(workspace, entry.section),
     label: t(`nav.${entry.labelKey}`),
     icon: entry.icon,
+    group: entry.group && t(`settings.group.${entry.group}`),
     // Without a keyboard there's nothing to press shortcuts on.
     needsKeyboard: entry.section === "shortcuts" || undefined,
   }));

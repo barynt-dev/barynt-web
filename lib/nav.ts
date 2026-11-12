@@ -66,7 +66,20 @@ export interface NavEntry {
    * freshly on every call.
    */
   permission?: Permission | Permission[];
+  /** The heading it sits under in a settings nav (`settings.group.*`).
+   *  Neighbors share one; a group holds at least two sections. */
+  group?: SettingsGroupKey;
 }
+
+/** The headings the settings navs sort their sections under. */
+export type SettingsGroupKey =
+  | "account"
+  | "preferences"
+  | "developer"
+  | "project"
+  | "access"
+  | "issues"
+  | "workspace";
 
 /** May a nav entry be offered? No permission required = always yes. */
 export function navEntryAllowed(
@@ -344,37 +357,62 @@ export const PROJECT_SECTIONS: NavEntry[] = PROJECT_NAV;
  * visibility of individual entries based on permissions.
  */
 export const PROJECT_SETTINGS_NAV: NavEntry[] = [
-  { section: "", icon: "lucide:settings", labelKey: "general" },
-  // The same page as under `…/project/<slug>/members`: whoever's looking
-  // for members sometimes looks under the project and sometimes under its
-  // settings — both lead there. First the people, then their permissions,
-  // then the labels.
-  { section: "members", icon: "lucide:users", labelKey: "members" },
+  // The project itself, and what happened in it.
   {
-    section: "invitations",
-    icon: "lucide:mail",
-    labelKey: "invitations",
-    permission: "member.invite",
-  },
-  {
-    section: "roles",
-    icon: "lucide:shield-check",
-    labelKey: "roles",
-    permission: "role.manage",
-  },
-  { section: "labels", icon: "lucide:tag", labelKey: "labels" },
-  { section: "fields", icon: "lucide:layout-list", labelKey: "fields" },
-  {
-    section: "custom-fields",
-    icon: "lucide:text-cursor-input",
-    labelKey: "customFields",
-    permission: "customfield.manage",
+    section: "",
+    icon: "lucide:settings",
+    labelKey: "general",
+    group: "project",
   },
   {
     section: "activity",
     icon: "lucide:scroll-text",
     labelKey: "activity",
     permission: "audit.view",
+    group: "project",
+  },
+  // The same page as under `…/project/<slug>/members`: whoever's looking
+  // for members sometimes looks under the project and sometimes under its
+  // settings — both lead there. First the people, then their permissions.
+  {
+    section: "members",
+    icon: "lucide:users",
+    labelKey: "members",
+    group: "access",
+  },
+  {
+    section: "invitations",
+    icon: "lucide:mail",
+    labelKey: "invitations",
+    permission: "member.invite",
+    group: "access",
+  },
+  {
+    section: "roles",
+    icon: "lucide:shield-check",
+    labelKey: "roles",
+    permission: "role.manage",
+    group: "access",
+  },
+  // What an issue carries.
+  {
+    section: "labels",
+    icon: "lucide:tag",
+    labelKey: "labels",
+    group: "issues",
+  },
+  {
+    section: "fields",
+    icon: "lucide:layout-list",
+    labelKey: "fields",
+    group: "issues",
+  },
+  {
+    section: "custom-fields",
+    icon: "lucide:text-cursor-input",
+    labelKey: "customFields",
+    permission: "customfield.manage",
+    group: "issues",
   },
 ];
 
@@ -389,45 +427,75 @@ export const PROJECT_SETTINGS_NAV: NavEntry[] = [
  * next to roles and labels. The component is shared, not the route.
  */
 export const WORKSPACE_SETTINGS_NAV: NavEntry[] = [
-  { section: "", icon: "lucide:settings", labelKey: "general" },
-  { section: "projects", icon: "lucide:folders", labelKey: "projects" },
-  { section: "labels", icon: "lucide:tag", labelKey: "labels" },
+  // The workspace itself: its name, its projects, what talks to it from
+  // outside, and what happened in it.
   {
-    section: "custom-fields",
-    icon: "lucide:text-cursor-input",
-    labelKey: "customFields",
-    permission: "customfield.manage",
+    section: "",
+    icon: "lucide:settings",
+    labelKey: "general",
+    group: "workspace",
+  },
+  {
+    section: "projects",
+    icon: "lucide:folders",
+    labelKey: "projects",
+    group: "workspace",
   },
   {
     section: "webhooks",
     icon: "lucide:webhook",
     labelKey: "webhooks",
     permission: "webhook.manage",
-  },
-  { section: "teams", icon: "lucide:users-round", labelKey: "teams" },
-  {
-    section: "roles",
-    icon: "lucide:shield-check",
-    labelKey: "roles",
-    permission: "role.manage",
-  },
-  {
-    section: "members",
-    icon: "lucide:users",
-    labelKey: "members",
-    permission: "member.view",
-  },
-  {
-    section: "invitations",
-    icon: "lucide:mail",
-    labelKey: "invitations",
-    permission: "member.invite",
+    group: "workspace",
   },
   {
     section: "activity",
     icon: "lucide:scroll-text",
     labelKey: "activity",
     permission: "audit.view",
+    group: "workspace",
+  },
+  // Who's in it, and what they may do.
+  {
+    section: "members",
+    icon: "lucide:users",
+    labelKey: "members",
+    permission: "member.view",
+    group: "access",
+  },
+  {
+    section: "invitations",
+    icon: "lucide:mail",
+    labelKey: "invitations",
+    permission: "member.invite",
+    group: "access",
+  },
+  {
+    section: "teams",
+    icon: "lucide:users-round",
+    labelKey: "teams",
+    group: "access",
+  },
+  {
+    section: "roles",
+    icon: "lucide:shield-check",
+    labelKey: "roles",
+    permission: "role.manage",
+    group: "access",
+  },
+  // What an issue carries, everywhere in the workspace.
+  {
+    section: "labels",
+    icon: "lucide:tag",
+    labelKey: "labels",
+    group: "issues",
+  },
+  {
+    section: "custom-fields",
+    icon: "lucide:text-cursor-input",
+    labelKey: "customFields",
+    permission: "customfield.manage",
+    group: "issues",
   },
 ];
 
@@ -436,9 +504,8 @@ export const WORKSPACE_SETTINGS_NAV: NavEntry[] = [
  * empty section = general.
  *
  * The same second level as the workspace and the project, only it belongs
- * to nobody but whoever opens it. The order follows frequency: first who
- * you are, then what it looks like, then what reaches you — and last, what
- * you sign in with. Permissions play no role here: everyone sees exactly
+ * to nobody but whoever opens it. Three groups: who you are and how you
+ * sign in, how the app behaves for you, and reaching it from code. Permissions play no role here: everyone sees exactly
  * their own settings.
  *
  * One exception: "connections" disappears when `auth.config.ts` hasn't
@@ -446,15 +513,58 @@ export const WORKSPACE_SETTINGS_NAV: NavEntry[] = [
  * a tab to a list that would always be empty helps nobody.
  */
 export const ACCOUNT_SETTINGS_NAV: NavEntry[] = [
-  { section: "", icon: "lucide:user", labelKey: "general" },
-  { section: "navigation", icon: "lucide:compass", labelKey: "navigation" },
-  { section: "appearance", icon: "lucide:palette", labelKey: "appearance" },
-  { section: "notifications", icon: "lucide:bell", labelKey: "notifications" },
-  { section: "security", icon: "lucide:shield-check", labelKey: "security" },
-  { section: "api-keys", icon: "lucide:key-round", labelKey: "apiKeys" },
-  { section: "mcp", icon: "lucide:plug-zap", labelKey: "mcp" },
-  { section: "connections", icon: "lucide:link", labelKey: "connections" },
-  { section: "shortcuts", icon: "lucide:keyboard", labelKey: "shortcuts" },
+  // Who you are and how you sign in.
+  { section: "", icon: "lucide:user", labelKey: "general", group: "account" },
+  {
+    section: "security",
+    icon: "lucide:shield-check",
+    labelKey: "security",
+    group: "account",
+  },
+  {
+    section: "connections",
+    icon: "lucide:link",
+    labelKey: "connections",
+    group: "account",
+  },
+  // How the app behaves for you.
+  {
+    section: "navigation",
+    icon: "lucide:compass",
+    labelKey: "navigation",
+    group: "preferences",
+  },
+  {
+    section: "appearance",
+    icon: "lucide:palette",
+    labelKey: "appearance",
+    group: "preferences",
+  },
+  {
+    section: "notifications",
+    icon: "lucide:bell",
+    labelKey: "notifications",
+    group: "preferences",
+  },
+  {
+    section: "shortcuts",
+    icon: "lucide:keyboard",
+    labelKey: "shortcuts",
+    group: "preferences",
+  },
+  // Reaching Barynt from code and from an AI assistant.
+  {
+    section: "api-keys",
+    icon: "lucide:key-round",
+    labelKey: "apiKeys",
+    group: "developer",
+  },
+  {
+    section: "mcp",
+    icon: "lucide:plug-zap",
+    labelKey: "mcp",
+    group: "developer",
+  },
 ];
 
 export function workspacePath(workspaceId: string, section: string): string {

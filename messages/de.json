@@ -229,7 +229,16 @@
     "scopeProject": "Projekt",
     "scopeAccount": "Persönlich",
     "scopeNoProject": "Kein sichtbares Projekt",
-    "scopeStore": "Plugin Store"
+    "scopeStore": "Plugin Store",
+    "group": {
+      "account": "Konto",
+      "preferences": "Bedienung",
+      "developer": "Entwickler",
+      "project": "Projekt",
+      "access": "Mitglieder & Rechte",
+      "issues": "Aufgaben",
+      "workspace": "Workspace"
+    }
   },
   "members": {
     "title": "Mitglieder",

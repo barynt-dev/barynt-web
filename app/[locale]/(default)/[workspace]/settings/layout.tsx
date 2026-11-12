@@ -113,6 +113,7 @@ export default async function WorkspaceSettingsLayout({
     href: workspaceSettingsPath(workspace, entry.section),
     label: t(`nav.${entry.labelKey}`),
     icon: entry.icon,
+    group: entry.group && t(`settings.group.${entry.group}`),
   }));
 
   // The plugins switched on here that have settings, each a page of its own
