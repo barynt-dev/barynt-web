@@ -6,6 +6,10 @@ import {
   SettingsNav,
   type SettingsNavSubject,
 } from "@/components/ui/layout/SettingsNav/SettingsNav";
+import {
+  SettingsSearchField,
+  SettingsSearchProvider,
+} from "@/components/ui/layout/SettingsNav/SettingsSearch";
 import { canUsePluginStore } from "@/features/plugins/queries";
 import {
   settingsSearchIndex,
@@ -115,40 +119,41 @@ export default async function WorkspaceSettingsLayout({
 
   return (
     <div className={styles.shell}>
-      {/* Only "Personal" remaining means: nothing to switch between — the bar
-          would otherwise be a single active segment without a real choice. */}
-      {scope.length > 1 && (
+      <SettingsSearchProvider
+        index={searchIndex}
+        label={t("settings.search")}
+        noHitsLabel={t("settings.noHits")}
+      >
         <SettingsHeader
-          items={scope}
+          // Only "Personal" remaining means nothing to switch between: no
+          // tabs then, just the search.
+          items={scope.length > 1 ? scope : []}
           active="workspace"
           label={t("settings.scopeLabel")}
+          trailing={<SettingsSearchField />}
         />
-      )}
-      <SettingsBody
-        className={styles.body}
-        basePath={workspaceSettingsPath(workspace, "")}
-        backLabel={t("nav.settings")}
-      >
-        <SettingsNav
-          subject={current.name}
-          color={current.color}
-          image={current.avatarUrl ?? undefined}
-          siblings={siblings}
-          siblingsLabel={t("settings.scopeWorkspace")}
-          title={t("nav.settings")}
-          items={nav.items}
-          groups={
-            nav.plugins.length > 0
-              ? [{ title: t("nav.plugins"), items: nav.plugins }]
-              : undefined
-          }
-          searchIndex={searchIndex}
-          searchLabel={t("settings.search")}
-          noHitsLabel={t("settings.noHits")}
+        <SettingsBody
+          className={styles.body}
           basePath={workspaceSettingsPath(workspace, "")}
-        />
-        <div className={styles.panel}>{children}</div>
-      </SettingsBody>
+          backLabel={t("nav.settings")}
+        >
+          <SettingsNav
+            subject={current.name}
+            color={current.color}
+            image={current.avatarUrl ?? undefined}
+            siblings={siblings}
+            siblingsLabel={t("settings.scopeWorkspace")}
+            title={t("nav.settings")}
+            items={nav.items}
+            groups={
+              nav.plugins.length > 0
+                ? [{ title: t("nav.plugins"), items: nav.plugins }]
+                : undefined
+            }
+          />
+          <div className={styles.panel}>{children}</div>
+        </SettingsBody>
+      </SettingsSearchProvider>
     </div>
   );
 }

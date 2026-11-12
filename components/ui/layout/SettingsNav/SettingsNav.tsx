@@ -5,8 +5,8 @@ import {
   type SettingsNavSubject,
   SettingsSubjectMenu,
 } from "./SettingsSubjectMenu";
+import type { SettingsNavSection } from "./searchSections";
 import styles from "./settingsNav.module.scss";
-import type { SettingsNavSection } from "./settingsSearch";
 
 export type { SettingsNavSubject };
 
@@ -23,6 +23,9 @@ export interface SettingsNavItem {
   group?: string;
   /** What else finds it in the search — words from its page. */
   keywords?: string[];
+  /** A scope's start page ("General"). On a phone that address is the
+   *  section list, so the row links with `?open` — the page, not the list. */
+  start?: boolean;
 }
 
 interface Props {
@@ -51,18 +54,6 @@ interface Props {
    *  plugins switched on here that have settings, say. Empty ones aren't
    *  passed. */
   groups?: SettingsNavSection[];
-  /** What the search looks through — every scope the person may open,
-   *  one section each. Without it, the search stays within this nav. */
-  searchIndex?: SettingsNavSection[];
-  /** The search field's placeholder, and what it says without a hit. */
-  searchLabel: string;
-  noHitsLabel: string;
-  /**
-   * Address of the settings' start page — the first entry ("General") lives
-   * there too. On a phone that address is the section list, so this entry
-   * links with `?open` to say "the page, not the list".
-   */
-  basePath: string;
 }
 
 /**
@@ -92,10 +83,6 @@ export function SettingsNav({
   title,
   items,
   groups = [],
-  searchIndex,
-  searchLabel,
-  noHitsLabel,
-  basePath,
 }: Props) {
   // The header only becomes a switcher when there's something to switch
   // between: one's own account has no siblings, and a single project isn't
@@ -129,10 +116,6 @@ export function SettingsNav({
       )}
       <SettingsNavSections
         sections={[...sectionsOf(items, title), ...groups]}
-        searchIndex={searchIndex}
-        basePath={basePath}
-        searchLabel={searchLabel}
-        emptyLabel={noHitsLabel}
       />
     </nav>
   );

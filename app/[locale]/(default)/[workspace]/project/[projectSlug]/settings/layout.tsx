@@ -6,6 +6,10 @@ import {
   SettingsNav,
   type SettingsNavSubject,
 } from "@/components/ui/layout/SettingsNav/SettingsNav";
+import {
+  SettingsSearchField,
+  SettingsSearchProvider,
+} from "@/components/ui/layout/SettingsNav/SettingsSearch";
 import { canUsePluginStore } from "@/features/plugins/queries";
 import {
   projectNav,
@@ -109,39 +113,41 @@ export default async function ProjectSettingsLayout({
 
   return (
     <div className={styles.shell}>
-      {/* Only "Personal" remaining means: nothing to switch between. */}
-      {scope.length > 1 && (
+      <SettingsSearchProvider
+        index={searchIndex}
+        label={t("settings.search")}
+        noHitsLabel={t("settings.noHits")}
+      >
         <SettingsHeader
-          items={scope}
+          // Only "Personal" remaining means nothing to switch between: no
+          // tabs then, just the search.
+          items={scope.length > 1 ? scope : []}
           active="project"
           label={t("settings.scopeLabel")}
+          trailing={<SettingsSearchField />}
         />
-      )}
-      <SettingsBody
-        className={styles.body}
-        basePath={projectSettingsPath(workspace, projectSlug, "")}
-        backLabel={t("nav.settings")}
-      >
-        <SettingsNav
-          subject={project.name}
-          color={project.color}
-          image={project.avatarUrl ?? undefined}
-          siblings={siblings}
-          siblingsLabel={t("settings.scopeProject")}
-          title={t("nav.settings")}
-          items={nav.items}
-          groups={
-            nav.plugins.length > 0
-              ? [{ title: t("nav.plugins"), items: nav.plugins }]
-              : undefined
-          }
-          searchIndex={searchIndex}
-          searchLabel={t("settings.search")}
-          noHitsLabel={t("settings.noHits")}
+        <SettingsBody
+          className={styles.body}
           basePath={projectSettingsPath(workspace, projectSlug, "")}
-        />
-        <div className={styles.panel}>{children}</div>
-      </SettingsBody>
+          backLabel={t("nav.settings")}
+        >
+          <SettingsNav
+            subject={project.name}
+            color={project.color}
+            image={project.avatarUrl ?? undefined}
+            siblings={siblings}
+            siblingsLabel={t("settings.scopeProject")}
+            title={t("nav.settings")}
+            items={nav.items}
+            groups={
+              nav.plugins.length > 0
+                ? [{ title: t("nav.plugins"), items: nav.plugins }]
+                : undefined
+            }
+          />
+          <div className={styles.panel}>{children}</div>
+        </SettingsBody>
+      </SettingsSearchProvider>
     </div>
   );
 }

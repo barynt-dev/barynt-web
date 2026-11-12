@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { searchSections } from "@/components/ui/layout/SettingsNav/settingsSearch";
+import { searchSections } from "@/components/ui/layout/SettingsNav/searchSections";
 import {
   ACCOUNT_SETTINGS_NAV,
   PROJECT_SETTINGS_NAV,

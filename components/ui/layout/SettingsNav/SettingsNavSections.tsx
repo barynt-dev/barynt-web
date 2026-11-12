@@ -1,66 +1,38 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Input } from "@/components/ui/atoms/Input/Input";
 import { NavLink } from "@/components/ui/layout/NavLink/NavLink";
 import { KeyboardOnly } from "./KeyboardOnly";
-import type { SettingsNavItem } from "./SettingsNav";
+import {
+  SettingsSearchField,
+  settingsHref,
+  useSettingsSearch,
+} from "./SettingsSearch";
+import type { SettingsNavSection } from "./searchSections";
 import styles from "./settingsNav.module.scss";
-import { type SettingsNavSection, searchSections } from "./settingsSearch";
-import { OPEN_PARAM } from "./settingsView";
 
 /**
- * The settings nav's sections with a search above them (BARY-201): typing
- * swaps them for the rows of every scope (`searchIndex`: Personal, Project,
- * Workspace) whose name — or what's on their page (`keywords`) — matches,
- * under the scope's name; Enter opens the first. Each heading folds its list
- * away (a native `<details>`); while searching, every hit is shown open.
+ * The settings nav's sections (BARY-201). While the settings search has a
+ * query (`SettingsSearchProvider`), they give way to its hits: the rows of
+ * every scope — Personal, Project, Workspace — under the scope's name. Each
+ * heading folds its list away (a native `<details>`); hits are shown open.
+ * Below a desktop the search field sits here; on a desktop it's at the
+ * right of the scope tabs.
  */
 export function SettingsNavSections({
   sections,
-  searchIndex,
-  basePath,
-  searchLabel,
-  emptyLabel,
 }: {
   sections: SettingsNavSection[];
-  /** What a search looks through; `sections` without it. */
-  searchIndex?: SettingsNavSection[];
-  basePath: string;
-  searchLabel: string;
-  emptyLabel: string;
 }) {
-  const router = useRouter();
-  const [query, setQuery] = useState("");
-  const searching = query.trim() !== "";
-  const shown = searching
-    ? searchSections(searchIndex ?? sections, query)
-    : sections;
-  const hrefOf = (item: SettingsNavItem) =>
-    item.href === basePath ? `${item.href}?${OPEN_PARAM}=1` : item.href;
+  const search = useSettingsSearch();
+  const searching = !!search?.query.trim();
+  const shown = search && searching ? search.hits : sections;
 
   return (
     <>
-      <Input
-        variant="search"
-        className={styles.search}
-        placeholder={searchLabel}
-        aria-label={searchLabel}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") setQuery("");
-          const first = shown[0]?.items[0];
-          if (e.key === "Enter" && first) {
-            e.preventDefault();
-            router.push(hrefOf(first));
-          }
-        }}
-      />
+      <SettingsSearchField className={styles.search} />
       {searching && shown.length === 0 && (
-        <p className={styles.noHits}>{emptyLabel}</p>
+        <p className={styles.noHits}>{search?.noHitsLabel}</p>
       )}
       {shown.map((section, i) => (
         <details
@@ -84,7 +56,7 @@ export function SettingsNavSections({
               const row = (
                 <li key={item.href}>
                   <NavLink
-                    href={hrefOf(item)}
+                    href={settingsHref(item)}
                     activeHref={item.href}
                     icon={item.icon}
                     leading={item.leading}

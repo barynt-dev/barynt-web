@@ -3,6 +3,10 @@ import { getTranslations } from "next-intl/server";
 import { SettingsHeader } from "@/components/ui/layout/SettingsHeader/SettingsHeader";
 import { SettingsBody } from "@/components/ui/layout/SettingsNav/SettingsBody";
 import { SettingsNav } from "@/components/ui/layout/SettingsNav/SettingsNav";
+import {
+  SettingsSearchField,
+  SettingsSearchProvider,
+} from "@/components/ui/layout/SettingsNav/SettingsSearch";
 import { getMyProfile } from "@/features/account/queries";
 import { canUsePluginStore } from "@/features/plugins/queries";
 import {
@@ -94,30 +98,32 @@ export default async function AccountLayout({
 
   return (
     <div className={styles.shell}>
-      {/* Only "Personal" remaining means: nothing to switch between. */}
-      {scope.length > 1 && (
+      <SettingsSearchProvider
+        index={searchIndex}
+        label={t("settings.search")}
+        noHitsLabel={t("settings.noHits")}
+      >
         <SettingsHeader
-          items={scope}
+          // Only "Personal" remaining means nothing to switch between: no
+          // tabs then, just the search.
+          items={scope.length > 1 ? scope : []}
           active="account"
           label={t("settings.scopeLabel")}
+          trailing={<SettingsSearchField />}
         />
-      )}
-      <SettingsBody
-        className={styles.body}
-        basePath={accountPath(workspace, "")}
-        backLabel={t("nav.settings")}
-      >
-        <SettingsNav
-          subject={t("nav.account")}
-          title={t("nav.settings")}
-          items={accountNav(t, workspace).items}
-          searchIndex={searchIndex}
-          searchLabel={t("settings.search")}
-          noHitsLabel={t("settings.noHits")}
+        <SettingsBody
+          className={styles.body}
           basePath={accountPath(workspace, "")}
-        />
-        <div className={styles.panel}>{children}</div>
-      </SettingsBody>
+          backLabel={t("nav.settings")}
+        >
+          <SettingsNav
+            subject={t("nav.account")}
+            title={t("nav.settings")}
+            items={accountNav(t, workspace).items}
+          />
+          <div className={styles.panel}>{children}</div>
+        </SettingsBody>
+      </SettingsSearchProvider>
     </div>
   );
 }

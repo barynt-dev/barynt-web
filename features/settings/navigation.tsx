@@ -1,7 +1,7 @@
 import "server-only";
 import { enabledOAuthProviders } from "@/auth.config";
 import type { SettingsNavItem } from "@/components/ui/layout/SettingsNav/SettingsNav";
-import type { SettingsNavSection } from "@/components/ui/layout/SettingsNav/settingsSearch";
+import type { SettingsNavSection } from "@/components/ui/layout/SettingsNav/searchSections";
 import { PluginTile } from "@/features/plugins/components/PluginStore/PluginTile";
 import { getPluginSettingsNav } from "@/features/plugins/queries";
 import {
@@ -56,6 +56,7 @@ function rowsOf(
       ],
       // Without a keyboard there's nothing to press shortcuts on.
       needsKeyboard: entry.section === "shortcuts" || undefined,
+      start: entry.section === "" || undefined,
     };
   });
 }

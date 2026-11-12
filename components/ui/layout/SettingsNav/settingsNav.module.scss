@@ -126,9 +126,14 @@
   color: var(--on-surface-variant);
 }
 
-/* The search above the sections. */
+/* The search above the sections — below a desktop only; on a desktop it's
+   at the right of the scope tabs (`SettingsHeader`). */
 .search {
   margin: 0.25rem 0 0.75rem;
+
+  @include bp.desktop {
+    display: none;
+  }
 }
 
 .noHits {
