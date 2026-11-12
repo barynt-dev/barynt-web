@@ -247,12 +247,17 @@ A **project** may only switch on what its workspace released for projects (`Plug
 projects' activations off and keeps their data. The pages are **Admin → Plugins**, the
 store (`features/plugins/components/PluginStore`, `plugin.manage`, BARY-200) and the
 workspace's **Plugin store** (`/<workspace>/plugins`, `ScopeStore`, BARY-201) — a fourth
-entry in the settings switcher, for `plugin.enable` in the workspace or one of its
-projects (`canUsePluginStore`); each loads its view through `features/plugins/queries.ts`,
+entry in the settings switcher, only for `plugin.enable` in the workspace
+(`canUsePluginStore`); each loads its view through `features/plugins/queries.ts`,
 which checks the permission again. `getScopeStoreView` lists the installed plugins with
-their activations in the workspace and in the projects the person manages. A switched-on
-plugin with a settings form (`contributes.settings`) gets a page under the workspace's or
-project's settings (`settings/plugins/<pluginId>`, `getPluginSettingsNav` builds the nav
+their activations in the workspace and its projects. The store's one switch is the
+**release**: activating in the workspace where the plugin has that level, plus the
+`PluginGrant` where it has the project level. A project switches a released plugin on
+from its own settings: `getPluginSettingsNav` lists every granted plugin under the
+project's **Plugins** group, and `settings/plugins/<pluginId>` (`PluginSettings`) switches
+it on (`activatePlugin`, confirming the capabilities), holds its settings form
+(`contributes.settings`) and switches it off. In the workspace, the group lists only the
+plugins running there with a settings form (the nav
 group); `savePluginSettings` keeps only the declared keys, checked by type
 (`lib/plugins/settings.ts#checkSettings`), into `PluginSettings.values`, and audits which
 keys changed (`plugin.settings.updated`), never their values.
