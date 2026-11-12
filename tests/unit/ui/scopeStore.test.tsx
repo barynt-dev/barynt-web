@@ -112,9 +112,9 @@ describe("ScopeStore", () => {
     expect(html).toContain("stateConfirm");
   });
 
-  it("offers Add and Edit in the header, and says where it runs", () => {
+  it("offers Edit once it runs somewhere, and says where", () => {
     const html = render(view(), base);
-    expect(html).toContain("placesAdd");
+    expect(html).not.toContain("placesAdd");
     expect(html).toContain("placesEdit");
     expect(html).toContain("onIn");
     // A project waits for a confirmation; a way to confirm is right there.

@@ -96,8 +96,8 @@ function usePlacesDialog(
     );
 }
 
-/** "Add" while there's a place it isn't on, "Edit" once it's on somewhere —
- *  for the plugin's header. */
+/** "Add" while it runs nowhere here, "Edit" once it runs somewhere — both
+ *  open the same window. For the plugin's header. */
 export function PlacesActions({
   plugin,
   view,
@@ -112,10 +112,9 @@ export function PlacesActions({
   const places = placesOf(plugin, view);
   if (plugin.blocked || places.length === 0) return null;
   const onSomewhere = places.some((p) => running(p.activation));
-  const offSomewhere = places.some((p) => !running(p.activation));
   return (
     <div className={store.headActions}>
-      {onSomewhere && (
+      {onSomewhere ? (
         <Button
           variant="outline"
           icon={<Icon icon="lucide:pencil" width={15} />}
@@ -123,8 +122,7 @@ export function PlacesActions({
         >
           {text.t("placesEdit")}
         </Button>
-      )}
-      {offSomewhere && (
+      ) : (
         <Button
           variant="primary"
           icon={<Icon icon="lucide:plus" width={15} />}

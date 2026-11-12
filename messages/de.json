@@ -2694,10 +2694,9 @@
       "on": "Eingeschaltet · {count}",
       "available": "Verfügbar · {count}"
     },
-    "groupOnHere": "Hier eingeschaltet",
+    "groupOnHere": "Eingeschaltet",
     "groupAvailable": "Verfügbar",
     "stateConfirm": "Bestätigen",
-    "statePlaces": "{count, plural, one {An # Stelle} other {An # Stellen}}",
     "scopeStoreIntroTitle": "Plugins für diesen Workspace",
     "scopeStoreIntro": "Was hier steht, hat ein Plattform-Admin installiert und geprüft. Schalte ein Plugin für den Workspace oder für einzelne Projekte ein – du bestätigst dabei, was es darf.",
     "openInStore": "Im Plugin Store",

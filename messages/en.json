@@ -2694,10 +2694,9 @@
       "on": "Switched on · {count}",
       "available": "Available · {count}"
     },
-    "groupOnHere": "Switched on here",
+    "groupOnHere": "Switched on",
     "groupAvailable": "Available",
     "stateConfirm": "Confirm",
-    "statePlaces": "{count, plural, one {On in # place} other {On in # places}}",
     "scopeStoreIntroTitle": "Plugins for this workspace",
     "scopeStoreIntro": "What’s listed here, a platform admin installed and checked. Switch a plugin on for the workspace or for single projects – you confirm what it may do as you do.",
     "openInStore": "In the plugin store",

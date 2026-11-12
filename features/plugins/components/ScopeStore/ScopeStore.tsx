@@ -35,10 +35,6 @@ const isOn = (p: ScopeStorePlugin) =>
   [p.workspace, ...Object.values(p.projects)].some(
     (a) => a?.state === "active" || a?.state === "needsConfirmation",
   );
-const placesOn = (p: ScopeStorePlugin) =>
-  [p.workspace, ...Object.values(p.projects)].filter(
-    (a) => a?.state === "active" || a?.state === "needsConfirmation",
-  ).length;
 const waits = (p: ScopeStorePlugin) =>
   [p.workspace, ...Object.values(p.projects)].some(
     (a) => a?.state === "needsConfirmation",
@@ -225,13 +221,7 @@ function ListGroup({
                 <span className={store.state} data-tone="warning">
                   {text.t("stateConfirm")}
                 </span>
-              ) : (
-                isOn(p) && (
-                  <span className={store.state} data-tone="new">
-                    {text.t("statePlaces", { count: placesOn(p) })}
-                  </span>
-                )
-              )}
+              ) : null}
             </Link>
           </li>
         ))}
@@ -309,7 +299,7 @@ function Home({
                   <PluginBadges kind={p.kind} levels={p.levels} size="md" />
                   {isOn(p) && (
                     <span className={store.cardState} data-state="installed">
-                      {text.t("statePlaces", { count: placesOn(p) })}
+                      {text.t("groupOnHere")}
                     </span>
                   )}
                 </span>
