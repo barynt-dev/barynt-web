@@ -99,7 +99,7 @@ export default async function WorkspaceSettingsLayout({
       project: projectAccess
         ? PROJECT_SETTINGS_PERMISSIONS.some(projectAccess.has)
         : false,
-      store: await canUsePluginStore(workspace, projects),
+      store: await canUsePluginStore(workspace),
     },
   );
 

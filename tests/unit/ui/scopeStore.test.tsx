@@ -2,7 +2,7 @@ import { describe, expect, it, mock } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
 // The workspace's plugin store (BARY-201), rendered to markup: which
-// plugins are on here, and the switches a workspace or project admin gets.
+// plugins are released here, and the one switch its managers get.
 
 mock.module("@iconify/react", () => ({
   Icon: ({ icon }: { icon: string }) => <i data-icon={icon} />,
@@ -81,7 +81,6 @@ const notify: ScopeStorePlugin = {
 
 const view = (over: Partial<ScopeStoreView> = {}): ScopeStoreView => ({
   workspaceId: "ws-1",
-  canWorkspace: true,
   projects: [
     { id: "p1", name: "Web App", slug: "web-app", color: "#7c86ff" },
     { id: "p2", name: "Mobile", slug: "mobile", color: "#5ab98a" },
@@ -107,7 +106,7 @@ const render = (v: ScopeStoreView, selected: ScopeStorePlugin | null) =>
   );
 
 describe("ScopeStore", () => {
-  it("lists what's on here apart from what's available", () => {
+  it("lists what's released here apart from what's available", () => {
     const html = render(view(), null);
     const on = html.indexOf("groupOnHere");
     const available = html.indexOf("groupAvailable");
@@ -117,32 +116,28 @@ describe("ScopeStore", () => {
     expect(html).toContain("stateConfirm");
   });
 
-  it("offers Edit once it runs somewhere, and says where", () => {
+  it("offers to take the release back once released, and says where it's on", () => {
     const html = render(view(), base);
-    expect(html).not.toContain("placesAdd");
-    expect(html).toContain("placesEdit");
+    expect(html).toContain("unrelease");
     expect(html).toContain("releasedIn");
-    // A project waits for a confirmation; a way to confirm is right there.
-    expect(html).toContain("placesWaiting");
-    // On with a settings form: its place leads to the settings.
+    // Its workspace settings, and the project it's on in.
     expect(html).toContain('href="/ws-1/settings/plugins/timeline"');
+    expect(html).toContain(
+      'href="/ws-1/project/web-app/settings/plugins/timeline"',
+    );
   });
 
-  it("only offers Add while it runs nowhere", () => {
+  it("only offers to release it while it isn't", () => {
     const html = render(view(), notify);
-    expect(html).toContain("placesAdd");
-    expect(html).not.toContain("placesEdit");
     expect(html).toContain("notReleasedIn");
+    expect(html).not.toContain("unrelease");
+    expect(html).toMatch(/>release</);
   });
 
   it("offers nothing for a blocked plugin", () => {
     const html = render(view(), { ...base, blocked: true });
-    expect(html).not.toContain("placesAdd");
+    expect(html).not.toContain("unrelease");
+    expect(html).not.toMatch(/>release</);
     expect(html).toContain("blockedByAdmin");
-  });
-
-  it("offers nothing to someone who manages no place for it", () => {
-    const html = render(view({ canWorkspace: false, projects: [] }), notify);
-    expect(html).not.toContain("placesAdd");
   });
 });

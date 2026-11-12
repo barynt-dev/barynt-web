@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
-import { pluginStorePath } from "@/lib/nav";
+import { projectSettingsPath } from "@/lib/nav";
 
-/** The old plugin list — its place is the workspace's plugin store now
- *  (BARY-201); a switched-on plugin's settings have pages of their own. */
+/** The old plugin list — a project's plugins are in its settings nav now,
+ *  each with a page of its own (BARY-201). */
 export default async function ProjectPluginsPage({
   params,
 }: {
-  params: Promise<{ workspace: string }>;
+  params: Promise<{ workspace: string; projectSlug: string }>;
 }) {
-  const { workspace } = await params;
-  redirect(pluginStorePath(workspace, {}));
+  const { workspace, projectSlug } = await params;
+  redirect(projectSettingsPath(workspace, projectSlug, ""));
 }

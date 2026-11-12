@@ -439,9 +439,8 @@ export interface ScopeStoreProject {
 
 export interface ScopeStoreView {
   workspaceId: string;
-  /** `plugin.enable` in the workspace: switch on here, release for projects. */
-  canWorkspace: boolean;
-  /** The projects the person may switch plugins on in. */
+  /** The workspace's projects the person can see — where it's on, for the
+   *  line under the header. */
   projects: ScopeStoreProject[];
   plugins: ScopeStorePlugin[];
 }
@@ -451,44 +450,25 @@ const hasSettingsForm = (manifest: unknown) => {
   return parsed.ok && (parsed.manifest.contributes.settings?.length ?? 0) > 0;
 };
 
-/** The projects of the current workspace the person may switch plugins on
- *  in — a separate check per project, as roles differ per project. */
-async function manageableProjects(
-  projects: ScopeStoreProject[],
-): Promise<ScopeStoreProject[]> {
-  const allowed = await Promise.all(
-    projects.map((p) => hasPermission("plugin.enable", { projectId: p.id })),
-  );
-  return projects.filter((_, i) => allowed[i]);
-}
-
 /**
  * Whether the person may open the workspace's plugin store: `plugin.enable`
- * in the workspace, or in one of its projects they can see.
+ * in the workspace — the workspace's managers. They release plugins here;
+ * the projects switch released ones on in their own settings.
  */
-export async function canUsePluginStore(
-  workspaceId: string,
-  projects: ScopeStoreProject[],
-): Promise<boolean> {
-  if (await hasPermission("plugin.enable", { workspaceId })) return true;
-  return (await manageableProjects(projects)).length > 0;
+export async function canUsePluginStore(workspaceId: string): Promise<boolean> {
+  return hasPermission("plugin.enable", { workspaceId });
 }
 
 /**
- * The workspace's store: every plugin the platform has installed, with
- * where in this workspace it's on. `projects` are the ones the person can
- * see; only those they may manage come back. `null` when they may manage
- * neither the workspace nor any project.
+ * The workspace's store: every plugin the platform has installed, whether
+ * it's released here and where it's on. `projects` are the ones the person
+ * can see. `null` without `plugin.enable` in the workspace.
  */
 export async function getScopeStoreView(
   workspaceId: string,
   projects: ScopeStoreProject[],
 ): Promise<ScopeStoreView | null> {
-  const [canWorkspace, manageable] = await Promise.all([
-    hasPermission("plugin.enable", { workspaceId }),
-    manageableProjects(projects),
-  ]);
-  if (!canWorkspace && manageable.length === 0) return null;
+  if (!(await canUsePluginStore(workspaceId))) return null;
 
   const [rows, activations, grants, { listings }] = await Promise.all([
     db.plugin.findMany({ where: { status: { in: ["active", "blocked"] } } }),
@@ -514,7 +494,7 @@ export async function getScopeStoreView(
     const ws = mine.find((a) => !a.projectId);
     const byProject: Record<string, ScopeActivation> = {};
     for (const a of mine)
-      if (a.projectId && manageable.some((p) => p.id === a.projectId))
+      if (a.projectId && projects.some((p) => p.id === a.projectId))
         byProject[a.projectId] = stateOf(a);
     plugins.push({
       ...summary,
@@ -527,7 +507,7 @@ export async function getScopeStoreView(
     });
   }
   plugins.sort((a, b) => a.name.localeCompare(b.name));
-  return { workspaceId, canWorkspace, projects: manageable, plugins };
+  return { workspaceId, projects, plugins };
 }
 
 // ─── A switched-on plugin's settings (BARY-201) ─────────────────────────────
@@ -542,27 +522,35 @@ export interface PluginSettingField {
   options: { id: string; label: string }[];
 }
 
-/** The plugins switched on here that have settings — the settings nav's
- *  "Plugins" group. No permission check: the layout only shows it to whom
- *  it shows the section, and every page checks again. */
+/** The settings nav's "Plugins" group. In a project: every plugin its
+ *  workspace released for projects — switched on or not, that's where a
+ *  project turns it on. In the workspace: the ones on there with a settings
+ *  form. No permission check: the layout only shows it to whom it shows the
+ *  section, and every page checks again. */
 export async function getPluginSettingsNav(scope: {
   workspaceId: string;
   projectId: string | null;
 }): Promise<{ pluginId: string; name: string }[]> {
-  const activations = await db.pluginActivation.findMany({
-    where: { scopeKey: activationScopeKey(scope), enabled: true },
-    select: { pluginId: true },
-  });
-  if (activations.length === 0) return [];
+  const ids = scope.projectId
+    ? (
+        await db.pluginGrant.findMany({
+          where: { workspaceId: scope.workspaceId },
+          select: { pluginId: true },
+        })
+      ).map((g) => g.pluginId)
+    : (
+        await db.pluginActivation.findMany({
+          where: { scopeKey: activationScopeKey(scope), enabled: true },
+          select: { pluginId: true },
+        })
+      ).map((a) => a.pluginId);
+  if (ids.length === 0) return [];
   const rows = await db.plugin.findMany({
-    where: {
-      pluginId: { in: activations.map((a) => a.pluginId) },
-      status: "active",
-    },
+    where: { pluginId: { in: ids }, status: "active" },
     select: { pluginId: true, manifest: true },
   });
   return rows
-    .filter((r) => hasSettingsForm(r.manifest))
+    .filter((r) => (scope.projectId ? true : hasSettingsForm(r.manifest)))
     .map((r) => ({
       pluginId: r.pluginId,
       name: summaryOf(r.pluginId, r.manifest).name,
@@ -574,11 +562,13 @@ export interface PluginSettingsView {
   plugin: PluginSummary & { version: string };
   fields: PluginSettingField[];
   values: Record<string, unknown>;
-  state: ActivationState;
+  /** `off` in a project that never switched it on. */
+  state: ActivationState | "off";
 }
 
-/** A plugin's settings page in a workspace or project — `plugin.enable`
- *  there, and the plugin switched on there with a settings form. */
+/** A plugin's page in a workspace or project — `plugin.enable` there. In a
+ *  project: released by its workspace, on or not (the page switches it on).
+ *  In the workspace: switched on there, with a settings form. */
 export async function getPluginSettingsView(
   scope: { workspaceId: string; projectId: string | null },
   pluginId: string,
@@ -590,7 +580,7 @@ export async function getPluginSettingsView(
       : { workspaceId: scope.workspaceId },
   );
   if (!allowed) return null;
-  const [activation, versions] = await Promise.all([
+  const [activation, versions, grant] = await Promise.all([
     db.pluginActivation.findUnique({
       where: {
         pluginId_scopeKey: { pluginId, scopeKey: activationScopeKey(scope) },
@@ -598,13 +588,21 @@ export async function getPluginSettingsView(
       include: { settings: true },
     }),
     db.plugin.findMany({ where: { pluginId } }),
+    scope.projectId
+      ? db.pluginGrant.findUnique({
+          where: {
+            pluginId_workspaceId: { pluginId, workspaceId: scope.workspaceId },
+          },
+        })
+      : null,
   ]);
   const active = versions.find((v) => v.status === "active");
-  if (!activation || !active) return null;
+  if (!active) return null;
   const parsed = validateManifest(active.manifest);
   if (!parsed.ok) return null;
   const settings = parsed.manifest.contributes.settings ?? [];
-  if (settings.length === 0) return null;
+  if (scope.projectId ? !grant : !activation?.enabled || settings.length === 0)
+    return null;
   return {
     plugin: {
       ...summaryOf(pluginId, active.manifest, active.id),
@@ -618,14 +616,16 @@ export async function getPluginSettingsView(
       default: f.default ?? null,
       options: (f.options ?? []).map((o) => ({ id: o.id, label: o.label })),
     })),
-    values: (activation.settings?.values ?? {}) as Record<string, unknown>,
-    state: activationState(
-      activation,
-      versions as {
-        version: string;
-        status: "active" | "superseded" | "blocked";
-      }[],
-      parsed.manifest.capabilities,
-    ),
+    values: (activation?.settings?.values ?? {}) as Record<string, unknown>,
+    state: activation
+      ? activationState(
+          activation,
+          versions as {
+            version: string;
+            status: "active" | "superseded" | "blocked";
+          }[],
+          parsed.manifest.capabilities,
+        )
+      : "off",
   };
 }

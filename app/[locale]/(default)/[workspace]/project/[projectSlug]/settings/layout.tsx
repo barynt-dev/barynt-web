@@ -77,7 +77,7 @@ export default async function ProjectSettingsLayout({
     {
       workspace: WORKSPACE_SETTINGS_PERMISSIONS.some(workspaceAccess.has),
       project: PROJECT_SETTINGS_PERMISSIONS.some(access.has),
-      store: await canUsePluginStore(workspace, projects),
+      store: await canUsePluginStore(workspace),
     },
   );
 
@@ -106,7 +106,8 @@ export default async function ProjectSettingsLayout({
     icon: entry.icon,
   }));
 
-  // The plugins switched on in this project that have settings (BARY-201).
+  // The plugins the workspace released for projects, on here or not: each
+  // page switches it on and holds its settings (BARY-201).
   const pluginItems: SettingsNavItem[] = access.has("plugin.enable")
     ? (
         await getPluginSettingsNav({

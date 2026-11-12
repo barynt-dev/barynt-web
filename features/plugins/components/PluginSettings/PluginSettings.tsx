@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/atoms/Switch/Switch";
 import { useConfirm } from "@/components/ui/layout/ConfirmDialog/ConfirmDialog";
 import { PageHeader } from "@/components/ui/layout/PageHeader/PageHeader";
 import {
+  activatePlugin,
   deactivatePlugin,
   deletePluginData,
   savePluginSettings,
@@ -21,14 +22,19 @@ import type {
 } from "@/features/plugins/queries";
 import { Link } from "@/i18n/navigation";
 import { pluginStorePath } from "@/lib/nav";
+import { CapabilityCards } from "../PluginStore/capabilities";
 import { PluginTile } from "../PluginStore/PluginTile";
+import shared from "../plugins.module.scss";
 import { ErrorLine, usePluginText } from "../shared";
 import styles from "./pluginSettings.module.scss";
 
-// A switched-on plugin's settings in a workspace or project (BARY-201): the
-// form its manifest declares (`contributes.settings`), and below it what
-// switches it off here. What's saved is checked against the manifest on the
-// server (`savePluginSettings`) — the form only offers what may be stored.
+// A plugin's page in a workspace or project (BARY-201). In a project it's
+// where a plugin the workspace released gets switched on — confirming what
+// it may do here — and off again. While it runs: the form its manifest
+// declares (`contributes.settings`). What's saved is checked against the
+// manifest on the server (`savePluginSettings`) — the form only offers what
+// may be stored. In the workspace, switching on and off is the store's
+// release; this page only holds the settings.
 
 type Value = string | number | boolean;
 
@@ -59,7 +65,10 @@ export function PluginSettings({
   );
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const { plugin } = view;
+  const inProject = scope.projectId !== null;
+  const running = view.state === "active" || view.state === "needsConfirmation";
   const storeHref = pluginStorePath(scope.workspaceId, {
     plugin: plugin.pluginId,
   });
@@ -82,6 +91,19 @@ export function PluginSettings({
       router.refresh();
     });
 
+  const switchOn = () =>
+    startTransition(async () => {
+      const result = await activatePlugin({
+        pluginId: plugin.pluginId,
+        ...scope,
+        capabilities: plugin.capabilities,
+      });
+      if ("error" in result) return setError(text.error(result.error));
+      setError("");
+      setConfirmed(false);
+      router.refresh();
+    });
+
   const switchOff = () =>
     startTransition(async () => {
       const result = await deactivatePlugin({
@@ -89,7 +111,7 @@ export function PluginSettings({
         ...scope,
       });
       if ("error" in result) return setError(text.error(result.error));
-      router.push(storeHref);
+      router.refresh();
     });
 
   const removeData = async () => {
@@ -107,7 +129,7 @@ export function PluginSettings({
         ...scope,
       });
       if ("error" in result) return setError(text.error(result.error));
-      router.push(storeHref);
+      router.refresh();
     });
   };
 
@@ -116,74 +138,128 @@ export function PluginSettings({
       <PageHeader
         leading={<PluginTile id={plugin.pluginId} name={plugin.name} />}
         title={plugin.name}
+        description={`${plugin.author} · v${plugin.version}`}
         actions={
-          <Link href={storeHref} className={styles.storeLink}>
-            <Icon icon="lucide:store" width={15} aria-hidden />
-            {text.t("openInStore")}
-          </Link>
+          // Only a workspace manager has the store.
+          !inProject && (
+            <Link href={storeHref} className={styles.storeLink}>
+              <Icon icon="lucide:store" width={15} aria-hidden />
+              {text.t("openInStore")}
+            </Link>
+          )
         }
       />
       <div className={styles.page}>
-        {view.state === "needsConfirmation" && (
-          <p className={styles.notice}>
-            <Icon icon="lucide:sparkles" width={16} aria-hidden />
-            <span>
-              {text.t("updateAsksMore")}{" "}
-              <Link href={storeHref}>{text.t("confirmInStore")}</Link>
-            </span>
-          </p>
+        {/* Off here, or an update asks for more: what it may do, confirmed. */}
+        {(!running || view.state === "needsConfirmation") && (
+          <section className={styles.switchOn} aria-labelledby="plugin-on">
+            <h2 id="plugin-on">
+              {running
+                ? text.t("confirmAgainTitle")
+                : text.t("switchOnInProject")}
+            </h2>
+            <p>
+              {running
+                ? text.t("updateAsksMore")
+                : text.t("switchOnHint", { name: plugin.name })}
+            </p>
+            {!running && <p className={styles.about}>{plugin.description}</p>}
+            <CapabilityCards
+              capabilities={plugin.capabilities}
+              network={plugin.network}
+            />
+            <label className={shared.confirm}>
+              <input
+                type="checkbox"
+                checked={confirmed}
+                disabled={isPending}
+                onChange={(e) => setConfirmed(e.target.checked)}
+              />
+              <span>{text.t("switchOnConfirm")}</span>
+            </label>
+            <ErrorLine message={error} />
+            <div className={styles.formActions}>
+              {view.state === "disabled" && (
+                <Button
+                  variant="text"
+                  className={styles.dangerText}
+                  icon={<Icon icon="lucide:trash-2" width={15} />}
+                  disabled={isPending}
+                  onClick={removeData}
+                >
+                  {text.t("deleteData")}
+                </Button>
+              )}
+              <Button
+                variant="primary"
+                disabled={!confirmed || isPending}
+                onClick={switchOn}
+              >
+                {running ? text.t("confirmAgain") : text.t("switchOn")}
+              </Button>
+            </div>
+          </section>
         )}
 
-        <form
-          className={styles.form}
-          onSubmit={(e) => {
-            e.preventDefault();
-            save();
-          }}
-        >
-          {view.fields.map((field) => (
-            <Field
-              key={field.key}
-              field={field}
-              value={values[field.key]}
-              disabled={isPending}
-              onChange={(v) => set(field.key, v)}
-            />
-          ))}
-          <ErrorLine message={error} />
-          <div className={styles.formActions}>
-            {saved && (
-              <span className={styles.saved} role="status">
-                <Icon icon="lucide:check" width={14} aria-hidden />
-                {text.t("settingsSaved")}
-              </span>
-            )}
-            <Button variant="primary" type="submit" disabled={isPending}>
-              {t("actions.save")}
-            </Button>
-          </div>
-        </form>
+        {running && view.fields.length > 0 && (
+          <form
+            className={styles.form}
+            onSubmit={(e) => {
+              e.preventDefault();
+              save();
+            }}
+          >
+            {view.fields.map((field) => (
+              <Field
+                key={field.key}
+                field={field}
+                value={values[field.key]}
+                disabled={isPending}
+                onChange={(v) => set(field.key, v)}
+              />
+            ))}
+            {view.state === "active" && <ErrorLine message={error} />}
+            <div className={styles.formActions}>
+              {saved && (
+                <span className={styles.saved} role="status">
+                  <Icon icon="lucide:check" width={14} aria-hidden />
+                  {text.t("settingsSaved")}
+                </span>
+              )}
+              <Button variant="primary" type="submit" disabled={isPending}>
+                {t("actions.save")}
+              </Button>
+            </div>
+          </form>
+        )}
+        {running && view.fields.length === 0 && (
+          <p className={styles.empty}>{text.t("noSettings")}</p>
+        )}
 
-        <section className={styles.danger} aria-labelledby="plugin-off">
-          <h2 id="plugin-off">
-            {text.t(scope.projectId ? "offInProject" : "offInWorkspace")}
-          </h2>
-          <p>{text.t("offHint")}</p>
-          <div className={styles.dangerActions}>
-            <Button variant="outline" disabled={isPending} onClick={switchOff}>
-              {text.t("switchOff")}
-            </Button>
-            <Button
-              variant="text"
-              className={styles.dangerText}
-              icon={<Icon icon="lucide:trash-2" width={15} />}
-              disabled={isPending}
-              onClick={removeData}
-            >
-              {text.t("deleteData")}
-            </Button>
-          </div>
-        </section>
+        {running && inProject && (
+          <section className={styles.danger} aria-labelledby="plugin-off">
+            <h2 id="plugin-off">{text.t("offInProject")}</h2>
+            <p>{text.t("offHint")}</p>
+            <div className={styles.dangerActions}>
+              <Button
+                variant="outline"
+                disabled={isPending}
+                onClick={switchOff}
+              >
+                {text.t("switchOff")}
+              </Button>
+              <Button
+                variant="text"
+                className={styles.dangerText}
+                icon={<Icon icon="lucide:trash-2" width={15} />}
+                disabled={isPending}
+                onClick={removeData}
+              >
+                {text.t("deleteData")}
+              </Button>
+            </div>
+          </section>
+        )}
       </div>
     </>
   );

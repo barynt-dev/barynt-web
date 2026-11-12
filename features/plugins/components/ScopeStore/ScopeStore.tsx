@@ -24,23 +24,19 @@ import { PluginTile } from "../PluginStore/PluginTile";
 import { PreviewGallery } from "../PluginStore/PreviewGallery";
 import store from "../PluginStore/pluginStore.module.scss";
 import { PluginBadges, usePluginText } from "../shared";
-import { isReleased, PlacesActions, PlacesSummary } from "./ScopeActivation";
+import { isReleased, ReleaseActions, ReleaseSummary } from "./ScopeActivation";
 import scope from "./scopeStore.module.scss";
 
-// The workspace's plugin store (BARY-201): what the platform has installed,
-// next to the one that's open — what it does, what it asks for, and where
-// in this workspace it's on. Built from the admin store's pieces; what's
+// The workspace's plugin store (BARY-201), for its managers: what the
+// platform has installed, next to the one that's open — what it does, what
+// it asks for, and whether it's released here. Built from the admin store's pieces; what's
 // open lives in the address (`?plugin=`, `?tab=`, `?category=`).
 
 export type ScopeStoreTab = "overview" | "capabilities";
 type Filter = "all" | "on" | "available";
 
-/** Released in this workspace, or switched on in one of its projects. */
-const isOn = (p: ScopeStorePlugin) =>
-  isReleased(p) ||
-  Object.values(p.projects).some(
-    (a) => a.state === "active" || a.state === "needsConfirmation",
-  );
+/** Released in this workspace — the list's "Released" group. */
+const isOn = isReleased;
 const waits = (p: ScopeStorePlugin) =>
   [p.workspace, ...Object.values(p.projects)].some(
     (a) => a?.state === "needsConfirmation",
@@ -396,14 +392,14 @@ function Detail({
             ))}
           </span>
         </div>
-        <PlacesActions
+        <ReleaseActions
           plugin={plugin}
           view={view}
           workspaceName={workspaceName}
         />
       </header>
 
-      <PlacesSummary
+      <ReleaseSummary
         plugin={plugin}
         view={view}
         workspaceName={workspaceName}

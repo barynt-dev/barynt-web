@@ -1,7 +1,8 @@
 @use "breakpoints" as bp;
 
-/* A switched-on plugin's settings (BARY-201): the form, then what switches
-   it off — like any other settings page. */
+/* A plugin's page in a workspace or project (BARY-201): switching it on,
+   its settings form, then what switches it off — like any other settings
+   page. */
 
 .page {
   display: flex;
@@ -28,22 +29,36 @@
   font-weight: 600;
 }
 
-.notice {
+.switchOn {
   display: flex;
-  align-items: flex-start;
-  gap: 0.625rem;
-  margin: 0;
-  padding: 0.75rem 1rem;
-  border: 1px solid color-mix(in oklab, var(--warning) 45%, transparent);
-  border-radius: var(--radius-lg);
-  background: color-mix(in oklab, var(--warning) 12%, var(--surface));
-  font-size: var(--text-sm);
+  flex-direction: column;
+  gap: 0.75rem;
 
-  svg {
-    flex: none;
-    margin-top: 0.125rem;
-    color: var(--warning);
+  h2 {
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: 650;
   }
+
+  p {
+    margin: 0;
+    color: var(--on-surface-variant);
+    font-size: var(--text-sm);
+  }
+
+  & > * {
+    flex: none;
+  }
+}
+
+.about.about {
+  color: var(--on-surface);
+}
+
+.empty {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font-size: var(--text-sm);
 }
 
 .form {

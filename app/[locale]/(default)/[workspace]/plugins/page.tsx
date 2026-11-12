@@ -27,10 +27,10 @@ export const dynamic = "force-dynamic";
 
 /**
  * The workspace's plugin store (BARY-201): the plugins the platform has
- * installed, to switch on in the workspace and its projects — next to
- * Personal, Project and Workspace in the settings switcher. For whoever has
- * `plugin.enable` in the workspace or one of its projects; what's open is in
- * the address (`?plugin=`, `?tab=`, `?category=`).
+ * installed, to release in the workspace — next to Personal, Project and
+ * Workspace in the settings switcher. Only for the workspace's managers
+ * (`plugin.enable` there); projects switch released plugins on in their own
+ * settings. What's open is in the address (`?plugin=`, `?tab=`, `?category=`).
  */
 export default async function WorkspacePluginStorePage({
   params,
