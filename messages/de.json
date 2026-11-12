@@ -1537,7 +1537,8 @@
       "pluginDataDeleted": "Plugin-Daten gelöscht",
       "pluginSettingsUpdated": "Plugin-Einstellungen geändert",
       "pluginGranted": "Plugin für Projekte freigegeben",
-      "pluginGrantRevoked": "Plugin-Freigabe für Projekte zurückgenommen"
+      "pluginGrantRevoked": "Plugin-Freigabe für Projekte zurückgenommen",
+      "pluginActed": "Plugin hat im Namen der Person etwas geändert"
     }
   },
   "dashboard": {

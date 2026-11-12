@@ -59,7 +59,7 @@ describe("bridge protocol", () => {
 
   it("asks for a capability that exists for every method", () => {
     for (const capability of Object.values(BRIDGE_METHODS))
-      expect(CAPABILITIES).toContain(capability);
+      if (capability !== null) expect(CAPABILITIES).toContain(capability);
   });
 
   it("drops what isn't a message of the protocol", () => {

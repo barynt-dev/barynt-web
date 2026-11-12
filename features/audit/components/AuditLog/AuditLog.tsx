@@ -317,6 +317,10 @@ export const AUDIT_ACTION_META = {
     icon: "lucide:sliders-horizontal",
     message: "pluginSettingsUpdated",
   },
+  "plugin.acted": {
+    icon: "lucide:puzzle",
+    message: "pluginActed",
+  },
   "plugin.granted": {
     icon: "lucide:badge-check",
     message: "pluginGranted",

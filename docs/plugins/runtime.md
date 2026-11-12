@@ -53,17 +53,40 @@ mode, so `var(--primary)` looks like Barynt.
 | --- | --- | --- | --- |
 | `issues.list` | `issues:read` | `projectId?`, `q?`, `status?`, `cursor?`, `take?` (≤ 100) | `{ issues, nextCursor }` |
 | `issues.get` | `issues:read` | `id` (id or `PREFIX-123`) | the issue |
+| `issues.create` | `issues:write` | `projectId?`, `title`, and the fields of `POST /api/v1/projects/:id/issues` | the issue |
+| `issues.update` | `issues:write` | `id`, and the fields of `PATCH /api/v1/issues/:id` | `{ id }` |
+| `comments.list` | `comments:read` | `issueId` | the comments |
+| `comments.create` | `comments:write` | `issueId`, `body` (Markdown), `parentId?` | the comment |
+| `labels.list` | `labels:read` | `projectId?` | the workspace's labels and the project's |
+| `projects.list` | `projects:read` | — | the projects it may work in |
+| `members.list` | `members:read` | `projectId?` | the project's members, or the workspace's |
+| `fields.list` | `fields:read` | `projectId?` | the project's custom fields |
+| `storage.get` / `storage.set` / `storage.delete` / `storage.list` | `storage:own` | `key`, `value` (any JSON) | the value / — / — / the keys |
+| `settings.get` | — | — | its settings in this place, defaults filled in |
 
-A project's plugin sees its own project; a workspace's plugin the
-workspace's projects the person can see.
+A project's plugin works in its own project; a workspace's plugin in the
+workspace's projects the person can see. Setting custom field values
+(`customFields` in `issues.create`/`issues.update`) needs `fields:write` too.
+
+**Storage** is the plugin's own, per place it's on in: keys up to 128
+characters, a value up to 64 KB as JSON, at most 500 keys and 1 MB together.
+
+**In someone's name.** What a plugin writes, it writes as the person whose
+page it runs on, and Barynt shows it as theirs — no badge, the same as
+GitHub Apps or Jira's `asUser()`. Which plugin did it is in the audit log:
+every change lands there as "Plugin changed something in their name", with
+the plugin and the person.
+
+**Budget.** 300 requests per person and minute; after that the plugin gets
+`too_many_requests` until the minute is over.
 
 ## Errors
 
 `unknown_method`, `invalid_params`, `not_active`,
-`capability_not_confirmed`, `forbidden`, `not_found`, `timeout`,
-`too_many_requests`. An error the plugin throws — or a frame that doesn't
-start within 10 seconds — shows in Barynt as the plugin's error, with a way
-to load it again.
+`capability_not_confirmed`, `forbidden`, `not_found`, `storage_full`,
+`timeout`, `too_many_requests`. An error the plugin throws — or a frame
+that doesn't start within 10 seconds — shows in Barynt as the plugin's
+error, with a way to load it again.
 
 ## Slots
 

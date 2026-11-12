@@ -1537,7 +1537,8 @@
       "pluginDataDeleted": "Plugin data deleted",
       "pluginSettingsUpdated": "Plugin settings changed",
       "pluginGranted": "Plugin released for projects",
-      "pluginGrantRevoked": "Plugin release for projects withdrawn"
+      "pluginGrantRevoked": "Plugin release for projects withdrawn",
+      "pluginActed": "Plugin changed something in their name"
     }
   },
   "dashboard": {
