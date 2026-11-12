@@ -1628,13 +1628,23 @@
 
 // ─── First visit ────────────────────────────────────────────────────────────
 
+/* Fills the area below the header and scrolls itself, wall to wall — the
+   content stays a centered column of at most 62rem through its side
+   padding, so a wheel beside the column scrolls too. */
 .welcome {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  max-width: 62rem;
-  margin: 0 auto;
-  padding: 1.5rem 2rem 3rem;
+  width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1.5rem max(2rem, calc((100% - 62rem) / 2)) 3rem;
+
+  /* A flex column that scrolls: its children keep their height. */
+  & > * {
+    flex: none;
+  }
 
   @include bp.phone {
     padding: 0.75rem 1rem 2rem;

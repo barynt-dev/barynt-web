@@ -231,7 +231,7 @@ type Href = (to: Parameters<typeof pluginStorePath>[1]) => string;
 function ScopeStoreWelcome() {
   const text = usePluginText();
   return (
-    <section className={`${store.welcome} ${scope.welcome}`}>
+    <section className={store.welcome}>
       <div className={store.hero}>
         <div className={store.heroText}>
           <span className={store.heroKicker}>
