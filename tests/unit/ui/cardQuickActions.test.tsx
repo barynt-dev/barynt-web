@@ -15,9 +15,20 @@ mock.module("@/features/issues/useIssuePatch", () => ({
   useIssuePatch: () => ({ patch: () => {}, isPending: false }),
 }));
 
+// Same for the plugins' actions: the list is loaded by a Server Function,
+// and starting one asks through the confirm dialog's provider.
+mock.module("@/features/plugins/actions", () => pluginActionsMock());
+mock.module(
+  "@/features/plugins/components/PluginActions/usePluginAction",
+  () => ({
+    usePluginAction: () => async () => {},
+  }),
+);
+
 import { CardQuickActions } from "@/features/issues/components/BoardCard/CardQuickActions";
 import type { GroupDef } from "@/features/issues/group";
 import type { IssueDetail } from "@/types";
+import { pluginActionsMock } from "./pluginActionsMock";
 
 const groups: GroupDef[] = [
   { key: "status", id: "todo", label: "Todo", alwaysShow: true },
