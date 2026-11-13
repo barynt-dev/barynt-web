@@ -1,16 +1,11 @@
----
-title: Your first plugin
-description: Build a project view with the plugin SDK, release it locally and run it in your own Barynt.
-sidebar:
-  order: 2
----
+# Your first plugin
 
 This walks you through a small sandbox plugin: a project view that lists the
 project's open issues. At the end it runs in your local Barynt, installed
 like any other plugin.
 
 You need [Bun](https://bun.sh), a local Barynt (see the
-[developer docs](../../../dev/getting-started.md)) and its repository, because
+[developer docs](getting-started.md)) and its repository, because
 the SDK isn't on npm yet.
 
 ## 1. The project
@@ -46,7 +41,7 @@ cd barynt/packages/plugin-sdk && bun run build
 ## 2. The manifest
 
 `manifest.json` says who the plugin is, where it can run, what it asks for
-and what it adds. Every field is explained in [Manifest](manifest.md).
+and what it adds. Every field is explained in [Manifest](plugins-manifest.md).
 
 ```json
 {
@@ -139,7 +134,7 @@ plugin-dev/
 ```
 
 Copy the three files in, then compute the release hash (see
-[Publishing](publishing.md#the-release-hash)):
+[Publishing](plugins-publishing.md#the-release-hash)):
 
 ```bash
 cd plugin-dev/open-issues/0.1.0
@@ -191,5 +186,5 @@ files into a new version folder (`0.1.1`, or a prerelease like
 `0.1.0-dev.2`), add that version and its hash to `plugins.json`, and update
 in **Admin → Plugins**.
 
-Next: everything the SDK offers is in [Plugin SDK](sdk.md); test it without
-Barynt with [Testing](testing.md).
+Next: everything the SDK offers is in [Plugin SDK](plugins-sdk.md); test it without
+Barynt with [Testing](plugins-testing.md).

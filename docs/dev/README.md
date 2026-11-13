@@ -26,6 +26,22 @@ the next thing to read.
 | [Build, release and operations](build-and-release.md) | Docker image, CI workflows, releases, Helm chart, installer. |
 | [Contributing](contributing.md) | Workflow, commit style, pull requests, and the checklists for common changes. |
 
+## Building plugins
+
+For people who build **on** Barynt rather than change it: plugins that add
+views, fields and integrations, written with the plugin SDK.
+
+| Page | What you get |
+| --- | --- |
+| [Building plugins](plugins.md) | What a plugin is, the three kinds, how one gets from a repository to a project. |
+| [Your first plugin](plugins-first-plugin.md) | Step by step: a project view, released locally and switched on in your Barynt. |
+| [Manifest](plugins-manifest.md) | Every field, every capability, the rules. |
+| [Plugin SDK](plugins-sdk.md) | The `Plugin` class, lifecycle, register methods, typed API, errors. |
+| [Host API](plugins-host-api.md) | Every call, its capability, limits and errors. |
+| [Sandbox and limits](plugins-sandbox.md) | What the sandbox takes away, design tokens, limits. |
+| [Testing](plugins-testing.md) | The SDK's test host. |
+| [Publishing](plugins-publishing.md) | Releases, the release hash, directory entries, updates. |
+
 More detail that is useful once you are deeper in:
 
 - [Permissions audit](permissions-audit.md): an inventory of where the code
@@ -38,6 +54,7 @@ More detail that is useful once you are deeper in:
 | --- | --- | --- |
 | People who use and run Barynt | [`docs/guide/`](../guide/), published on [barynt.dev](https://barynt.dev/docs/) | English and German |
 | People who change Barynt | `docs/dev/` (here), read on GitHub and published as "Development" on [barynt.dev](https://barynt.dev/docs/development/) | English |
+| People who build plugins | `docs/dev/plugins*.md` (here), [from Building plugins](plugins.md) | English |
 | AI coding assistants | [`CLAUDE.md`](../../CLAUDE.md) and `AGENTS.md`: the rules in condensed form | English |
 | The reasons behind a piece of code | Comments in the code itself | English |
 

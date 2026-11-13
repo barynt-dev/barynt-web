@@ -1,9 +1,4 @@
----
-title: Manifest
-description: Every field of manifest.json, the capabilities a plugin can ask for, and the rules Barynt checks.
-sidebar:
-  order: 3
----
+# Manifest
 
 Every plugin ships a `manifest.json` next to its `main.js`. Barynt reads it
 when a plugin is installed and checks it strictly: an unknown field, a
@@ -57,12 +52,12 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `authorUrl` | no | An `http(s)` address, linked in the store. |
 | `description` | yes | One or two sentences, up to 300 characters. |
 | `license` | yes | E.g. `MIT`, `Apache-2.0`, `Proprietary`. |
-| `kind` | yes | `declarative`, `sandbox` or `service`, see [Building plugins](overview.md#the-three-kinds). |
+| `kind` | yes | `declarative`, `sandbox` or `service`, see [Building plugins](plugins.md#the-three-kinds). |
 | `levels` | yes | Where it can be switched on: `workspace`, `project`, or both. |
 | `capabilities` | yes | What it asks for, from the list below. Ask for as little as you need — people read this list before they say yes. |
 | `network` | yes | Host names it may call through Barynt, e.g. `api.acme.example`: no scheme, port or wildcard, at most 10. `[]` for none. |
 | `contributes` | no | What it adds, see below. |
-| `previews` | no | Up to 6 screenshots for the store, see [Publishing](publishing.md#screenshots). |
+| `previews` | no | Up to 6 screenshots for the store, see [Publishing](plugins-publishing.md#screenshots). |
 
 ## Capabilities
 
@@ -88,7 +83,7 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `ui:action` | Add actions and commands | `contributes.actions` |
 
 Which call needs which capability, and what it returns, is in
-[Host API](host-api.md).
+[Host API](plugins-host-api.md).
 
 ## Contributions
 
@@ -118,7 +113,7 @@ capability, and each entry an `id` that's unique in its list.
 
 Settings get a form in Barynt — in the project's or workspace's settings,
 under **Plugins** — and the plugin reads them with
-[`loadSettings()`](sdk.md#loadsettings).
+[`loadSettings()`](plugins-sdk.md#loadsettings).
 
 ```json
 { "key": "channel", "type": "text", "label": "Channel", "description": "Where to post, e.g. #dev." }
@@ -160,4 +155,4 @@ A plugin can bring custom fields its issues carry:
   options, other types must not have them.
 - `maxBaryntVersion` isn't lower than `minBaryntVersion`.
 - The release's manifest must have the same `id`, `version`, `kind` and
-  `levels` as its [directory entry](publishing.md#the-directory-entry).
+  `levels` as its [directory entry](plugins-publishing.md#the-directory-entry).

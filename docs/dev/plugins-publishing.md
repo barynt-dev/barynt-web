@@ -1,9 +1,4 @@
----
-title: Publishing
-description: Release a plugin version, compute its hash, and list it in a directory so Barynt can install it.
-sidebar:
-  order: 8
----
+# Publishing
 
 Barynt never loads code from your repository while it runs. A platform
 admin installs a **release**; Barynt downloads its files once, checks them
@@ -73,7 +68,7 @@ anywhere on a web server — with one entry per plugin:
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `id`, `name`, `author`, `description` | yes | As in the [manifest](manifest.md); the release's manifest must have the same `id`. |
+| `id`, `name`, `author`, `description` | yes | As in the [manifest](plugins-manifest.md); the release's manifest must have the same `id`. |
 | `repo` | yes | Where the releases are: GitHub's `owner/name`, or the repository's address on any Git host or web server. |
 | `provider` | no | `github`, `gitlab`, `gitea`, `bitbucket` or `https`, when the address doesn't tell. |
 | `levels`, `kind` | yes | Must match the release's manifest. |

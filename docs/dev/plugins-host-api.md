@@ -1,12 +1,7 @@
----
-title: Host API
-description: Every call a sandboxed plugin can make, the capability it needs, what it takes and returns, and the errors.
-sidebar:
-  order: 5
----
+# Host API
 
 A sandboxed plugin reaches Barynt only through its host. With the
-[SDK](sdk.md) that's `this.api`; underneath, each call is a method of the
+[SDK](plugins-sdk.md) that's `this.api`; underneath, each call is a method of the
 host API, sent to Barynt's server and checked there:
 
 1. The method exists.
@@ -126,8 +121,8 @@ Over a limit, `set` is refused with `storage_full`.
 
 ## Settings
 
-`api.settings.get()` (or [`loadSettings()`](sdk.md#loadsettings)) needs no
-capability: the plugin's own [settings](manifest.md#settings) in this
+`api.settings.get()` (or [`loadSettings()`](plugins-sdk.md#loadsettings)) needs no
+capability: the plugin's own [settings](plugins-manifest.md#settings) in this
 place, each with its saved value or its default.
 
 ## Errors

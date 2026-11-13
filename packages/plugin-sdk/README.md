@@ -53,6 +53,6 @@ expect(host.calls[0].method).toBe("issues.list");
 unload();
 ```
 
-The full docs are the [plugin development docs](../../docs/guide/en/plugin-development/overview.md) — start with [Your first plugin](../../docs/guide/en/plugin-development/first-plugin.md); every member of this package is in [Plugin SDK](../../docs/guide/en/plugin-development/sdk.md).
+The full docs are in the developer docs: [Building plugins](../../docs/dev/plugins.md) — start with [Your first plugin](../../docs/dev/plugins-first-plugin.md); every member of this package is in [Plugin SDK](../../docs/dev/plugins-sdk.md).
 
 Not on npm yet — it lives in the Barynt repository for now.

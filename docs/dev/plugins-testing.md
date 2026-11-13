@@ -1,9 +1,4 @@
----
-title: Testing
-description: Test a plugin without Barynt — a test host from the SDK answers its calls and records them.
-sidebar:
-  order: 7
----
+# Testing
 
 `@barynt/plugin-sdk/testing` runs your plugin against a **test host**: you
 say what each call answers, the host records every call. No Barynt, no
@@ -35,7 +30,7 @@ describe("Open Issues", () => {
 
 | Option | Meaning |
 | --- | --- |
-| `handlers` | One function per [host API](host-api.md) method: gets the params, returns the result (or a promise). Typed like the real method. |
+| `handlers` | One function per [host API](plugins-host-api.md) method: gets the params, returns the result (or a promise). Typed like the real method. |
 | `context` | Parts of the `context` to set; the rest defaults to a project view `main` in project `project`, locale `en`. |
 | `root` | The element to render into. Defaults to a new `div` when there's a `document`. |
 
@@ -71,4 +66,4 @@ the drawing thin.
 ## Trying it in Barynt
 
 For the real thing, release it locally and switch it on in your Barynt, as
-in [Your first plugin](first-plugin.md#4-a-local-release).
+in [Your first plugin](plugins-first-plugin.md#4-a-local-release).

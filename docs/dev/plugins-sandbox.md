@@ -1,9 +1,4 @@
----
-title: Sandbox and limits
-description: Where a sandboxed plugin's code runs, what it can and can't do, how it should look, and the limits.
-sidebar:
-  order: 6
----
+# Sandbox and limits
 
 A sandboxed plugin's code runs in the browser of the person using it — but
 not on Barynt's page. Each place it fills gets a **frame** of its own, with
@@ -14,7 +9,7 @@ the plugin's code and nothing of Barynt's.
 | | |
 | --- | --- |
 | **Barynt's session** | The frame has its own, empty origin: no cookies, no `localStorage`, no `sessionStorage`, no IndexedDB. Reading `document.cookie` throws. |
-| **The network** | `fetch`, `XMLHttpRequest`, WebSockets and `<img src="https://…">` are blocked. Everything goes through the [host API](host-api.md). |
+| **The network** | `fetch`, `XMLHttpRequest`, WebSockets and `<img src="https://…">` are blocked. Everything goes through the [host API](plugins-host-api.md). |
 | **Other code** | No scripts from anywhere: your `main.js` is all that runs. No `<script src>`, no CDN. Bundle what you need. |
 | **The page around it** | The frame can't reach Barynt's page, navigate it or open pop-ups. |
 
@@ -66,4 +61,4 @@ fills the screen there.
 | One call | 15 seconds |
 | Open calls | 20 at once |
 | Calls | 300 per person and minute |
-| Storage | see [Host API → Storage](host-api.md#storage) |
+| Storage | see [Host API → Storage](plugins-host-api.md#storage) |

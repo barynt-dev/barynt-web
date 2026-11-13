@@ -133,4 +133,4 @@ A switched-on plugin that has settings gets an entry under **Plugins** in the wo
 
 ## Building your own
 
-To write a plugin yourself, see [Plugin development](../plugin-development/overview.md).
+To write a plugin yourself, see [Building plugins](../../../dev/plugins.md) in the developer docs.

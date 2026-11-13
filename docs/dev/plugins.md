@@ -1,30 +1,26 @@
----
-title: Building plugins
-description: What a Barynt plugin is, the three kinds, and how one gets from your repository to a project.
-sidebar:
-  order: 1
----
+# Building plugins
 
 A plugin adds something to Barynt that Barynt doesn't do itself: a timeline
 view, a sync with another tool, a field your team needs. Plugins are written
 by anyone, live in their own Git repository, and are switched on by the
 people who run a Barynt instance — never silently.
 
-This section is for **plugin authors**. If you want to install or switch on
-plugins, see [Plugins](../administration/plugins.md) in Administration.
+These pages are for **plugin authors**: people who build on Barynt rather
+than change Barynt itself. To install or switch on plugins, see
+[Plugins](../guide/en/administration/plugins.md) in the user guide.
 
 ## The three kinds
 
-Every plugin declares its `kind` in its [manifest](manifest.md):
+Every plugin declares its `kind` in its [manifest](plugins-manifest.md):
 
 | Kind | What it is | Runs where |
 | --- | --- | --- |
 | `declarative` | Only a manifest, no code: custom fields, settings, badges. | Barynt does it itself. |
-| `sandbox` | Browser code with a user interface: a project view, later widgets, panels and actions. | In a sandbox in the browser, see [Sandbox and limits](sandbox.md). |
+| `sandbox` | Browser code with a user interface: a project view, later widgets, panels and actions. | In a sandbox in the browser, see [Sandbox and limits](plugins-sandbox.md). |
 | `service` | Your own server, called by Barynt and calling Barynt's API. | On your infrastructure. |
 
 Most of this section is about **sandbox** plugins, written with the
-[plugin SDK](sdk.md).
+[plugin SDK](plugins-sdk.md).
 
 > [!NOTE]
 > No third-party code ever runs inside the Barynt server. A sandboxed plugin
@@ -36,7 +32,7 @@ Most of this section is about **sandbox** plugins, written with the
    `manifest.json`, `main.js`, optionally `styles.css` and screenshots.
 2. **A directory** (`plugins.json`, in a Git repository or on a web server)
    lists the plugin with the hash of every version it vouches for. See
-   [Publishing](publishing.md).
+   [Publishing](plugins-publishing.md).
 3. **A platform admin** adds the directory as a source and installs the
    plugin. Barynt downloads the release, checks the hash and the manifest,
    and keeps the files itself — nothing is loaded from your repository at
@@ -55,11 +51,19 @@ A plugin asks for **capabilities** in its manifest — `issues:read`,
 `comments:write`, `ui:project-view` and so on. People see them in plain
 words before they switch a plugin on. On top of that, a plugin can never do
 more than the **person** whose session it runs in: Barynt checks every
-request against both, on the server. See [Host API](host-api.md).
+request against both, on the server. See [Host API](plugins-host-api.md).
 
-## Where to start
+## The pages
 
-- [Your first plugin](first-plugin.md): a project view in a few minutes, run
-  against your local Barynt.
-- [Plugin SDK](sdk.md): the `Plugin` class and everything on it.
-- [Host API](host-api.md): every call, its capability and its limits.
+| Page | What you get |
+| --- | --- |
+| [Your first plugin](plugins-first-plugin.md) | A project view in a few minutes, released locally and run in your own Barynt. Start here. |
+| [Manifest](plugins-manifest.md) | Every field of `manifest.json`, every capability, the rules Barynt checks. |
+| [Plugin SDK](plugins-sdk.md) | `@barynt/plugin-sdk`: the `Plugin` class, its lifecycle, the register methods, the typed API, errors. |
+| [Host API](plugins-host-api.md) | Every call a plugin can make, its capability, params, result and errors. |
+| [Sandbox and limits](plugins-sandbox.md) | What the sandbox takes away, how to look like Barynt, all limits. |
+| [Testing](plugins-testing.md) | The SDK's test host: test a plugin without Barynt. |
+| [Publishing](plugins-publishing.md) | Releases, the release hash, directory entries, screenshots, updates. |
+
+How it works on Barynt's side — the frame, the bridge, the checks — is in
+[Backend services](backend-services.md#plugin-directory).

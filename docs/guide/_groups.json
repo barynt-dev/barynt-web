@@ -22,9 +22,5 @@
   "project": {
     "en": "Project",
     "de": "Projekt"
-  },
-  "plugin-development": {
-    "en": "Plugin development",
-    "de": "Plugin-Entwicklung"
   }
 }

@@ -1,9 +1,4 @@
----
-title: Plugin SDK
-description: Reference for @barynt/plugin-sdk — the Plugin class, its lifecycle, register methods, the typed API and errors.
-sidebar:
-  order: 4
----
+# Plugin SDK
 
 `@barynt/plugin-sdk` is how a sandboxed plugin talks to Barynt. You extend
 its `Plugin` class, Barynt creates it and calls `onload()`; everything else
@@ -12,7 +7,7 @@ goes through the class.
 > [!NOTE]
 > The SDK lives in the Barynt repository (`packages/plugin-sdk`) and isn't on
 > npm yet. Build it with `bun run build` there and depend on it with a
-> `file:` path, as in [Your first plugin](first-plugin.md#1-the-project).
+> `file:` path, as in [Your first plugin](plugins-first-plugin.md#1-the-project).
 > It's bundled into your `main.js`; nothing is loaded at runtime.
 
 ```ts
@@ -36,7 +31,7 @@ export default class Timeline extends Plugin {
 
 1. Someone opens a place the plugin fills — today, one of its project
    views. Barynt opens a **frame** for it: a sandbox of its own (see
-   [Sandbox and limits](sandbox.md)).
+   [Sandbox and limits](plugins-sandbox.md)).
 2. Barynt creates your class (`new YourPlugin(host)`) and calls
    **`onload()`**. Set everything up there: register the views, start what
    needs starting. Errors you throw here show as the plugin's error, with a
@@ -76,7 +71,7 @@ readonly api: Api;
 ```
 
 Barynt's API, typed. See [The API object](#the-api-object) below and every
-call in [Host API](host-api.md).
+call in [Host API](plugins-host-api.md).
 
 ### `context`
 
@@ -148,7 +143,7 @@ registerDomEvent(target: HTMLElement | Window | Document, type: string, listener
 loadSettings<T extends Record<string, Json>>(): Promise<T>;
 ```
 
-The plugin's [settings](manifest.md#settings) in this place, each with the
+The plugin's [settings](plugins-manifest.md#settings) in this place, each with the
 saved value or the manifest's `default` (`null` when it has neither).
 Settings are per place: a project's values for a project view.
 
@@ -160,7 +155,7 @@ throws doesn't stop the others.
 
 ## The API object
 
-`this.api` groups the [Host API](host-api.md) by what it's about. Every
+`this.api` groups the [Host API](plugins-host-api.md) by what it's about. Every
 method returns a `Promise` and rejects with a [`BaryntError`](#errors).
 
 | Call | Host API method |
@@ -204,7 +199,7 @@ try {
 ```
 
 `error.code` is one of the codes in
-[Host API → Errors](host-api.md#errors). An error you don't catch ends up as
+[Host API → Errors](plugins-host-api.md#errors). An error you don't catch ends up as
 the plugin's error in Barynt.
 
 ## Types
