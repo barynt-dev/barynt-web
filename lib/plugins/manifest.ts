@@ -1,13 +1,15 @@
 // The plugin manifest (`manifest.json`): what a plugin is, where it works,
 // what it asks for and what it adds. One schema, used by the installer, the
 // store repository's CI and the plugin author's own tooling — so it has no
-// dependency on the app (no Prisma, no `server-only`).
+// dependency on the app (no Prisma, no `server-only`; the dashboard's widget
+// rules it borrows are plain too).
 //
 // Strict on purpose: an unknown field is an error, not something to ignore.
 // A plugin that declares more than Barynt understands should fail loudly
 // instead of half-working.
 
 import { z } from "zod";
+import { pluginTemplateSchema } from "@/features/dashboard/widgets";
 import { compareSemver, isSemver } from "./semver";
 
 /** How a plugin runs. In-process code is Barynt's own and not a plugin kind. */
@@ -70,6 +72,14 @@ const icon = z
   .regex(ICON_RE, 'expected "set:name", e.g. "lucide:clock"');
 
 const entry = z.strictObject({ id: localId, title, icon: icon.optional() });
+
+/** A dashboard widget made of Barynt's own blocks (BARY-203): no code, no
+ *  frame — Barynt draws it like a custom widget. */
+const widgetTemplateSchema = pluginTemplateSchema.extend({
+  id: localId,
+  title,
+  description: z.string().trim().max(200).optional(),
+});
 
 const optionSchema = z.strictObject({
   id: localId,
@@ -136,6 +146,7 @@ const contributesSchema = z.strictObject({
   navItems: z.array(entry).max(5).optional(),
   projectViews: z.array(entry).max(5).optional(),
   dashboardWidgets: z.array(entry).max(5).optional(),
+  widgetTemplates: z.array(widgetTemplateSchema).max(10).optional(),
   issuePanels: z.array(entry).max(5).optional(),
   issueBadges: z.array(entry).max(5).optional(),
   actions: z.array(entry).max(20).optional(),
@@ -158,17 +169,20 @@ const CONTRIBUTION_CAPABILITY: Record<
   navItems: "ui:nav-item",
   projectViews: "ui:project-view",
   dashboardWidgets: "ui:dashboard-widget",
+  widgetTemplates: "ui:dashboard-widget",
   issuePanels: "ui:issue-panel",
   issueBadges: "ui:issue-badge",
   actions: "ui:action",
   fields: "fields:write",
 };
 
-/** What each kind may contribute: no code, no browser surface for services. */
+/** What each kind may contribute: no code, no browser surface for services.
+ *  Widget templates are data Barynt draws, so every kind may bring them. */
 const KIND_CONTRIBUTIONS: Record<PluginKind, readonly (keyof Contributes)[]> = {
-  declarative: ["fields", "settings", "issueBadges"],
-  service: ["fields", "settings"],
+  declarative: ["fields", "settings", "issueBadges", "widgetTemplates"],
+  service: ["fields", "settings", "widgetTemplates"],
   sandbox: [
+    "widgetTemplates",
     "credentials",
     "settingsPage",
     "navItems",
@@ -302,6 +316,17 @@ export const manifestSchema = z
         add(
           ["contributes", "credentials", i, "header"],
           "Barynt sets this header itself",
+        );
+    });
+
+    const widgetIds = new Set(
+      (m.contributes.dashboardWidgets ?? []).map((w) => w.id),
+    );
+    (m.contributes.widgetTemplates ?? []).forEach((t, i) => {
+      if (widgetIds.has(t.id))
+        add(
+          ["contributes", "widgetTemplates", i, "id"],
+          "already the id of one of dashboardWidgets",
         );
     });
 

@@ -2299,7 +2299,9 @@
     "pluginOff": "“{name}” doesn't run here anymore.",
     "pluginOffHint": "The plugin was switched off or removed. Remove the widget, or switch the plugin on again.",
     "pluginFrom": "From {name}",
-    "pluginPreview": "A preview with real data, as the plugin draws it."
+    "pluginPreview": "A preview with real data, as the plugin draws it.",
+    "pluginTemplate": "A template of Barynt's building blocks – yours to change once added.",
+    "pluginCustomize": "Customize"
   },
   "customFields": {
     "title": "Custom Fields",

@@ -317,6 +317,12 @@ puts the plugin's `settings` slot frame on its settings page instead of the form
 through `settings.set`, which checks `plugin.enable` and `checkSettings` like
 `savePluginSettings`.
 
+**Widget templates (BARY-203).** `contributes.widgetTemplates` are validated in the manifest with
+`pluginTemplateSchema` (`features/dashboard/widgets.ts`, the builder's block rules);
+`getPluginWidgets` hands each out as `template`, the `blocks` widget `pluginTemplateWidget` makes
+of it. The gallery previews and adds it like a custom widget (a copy, no frame, no runtime
+link to the plugin); **Customize** opens it in the builder.
+
 **The host proxy (BARY-147).** `net.fetch` sends a sandboxed plugin's request to one of the
 manifest's `network` hosts (`features/plugins/proxy.ts`, rules in `lib/plugins/proxy.ts`):
 https only, the host resolved and refused when any address is private (unless it's in

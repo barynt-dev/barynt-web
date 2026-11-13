@@ -2299,7 +2299,9 @@
     "pluginOff": "„{name}“ läuft hier nicht mehr.",
     "pluginOffHint": "Das Plugin ist ausgeschaltet oder entfernt. Entferne das Widget oder schalte das Plugin wieder ein.",
     "pluginFrom": "Aus {name}",
-    "pluginPreview": "Vorschau mit echten Daten, so wie das Plugin es zeichnet."
+    "pluginPreview": "Vorschau mit echten Daten, so wie das Plugin es zeichnet.",
+    "pluginTemplate": "Vorlage aus Barynts Bausteinen – nach dem Hinzufügen frei anpassbar.",
+    "pluginCustomize": "Anpassen"
   },
   "customFields": {
     "title": "Custom Felder",

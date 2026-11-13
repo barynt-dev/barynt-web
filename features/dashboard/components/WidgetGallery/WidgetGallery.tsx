@@ -15,7 +15,11 @@ import {
   deleteCustomWidget,
   saveCustomWidget,
 } from "@/features/dashboard/actions";
-import type { WidgetData, WidgetDataMap } from "@/features/dashboard/types";
+import type {
+  PluginWidgetEntry,
+  WidgetData,
+  WidgetDataMap,
+} from "@/features/dashboard/types";
 import {
   type CustomWidgetEntry,
   newWidget,
@@ -57,14 +61,6 @@ interface Props {
   area: "project" | "my";
   /** Widgets the plugins switched on here bring (BARY-149). */
   pluginWidgets: PluginWidgetEntry[];
-}
-
-/** A plugin's widget, as the gallery offers it. */
-export interface PluginWidgetEntry {
-  pluginId: string;
-  pluginName: string;
-  widgetId: string;
-  title: string;
 }
 
 const pluginKey = (e: { pluginId: string; widgetId: string }) =>
@@ -162,24 +158,27 @@ export function WidgetGallery({
       ? (pluginWidgets.find((e) => pluginKey(e) === selection.key) ?? null)
       : null;
   // A plugin's widget as it'd be added — its data comes from the server,
-  // which checks the plugin runs here; the preview is its live frame.
-  const pluginWidget: WidgetModel | null = plugin
-    ? {
-        id: "preview",
-        type: "plugin",
-        size: WIDGETS.plugin.size,
-        config: {
-          pluginId: plugin.pluginId,
-          pluginWidget: plugin.widgetId,
-          title: plugin.title,
-        },
-      }
-    : null;
+  // which checks the plugin runs here; the preview is its live frame. A
+  // template (BARY-203) is a custom widget, previewed with real numbers.
+  const pluginWidget: WidgetModel | null = plugin?.template
+    ? { ...plugin.template, id: "preview" }
+    : plugin
+      ? {
+          id: "preview",
+          type: "plugin",
+          size: WIDGETS.plugin.size,
+          config: {
+            pluginId: plugin.pluginId,
+            pluginWidget: plugin.widgetId,
+            title: plugin.title,
+          },
+        }
+      : null;
   const type: WidgetType =
     selection.mode === "type"
       ? selection.type
       : selection.mode === "plugin"
-        ? "plugin"
+        ? (pluginWidget?.type ?? "plugin")
         : selection.mode === "custom" && custom
           ? custom.widget.type
           : draft.type;
@@ -234,7 +233,7 @@ export function WidgetGallery({
 
   const choosePlugin = (entry: PluginWidgetEntry) => {
     setSelection({ mode: "plugin", key: pluginKey(entry) });
-    setSize(WIDGETS.plugin.size);
+    setSize(entry.template?.size ?? WIDGETS.plugin.size);
   };
 
   const chooseCustom = (entry: CustomWidgetEntry) => {
@@ -242,11 +241,21 @@ export function WidgetGallery({
     setSize(entry.widget.size);
   };
 
-  const startBuilding = (editing: CustomWidgetEntry | null) => {
-    setDraft(editing ? editing.widget : templateWidget("kpi", newId));
-    setTemplate(editing ? null : "kpi");
+  /** The builder, for a saved custom widget, a plugin's template to make
+   *  one's own of (BARY-203), or a fresh one. */
+  const startBuilding = (
+    editing: CustomWidgetEntry | null,
+    from?: PluginWidgetEntry,
+  ) => {
+    setDraft(
+      editing?.widget ??
+        (from?.template
+          ? { ...from.template, id: "draft" }
+          : templateWidget("kpi", newId)),
+    );
+    setTemplate(editing || from ? null : "kpi");
     setActiveElement(null);
-    setName(editing?.name ?? "");
+    setName(editing?.name ?? from?.title ?? "");
     setShared(editing?.shared ?? false);
     setSelection({ mode: "build", editing });
   };
@@ -566,7 +575,7 @@ export function WidgetGallery({
               </h3>
               <p className={styles.previewDesc}>
                 {plugin
-                  ? `${t("pluginFrom", { name: plugin.pluginName })} · ${t("pluginPreview")}`
+                  ? `${t("pluginFrom", { name: plugin.pluginName })} · ${t(plugin.template ? "pluginTemplate" : "pluginPreview")}`
                   : custom
                     ? custom.mine
                       ? t(`type_${type}`)
@@ -658,6 +667,15 @@ export function WidgetGallery({
                   {t("customEdit")}
                 </Button>
               </>
+            )}
+            {plugin?.template && (
+              <Button
+                variant="elevated"
+                icon={<Icon icon="lucide:pencil" width={14} />}
+                onClick={() => startBuilding(null, plugin)}
+              >
+                {t("pluginCustomize")}
+              </Button>
             )}
             <span className={styles.footSpacer} />
             <Button variant="ghost" onClick={close}>

@@ -15,8 +15,8 @@ Every plugin declares its `kind` in its [manifest](plugins-manifest.md):
 
 | Kind | What it is | Runs where |
 | --- | --- | --- |
-| `declarative` | Only a manifest, no code: custom fields, settings, badges. | Barynt does it itself. |
-| `sandbox` | Browser code with a user interface: a project view, later widgets, panels and actions. | In a sandbox in the browser, see [Sandbox and limits](plugins-sandbox.md). |
+| `declarative` | Only a manifest, no code: custom fields, settings, badges, [widget templates](plugins-manifest.md#widget-templates). | Barynt does it itself. |
+| `sandbox` | Browser code with a user interface: project views, pages, dashboard widgets, later panels and actions. | In a sandbox in the browser, see [Sandbox and limits](plugins-sandbox.md). |
 | `service` | Your own server, called by Barynt and calling Barynt's API. | On your infrastructure. |
 
 Most of this section is about **sandbox** plugins, written with the

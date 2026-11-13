@@ -303,6 +303,104 @@ const DEMOS: Demo[] = [
     versions: { "0.3.0": { capabilities: [] } },
   },
   {
+    // Widget templates of Barynt's own blocks — no code (BARY-203).
+    entry: {
+      id: "demo-team-pulse",
+      name: "Demo Team Pulse",
+      author: "Barynt demo",
+      description:
+        "Ready-made dashboard widgets: sprint health, what's overdue, where the work sits.",
+      repo: `${ORIGIN}/barynt-demo/team-pulse`,
+      levels: ["workspace", "project"],
+      kind: "declarative",
+      categories: ["reports"],
+      added: "2026-11-13",
+    },
+    manifest: {
+      minBaryntVersion: "0.9.0",
+      license: "MIT",
+      contributes: {
+        widgetTemplates: [
+          {
+            id: "sprint-health",
+            title: "Sprint health",
+            description: "Progress, what got done, and what's next.",
+            size: "T",
+            accent: "green",
+            blocks: [
+              {
+                type: "progress",
+                config: {
+                  elements: [
+                    { id: "breakdown", kind: "breakdown" },
+                    { id: "deadline", kind: "deadline" },
+                  ],
+                },
+              },
+              {
+                type: "kpi",
+                config: {
+                  metric: "closed",
+                  elements: [{ id: "trend", kind: "trend" }],
+                },
+              },
+              {
+                type: "issues",
+                config: {
+                  sort: "priority",
+                  elements: [
+                    { id: "rows", kind: "rows", value: 3 },
+                    { id: "col_assignee", kind: "col_assignee" },
+                  ],
+                },
+              },
+            ],
+          },
+          {
+            id: "overdue",
+            title: "Overdue",
+            description: "How many are late, and which.",
+            accent: "red",
+            blocks: [
+              {
+                type: "kpi",
+                config: {
+                  metric: "overdue",
+                  elements: [{ id: "trend", kind: "trend" }],
+                },
+              },
+              {
+                type: "issues",
+                config: {
+                  sort: "dueDate",
+                  filter: {
+                    op: "and",
+                    rules: [{ field: "dueDate", is: "before", value: "today" }],
+                  },
+                  elements: [
+                    { id: "rows", kind: "rows", value: 4 },
+                    {
+                      id: "col_dueDate",
+                      kind: "col_dueDate",
+                      style: "relative",
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          {
+            id: "workload",
+            title: "Open by priority",
+            size: "M",
+            blocks: [{ type: "distribution", config: { groupBy: "priority" } }],
+          },
+        ],
+      },
+    },
+    versions: { "1.0.0": { capabilities: ["ui:dashboard-widget"] } },
+  },
+  {
     entry: {
       id: "demo-error-inbox",
       name: "Demo Error Inbox",

@@ -1,5 +1,7 @@
 import "server-only";
 import { cache } from "react";
+import type { PluginWidgetEntry } from "@/features/dashboard/types";
+import { pluginTemplateWidget } from "@/features/dashboard/widgets";
 import { db } from "@/lib/db";
 import { currentUserCanEnterWorkspace } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
@@ -79,14 +81,13 @@ export const getPluginNav = cache(
 );
 
 /** The widgets the plugins switched on in a place bring — what a
- *  dashboard's gallery offers there (BARY-149). Whether one still runs is
- *  checked again when it's drawn. */
+ *  dashboard's gallery offers there (BARY-149): the ones they draw, and
+ *  their templates (BARY-203). Whether a drawn one still runs is checked
+ *  again when it's drawn; a template, once added, is the dashboard's own. */
 export async function getPluginWidgets(place: {
   workspaceId: string;
   projectId: string | null;
-}): Promise<
-  { pluginId: string; pluginName: string; widgetId: string; title: string }[]
-> {
+}): Promise<PluginWidgetEntry[]> {
   const activations = await db.pluginActivation.findMany({
     where: { scopeKey: activationScopeKey(place), enabled: true },
     select: { pluginId: true, capabilities: true },
@@ -100,18 +101,29 @@ export async function getPluginWidgets(place: {
     select: { pluginId: true, manifest: true },
   });
   return activations
-    .flatMap((a) => {
+    .flatMap((a): PluginWidgetEntry[] => {
       const row = rows.find((r) => r.pluginId === a.pluginId);
       const parsed = row ? validateManifest(row.manifest) : null;
       if (!parsed?.ok) return [];
-      return slotEntries(parsed.manifest, a.capabilities)
+      const { manifest } = parsed;
+      const drawn = slotEntries(manifest, a.capabilities)
         .filter((e) => e.kind === "widget")
         .map((e) => ({
           pluginId: a.pluginId,
-          pluginName: parsed.manifest.name,
+          pluginName: manifest.name,
           widgetId: e.id,
           title: e.title,
         }));
+      const templates = a.capabilities.includes("ui:dashboard-widget")
+        ? (manifest.contributes.widgetTemplates ?? []).map((t) => ({
+            pluginId: a.pluginId,
+            pluginName: manifest.name,
+            widgetId: t.id,
+            title: t.title,
+            template: pluginTemplateWidget(t, t.title),
+          }))
+        : [];
+      return [...drawn, ...templates];
     })
     .sort(
       (x, y) =>

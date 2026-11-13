@@ -125,6 +125,7 @@ const { sealSecret } = await import("@/lib/secret-box");
 const { callBridge, getPluginFrame } = await import(
   "@/features/plugins/runtime"
 );
+const { parseWidgets } = await import("@/features/dashboard/widgets");
 const { getPluginNav, getPluginWidgets } = await import(
   "@/features/plugins/slots"
 );
@@ -559,6 +560,52 @@ describe("widgets and settings pages (BARY-149)", () => {
         title: "Oldest open",
       },
     ]);
+  });
+
+  it("offers a plugin's widget templates as custom widgets (BARY-203)", async () => {
+    const withTemplates = {
+      ...manifest,
+      capabilities: [...manifest.capabilities, "ui:dashboard-widget"],
+      contributes: {
+        ...manifest.contributes,
+        widgetTemplates: [
+          {
+            id: "bugs",
+            title: "Open bugs",
+            size: "M",
+            blocks: [{ type: "kpi", config: { metric: "open" } }],
+          },
+        ],
+      },
+    };
+    db.plugin.findMany.mockResolvedValue([
+      { pluginId: "timeline", manifest: withTemplates },
+    ]);
+    db.pluginActivation.findMany.mockResolvedValue([
+      { pluginId: "timeline", capabilities: ["ui:dashboard-widget"] },
+    ]);
+    const [entry] = await getPluginWidgets({
+      workspaceId: "ws1",
+      projectId: "p1",
+    });
+    expect(entry).toMatchObject({ widgetId: "bugs", title: "Open bugs" });
+    expect(entry.template).toMatchObject({
+      type: "blocks",
+      size: "M",
+      config: {
+        title: "Open bugs",
+        blocks: [{ id: "b1", type: "kpi", config: { metric: "open" } }],
+      },
+    });
+    expect(parseWidgets([entry.template])).not.toBeNull();
+
+    // Without the capability confirmed, nothing.
+    db.pluginActivation.findMany.mockResolvedValue([
+      { pluginId: "timeline", capabilities: [] },
+    ]);
+    expect(
+      await getPluginWidgets({ workspaceId: "ws1", projectId: "p1" }),
+    ).toEqual([]);
   });
 });
 
