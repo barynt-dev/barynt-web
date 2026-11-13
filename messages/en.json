@@ -1537,7 +1537,10 @@
       "pluginDataDeleted": "Plugin data deleted",
       "pluginSettingsUpdated": "Plugin settings changed",
       "pluginGranted": "Plugin released for projects",
-      "pluginGrantRevoked": "Plugin release for projects withdrawn"
+      "pluginGrantRevoked": "Plugin release for projects withdrawn",
+      "pluginActed": "Plugin changed something in their name",
+      "pluginCredentialSet": "Plugin credential kept",
+      "pluginCredentialRemoved": "Plugin credential removed"
     }
   },
   "dashboard": {
@@ -2777,6 +2780,21 @@
     "scopeStepReleaseTitle": "Release for the workspace",
     "scopeStepReleaseText": "Here in the plugin store you check what a plugin may do and release it for the workspace.",
     "scopeStepProjectsTitle": "Switch on in projects",
-    "scopeStepProjectsText": "Released plugins are listed under Plugins in every project's settings — project admins switch them on there."
+    "scopeStepProjectsText": "Released plugins are listed under Plugins in every project's settings — project admins switch them on there.",
+    "frameError": "“{name}” ran into an error",
+    "frameTimeout": "“{name}” isn't responding",
+    "frameReload": "Load again",
+    "projectViews": "Views",
+    "openView": "Open",
+    "credentials": "Credentials",
+    "credentialsHint": "Barynt adds them to the plugin's requests to its service itself. The plugin never sees them, and they aren't shown here again once saved.",
+    "credentialsHintOwn": "Your own credentials for this plugin. Barynt adds them to the requests the plugin makes in your name. The plugin never sees them, and they aren't shown here again once saved.",
+    "credentialKept": "Kept on {date}",
+    "credentialMissing": "Not kept yet",
+    "credentialFor": "For {host}",
+    "credentialEnter": "Enter the value",
+    "credentialReplace": "Enter a new value to replace it",
+    "credentialRemove": "Remove",
+    "userPluginsTitle": "Plugins"
   }
 }

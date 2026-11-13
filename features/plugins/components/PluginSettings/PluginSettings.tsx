@@ -22,6 +22,7 @@ import type {
 } from "@/features/plugins/queries";
 import { Link } from "@/i18n/navigation";
 import { pluginStorePath } from "@/lib/nav";
+import { PluginCredentials } from "../PluginCredentials/PluginCredentials";
 import { CapabilityCards } from "../PluginStore/capabilities";
 import { PluginTile } from "../PluginStore/PluginTile";
 import shared from "../plugins.module.scss";
@@ -49,9 +50,12 @@ function initial(field: PluginSettingField, stored: unknown): Value {
 export function PluginSettings({
   view,
   scope,
+  viewsHref,
 }: {
   view: PluginSettingsView;
   scope: { workspaceId: string; projectId: string | null };
+  /** Where the plugin's project views open, `<viewsHref>/<viewId>`. */
+  viewsHref?: string;
 }) {
   const t = useTranslations();
   const text = usePluginText();
@@ -201,6 +205,30 @@ export function PluginSettings({
           </section>
         )}
 
+        {running && viewsHref && view.views.length > 0 && (
+          <section className={styles.views} aria-labelledby="plugin-views">
+            <h2 id="plugin-views">{text.t("projectViews")}</h2>
+            <ul>
+              {view.views.map((v) => (
+                <li key={v.id}>
+                  <Link
+                    href={`${viewsHref}/${v.id}`}
+                    className={styles.viewLink}
+                  >
+                    <Icon
+                      icon="lucide:layout-panel-top"
+                      width={16}
+                      aria-hidden
+                    />
+                    <span>{v.title}</span>
+                    <Icon icon="lucide:arrow-right" width={15} aria-hidden />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {running && view.fields.length > 0 && (
           <form
             className={styles.form}
@@ -232,9 +260,18 @@ export function PluginSettings({
             </div>
           </form>
         )}
-        {running && view.fields.length === 0 && (
-          <p className={styles.empty}>{text.t("noSettings")}</p>
+        {running && (
+          <PluginCredentials
+            pluginId={plugin.pluginId}
+            credentials={view.credentials}
+            scope={scope}
+          />
         )}
+        {running &&
+          view.fields.length === 0 &&
+          view.credentials.length === 0 && (
+            <p className={styles.empty}>{text.t("noSettings")}</p>
+          )}
 
         {running && inProject && (
           <section className={styles.danger} aria-labelledby="plugin-off">

@@ -267,7 +267,7 @@ minutes, per server process; `refreshPluginSource` and every source change forge
 What's open is in the address (`?plugin=`, `?tab=overview|capabilities|versions|places`,
 `?view=sources`); "where it's on" comes from `getPluginPlaces`, only for that tab. The
 start page uses the directory's optional `categories`, `featured` and `added`
-([directory format](../plugins/directory.md)). The install dialog shows
+([directory format](plugins-publishing.md#the-directory-entry)). The install dialog shows
 `previewRelease` (loaded and checked, not stored); installing loads the release once more,
 so the server never trusts what a dialog was shown.
 
@@ -279,6 +279,38 @@ in `.env`, restart the app and add `http://localhost:4555/barynt-demo/plugins` (
 Gitea / Forgejo) or `http://localhost:4555/plugins.json` as a source under
 **Admin → Plugins**. The variable is ignored in production and for anything but
 localhost (`lib/plugins/dev.ts`).
+
+**Running a sandboxed plugin (BARY-144).** `/api/plugins/frame` serves a plugin's frame:
+`main.js` and `styles.css` inline (`lib/plugins/frame.ts`) under a CSP that makes it a sandbox
+with an opaque origin and no network. The host component (`PluginFrame`) hands the frame a
+private `MessageChannel` with its context and the design tokens, and forwards each request
+to `/api/plugins/bridge`. `features/plugins/runtime.ts` checks every request there
+(`findRunningPlugin`: switched on in that place, active version, place visible to the
+person; then the method's capability from `lib/plugins/bridge.ts#BRIDGE_METHODS` among the
+confirmed ones) and answers through the same `*ForUser` functions as the REST API
+(`features/plugins/bridge-methods.ts`, BARY-145). On top: a budget per person and plugin
+(`countRequest` in `lib/api/rateLimit.ts`, the API keys' Redis window), the plugin's own
+storage (`PluginStorage`, per activation, with the limits in `STORAGE_LIMITS`), and for
+every write an audit entry `plugin.acted` with the plugin and the person. What it writes
+is the person's (`source: APP`, no badge); the audit entry is where the plugin shows.
+Plugin authors build against `packages/plugin-sdk` (BARY-146): a `Plugin` class over that
+host, its typed API (`METHODS` — `tests/unit/plugins/sdk.test.ts` keeps it equal to
+`BRIDGE_METHODS`) and a test host. The app resolves it through `tsconfig.json`'s `paths`;
+`bun run --cwd packages/plugin-sdk build` writes `dist/` with types. For plugin authors: [Building plugins](plugins.md).
+
+**The host proxy (BARY-147).** `net.fetch` sends a sandboxed plugin's request to one of the
+manifest's `network` hosts (`features/plugins/proxy.ts`, rules in `lib/plugins/proxy.ts`):
+https only, the host resolved and refused when any address is private (unless it's in
+`PLUGIN_INTERNAL_HOSTS`), and then `node:https` with a `lookup` that returns exactly the
+checked address — so DNS rebinding can't redirect it. No redirects are followed, the
+request and response headers are allow-listed, 10 s and 2 MB. Credentials
+(`contributes.credentials`) are kept in `PluginCredential`, sealed with `sealSecret`
+(purpose `plugin-credential`), keyed by `scopeKey` `ws:`, `pr:` or `us:<userId>` per their
+`level`; the proxy opens and adds them for the request's host and refuses with
+`credential_missing` without one. They're kept and removed with `savePluginCredential` /
+`removePluginCredential` (a person's own without a permission, a workspace's or project's
+with `plugin.enable` there and an audit entry), and deleting a plugin's data in a place
+deletes its credentials there too.
 
 ## Smaller pieces
 

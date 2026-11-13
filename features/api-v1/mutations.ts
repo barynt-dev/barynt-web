@@ -253,11 +253,11 @@ export async function createIssueForUser(
   userId: string,
   projectId: string,
   rawInput: CreateIssueInput,
-  /** Which of the two public-API surfaces made this call — never `APP`,
-   *  the web app's own `createIssue()` (`features/issues/actions.ts`)
-   *  doesn't go through here and leaves `Issue.source` at its `APP`
-   *  default instead. */
-  source: Exclude<ApiContentSource, "APP">,
+  /** Which surface made this call: one of the two public APIs, or `APP`
+   *  for a sandboxed plugin, which runs inside the app in the person's name
+   *  and is shown as theirs (BARY-145). The web app's own `createIssue()`
+   *  (`features/issues/actions.ts`) doesn't go through here. */
+  source: ApiContentSource,
 ): Promise<MutationResult<ApiIssue>> {
   const input = {
     ...rawInput,
@@ -997,7 +997,7 @@ export async function createCommentForUser(
   idOrRef: string,
   input: CreateCommentInput,
   /** See `createIssueForUser`'s parameter of the same name. */
-  source: Exclude<ApiContentSource, "APP">,
+  source: ApiContentSource,
 ): Promise<MutationResult<ApiComment>> {
   const issueId = await resolveIssueId(userId, idOrRef);
   const issue = await db.issue.findUnique({

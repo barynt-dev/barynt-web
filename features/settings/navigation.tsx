@@ -3,7 +3,10 @@ import { enabledOAuthProviders } from "@/auth.config";
 import type { SettingsNavItem } from "@/components/ui/layout/SettingsNav/SettingsNav";
 import type { SettingsNavSection } from "@/components/ui/layout/SettingsNav/searchSections";
 import { PluginTile } from "@/features/plugins/components/PluginStore/PluginTile";
-import { getPluginSettingsNav } from "@/features/plugins/queries";
+import {
+  getPluginSettingsNav,
+  getUserCredentialPluginsNav,
+} from "@/features/plugins/queries";
 import {
   ACCOUNT_SETTINGS_NAV,
   accountPath,
@@ -100,8 +103,10 @@ const pluginRows = (
     leading: <PluginTile id={p.pluginId} name={p.name} size="sm" />,
   }));
 
-/** Your own settings. "Connections" only with an OAuth provider to list. */
-export function accountNav(t: T, workspaceId: string): ScopeNav {
+/** Your own settings. "Connections" only with an OAuth provider to list;
+ *  the plugins that ask each person for a credential of their own as the
+ *  "Plugins" group (BARY-147). */
+export async function accountNav(t: T, workspaceId: string): Promise<ScopeNav> {
   const entries = ACCOUNT_SETTINGS_NAV.filter(
     (entry) =>
       entry.section !== "connections" || enabledOAuthProviders.length > 0,
@@ -109,7 +114,11 @@ export function accountNav(t: T, workspaceId: string): ScopeNav {
   const href = (s: string) => accountPath(workspaceId, s);
   return {
     items: rowsOf(t, "account", entries, href),
-    plugins: [],
+    plugins: pluginRows(
+      t,
+      await getUserCredentialPluginsNav(workspaceId),
+      (id) => accountPath(workspaceId, `plugins/${id}`),
+    ),
     settings: settingRowsOf(t, "account", entries, href),
   };
 }
@@ -186,7 +195,7 @@ export async function settingsSearchIndex(
   const sections: SettingsNavSection[] = [
     {
       title: t("settings.scopeAccount" as never),
-      items: all(accountNav(t, workspaceId)),
+      items: all(await accountNav(t, workspaceId)),
     },
   ];
   if (

@@ -1,0 +1,505 @@
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+} from "bun:test";
+
+// The server side of a sandboxed plugin (BARY-144): where it runs, and what
+// a request over the host bridge may do. Database, permissions and the API
+// queries mocked away. Own process: it replaces `@/lib/permissions`.
+
+// `sealSecret` needs an AUTH_SECRET; CI has none, a local .env might have
+// one. A fixed one for this file, the one before restored after.
+const savedSecret = process.env.AUTH_SECRET;
+beforeAll(() => {
+  process.env.AUTH_SECRET = "test-secret-with-at-least-32-characters!";
+});
+afterAll(() => {
+  process.env.AUTH_SECRET = savedSecret;
+});
+
+const db = {
+  project: { findUnique: mock() },
+  pluginActivation: { findUnique: mock() },
+  plugin: { findFirst: mock() },
+  pluginFile: { findMany: mock() },
+  pluginStorage: {
+    findUnique: mock(),
+    aggregate: mock(),
+    upsert: mock(),
+    deleteMany: mock(),
+    findMany: mock(),
+  },
+  pluginSettings: { findUnique: mock() },
+  pluginCredential: { findUnique: mock() },
+};
+mock.module("@/lib/db", () => ({ db }));
+const can = mock(async () => true);
+const canEnterWorkspace = mock(async () => true);
+mock.module("@/lib/permissions", () => ({ can, canEnterWorkspace }));
+const listIssuesForUser = mock();
+const getIssueForUser = mock();
+mock.module("@/features/api-v1/queries", () => ({
+  listIssuesForUser,
+  getIssueForUser,
+  listCommentsForUser: mock(),
+  listLabelsForUser: mock(),
+  listProjectCustomFieldsForUser: mock(),
+  listProjectMembersForUser: mock(),
+  listProjectsForUser: mock(),
+  listWorkspaceMembersForUser: mock(),
+}));
+const createIssueForUser = mock();
+const updateIssueForUser = mock();
+const createCommentForUser = mock();
+mock.module("@/features/api-v1/mutations", () => ({
+  createIssueForUser,
+  updateIssueForUser,
+  createCommentForUser,
+}));
+const countRequest = mock(async () => ({ ok: true, info: {} }));
+mock.module("@/lib/api/rateLimit", () => ({ countRequest }));
+const recordAudit = mock(async (_input: unknown) => {});
+mock.module("@/lib/audit", () => ({ recordAudit }));
+
+// The proxy's outside world (BARY-147): DNS answers and an HTTPS request
+// that records what it was asked and answers from `upstream`.
+const dnsLookup = mock(async () => [{ address: "93.184.216.34", family: 4 }]);
+mock.module("node:dns/promises", () => ({ lookup: dnsLookup }));
+const sent: {
+  url: string;
+  options: Record<string, unknown>;
+  body: string;
+  pinned?: string;
+}[] = [];
+let upstream = {
+  status: 200,
+  headers: { "content-type": "application/json" } as Record<string, string>,
+  body: '{"ok":1}',
+};
+mock.module("node:https", () => {
+  const request = (
+    url: URL,
+    options: Record<string, unknown>,
+    onResponse: (res: unknown) => void,
+  ) => {
+    const record = { url: String(url), options, body: "" };
+    sent.push(record);
+    const lookup = options.lookup as (
+      h: string,
+      o: object,
+      cb: (e: null, a: string) => void,
+    ) => void;
+    lookup("ignored", {}, (_e, address) => {
+      (record as { pinned?: string }).pinned = address;
+    });
+    const { EventEmitter } = require("node:events");
+    const req = new EventEmitter();
+    req.write = (chunk: string) => {
+      record.body += chunk;
+    };
+    req.end = () => {
+      const res = new EventEmitter();
+      res.statusCode = upstream.status;
+      res.headers = upstream.headers;
+      onResponse(res);
+      res.emit("data", Buffer.from(upstream.body));
+      res.emit("end");
+    };
+    return req;
+  };
+  return { default: { request }, request };
+});
+const { sealSecret } = await import("@/lib/secret-box");
+
+const { callBridge, getPluginFrame } = await import(
+  "@/features/plugins/runtime"
+);
+
+const manifest = {
+  id: "timeline",
+  name: "Timeline",
+  version: "1.0.0",
+  minBaryntVersion: "0.1.0",
+  author: "Acme",
+  description: "Issues on a time line.",
+  kind: "sandbox",
+  levels: ["project"],
+  capabilities: ["issues:read", "ui:project-view"],
+  license: "MIT",
+  network: [],
+  contributes: { projectViews: [{ id: "timeline", title: "Timeline" }] },
+};
+const place = { pluginId: "timeline", workspaceId: "ws1", projectId: "p1" };
+
+beforeEach(() => {
+  for (const group of Object.values(db))
+    for (const fn of Object.values(group))
+      (fn as ReturnType<typeof mock>).mockReset();
+  can.mockImplementation(async () => true);
+  countRequest.mockImplementation(async () => ({ ok: true, info: {} }));
+  for (const fn of [
+    listIssuesForUser,
+    getIssueForUser,
+    createIssueForUser,
+    updateIssueForUser,
+    createCommentForUser,
+    recordAudit,
+  ])
+    fn.mockReset();
+  db.project.findUnique.mockResolvedValue({ workspaceId: "ws1" });
+  db.pluginActivation.findUnique.mockResolvedValue({
+    id: "act1",
+    enabled: true,
+    capabilities: ["issues:read", "ui:project-view"],
+  });
+  db.plugin.findFirst.mockResolvedValue({ id: "row1", manifest });
+});
+
+describe("callBridge", () => {
+  it("lists the project's issues as the person", async () => {
+    listIssuesForUser.mockResolvedValue({
+      rows: [{ id: "i1" }],
+      hasMore: false,
+    });
+    const res = await callBridge("u1", place, "issues.list", { take: 500 });
+    expect(res).toEqual({
+      ok: true,
+      result: { issues: [{ id: "i1" }], nextCursor: null },
+    });
+    // At most 100, and for the person whose session it is.
+    expect(listIssuesForUser.mock.calls[0]?.[0]).toBe("u1");
+    expect(listIssuesForUser.mock.calls[0]?.[2]).toMatchObject({ take: 100 });
+  });
+
+  it("refuses a method that doesn't exist", async () => {
+    expect(await callBridge("u1", place, "db.raw", {})).toEqual({
+      ok: false,
+      error: "unknown_method",
+    });
+  });
+
+  it("refuses what wasn't confirmed here", async () => {
+    db.pluginActivation.findUnique.mockResolvedValue({
+      enabled: true,
+      capabilities: ["ui:project-view"],
+    });
+    expect(await callBridge("u1", place, "issues.list", {})).toEqual({
+      ok: false,
+      error: "capability_not_confirmed",
+    });
+  });
+
+  it("refuses a plugin that's switched off, or blocked", async () => {
+    db.pluginActivation.findUnique.mockResolvedValue({
+      enabled: false,
+      capabilities: [],
+    });
+    expect((await callBridge("u1", place, "issues.list", {})).ok).toBe(false);
+    db.pluginActivation.findUnique.mockResolvedValue({
+      enabled: true,
+      capabilities: ["issues:read"],
+    });
+    db.plugin.findFirst.mockResolvedValue(null);
+    expect(await callBridge("u1", place, "issues.list", {})).toEqual({
+      ok: false,
+      error: "not_active",
+    });
+  });
+
+  it("refuses someone who can't see the project", async () => {
+    can.mockImplementation(async () => false);
+    expect(await callBridge("u1", place, "issues.list", {})).toEqual({
+      ok: false,
+      error: "not_active",
+    });
+  });
+
+  it("keeps a project's plugin in its project", async () => {
+    expect(
+      await callBridge("u1", place, "issues.list", { projectId: "p2" }),
+    ).toEqual({ ok: false, error: "forbidden" });
+    getIssueForUser.mockResolvedValue({ id: "i9", project: { id: "p2" } });
+    expect(await callBridge("u1", place, "issues.get", { id: "i9" })).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+  });
+
+  it("takes a project's workspace from the project, not the caller", async () => {
+    db.project.findUnique.mockResolvedValue({ workspaceId: "other" });
+    expect(await callBridge("u1", place, "issues.list", {})).toEqual({
+      ok: false,
+      error: "not_active",
+    });
+  });
+});
+
+describe("callBridge (BARY-145)", () => {
+  const confirm = (...capabilities: string[]) =>
+    db.pluginActivation.findUnique.mockResolvedValue({
+      id: "act1",
+      enabled: true,
+      capabilities,
+    });
+
+  it("stops a plugin over its budget before anything else", async () => {
+    countRequest.mockImplementation(async () => ({ ok: false, info: {} }));
+    expect(await callBridge("u1", place, "issues.list", {})).toEqual({
+      ok: false,
+      error: "too_many_requests",
+    });
+    expect(listIssuesForUser).not.toHaveBeenCalled();
+  });
+
+  it("writes as the plugin, in the person's name, and logs it", async () => {
+    confirm("issues:write");
+    createIssueForUser.mockResolvedValue({
+      ok: true,
+      data: { id: "i1", ref: "WEB-1" },
+    });
+    const res = await callBridge("u1", place, "issues.create", {
+      title: "From a plugin",
+    });
+    expect(res.ok).toBe(true);
+    expect(createIssueForUser.mock.calls[0]?.[0]).toBe("u1");
+    expect(createIssueForUser.mock.calls[0]?.[1]).toBe("p1");
+    // Shown as the person's own, like the app's: no badge.
+    expect(createIssueForUser.mock.calls[0]?.[3]).toBe("APP");
+    expect(recordAudit).toHaveBeenCalledTimes(1);
+    expect(recordAudit.mock.calls[0]?.[0]).toMatchObject({
+      action: "plugin.acted",
+      actorId: "u1",
+      target: { type: "plugin", id: "timeline" },
+      meta: { method: "issues.create", ref: "WEB-1" },
+    });
+  });
+
+  it("logs nothing for a read, or a refused write", async () => {
+    confirm("issues:read", "issues:write");
+    listIssuesForUser.mockResolvedValue({ rows: [], hasMore: false });
+    await callBridge("u1", place, "issues.list", {});
+    createIssueForUser.mockResolvedValue({ ok: false, status: 404 });
+    expect(
+      await callBridge("u1", place, "issues.create", { title: "x" }),
+    ).toEqual({ ok: false, error: "not_found" });
+    expect(recordAudit).not.toHaveBeenCalled();
+  });
+
+  it("needs fields:write to set custom field values", async () => {
+    confirm("issues:write");
+    expect(
+      await callBridge("u1", place, "issues.create", {
+        title: "x",
+        customFields: { size: 3 },
+      }),
+    ).toEqual({ ok: false, error: "capability_not_confirmed" });
+  });
+
+  it("keeps a plugin's storage within its limits", async () => {
+    confirm("storage:own");
+    db.pluginStorage.aggregate.mockResolvedValue({
+      _sum: { size: 0 },
+      _count: 0,
+    });
+    db.pluginStorage.findUnique.mockResolvedValue(null);
+    expect(
+      await callBridge("u1", place, "storage.set", {
+        key: "a",
+        value: { n: 1 },
+      }),
+    ).toEqual({ ok: true, result: null });
+    expect(db.pluginStorage.upsert.mock.calls[0]?.[0]).toMatchObject({
+      create: { activationId: "act1", key: "a" },
+    });
+    expect(
+      await callBridge("u1", place, "storage.set", {
+        key: "big",
+        value: "x".repeat(70 * 1024),
+      }),
+    ).toEqual({ ok: false, error: "storage_full" });
+    db.pluginStorage.aggregate.mockResolvedValue({
+      _sum: { size: 0 },
+      _count: 500,
+    });
+    expect(
+      await callBridge("u1", place, "storage.set", { key: "new", value: 1 }),
+    ).toEqual({ ok: false, error: "storage_full" });
+  });
+
+  it("gives a plugin its own settings, defaults filled in", async () => {
+    confirm();
+    db.plugin.findFirst.mockResolvedValue({
+      id: "row1",
+      manifest: {
+        ...manifest,
+        contributes: {
+          ...manifest.contributes,
+          settings: [
+            { key: "zoom", type: "number", label: "Zoom", default: 2 },
+            { key: "title", type: "text", label: "Title" },
+          ],
+        },
+      },
+    });
+    db.pluginSettings.findUnique.mockResolvedValue({ values: { title: "Hi" } });
+    expect(await callBridge("u1", place, "settings.get", {})).toEqual({
+      ok: true,
+      result: { zoom: 2, title: "Hi" },
+    });
+  });
+});
+
+describe("net.fetch (BARY-147)", () => {
+  const withNetwork = (credentials: unknown[] = []) =>
+    db.plugin.findFirst.mockResolvedValue({
+      id: "row1",
+      manifest: {
+        ...manifest,
+        network: ["api.acme.example"],
+        contributes: { ...manifest.contributes, credentials },
+      },
+    });
+
+  beforeEach(() => {
+    sent.length = 0;
+    dnsLookup.mockImplementation(async () => [
+      { address: "93.184.216.34", family: 4 },
+    ]);
+    upstream = {
+      status: 200,
+      headers: { "content-type": "application/json" },
+      body: '{"ok":1}',
+    };
+  });
+
+  it("calls a host from network, at the address it checked", async () => {
+    withNetwork();
+    const res = await callBridge("u1", place, "net.fetch", {
+      url: "https://api.acme.example/items",
+      method: "POST",
+      body: '{"a":1}',
+    });
+    expect(res).toEqual({
+      ok: true,
+      result: {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        text: '{"ok":1}',
+      },
+    });
+    expect(sent[0]?.url).toBe("https://api.acme.example/items");
+    expect(sent[0]?.pinned).toBe("93.184.216.34");
+    expect(sent[0]?.body).toBe('{"a":1}');
+  });
+
+  it("refuses a host that isn't in network, or answers privately", async () => {
+    withNetwork();
+    expect(
+      await callBridge("u1", place, "net.fetch", {
+        url: "https://evil.example/",
+      }),
+    ).toEqual({ ok: false, error: "host_not_allowed" });
+    dnsLookup.mockImplementation(async () => [
+      { address: "93.184.216.34", family: 4 },
+      { address: "10.0.0.5", family: 4 },
+    ]);
+    expect(
+      await callBridge("u1", place, "net.fetch", {
+        url: "https://api.acme.example/",
+      }),
+    ).toEqual({ ok: false, error: "host_not_allowed" });
+    expect(sent).toHaveLength(0);
+  });
+
+  it("adds a kept credential itself, and refuses without one", async () => {
+    withNetwork([
+      {
+        key: "token",
+        label: "Token",
+        level: "user",
+        host: "api.acme.example",
+        header: "PRIVATE-TOKEN",
+        format: "{value}",
+      },
+    ]);
+    db.pluginCredential.findUnique.mockResolvedValue(null);
+    expect(
+      await callBridge("u1", place, "net.fetch", {
+        url: "https://api.acme.example/",
+      }),
+    ).toEqual({ ok: false, error: "credential_missing" });
+
+    db.pluginCredential.findUnique.mockResolvedValue({
+      valueCipher: sealSecret("glpat-secret", "plugin-credential"),
+    });
+    await callBridge("u1", place, "net.fetch", {
+      url: "https://api.acme.example/",
+      headers: { "PRIVATE-TOKEN": "from the plugin" },
+    });
+    const headers = sent[0]?.options.headers as Record<string, string>;
+    expect(headers["private-token"]).toBe("glpat-secret");
+    // Looked up as this person's own.
+    expect(db.pluginCredential.findUnique.mock.calls.at(-1)?.[0]).toMatchObject(
+      {
+        where: { pluginId_scopeKey_key: { scopeKey: "us:u1", key: "token" } },
+      },
+    );
+  });
+
+  it("hands back a body that isn't text as base64", async () => {
+    withNetwork();
+    upstream = {
+      status: 200,
+      headers: { "content-type": "image/png" },
+      body: "png",
+    };
+    const res = await callBridge("u1", place, "net.fetch", {
+      url: "https://api.acme.example/logo.png",
+    });
+    expect(res).toMatchObject({
+      ok: true,
+      result: { base64: Buffer.from("png").toString("base64") },
+    });
+  });
+});
+
+describe("getPluginFrame", () => {
+  const file = (name: string, text: string) => ({
+    name,
+    content: new TextEncoder().encode(text),
+  });
+
+  it("serves the plugin's code in a sandboxed document", async () => {
+    db.pluginFile.findMany.mockResolvedValue([
+      file("main.js", "export default class {}"),
+    ]);
+    const frame = await getPluginFrame("u1", place, {
+      kind: "projectView",
+      id: "timeline",
+    });
+    expect(frame?.html).toContain("export default class {}");
+    expect(frame?.csp).toContain("sandbox allow-scripts");
+  });
+
+  it("only for a view it declares and was confirmed", async () => {
+    db.pluginFile.findMany.mockResolvedValue([file("main.js", "x")]);
+    expect(
+      await getPluginFrame("u1", place, { kind: "projectView", id: "other" }),
+    ).toBeNull();
+    db.pluginActivation.findUnique.mockResolvedValue({
+      enabled: true,
+      capabilities: ["issues:read"],
+    });
+    expect(
+      await getPluginFrame("u1", place, {
+        kind: "projectView",
+        id: "timeline",
+      }),
+    ).toBeNull();
+  });
+});

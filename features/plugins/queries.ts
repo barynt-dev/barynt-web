@@ -5,7 +5,12 @@ import {
   sourceRepo,
 } from "@/features/plugins/directory";
 import { db } from "@/lib/db";
-import { hasPermission, PLATFORM } from "@/lib/permissions";
+import {
+  currentUserCanEnterWorkspace,
+  currentUserId,
+  hasPermission,
+  PLATFORM,
+} from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
 import type { DirectoryEntry } from "@/lib/plugins/directory";
 import { releasePageUrl, repoUrl } from "@/lib/plugins/git-hosts";
@@ -15,7 +20,11 @@ import {
   pendingCapabilities,
   rollbackTarget,
 } from "@/lib/plugins/lifecycle";
-import { type PluginManifest, validateManifest } from "@/lib/plugins/manifest";
+import {
+  type CredentialLevel,
+  type PluginManifest,
+  validateManifest,
+} from "@/lib/plugins/manifest";
 import { compareSemver } from "@/lib/plugins/semver";
 
 // What the plugin pages show (BARY-143). Every view checks its own
@@ -555,7 +564,12 @@ export async function getPluginSettingsNav(scope: {
     select: { pluginId: true, manifest: true },
   });
   return rows
-    .filter((r) => (scope.projectId ? true : hasSettingsForm(r.manifest)))
+    .filter((r) =>
+      scope.projectId
+        ? true
+        : hasSettingsForm(r.manifest) ||
+          credentialsOf(r.manifest, "workspace").length > 0,
+    )
     .map((r) => ({
       pluginId: r.pluginId,
       name: summaryOf(r.pluginId, r.manifest).name,
@@ -569,6 +583,53 @@ export interface PluginSettingsView {
   values: Record<string, unknown>;
   /** `off` in a project that never switched it on. */
   state: ActivationState | "off";
+  /** The project views it contributes, while it runs here with them
+   *  confirmed (BARY-144). */
+  views: { id: string; title: string }[];
+  /** The credentials kept at this level — whether each is, never what. */
+  credentials: PluginCredentialField[];
+}
+
+/** A credential a plugin declares, as its form shows it (BARY-147). */
+export interface PluginCredentialField {
+  key: string;
+  label: string;
+  description: string | null;
+  host: string;
+  /** When it was last kept; `null` while there's none. */
+  updatedAt: Date | null;
+}
+
+/** The credentials a manifest declares at a level. */
+function credentialsOf(manifest: unknown, level: CredentialLevel) {
+  const parsed = validateManifest(manifest);
+  return parsed.ok
+    ? (parsed.manifest.contributes.credentials ?? []).filter(
+        (c) => c.level === level,
+      )
+    : [];
+}
+
+/** Those credentials with whether each is kept under `scopeKey`. */
+async function credentialFields(
+  pluginId: string,
+  manifest: unknown,
+  level: CredentialLevel,
+  scopeKey: string,
+): Promise<PluginCredentialField[]> {
+  const declared = credentialsOf(manifest, level);
+  if (declared.length === 0) return [];
+  const kept = await db.pluginCredential.findMany({
+    where: { pluginId, scopeKey, key: { in: declared.map((c) => c.key) } },
+    select: { key: true, updatedAt: true },
+  });
+  return declared.map((c) => ({
+    key: c.key,
+    label: c.label,
+    description: c.description ?? null,
+    host: c.host,
+    updatedAt: kept.find((k) => k.key === c.key)?.updatedAt ?? null,
+  }));
 }
 
 /** A plugin's page in a workspace or project — `plugin.enable` there. In a
@@ -606,7 +667,19 @@ export async function getPluginSettingsView(
   const parsed = validateManifest(active.manifest);
   if (!parsed.ok) return null;
   const settings = parsed.manifest.contributes.settings ?? [];
-  if (scope.projectId ? !grant : !activation?.enabled || settings.length === 0)
+  const level = scope.projectId ? "project" : "workspace";
+  const credentials = await credentialFields(
+    pluginId,
+    active.manifest,
+    level,
+    activationScopeKey(scope),
+  );
+  if (
+    scope.projectId
+      ? !grant
+      : !activation?.enabled ||
+        (settings.length === 0 && credentials.length === 0)
+  )
     return null;
   return {
     plugin: {
@@ -632,5 +705,79 @@ export async function getPluginSettingsView(
           parsed.manifest.capabilities,
         )
       : "off",
+    views:
+      scope.projectId &&
+      activation?.enabled &&
+      parsed.manifest.kind === "sandbox" &&
+      activation.capabilities.includes("ui:project-view")
+        ? (parsed.manifest.contributes.projectViews ?? []).map((v) => ({
+            id: v.id,
+            title: v.title,
+          }))
+        : [],
+    credentials,
+  };
+}
+
+// ─── A person's own credentials (BARY-147) ──────────────────────────────────
+
+/** The plugins that run somewhere in this workspace and ask each person for
+ *  a credential of their own — the personal settings' "Plugins" group. */
+export async function getUserCredentialPluginsNav(
+  workspaceId: string,
+): Promise<{ pluginId: string; name: string }[]> {
+  if (!(await currentUserCanEnterWorkspace(workspaceId))) return [];
+  const running = await db.pluginActivation.findMany({
+    where: { workspaceId, enabled: true },
+    select: { pluginId: true },
+    distinct: ["pluginId"],
+  });
+  if (running.length === 0) return [];
+  const rows = await db.plugin.findMany({
+    where: {
+      pluginId: { in: running.map((r) => r.pluginId) },
+      status: "active",
+    },
+    select: { pluginId: true, manifest: true },
+  });
+  return rows
+    .filter((r) => credentialsOf(r.manifest, "user").length > 0)
+    .map((r) => ({
+      pluginId: r.pluginId,
+      name: summaryOf(r.pluginId, r.manifest).name,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export interface UserCredentialsView {
+  plugin: PluginSummary & { version: string };
+  credentials: PluginCredentialField[];
+}
+
+/** A plugin's page in the personal settings: the credentials it asks each
+ *  person for, and whether this person kept theirs. */
+export async function getUserCredentialsView(
+  workspaceId: string,
+  pluginId: string,
+): Promise<UserCredentialsView | null> {
+  const userId = await currentUserId();
+  if (!userId) return null;
+  const nav = await getUserCredentialPluginsNav(workspaceId);
+  if (!nav.some((p) => p.pluginId === pluginId)) return null;
+  const active = await db.plugin.findFirst({
+    where: { pluginId, status: "active" },
+  });
+  if (!active) return null;
+  return {
+    plugin: {
+      ...summaryOf(pluginId, active.manifest, active.id),
+      version: active.version,
+    },
+    credentials: await credentialFields(
+      pluginId,
+      active.manifest,
+      "user",
+      `us:${userId}`,
+    ),
   };
 }

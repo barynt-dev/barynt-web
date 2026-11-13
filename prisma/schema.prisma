@@ -196,6 +196,7 @@ model User {
   apiKeys                 ApiKey[]
   webhooksCreated         Webhook[]                      @relation("WebhookCreatedBy")
   pluginSourcesAdded      PluginSource[]                 @relation("PluginSourceAddedBy")
+  pluginCredentials       PluginCredential[]             @relation("PluginCredentialUpdatedBy")
   pluginsInstalled        Plugin[]                       @relation("PluginInstalledBy")
   pluginActivationsMade   PluginActivation[]             @relation("PluginActivatedBy")
   pluginGrantsMade        PluginGrant[]                  @relation("PluginGrantedBy")
@@ -2077,6 +2078,26 @@ model PluginSettings {
   updatedAt    DateTime @updatedAt
 
   activation PluginActivation @relation(fields: [activationId], references: [id], onDelete: Cascade)
+}
+
+/// Eine Zugangsangabe eines Plugins für einen seiner Hosts (BARY-147) — ein
+/// Token, das Barynt selbst an Anfragen über den Host-Proxy hängt; das Plugin
+/// sieht den Wert nie. Je Ebene aus dem Manifest (`contributes.credentials`):
+/// `scopeKey` ist `ws:<workspaceId>`, `pr:<projectId>` oder `us:<userId>`.
+/// `valueCipher` ist mit `sealSecret` versiegelt (Zweck `plugin-credential`).
+model PluginCredential {
+  id          String   @id @default(cuid())
+  pluginId    String
+  scopeKey    String
+  key         String
+  valueCipher String
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+
+  updatedBy User? @relation("PluginCredentialUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@unique([pluginId, scopeKey, key])
+  @@index([scopeKey])
 }
 
 /// Schlüssel-Wert-Speicher eines Plugins (`storage:own`), je Aktivierung

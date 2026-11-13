@@ -31,7 +31,15 @@ function keyFor(apiKeyId: string): string {
 export async function checkRateLimit(
   apiKeyId: string,
 ): Promise<{ ok: boolean; info: RateLimitInfo }> {
-  const key = keyFor(apiKeyId);
+  return countRequest(keyFor(apiKeyId), LIMIT);
+}
+
+/** The same per-minute window for any counter — a plugin's requests per
+ *  person (BARY-145), say. */
+export async function countRequest(
+  key: string,
+  limit: number,
+): Promise<{ ok: boolean; info: RateLimitInfo }> {
   const count = await redisClient.incr(key);
   if (count === 1) {
     await redisClient.expire(key, WINDOW_SECONDS);
@@ -40,7 +48,7 @@ export async function checkRateLimit(
   const resetAt = Date.now() + Math.max(ttl, 0) * 1000;
 
   return {
-    ok: count <= LIMIT,
-    info: { limit: LIMIT, remaining: Math.max(LIMIT - count, 0), resetAt },
+    ok: count <= limit,
+    info: { limit, remaining: Math.max(limit - count, 0), resetAt },
   };
 }

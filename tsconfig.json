@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@barynt/plugin-sdk": ["./packages/plugin-sdk/src/index.ts"],
+      "@barynt/plugin-sdk/testing": ["./packages/plugin-sdk/src/testing.ts"]
     }
   },
   "include": [
@@ -30,5 +32,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "packages/*/dist"]
 }

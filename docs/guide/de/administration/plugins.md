@@ -74,6 +74,16 @@ Ein freigeschaltetes Plugin für Projekte hat in den Einstellungen jedes Projekt
 
 Ein Plugin, das im Workspace läuft und Einstellungen hat, bekommt in den Workspace-Einstellungen einen Eintrag unter **Plugins** mit seinem Formular.
 
+### Zugangsdaten
+
+Ein Plugin, das mit einem anderen Dienst spricht – einem Git-Server, einem Chat –, braucht dafür vielleicht ein Zugangstoken. Je nach Plugin hinterlegst du es an einer von drei Stellen:
+
+- **Für den ganzen Workspace**: in den Workspace-Einstellungen, auf der Seite des Plugins unter **Plugins** (Workspace-Manager).
+- **Je Projekt**: in den Projekt-Einstellungen, auf der Seite des Plugins (Projekt-Admins).
+- **Dein eigenes**: in deinen persönlichen Einstellungen unter **Plugins**, wenn das Plugin mit dem Konto jeder Person arbeitet.
+
+Barynt speichert den Wert verschlüsselt und hängt ihn selbst an die Anfragen des Plugins an diesen Dienst – das Plugin sieht ihn nie, und nach dem Speichern sieht ihn auch sonst niemand mehr: Die Seite zeigt nur, ob einer hinterlegt ist und seit wann. **Entfernen** nimmt ihn zurück; die Anfragen des Plugins an den Dienst schlagen dann fehl, bis jemand einen neuen hinterlegt. Hinterlegen und Entfernen für einen Workspace oder ein Projekt landen im Protokoll (welche Angabe, nie der Wert).
+
 ## Installieren (Plattform-Admins)
 
 Öffne **Admin → Plugins**. Links stehen alle Plugins: was **Aufmerksamkeit braucht** (ein Update, ein gesperrtes Plugin), was **installiert** ist und was deine Quellen **im Verzeichnis** anbieten, mit Suche und Filtern. Rechts steht das Plugin, das du gewählt hast.
@@ -129,3 +139,7 @@ Nimmst du die Freischaltung zurück, wird das Plugin im Workspace und in allen s
 ### Einstellungen eines Plugins
 
 Ein eingeschaltetes Plugin mit Einstellungen bekommt in den Einstellungen des Workspaces oder Projekts einen Eintrag unter **Plugins**, unterhalb der anderen Bereiche. Seine Seite enthält das Formular, das das Plugin mitbringt (ein Kanalname, was gepostet wird, …), und unten das Ausschalten an dieser Stelle.
+
+## Eigene Plugins bauen
+
+Wie man selbst ein Plugin schreibt, steht unter [Building plugins](../../../dev/plugins.md) in der Entwickler-Doku (auf Englisch).
