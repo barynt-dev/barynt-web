@@ -1,5 +1,13 @@
 import type { Plugin } from "./plugin";
-import type { BlockData, Context, Host, Method, Methods } from "./types";
+import type {
+  Badge,
+  BadgeIssue,
+  BlockData,
+  Context,
+  Host,
+  Method,
+  Methods,
+} from "./types";
 
 // Testing a plugin without Barynt: a host that answers from your handlers
 // and records every call.
@@ -15,6 +23,10 @@ export interface TestHost extends Host {
   readonly calls: { method: string; params: unknown }[];
   /** Every building block's data the plugin showed, in order. */
   readonly shown: BlockData[];
+  /** Asks the plugin's badges for these issues, as a board would. */
+  badges(
+    issues: BadgeIssue[],
+  ): Record<string, Badge[]> | Promise<Record<string, Badge[]>>;
 }
 
 /**
@@ -31,10 +43,16 @@ export function createTestHost(
 ): TestHost {
   const calls: TestHost["calls"] = [];
   const shown: TestHost["shown"] = [];
+  let badgeHandler: Parameters<NonNullable<Host["serveBadges"]>>[0] | null =
+    null;
   return {
     calls,
     shown,
     show: (data) => void shown.push(data),
+    serveBadges: (handler) => {
+      badgeHandler = handler;
+    },
+    badges: (issues) => badgeHandler?.(issues) ?? {},
     context: {
       slot: { kind: "projectView", id: "main" },
       workspaceId: "workspace",

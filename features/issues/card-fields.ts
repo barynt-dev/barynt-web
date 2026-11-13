@@ -37,9 +37,14 @@ export type CustomCardFieldEntry = `cf:${string}`;
 export const customCardFieldEntry = (fieldId: string): CustomCardFieldEntry =>
   `cf:${fieldId}`;
 
-/** Anything a `hiddenFields` list may hold: a built-in key or a custom field. */
+/** Anything a `hiddenFields` list may hold: a built-in key, a custom field,
+ *  or a plugin's badge (`pb:<plugin>:<badge>`, BARY-151). */
 export function isCardFieldEntry(value: string): boolean {
-  return isCardFieldKey(value) || (value.startsWith("cf:") && value.length > 3);
+  return (
+    isCardFieldKey(value) ||
+    (value.startsWith("cf:") && value.length > 3) ||
+    /^pb:[a-z][a-z0-9-]{1,38}[a-z0-9]:[a-z][a-z0-9-]{0,39}$/.test(value)
+  );
 }
 
 /** The custom fields (by id) a `hiddenFields` list hides. */

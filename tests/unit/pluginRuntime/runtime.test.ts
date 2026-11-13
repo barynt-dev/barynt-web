@@ -23,7 +23,6 @@ afterAll(() => {
 });
 
 const db = {
-  project: { findUnique: mock() },
   pluginActivation: { findUnique: mock(), findMany: mock() },
   plugin: { findFirst: mock(), findMany: mock() },
   pluginFile: { findMany: mock() },
@@ -39,15 +38,18 @@ const db = {
   projectMember: { findMany: mock() },
   workspaceMember: { findMany: mock() },
   label: { findMany: mock() },
+  project: { findUnique: mock(), findFirst: mock() },
 };
 mock.module("@/lib/db", () => ({ db }));
 const can = mock(async (_u?: string, _permission?: string) => true);
 const canEnterWorkspace = mock(async () => true);
 const currentUserCanEnterWorkspace = mock(async () => true);
+const hasPermission = mock(async () => true);
 mock.module("@/lib/permissions", () => ({
   can,
   canEnterWorkspace,
   currentUserCanEnterWorkspace,
+  hasPermission,
 }));
 const listIssuesForUser = mock();
 const listProjectsForUser = mock();
@@ -130,6 +132,7 @@ const { callBridge, getPluginFrame, getPluginSlotView } = await import(
 );
 const { parseWidgets } = await import("@/features/dashboard/widgets");
 const {
+  getPluginBadgeProviders,
   getPluginBlocks,
   getPluginIssuePanels,
   getPluginNav,
@@ -923,6 +926,65 @@ describe("issue panels (BARY-150)", () => {
     });
     expect(
       await getPluginFrame("u1", place, { kind: "issuePanel", id: "schedule" }),
+    ).toBeNull();
+  });
+});
+
+describe("badges (BARY-151)", () => {
+  const withBadges = {
+    ...manifest,
+    capabilities: [...manifest.capabilities, "ui:issue-badge"],
+    contributes: {
+      ...manifest.contributes,
+      issueBadges: [{ id: "due", title: "Due" }],
+    },
+  };
+
+  it("names a project's badge plugins, and what they may read", async () => {
+    db.project.findFirst.mockResolvedValue({ id: "p-badges", prefix: "WEB" });
+    db.pluginActivation.findMany.mockResolvedValue([
+      { pluginId: "timeline", capabilities: ["issues:read", "ui:issue-badge"] },
+      { pluginId: "other", capabilities: ["issues:read"] },
+    ]);
+    db.plugin.findMany.mockResolvedValue([
+      { pluginId: "timeline", manifest: withBadges },
+    ]);
+    expect(
+      await getPluginBadgeProviders({ workspaceId: "ws1", projectSlug: "web" }),
+    ).toEqual({
+      projectId: "p-badges",
+      prefix: "WEB",
+      providers: [
+        {
+          pluginId: "timeline",
+          pluginName: "Timeline",
+          badges: [{ id: "due", title: "Due" }],
+          canRead: true,
+        },
+      ],
+    });
+  });
+
+  it("serves the badges frame only with the capability", async () => {
+    db.pluginFile.findMany.mockResolvedValue([
+      { name: "main.js", content: new TextEncoder().encode("x") },
+    ]);
+    db.plugin.findFirst.mockResolvedValue({ id: "row1", manifest: withBadges });
+    db.pluginActivation.findUnique.mockResolvedValue({
+      id: "act1",
+      enabled: true,
+      capabilities: ["ui:issue-badge"],
+    });
+    expect(
+      await getPluginFrame("u1", place, { kind: "badges", id: "badges" }),
+    ).not.toBeNull();
+    db.pluginActivation.findUnique.mockResolvedValue({
+      id: "act1",
+      enabled: true,
+      capabilities: [],
+    });
+    expect(
+      await getPluginFrame("u1", place, { kind: "badges", id: "badges" }),
     ).toBeNull();
   });
 });

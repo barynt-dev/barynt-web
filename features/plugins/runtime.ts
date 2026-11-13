@@ -104,6 +104,20 @@ function slotEntry(plugin: RunningPlugin, slot: FrameContext["slot"]) {
   // Its own settings page (BARY-149), or its part below Barynt's form
   // (`section`, BARY-204): one, needing no capability — it's the plugin's
   // own page; saving checks `plugin.enable` (`settings.set`).
+  // Its badges (BARY-151): one frame for all of them, out of sight — with
+  // `ui:issue-badge` confirmed and at least one badge declared.
+  if (slot.kind === "badges")
+    return plugin.manifest.kind === "sandbox" &&
+      slot.id === "badges" &&
+      (plugin.manifest.contributes.issueBadges ?? []).length > 0 &&
+      plugin.capabilities.includes("ui:issue-badge")
+      ? {
+          kind: slot.kind,
+          id: slot.id,
+          title: plugin.manifest.name,
+          icon: null,
+        }
+      : null;
   if (slot.kind === "settings")
     return plugin.manifest.kind === "sandbox" &&
       plugin.manifest.contributes.settingsPage &&

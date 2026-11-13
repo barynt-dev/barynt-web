@@ -12,6 +12,7 @@ export interface Context {
       | "widget"
       | "block"
       | "issuePanel"
+      | "badges"
       | "settings";
     id: string;
   };
@@ -47,6 +48,55 @@ export type BlockData =
   | { kind: "bars"; bars: { label: string; value: number; color?: string }[] }
   | { kind: "progress"; value: number; max?: number; label?: string };
 
+/** An issue a board shows, as `registerBadges` gets it: always id and
+ *  reference; with `issues:read` confirmed, what the card shows too. */
+export interface BadgeIssue {
+  id: string;
+  /** `PREFIX-123`. */
+  ref: string;
+  title?: string;
+  priority?: number;
+  dueDate?: string | null;
+  /** When it was created, ISO. */
+  created?: string;
+}
+
+/** The icons a badge may carry — Barynt's own, nothing is loaded. */
+export type BadgeIcon =
+  | "clock"
+  | "timer"
+  | "calendar"
+  | "check"
+  | "circle-check"
+  | "circle-x"
+  | "triangle-alert"
+  | "info"
+  | "flag"
+  | "star"
+  | "bug"
+  | "zap"
+  | "lock"
+  | "eye"
+  | "link"
+  | "user"
+  | "message-square"
+  | "git-pull-request"
+  | "git-merge"
+  | "git-branch"
+  | "rocket"
+  | "package";
+
+/** A chip on a card or row. Up to 3 per issue; `text` up to 24 characters,
+ *  `tooltip` up to 120. */
+export interface Badge {
+  /** Which of your `contributes.issueBadges` — what people can hide. */
+  badge: string;
+  text: string;
+  icon?: BadgeIcon;
+  tone?: "neutral" | "primary" | "info" | "success" | "warning" | "danger";
+  tooltip?: string;
+}
+
 /** The object Barynt hands a plugin's default export. */
 export interface Host {
   call(method: string, params?: unknown): Promise<unknown>;
@@ -54,6 +104,12 @@ export interface Host {
   readonly root: HTMLElement;
   /** Hands a building block's data to Barynt to draw. */
   show?(data: BlockData): void;
+  /** What answers a board's batches of issues with badges. */
+  serveBadges?(
+    handler: (
+      issues: BadgeIssue[],
+    ) => Record<string, Badge[]> | Promise<Record<string, Badge[]>>,
+  ): void;
 }
 
 export interface Person {

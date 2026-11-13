@@ -193,6 +193,7 @@
     "assignee": "Zuständig"
   },
   "display": {
+    "pluginBadges": "Plugin-Badges",
     "label": "Anzeige",
     "grouping": "Gruppierung",
     "ordering": "Sortierung",

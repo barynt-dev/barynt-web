@@ -91,6 +91,11 @@ const DEMOS: Demo[] = [
         issuePanels: [
           { id: "schedule", title: "Schedule", icon: "lucide:calendar-clock" },
         ],
+        // On every card and row: how old, and when it's due (BARY-151).
+        issueBadges: [
+          { id: "due", title: "Due" },
+          { id: "age", title: "Age" },
+        ],
         // Building blocks for custom widgets (BARY-205): two Barynt draws
         // from the plugin's data, one the plugin draws itself.
         widgetBlocks: [
@@ -129,6 +134,7 @@ const DEMOS: Demo[] = [
           "ui:nav-item",
           "ui:dashboard-widget",
           "ui:issue-panel",
+          "ui:issue-badge",
         ],
       },
       // The update asks for one more: workspaces have to confirm again.
@@ -140,6 +146,7 @@ const DEMOS: Demo[] = [
           "ui:nav-item",
           "ui:dashboard-widget",
           "ui:issue-panel",
+          "ui:issue-badge",
         ],
       },
     },

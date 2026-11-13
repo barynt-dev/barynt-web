@@ -1,0 +1,49 @@
+/* Plugins' chips on a card or a row (BARY-151): small, in a tone, the same
+   shape as a card's own badges. */
+
+.chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.chip {
+  --tone: var(--on-surface-variant);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1875rem;
+  max-width: 9rem;
+  height: 1.125rem;
+  padding: 0 0.375rem;
+  border-radius: var(--radius-pill);
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 14%, transparent);
+  font-size: var(--text-xxs);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  & > svg {
+    flex: none;
+  }
+
+  &[data-tone="primary"] {
+    --tone: var(--primary);
+  }
+  &[data-tone="info"] {
+    --tone: var(--info);
+  }
+  &[data-tone="success"] {
+    --tone: var(--green);
+  }
+  &[data-tone="warning"] {
+    --tone: var(--warning);
+  }
+  &[data-tone="danger"] {
+    --tone: var(--error);
+  }
+}

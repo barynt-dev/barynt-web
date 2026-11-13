@@ -1,5 +1,12 @@
 import { type Api, createApi } from "./api";
-import type { BlockData, Context, Host, Json } from "./types";
+import type {
+  Badge,
+  BadgeIssue,
+  BlockData,
+  Context,
+  Host,
+  Json,
+} from "./types";
 
 /** Something that undoes what a plugin set up. */
 export type Cleanup = () => void;
@@ -63,9 +70,11 @@ export abstract class Plugin {
   readonly #renders: Promise<unknown>[] = [];
 
   readonly #show: Host["show"];
+  readonly #serveBadges: Host["serveBadges"];
 
   constructor(host: Host) {
     this.#show = host.show;
+    this.#serveBadges = host.serveBadges;
     this.api = createApi(host);
     this.context = host.context;
     this.root = host.root;
@@ -120,6 +129,21 @@ export abstract class Plugin {
    */
   registerIssuePanel(panel: ProjectView): void {
     this.#renderSlot("issuePanel", panel);
+  }
+
+  /**
+   * Badges on a project's board cards and list rows, for the badges in the
+   * manifest's `contributes.issueBadges`. Barynt runs one hidden frame per
+   * board and hands `provide` the issues it shows, in batches; return the
+   * chips by issue id — Barynt draws them. Nothing is drawn by you here.
+   */
+  registerBadges(badges: {
+    provide(
+      issues: BadgeIssue[],
+    ): Record<string, Badge[]> | Promise<Record<string, Badge[]>>;
+  }): void {
+    if (this.context.slot.kind !== "badges") return;
+    this.#serveBadges?.((issues) => badges.provide(issues));
   }
 
   /**

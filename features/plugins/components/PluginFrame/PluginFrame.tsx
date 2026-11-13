@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
+import type { BadgeIssue } from "@/lib/plugins/badges";
 import type { BlockData } from "@/lib/plugins/blocks";
 import {
   BRIDGE_MAX_PENDING,
@@ -60,6 +61,8 @@ export function PluginFrame({
   headless,
   onBlockData,
   autoHeight,
+  badgeRequest,
+  onBadges,
 }: {
   pluginId: string;
   /** The plugin's name — the frame's title, and in its error. */
@@ -73,11 +76,18 @@ export function PluginFrame({
   /** As tall as its content, within these bounds (px) — a panel in an
    *  issue (BARY-150). Without, it fills its slot. */
   autoHeight?: { min: number; max: number };
+  /** A batch of issues for its badges, sent once it's ready and whenever
+   *  this changes (BARY-151). */
+  badgeRequest?: { seq: number; issues: BadgeIssue[] } | null;
+  /** Its answer, unchecked — the caller knows what it asked. */
+  onBadges?: (seq: number, badges: unknown) => void;
 }) {
   const t = useTranslations("plugins");
   const frame = useRef<HTMLIFrameElement>(null);
   const [state, setState] = useState<FrameState>({ status: "loading" });
   const [height, setHeight] = useState<number | null>(null);
+  // Sends to the frame's channel — set while one is open.
+  const send = useRef<((message: HostMessage) => void) | null>(null);
   // A new frame on "Load again".
   const [attempt, setAttempt] = useState(0);
   const { workspaceId, projectId, slot } = context;
@@ -101,6 +111,7 @@ export function PluginFrame({
     const controllers = new Set<AbortController>();
 
     const post = (message: HostMessage) => channel?.port1.postMessage(message);
+    send.current = post;
 
     const forward = async (id: number, method: string, params: unknown) => {
       if (open >= BRIDGE_MAX_PENDING)
@@ -167,6 +178,8 @@ export function PluginFrame({
           onBlockData?.(message.data);
         } else if (message.type === "resize") {
           setHeight(message.height);
+        } else if (message.type === "badges") {
+          onBadges?.(message.seq, message.badges);
         } else {
           void forward(message.id, message.method, message.params);
         }
@@ -207,8 +220,16 @@ export function PluginFrame({
       window.clearTimeout(readyTimer);
       for (const c of controllers) c.abort();
       channel?.port1.close();
+      send.current = null;
     };
   }, [attempt, src]);
+
+  // The issues to put badges on, once it listens — and again when they
+  // change (BARY-151).
+  useEffect(() => {
+    if (state.status === "ready" && badgeRequest)
+      send.current?.({ type: "badges:request", ...badgeRequest });
+  }, [state.status, badgeRequest]);
 
   return (
     <div

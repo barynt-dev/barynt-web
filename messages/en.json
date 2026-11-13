@@ -193,6 +193,7 @@
     "assignee": "Assignee"
   },
   "display": {
+    "pluginBadges": "Plugin badges",
     "label": "Display",
     "grouping": "Grouping",
     "ordering": "Ordering",

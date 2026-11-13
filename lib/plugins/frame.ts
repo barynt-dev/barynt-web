@@ -23,6 +23,7 @@ const RUNTIME = `(() => {
   let port = null;
   let seq = 0;
   let instance = null;
+  let badgeHandler = null;
 
   const send = (message) => port && port.postMessage(message);
   const fail = (error) =>
@@ -68,6 +69,20 @@ const RUNTIME = `(() => {
     port.onmessage = (e) => {
       const m = e.data || {};
       if (m.type === "theme") return applyTheme(m.theme, true);
+      // A batch of issues for its badges (BARY-151): the answer goes back
+      // with the request's number, so a late one can be told apart.
+      if (m.type === "badges:request") {
+        const seq = m.seq;
+        if (!badgeHandler) return send({ type: "badges", seq, badges: {} });
+        Promise.resolve()
+          .then(() => badgeHandler(Array.isArray(m.issues) ? m.issues : []))
+          .then((badges) => send({ type: "badges", seq, badges: badges || {} }))
+          .catch((error) => {
+            send({ type: "badges", seq, badges: {} });
+            fail(error);
+          });
+        return;
+      }
       if (m.type !== "result") return;
       const open = pending.get(m.id);
       if (!open) return;
@@ -89,6 +104,10 @@ const RUNTIME = `(() => {
         root: document.getElementById("root"),
         // A building block's data, for Barynt to draw (BARY-205).
         show: (blockData) => send({ type: "blockData", data: blockData }),
+        // What answers a batch of issues with badges (BARY-151).
+        serveBadges: (handler) => {
+          badgeHandler = typeof handler === "function" ? handler : null;
+        },
       });
       instance = new Plugin(host);
       if (instance && typeof instance.onload === "function") await instance.onload();
