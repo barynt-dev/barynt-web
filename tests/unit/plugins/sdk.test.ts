@@ -204,7 +204,14 @@ describe("plugin SDK", () => {
         context: { slot: { kind: "settings", id: "settings" } },
       }),
     );
-    expect(drawn).toEqual(["widget", "settings"]);
+    // Its part below Barynt's form (BARY-204) is drawn by the same call.
+    await loadPlugin(
+      All,
+      createTestHost({
+        context: { slot: { kind: "settings", id: "section" } },
+      }),
+    );
+    expect(drawn).toEqual(["widget", "settings", "settings"]);
   });
 
   it("saves its settings through the host", async () => {

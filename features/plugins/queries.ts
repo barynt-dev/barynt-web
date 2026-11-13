@@ -26,6 +26,8 @@ import {
   validateManifest,
 } from "@/lib/plugins/manifest";
 import { compareSemver } from "@/lib/plugins/semver";
+import type { SettingType, SettingValue } from "@/lib/plugins/settings";
+import { placeSettings } from "./settings-options";
 
 // What the plugin pages show (BARY-143). Every view checks its own
 // permission and answers `null` without it — the page then 404s; a hidden
@@ -529,11 +531,12 @@ export async function getScopeStoreView(
 /** One field of a plugin's settings form, from its manifest. */
 export interface PluginSettingField {
   key: string;
-  type: "text" | "number" | "boolean" | "select";
+  type: SettingType;
   label: string;
   description: string | null;
-  default: string | number | boolean | null;
-  options: { id: string; label: string }[];
+  default: SettingValue | null;
+  /** A choice's options — for `member` and `label` the place's (BARY-204). */
+  options: { id: string; label: string; color?: string }[];
 }
 
 /** The settings nav's "Plugins" group. In a project: every plugin its
@@ -588,8 +591,9 @@ export interface PluginSettingsView {
   views: { id: string; title: string }[];
   /** The credentials kept at this level — whether each is, never what. */
   credentials: PluginCredentialField[];
-  /** Draws its settings itself, in its own frame (BARY-149). */
-  settingsPage: boolean;
+  /** Draws its settings itself, in its own frame (BARY-149): instead of
+   *  the form, or — `"section"` — below it (BARY-204). */
+  settingsPage: false | "page" | "section";
 }
 
 /** A credential a plugin declares, as its form shows it (BARY-147). */
@@ -688,13 +692,17 @@ export async function getPluginSettingsView(
       ...summaryOf(pluginId, active.manifest, active.id),
       version: active.version,
     },
-    fields: settings.map((f) => ({
+    fields: (await placeSettings(scope, settings)).map((f) => ({
       key: f.key,
       type: f.type,
       label: f.label,
       description: f.description ?? null,
       default: f.default ?? null,
-      options: (f.options ?? []).map((o) => ({ id: o.id, label: o.label })),
+      options: (f.options ?? []).map((o) => ({
+        id: o.id,
+        label: o.label,
+        ...(o.color && { color: o.color }),
+      })),
     })),
     values: (activation?.settings?.values ?? {}) as Record<string, unknown>,
     state: activation
@@ -719,8 +727,12 @@ export async function getPluginSettingsView(
         : [],
     credentials,
     settingsPage:
-      parsed.manifest.kind === "sandbox" &&
-      !!parsed.manifest.contributes.settingsPage,
+      parsed.manifest.kind !== "sandbox" ||
+      !parsed.manifest.contributes.settingsPage
+        ? false
+        : parsed.manifest.contributes.settingsPage === "section"
+          ? "section"
+          : "page",
   };
 }
 

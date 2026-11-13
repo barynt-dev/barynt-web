@@ -5,6 +5,7 @@
 // comment, its own storage, and cleanup on unload.
 
 import { BaryntError, type Issue, Plugin } from "@barynt/plugin-sdk";
+import { button, kpi, row, stack, status } from "@barynt/plugin-sdk/ui";
 
 interface MergeRequest {
   iid: number;
@@ -23,8 +24,8 @@ const el = (tag: string, className?: string, text?: string) => {
 
 export default class GitLabMergeRequests extends Plugin {
   async onload() {
-    // Its own settings page (BARY-149): the GitLab project, checked against
-    // GitLab before it's saved.
+    // Its part of the settings page (BARY-204): Barynt draws the form, this
+    // checks the project saved there against GitLab.
     this.registerSettings({ render: (root) => this.drawSettings(root) });
     this.registerProjectView({
       id: "merge-requests",
@@ -36,56 +37,70 @@ export default class GitLabMergeRequests extends Plugin {
     });
   }
 
-  async drawSettings(root: HTMLElement) {
-    const { gitlabProject } = await this.loadSettings<{
-      gitlabProject: string | null;
-    }>();
-    // No <form>: the sandbox doesn't submit forms, so the button and Enter
-    // in the field do the saving.
-    const form = el("div", "mr-settings");
-    const label = el("label", "mr-label", "GitLab project");
-    const input = el("input", "mr-input") as HTMLInputElement;
-    input.value = gitlabProject ?? "";
-    input.placeholder = "acme/web";
-    input.id = "gitlab-project";
-    label.setAttribute("for", "gitlab-project");
-    const status = el("p", "mr-status");
-    const save = el("button", "mr-save", "Check and save") as HTMLButtonElement;
-    save.type = "button";
-    form.append(label, input, status, save);
-    const submit = async () => {
-      const path = input.value.trim();
-      save.disabled = true;
-      status.textContent = "Checking with GitLab…";
-      try {
-        const res = await this.api.net.fetch(
-          `https://gitlab.com/api/v4/projects/${encodeURIComponent(path)}`,
-        );
-        if (res.status === 404) {
-          status.textContent = `GitLab doesn't know “${path}”.`;
+  /** Below Barynt's form of its settings (`settingsPage: "section"`): a
+   *  check of the project saved there, drawn with the SDK's UI kit. */
+  drawSettings(root: HTMLElement) {
+    const line = status();
+    const result = el("div", "mr-check-result");
+    const check = button({
+      label: "Check connection",
+      onClick: async () => {
+        const { gitlabProject } = await this.loadSettings<{
+          gitlabProject: string | null;
+        }>();
+        result.replaceChildren();
+        if (!gitlabProject) {
+          line.set("Save a GitLab project above first.", "warning");
           return;
         }
-        const name = res.ok
-          ? res.json<{ name_with_namespace: string }>().name_with_namespace
-          : path;
-        await this.api.settings.set({ gitlabProject: path });
-        status.textContent = `Saved: ${name}.`;
-      } catch (error) {
-        status.textContent =
-          error instanceof BaryntError && error.code === "credential_missing"
-            ? "Keep your GitLab token in your personal settings → Plugins first."
-            : error instanceof BaryntError && error.code === "forbidden"
-              ? "Only project admins can change this."
-              : String(error);
-      } finally {
-        save.disabled = false;
-      }
-    };
-    this.registerDomEvent(save, "click", submit);
-    this.registerDomEvent(input, "keydown", (event) => {
-      if (event.key === "Enter") submit();
+        line.set("Checking with GitLab…");
+        const base = `https://gitlab.com/api/v4/projects/${encodeURIComponent(gitlabProject)}`;
+        try {
+          const res = await this.api.net.fetch(base);
+          if (res.status === 404) {
+            line.set(`GitLab doesn't know “${gitlabProject}”.`, "error");
+            return;
+          }
+          if (!res.ok) {
+            line.set(`GitLab answered ${res.status}.`, "error");
+            return;
+          }
+          const project = res.json<{ name_with_namespace: string }>();
+          const open = await this.api.net.fetch(
+            `${base}/merge_requests?state=opened&per_page=100`,
+          );
+          result.replaceChildren(
+            kpi({
+              value: open.ok ? open.json<unknown[]>().length : "–",
+              label: `open merge requests in ${project.name_with_namespace}`,
+            }),
+          );
+          line.set("Connected.", "success");
+        } catch (error) {
+          line.set(
+            error instanceof BaryntError && error.code === "credential_missing"
+              ? "Keep your GitLab token in your personal settings → Plugins first."
+              : String(error),
+            "error",
+          );
+        }
+      },
     });
-    root.replaceChildren(form);
+    const part = stack(
+      stack(
+        el("h3", "mr-check-title", "Connection"),
+        el(
+          "p",
+          "mr-check-hint",
+          "Checks the project above with your personal GitLab token.",
+        ),
+      ),
+      result,
+      row(check),
+      line.el,
+    );
+    part.classList.add("mr-check");
+    root.replaceChildren(part);
   }
 
   async draw(root: HTMLElement) {

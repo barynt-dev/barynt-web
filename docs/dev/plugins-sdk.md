@@ -149,9 +149,30 @@ Barynt's own blocks you need no code at all — see
 registerSettings(page: { render(el, context) }): void;
 ```
 
-Its own settings page (`contributes.settingsPage: true`), shown on the
-plugin's page in the settings instead of Barynt's form. Read the values
+Its own settings (`contributes.settingsPage`): with `true` a page shown
+instead of Barynt's form, with `"section"` a part below it — see
+[Manifest → Its own settings page](plugins-manifest.md#its-own-settings-page).
+`context.slot.id` says which: `"settings"` or `"section"`. Read the values
 with `loadSettings()`, save them with `api.settings.set(values)`.
+
+```ts
+import { button, status, stack } from "@barynt/plugin-sdk/ui";
+
+this.registerSettings({
+  render: (el) => {
+    const line = status();
+    const check = button({
+      label: "Check connection",
+      onClick: async () => {
+        const { gitlabProject } = await this.loadSettings<{ gitlabProject: string | null }>();
+        const res = await this.api.net.fetch(`https://gitlab.com/api/v4/projects/${encodeURIComponent(gitlabProject ?? "")}`);
+        line.set(res.ok ? "Connected." : `GitLab answered ${res.status}.`, res.ok ? "success" : "error");
+      },
+    });
+    el.replaceChildren(stack(check, line.el));
+  },
+});
+```
 
 ### `register()`
 
@@ -245,6 +266,59 @@ try {
 `error.code` is one of the codes in
 [Host API → Errors](plugins-host-api.md#errors). An error you don't catch ends up as
 the plugin's error in Barynt.
+
+## The UI kit
+
+`@barynt/plugin-sdk/ui` has Barynt's inputs and widget pieces, so you don't
+rebuild every text field. They're plain DOM, drawn with the
+[design tokens](plugins-sandbox.md#looking-like-barynt) — light and dark,
+like Barynt — and they mix with your own elements. Their styles go into
+the frame once, the first time you use one. Text always goes in as text.
+
+```ts
+import { button, kpi, list, stack, status, textField } from "@barynt/plugin-sdk/ui";
+
+const project = textField({
+  label: "GitLab project",
+  placeholder: "acme/web",
+  hint: "The path in its address.",
+  onEnter: () => save(),
+});
+const line = status();
+const save = async () => {
+  await this.api.settings.set({ gitlabProject: project.value.trim() });
+  line.set("Saved.", "success");
+};
+el.replaceChildren(
+  stack(project.el, button({ label: "Save", variant: "primary", onClick: save }), line.el),
+);
+```
+
+**Inputs** return a field: its element in `el`, and `value`, `disabled`,
+`focus()`.
+
+| Function | What | Options besides `label` and `hint` |
+| --- | --- | --- |
+| `textField()` | one line of text | `value`, `placeholder`, `type` (`text`, `url`, `email`, `number`, `password`, `search`), `onInput`, `onEnter` |
+| `textArea()` | several lines | `value`, `placeholder`, `rows`, `onInput` |
+| `select()` | a choice of one | `options: { value, label }[]`, `value`, `onChange` |
+| `toggle()` | on or off — `value` is a boolean | `checked`, `onChange` |
+
+**The rest** return an element.
+
+| Function | What |
+| --- | --- |
+| `button({ label, variant?, onClick? })` | `primary`, `secondary` (default), `ghost` or `danger`. While an `onClick` that returns a promise runs, the button is disabled. |
+| `status()` | a line that says how it went: `set(text, tone?)` with `info`, `success`, `warning` or `error`; `clear()`. Screen readers read it out. |
+| `stack(...nodes)`, `row(...nodes)` | under each other, or next to each other — with room between. |
+| `kpi({ value, label, trend? })` | a big number; `trend: { text, good? }` colours how it moved. |
+| `list({ items, empty? })` | rows of `{ title, meta?, href? }`; `empty` when there are none. |
+| `barChart({ bars, max? })` | horizontal bars of `{ label, value, color? }` (a `#hex` or `var(--token)`). |
+| `progressRing({ value, max?, label?, size? })` | how far along, with the percentage. |
+
+> [!TIP]
+> The sandbox doesn't submit forms, so there's no `form()`: a field's
+> `onEnter` and a button's `onClick` do the saving.
 
 ## Types
 

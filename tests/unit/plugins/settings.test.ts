@@ -55,3 +55,74 @@ describe("checkSettings", () => {
     ).toEqual({ ok: false, key: "channel" });
   });
 });
+
+describe("checkSettings, the other types (BARY-204)", () => {
+  const more = [
+    { key: "body", type: "textarea" as const },
+    { key: "link", type: "url" as const },
+    {
+      key: "days",
+      type: "multiselect" as const,
+      options: [{ id: "mon" }, { id: "tue" }],
+    },
+    { key: "assignee", type: "member" as const, options: [{ id: "u1" }] },
+    { key: "tag", type: "label" as const, options: [{ id: "l1" }] },
+  ];
+
+  it("keeps them, typed", () => {
+    expect(
+      checkSettings(more, {
+        body: " line one\nline two ",
+        link: "https://wiki.acme.example/agenda",
+        days: ["tue", "mon", "tue"],
+        assignee: "u1",
+        tag: "l1",
+      }),
+    ).toEqual({
+      ok: true,
+      values: {
+        body: "line one\nline two",
+        link: "https://wiki.acme.example/agenda",
+        days: ["tue", "mon"],
+        assignee: "u1",
+        tag: "l1",
+      },
+    });
+  });
+
+  it("lets a multi-line text be longer than a line", () => {
+    const long = "x".repeat(SETTING_TEXT_MAX + 1);
+    expect(checkSettings(more, { body: long }).ok).toBe(true);
+    expect(checkSettings(specs, { channel: long })).toEqual({
+      ok: false,
+      key: "channel",
+    });
+  });
+
+  it("leaves empty ones out", () => {
+    expect(
+      checkSettings(more, { link: " ", days: [], assignee: "", tag: "" }),
+    ).toEqual({ ok: true, values: {} });
+  });
+
+  it("refuses what isn't an address, an option, a member or a label", () => {
+    for (const [key, value] of [
+      ["link", "javascript:alert(1)"],
+      ["link", "not a url"],
+      ["days", "mon"],
+      ["days", ["mon", "sun"]],
+      ["assignee", "u2"],
+      ["tag", "l2"],
+    ] as const)
+      expect(checkSettings(more, { [key]: value })).toEqual({
+        ok: false,
+        key,
+      });
+  });
+
+  it("takes no member or label without the place's options", () => {
+    expect(
+      checkSettings([{ key: "assignee", type: "member" }], { assignee: "u1" }),
+    ).toEqual({ ok: false, key: "assignee" });
+  });
+});

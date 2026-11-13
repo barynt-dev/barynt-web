@@ -15,7 +15,7 @@ import {
 } from "@/lib/plugins/bridge";
 import { buildFrameDocument, frameCsp } from "@/lib/plugins/frame";
 import { type PluginManifest, validateManifest } from "@/lib/plugins/manifest";
-import { slotEntries } from "@/lib/plugins/slots";
+import { settingsSlotId, slotEntries } from "@/lib/plugins/slots";
 import { HANDLERS } from "./bridge-methods";
 
 // Running a sandboxed plugin (BARY-144): which plugin may run where for
@@ -101,12 +101,13 @@ export async function findRunningPlugin(
 /** What the plugin fills in this slot here: the entry from its manifest,
  *  with its capability confirmed (`lib/plugins/slots.ts`). */
 function slotEntry(plugin: RunningPlugin, slot: FrameContext["slot"]) {
-  // Its own settings page (BARY-149): one, needing no capability — it's
-  // the plugin's own page; saving checks `plugin.enable` (`settings.set`).
+  // Its own settings page (BARY-149), or its part below Barynt's form
+  // (`section`, BARY-204): one, needing no capability — it's the plugin's
+  // own page; saving checks `plugin.enable` (`settings.set`).
   if (slot.kind === "settings")
     return plugin.manifest.kind === "sandbox" &&
       plugin.manifest.contributes.settingsPage &&
-      slot.id === "settings"
+      slot.id === settingsSlotId(plugin.manifest.contributes.settingsPage)
       ? {
           kind: slot.kind,
           id: slot.id,

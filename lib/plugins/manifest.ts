@@ -11,6 +11,7 @@
 import { z } from "zod";
 import { pluginTemplateSchema } from "@/features/dashboard/widgets";
 import { compareSemver, isSemver } from "./semver";
+import { SETTING_TYPES } from "./settings";
 
 /** How a plugin runs. In-process code is Barynt's own and not a plugin kind. */
 export const PLUGIN_KINDS = ["declarative", "sandbox", "service"] as const;
@@ -108,10 +109,17 @@ const fieldSchema = z.strictObject({
 
 const settingSchema = z.strictObject({
   key: z.string().regex(/^[a-z][a-zA-Z0-9_]{0,39}$/),
-  type: z.enum(["text", "number", "boolean", "select"]),
+  type: z.enum(SETTING_TYPES),
   label: title,
   description: z.string().max(300).optional(),
-  default: z.union([z.string().max(500), z.number(), z.boolean()]).optional(),
+  default: z
+    .union([
+      z.string().max(500),
+      z.number(),
+      z.boolean(),
+      z.array(z.string().max(40)).max(50),
+    ])
+    .optional(),
   options: z.array(optionSchema).max(50).optional(),
 });
 
@@ -154,9 +162,9 @@ const contributesSchema = z.strictObject({
   settings: z.array(settingSchema).max(30).optional(),
   credentials: z.array(credentialSchema).max(10).optional(),
   /** Draws its settings itself, in its own frame, instead of Barynt's form
-   *  of `settings` (BARY-149). Saving still goes through Barynt, checked
-   *  against `settings`. */
-  settingsPage: z.boolean().optional(),
+   *  of `settings` (BARY-149) — or, `"section"`, below that form (BARY-204).
+   *  Saving still goes through Barynt, checked against `settings`. */
+  settingsPage: z.union([z.boolean(), z.literal("section")]).optional(),
 });
 
 type Contributes = z.infer<typeof contributesSchema>;
@@ -271,7 +279,7 @@ export const manifestSchema = z
     const allowed = KIND_CONTRIBUTIONS[m.kind];
     for (const key of Object.keys(m.contributes) as (keyof Contributes)[]) {
       const list = m.contributes[key];
-      if (typeof list === "boolean") {
+      if (typeof list === "boolean" || typeof list === "string") {
         if (list && !allowed.includes(key))
           add(["contributes", key], `a ${m.kind} plugin cannot have ${key}`);
         continue;
@@ -356,15 +364,27 @@ export const manifestSchema = z
 
     const settings = m.contributes.settings ?? [];
     settings.forEach((s, i) => {
-      if (s.type === "select" && !(s.options && s.options.length > 0))
+      // `member` and `label` choose from the place's — Barynt fills those.
+      const ownOptions = s.type === "select" || s.type === "multiselect";
+      if (ownOptions && !(s.options && s.options.length > 0))
         add(
           ["contributes", "settings", i, "options"],
-          "a select setting needs options",
+          `a ${s.type} setting needs options`,
         );
-      if (s.type !== "select" && s.options)
+      if (!ownOptions && s.options)
         add(
           ["contributes", "settings", i, "options"],
-          "only select settings have options",
+          "only select and multiselect settings have options",
+        );
+      if (
+        Array.isArray(s.default) !== (s.type === "multiselect") &&
+        s.default !== undefined
+      )
+        add(
+          ["contributes", "settings", i, "default"],
+          s.type === "multiselect"
+            ? "a multiselect's default is a list of option ids"
+            : "only a multiselect's default is a list",
         );
     });
   });

@@ -12,7 +12,7 @@ the plugin's code and nothing of Barynt's.
 | **The network** | `fetch`, `XMLHttpRequest`, WebSockets and `<img src="https://…">` are blocked. Barynt's data comes through the [host API](plugins-host-api.md); your own servers through [`net.fetch`](plugins-host-api.md#netfetch), for the hosts in your manifest. |
 | **Other code** | No scripts from anywhere: your `main.js` is all that runs. No `<script src>`, no CDN. Bundle what you need. |
 | **The page around it** | The frame can't reach Barynt's page, navigate it or open pop-ups. |
-| **Forms** | A `<form>` doesn't submit — not even to a `submit` listener. Handle the button's `click` (and Enter in a field) yourself. |
+| **Forms** | A `<form>` doesn't submit — not even to a `submit` listener. Handle the button's `click` (and Enter in a field) yourself, or use the [UI kit](plugins-sdk.md#the-ui-kit), which does. |
 
 What's left is plain DOM, CSS, timers, `requestAnimationFrame`, canvas, SVG,
 and images from `data:` or `blob:` URLs.
@@ -47,17 +47,18 @@ dark mode while the plugin runs:
 
 | Token | For |
 | --- | --- |
-| `--surface`, `--surface-container-low`, `--surface-container`, `--surface-container-high` | Backgrounds, from the page up to raised areas. |
+| `--surface-container-lowest`, `--surface`, `--surface-container-low`, `--surface-container`, `--surface-container-high` | Backgrounds, from inputs and the page up to raised areas. |
 | `--on-surface`, `--on-surface-variant` | Text, and quieter text. |
 | `--outline`, `--outline-variant` | Borders and dividers. |
 | `--primary`, `--on-primary`, `--primary-container`, `--on-primary-container` | The accent, and text on it. |
+| `--tertiary` | The focus ring. |
 | `--error`, `--warning` | States. |
 | `--radius`, `--radius-sm` | Corners. |
 | `--text-xs`, `--text-sm`, `--text-base` | Font sizes. |
 | `--font-ui` | The font. |
 
 The frame starts with Barynt's background, text colour and font; your
-`styles.css` does the rest. Make it work at phone width — a project view
+`styles.css` does the rest — or the SDK's [UI kit](plugins-sdk.md#the-ui-kit) does, for inputs and widget pieces. Make it work at phone width — a project view
 fills the screen there.
 
 ## Limits

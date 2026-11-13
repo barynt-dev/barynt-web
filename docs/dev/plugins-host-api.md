@@ -129,8 +129,10 @@ Over a limit, `set` is refused with `storage_full`.
 (`settingsPage`), and only when the person may change the plugin's
 settings there (`plugin.enable` in the project or workspace; otherwise
 `forbidden`). Values are checked against the manifest's `settings` like
-Barynt's own form (a key it doesn't declare is dropped, a wrong type is
-`invalid_params`), and the change lands in the audit log.
+Barynt's own form (a key it doesn't declare is dropped, a wrong type — or a
+`member` or `label` that isn't one of the place's — is `invalid_params`),
+and the change lands in the audit log. It saves every setting at once:
+send the ones you leave alone too.
 
 `api.settings.get()` (or [`loadSettings()`](plugins-sdk.md#loadsettings)) needs no
 capability: the plugin's own [settings](plugins-manifest.md#settings) in this

@@ -323,6 +323,15 @@ through `settings.set`, which checks `plugin.enable` and `checkSettings` like
 of it. The gallery previews and adds it like a custom widget (a copy, no frame, no runtime
 link to the plugin); **Customize** opens it in the builder.
 
+**Setting types and the settings section (BARY-204).** `lib/plugins/settings.ts` knows every
+setting type (`SETTING_TYPES`) and checks values (`checkSettings`); a `member` or `label` is
+checked against `options` that `placeSettings` (`features/plugins/settings-options.ts`) fills
+with the place's members and labels — the settings query, `savePluginSettings` and
+`settings.set` all go through it. `settingsPage: "section"` keeps Barynt's form and puts the
+`settings` frame below it with the slot id `section` (`settingsSlotId`, `lib/plugins/slots.ts`).
+The SDK's UI kit is `packages/plugin-sdk/src/ui.ts` (`@barynt/plugin-sdk/ui`), tested on
+happy-dom (`tests/unit/plugins/sdkUi.test.ts`).
+
 **The host proxy (BARY-147).** `net.fetch` sends a sandboxed plugin's request to one of the
 manifest's `network` hosts (`features/plugins/proxy.ts`, rules in `lib/plugins/proxy.ts`):
 https only, the host resolved and refused when any address is private (unless it's in
