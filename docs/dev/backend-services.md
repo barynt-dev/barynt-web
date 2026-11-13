@@ -349,7 +349,9 @@ draws each in the stacked body, the dialog and the page; an open one is a `Plugi
 headless `PluginFrame` (slot `badges`) gets them in batches of `BADGE_BATCH` over the frame's
 channel (`badges:request` → `badges`, with a sequence number) and the answer goes through
 `parseBadges` (`lib/plugins/badges.ts`) before `PluginBadgeChips` draws it. Hidden in
-"Display" as `pb:<plugin>:<badge>` in `hiddenFields`.
+"Display" as `pb:<plugin>:<badge>` in `hiddenFields`. A badge with `kind: "row"` (BARY-207) is
+made of `parts` (`RowPart`, checked part by part in `parseParts`) and drawn across the card by
+`PluginBadgeRows`; the list shows it as a chip.
 
 **Design tokens and the full kit (BARY-206).** `lib/plugins/tokens.ts` is the token catalog:
 each public name (`color.text.subtle`) points at a host variable or holds a fixed value;

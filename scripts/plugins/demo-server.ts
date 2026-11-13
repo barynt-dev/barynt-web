@@ -406,6 +406,30 @@ const DEMOS: Demo[] = [
     versions: { "0.3.0": { capabilities: [] } },
   },
   {
+    // Rows across board cards, made of parts the plugin picks (BARY-207).
+    entry: {
+      id: "demo-code-review",
+      name: "Demo Code Review",
+      author: "Barynt demo",
+      description:
+        "A merge request's state on every card it belongs to — made-up data, to show badge rows.",
+      repo: `${ORIGIN}/barynt-demo/code-review`,
+      levels: ["project"],
+      kind: "sandbox",
+      categories: ["development"],
+      added: "2026-11-13",
+    },
+    manifest: {
+      minBaryntVersion: "0.9.0",
+      license: "MIT",
+      contributes: {
+        issueBadges: [{ id: "review", title: "Merge request" }],
+      },
+    },
+    versions: { "1.0.0": { capabilities: ["ui:issue-badge"] } },
+    code: "code-review",
+  },
+  {
     // Every component of the SDK's UI kit and every design token (BARY-206).
     entry: {
       id: "demo-ui-kit",
