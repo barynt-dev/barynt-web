@@ -4,6 +4,7 @@ import {
   parseBlockData,
 } from "./blocks";
 import type { Capability } from "./manifest";
+import { HOST_TOKENS } from "./tokens";
 
 // The host bridge's protocol (BARY-144): what a sandboxed plugin may ask its
 // host for, and which confirmed capability each request needs. Shared by the
@@ -128,32 +129,9 @@ export type BridgeError =
   | "timeout"
   | "too_many_requests";
 
-/** Design tokens a frame gets, so a plugin looks like Barynt — light or
- *  dark, whichever is on. Read from the host page's `:root`. */
-export const THEME_TOKENS = [
-  "--surface",
-  "--surface-container-lowest",
-  "--surface-container-low",
-  "--surface-container",
-  "--surface-container-high",
-  "--on-surface",
-  "--on-surface-variant",
-  "--outline",
-  "--outline-variant",
-  "--primary",
-  "--on-primary",
-  "--primary-container",
-  "--on-primary-container",
-  "--tertiary",
-  "--error",
-  "--warning",
-  "--radius",
-  "--radius-sm",
-  "--text-xs",
-  "--text-sm",
-  "--text-base",
-  "--font-ui",
-] as const;
+/** The host's variables a frame gets, light or dark as the page has them —
+ *  what its design tokens (`--barynt-*`, `lib/plugins/tokens.ts`) point at. */
+export const THEME_TOKENS = HOST_TOKENS;
 
 /** A frame message as the host accepts it — anything else is dropped. */
 export function parseFrameMessage(data: unknown): FrameMessage | null {

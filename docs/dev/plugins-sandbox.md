@@ -42,20 +42,42 @@ anything anywhere else.
 
 ## Looking like Barynt
 
-Barynt's design tokens are set on the frame's `:root` and follow light and
-dark mode while the plugin runs:
+Barynt's **design tokens** are set on the frame's `:root` as CSS variables
+with stable names — `--barynt-<group>-<name>` — and follow light and dark
+while the plugin runs, the way VS Code hands webviews `--vscode-*`. Use them
+instead of fixed colours and sizes, and your plugin fits in either theme:
 
-| Token | For |
+```css
+.mr-item {
+  padding: var(--barynt-space-2) var(--barynt-space-3);
+  border-bottom: 1px solid var(--barynt-color-border);
+  color: var(--barynt-color-text);
+  font-size: var(--barynt-font-size-sm);
+}
+[data-theme="dark"] .mr-chart { opacity: 0.9; }
+```
+
+| Group | Tokens |
 | --- | --- |
-| `--surface-container-lowest`, `--surface`, `--surface-container-low`, `--surface-container`, `--surface-container-high` | Backgrounds, from inputs and the page up to raised areas. |
-| `--on-surface`, `--on-surface-variant` | Text, and quieter text. |
-| `--outline`, `--outline-variant` | Borders and dividers. |
-| `--primary`, `--on-primary`, `--primary-container`, `--on-primary-container` | The accent, and text on it. |
-| `--tertiary` | The focus ring. |
-| `--error`, `--warning` | States. |
-| `--radius`, `--radius-sm` | Corners. |
-| `--text-xs`, `--text-sm`, `--text-base` | Font sizes. |
-| `--font-ui` | The font. |
+| Surfaces | `color.surface`, `color.surface.sunken` (inputs), `.raised` (cards), `.overlay` (dialogs), `.hovered`, `.pressed` |
+| Text and lines | `color.text`, `color.text.subtle`, `color.text.inverse`, `color.border`, `color.border.strong`, `color.focus` |
+| Roles | `color.primary`, `color.secondary`, `color.danger` — each with `.text` (on it), `.subtle` and `.subtle.text`; `color.warning`, `color.success`, `color.info` |
+| Palette | `color.blue`, `.teal`, `.green`, `.lime`, `.amber`, `.orange`, `.red`, `.purple`, `.indigo`, `color.chart.1`–`3`, `color.scrim` |
+| Type | `font.family`, `font.family.mono`, `font.size.xxs` … `2xl`, `font.weight.regular` … `bold`, `line.height.tight` / `normal` / `loose` |
+| Space | `space.0`, `1` (4px), `2`, `3`, `4` (16px), `5`, `6`, `8`, `10`, `12` |
+| Shape and size | `radius.sm` / `md` / `lg` / `pill`, `size.control`, `size.control.sm`, `size.touch`, `shadow.card`, `shadow.overlay`, `opacity.disabled`, `duration.fast` / `normal` |
+
+A token `color.text.subtle` is the variable `--barynt-color-text-subtle`.
+From code, the SDK gives you the same names, typed: `token("color.text")` is
+`"var(--barynt-color-text)"` for a style, `tokenValue("color.primary")` the
+colour itself for a canvas, and `theme()` / `onThemeChange()` tell light from
+dark — see [SDK → Design tokens](plugins-sdk.md#design-tokens). `<html>` also
+carries `data-theme="light"` or `"dark"` for your CSS.
+
+> [!NOTE]
+> Barynt's own variables (`--surface`, `--on-surface`, `--text-sm` …) are
+> still there, but they may change with Barynt. The `--barynt-*` names
+> won't.
 
 The frame starts with Barynt's background, text colour and font; your
 `styles.css` does the rest — or the SDK's [UI kit](plugins-sdk.md#the-ui-kit)
