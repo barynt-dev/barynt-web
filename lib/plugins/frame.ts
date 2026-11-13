@@ -95,13 +95,16 @@ const RUNTIME = `(() => {
   });
 })();`;
 
-/** What every frame starts with: Barynt's tokens as a plugin's defaults. */
+/** What every frame starts with: Barynt's tokens as a plugin's defaults.
+ *  The host sets `--color-scheme` to its own — a frame whose scheme differs
+ *  from the page's gets an opaque backdrop — and `--frame-bg` to
+ *  `transparent` where the frame sits on a card (a widget, a block). */
 const BASE_CSS = `
-:root { color-scheme: light dark; }
+:root { color-scheme: var(--color-scheme, light dark); }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body {
-  background: var(--surface, transparent);
+  background: var(--frame-bg, var(--surface, transparent));
   color: var(--on-surface, CanvasText);
   font-family: var(--font-ui, system-ui, sans-serif);
   font-size: var(--text-sm, 14px);

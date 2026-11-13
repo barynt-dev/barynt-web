@@ -25,12 +25,22 @@ import styles from "./pluginFrame.module.scss";
 // A plugin that throws, doesn't answer or doesn't start shows as the
 // plugin's error, with a way to load it again — never as a broken page.
 
-/** Barynt's tokens as the page has them right now — light or dark. */
-function readTheme(): Record<string, string> {
+/** Where a frame sits on a card of Barynt's — the card shows through. */
+const ON_A_CARD = new Set<FrameContext["slot"]["kind"]>(["widget", "block"]);
+
+/** Barynt's tokens as the page has them right now — light or dark — with
+ *  its colour scheme, and a see-through background on a card. */
+function readTheme(onCard: boolean): Record<string, string> {
   const style = getComputedStyle(document.documentElement);
-  return Object.fromEntries(
-    THEME_TOKENS.map((name) => [name, style.getPropertyValue(name).trim()]),
-  );
+  return {
+    ...Object.fromEntries(
+      THEME_TOKENS.map((name) => [name, style.getPropertyValue(name).trim()]),
+    ),
+    // The same scheme as the page, or the browser backs the frame with an
+    // opaque canvas and a transparent background shows white or black.
+    "--color-scheme": style.colorScheme || "normal",
+    ...(onCard && { "--frame-bg": "transparent" }),
+  };
 }
 
 type FrameState =
@@ -61,6 +71,7 @@ export function PluginFrame({
   // A new frame on "Load again".
   const [attempt, setAttempt] = useState(0);
   const { workspaceId, projectId, slot } = context;
+  const onCard = ON_A_CARD.has(slot.kind);
 
   const src = `/api/plugins/frame?${new URLSearchParams({
     plugin: pluginId,
@@ -151,7 +162,7 @@ export function PluginFrame({
       const init: InitMessage = {
         type: "barynt:init",
         context,
-        theme: readTheme(),
+        theme: readTheme(onCard),
       };
       // The frame's origin is opaque, so "*" — the port is what makes the
       // channel private, not the target origin.
@@ -168,7 +179,7 @@ export function PluginFrame({
     el.src = src;
 
     // Light or dark switched: the frame follows.
-    const sendTheme = () => post({ type: "theme", theme: readTheme() });
+    const sendTheme = () => post({ type: "theme", theme: readTheme(onCard) });
     const observer = new MutationObserver(sendTheme);
     observer.observe(document.documentElement, {
       attributes: true,
