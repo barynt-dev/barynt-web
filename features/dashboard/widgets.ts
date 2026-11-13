@@ -1605,29 +1605,89 @@ const baseConfigShape = z.object({
     .optional(),
 });
 
+const blockConfigSchema = baseConfigShape
+  .pick({
+    filter: true,
+    metric: true,
+    groupBy: true,
+    groupBy2: true,
+    chart: true,
+    measure: true,
+    timeBy: true,
+    splitBy: true,
+    seriesChart: true,
+    openOnly: true,
+    sort: true,
+    labels: true,
+    elements: true,
+  })
+  .strict();
+
 const blockSchema = z
   .object({
     id: z.string().min(1).max(40),
     type: z.enum(BLOCK_TYPES),
-    config: baseConfigShape
-      .pick({
-        filter: true,
-        metric: true,
-        groupBy: true,
-        groupBy2: true,
-        chart: true,
-        measure: true,
-        timeBy: true,
-        splitBy: true,
-        seriesChart: true,
-        openOnly: true,
-        sort: true,
-        labels: true,
-        elements: true,
-      })
-      .strict(),
+    config: blockConfigSchema,
   })
   .strict();
+
+/** The sizes a custom widget comes in — what a plugin's template may ask
+ *  for (BARY-203). */
+export const TEMPLATE_SIZES = [
+  "S",
+  "M",
+  "L",
+  "T",
+  "XL",
+] as const satisfies readonly WidgetSize[];
+
+/**
+ * A widget template a plugin ships in its manifest (BARY-203): a custom
+ * widget's blocks, without ids — Barynt numbers them. Checked with the same
+ * rules as a custom widget the builder saves.
+ */
+export const pluginTemplateSchema = z.strictObject({
+  size: z.enum(TEMPLATE_SIZES).optional(),
+  accent: z.enum(ACCENTS).optional(),
+  blocks: z
+    .array(
+      z
+        .object({
+          type: z.enum(BLOCK_TYPES),
+          config: blockConfigSchema.optional(),
+        })
+        .strict(),
+    )
+    .min(1)
+    .max(6),
+});
+export type PluginTemplate = z.infer<typeof pluginTemplateSchema>;
+
+/** A plugin's template as the custom widget it starts — what the gallery
+ *  previews and adds; changed afterwards like any other. */
+export function pluginTemplateWidget(
+  template: PluginTemplate,
+  title: string,
+): Widget {
+  return normalizeWidget({
+    id: "template",
+    type: "blocks",
+    size: template.size ?? WIDGETS.blocks.size,
+    config: {
+      ...WIDGETS.blocks.config,
+      title,
+      ...(template.accent && { accent: template.accent }),
+      blocks: template.blocks.map((block, i) => ({
+        id: `b${i + 1}`,
+        type: block.type,
+        config: {
+          ...WIDGETS[block.type].config,
+          ...(block.config as BlockConfig),
+        },
+      })),
+    },
+  });
+}
 
 const configSchema = baseConfigShape
   .extend({

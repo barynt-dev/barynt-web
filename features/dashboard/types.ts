@@ -348,16 +348,23 @@ export interface DashboardLayoutInfo {
   canEditShared: boolean;
 }
 
+/** A plugin's widget as a dashboard's gallery offers it. */
+export interface PluginWidgetEntry {
+  pluginId: string;
+  pluginName: string;
+  widgetId: string;
+  title: string;
+  /** Made of Barynt's blocks (`widgetTemplates`, BARY-203): added as the
+   *  custom widget it starts, no frame. Missing for a widget the plugin
+   *  draws itself. */
+  template?: Widget;
+}
+
 export interface DashboardView {
   /** The viewer's custom widgets and the shared ones of others. */
   customWidgets: CustomWidgetEntry[];
-  /** Widgets the plugins switched on here bring (BARY-149). */
-  pluginWidgets: {
-    pluginId: string;
-    pluginName: string;
-    widgetId: string;
-    title: string;
-  }[];
+  /** Widgets the plugins switched on here bring (BARY-149, BARY-203). */
+  pluginWidgets: PluginWidgetEntry[];
   target: DashboardTarget;
   range: RangeKey;
   unit: BucketUnit;

@@ -343,3 +343,64 @@ describe("settingsPage (BARY-149)", () => {
     );
   });
 });
+
+describe("widgetTemplates (BARY-203)", () => {
+  const template = {
+    id: "bugs",
+    title: "Open bugs",
+    blocks: [
+      { type: "kpi", config: { metric: "open" } },
+      { type: "issues", config: { sort: "priority" } },
+    ],
+  };
+
+  it("lets any kind bring templates of Barynt's blocks", () => {
+    for (const kind of ["sandbox", "declarative", "service"])
+      expect(
+        errors({
+          ...base,
+          kind,
+          capabilities: ["ui:dashboard-widget"],
+          contributes: { widgetTemplates: [template] },
+        }),
+      ).toEqual([]);
+  });
+
+  it("checks the blocks like a custom widget, and the capability", () => {
+    expect(
+      errors({
+        ...base,
+        contributes: { ...base.contributes, widgetTemplates: [template] },
+      }),
+    ).toContain(
+      "contributes.widgetTemplates: needs the capability ui:dashboard-widget",
+    );
+    const bad = (t: unknown) =>
+      errors({
+        ...base,
+        capabilities: ["ui:dashboard-widget"],
+        contributes: { widgetTemplates: [t] },
+      });
+    expect(bad({ ...template, blocks: [] })).not.toEqual([]);
+    expect(bad({ ...template, blocks: [{ type: "note" }] })).not.toEqual([]);
+    expect(
+      bad({ ...template, blocks: [{ type: "kpi", config: { colour: 1 } }] }),
+    ).not.toEqual([]);
+    expect(bad({ ...template, size: "W" })).not.toEqual([]);
+  });
+
+  it("keeps template ids apart from the drawn widgets'", () => {
+    expect(
+      errors({
+        ...base,
+        capabilities: ["ui:dashboard-widget"],
+        contributes: {
+          dashboardWidgets: [{ id: "bugs", title: "Bugs" }],
+          widgetTemplates: [template],
+        },
+      }),
+    ).toContain(
+      "contributes.widgetTemplates.0.id: already the id of one of dashboardWidgets",
+    );
+  });
+});

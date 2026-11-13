@@ -77,7 +77,7 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `events:issue`, `events:comment` | Hear about changes | reserved, not callable yet |
 | `ui:project-view` | Add a project view | `contributes.projectViews` |
 | `ui:nav-item` | Add an entry to the sidebar | `contributes.navItems` |
-| `ui:dashboard-widget` | Add a dashboard widget | `contributes.dashboardWidgets` |
+| `ui:dashboard-widget` | Add a dashboard widget | `contributes.dashboardWidgets`, `contributes.widgetTemplates` |
 | `ui:issue-panel` | Add a panel to issues | `contributes.issuePanels` |
 | `ui:issue-badge` | Show badges on cards and rows | `contributes.issueBadges` |
 | `ui:action` | Add actions and commands | `contributes.actions` |
@@ -95,6 +95,7 @@ capability, and each entry an `id` that's unique in its list.
 | `projectViews` | `{ id, title, icon? }`, up to 5 | `ui:project-view` | sandbox |
 | `navItems` | `{ id, title, icon? }`, up to 5 | `ui:nav-item` | sandbox |
 | `dashboardWidgets` | `{ id, title, icon? }`, up to 5 | `ui:dashboard-widget` | sandbox |
+| `widgetTemplates` | [widget templates](#widget-templates), up to 10 | `ui:dashboard-widget` | all |
 | `issuePanels` | `{ id, title, icon? }`, up to 5 | `ui:issue-panel` | sandbox |
 | `issueBadges` | `{ id, title, icon? }`, up to 5 | `ui:issue-badge` | sandbox, declarative |
 | `actions` | `{ id, title, icon? }`, up to 20 | `ui:action` | sandbox |
@@ -111,7 +112,7 @@ capability, and each entry an `id` that's unique in its list.
 | --- | --- | --- |
 | `projectViews` | in the sidebar under the project, next to its Dashboard, Board and Issues | in the sidebar's main group, next to the workspace's Dashboard and Board (on a phone, whose main group is the bottom bar: in the "Plugins" section) |
 | `navItems` | in the sidebar under the project, below a "Plugins" heading | in the sidebar's own "Plugins" section |
-| `dashboardWidgets` | in the project's dashboard's widget gallery, under "Plugins" | in the workspace's (and its views') dashboard gallery, under "Plugins" |
+| `dashboardWidgets`, `widgetTemplates` | in the project's dashboard's widget gallery, under "Plugins" | in the workspace's (and its views') dashboard gallery, under "Plugins" |
 
 Each entry carries the plugin's mark, and its page names the plugin under
 the title, so it's always clear what comes from a plugin. `icon` isn't
@@ -125,6 +126,56 @@ so instead of staying empty.
 > [!NOTE]
 > Issue panels, badges and actions can be declared already; Barynt shows
 > them in a coming release.
+
+### Widget templates
+
+A plugin doesn't have to draw a widget itself. `widgetTemplates` are
+dashboard widgets made of the same building blocks as a custom widget —
+Barynt draws them, with no frame and no code, so any kind of plugin can
+bring them, a `declarative` one too. They count Barynt's issues; for your
+own data, draw the widget yourself (`dashboardWidgets`).
+
+```json
+"widgetTemplates": [
+  {
+    "id": "overdue",
+    "title": "Overdue",
+    "description": "How many are late, and which.",
+    "size": "L",
+    "accent": "red",
+    "blocks": [
+      { "type": "kpi", "config": { "metric": "overdue", "elements": [{ "id": "trend", "kind": "trend" }] } },
+      {
+        "type": "issues",
+        "config": {
+          "sort": "dueDate",
+          "filter": { "op": "and", "rules": [{ "field": "dueDate", "is": "before", "value": "today" }] },
+          "elements": [{ "id": "rows", "kind": "rows", "value": 4 }]
+        }
+      }
+    ]
+  }
+]
+```
+
+| Field | |
+| --- | --- |
+| `id`, `title` | Like every entry; `id` mustn't be one of the plugin's `dashboardWidgets`. |
+| `description` | Optional, up to 200 characters. |
+| `size` | `S`, `M`, `L` (default), `T` or `XL` — what it starts with. |
+| `accent` | Optional colour: `blue`, `teal`, `green`, `lime`, `ochre`, `amber`, `orange`, `red`, `pink`, `purple`, `indigo`, `gray`. |
+| `blocks` | 1 to 6 blocks, top to bottom: `type` is `kpi`, `progress`, `distribution`, `flow`, `matrix` or `issues`; `config` what a block in the builder sets (`metric`, `groupBy`, `chart`, `sort`, `filter`, `elements` …). Barynt numbers the blocks. |
+
+The `config` is checked with the same rules as a custom widget the builder
+saves (`features/dashboard/widgets.ts`) — the quickest way to one is to
+build it in the builder and copy its blocks. A filter only uses what's the
+same everywhere (status categories, priorities, dates); ids of statuses,
+labels or people differ between workspaces.
+
+In the gallery a template shows with the workspace's real numbers. **Add**
+puts it on the dashboard as the dashboard's own custom widget — it stays
+when the plugin is switched off, and it's changed like any other.
+**Customize** opens it in the builder first.
 
 ### Settings
 
@@ -222,9 +273,10 @@ A plugin can bring custom fields its issues carry:
 - Each contribution needs its capability (`projectViews` → `ui:project-view`,
   `fields` → `fields:write` …).
 - A `declarative` plugin has no code and no `network`; it may only contribute
-  `fields`, `settings` and `issueBadges`.
-- A `service` plugin has no browser surface; it may only contribute `fields`
-  and `settings`.
+  `fields`, `settings`, `issueBadges` and `widgetTemplates`.
+- A `service` plugin has no browser surface; it may only contribute `fields`,
+  `settings` and `widgetTemplates`.
+- A widget template's blocks follow the custom widget's rules.
 - `settingsPage` needs `settings`, and only a `sandbox` plugin has it.
 - A credential's `host` is in `network`, and a `workspace` or `project`
   credential matches one of the plugin's `levels`.

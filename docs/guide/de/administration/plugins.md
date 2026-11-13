@@ -79,7 +79,7 @@ Ein Plugin mit eigenen Ansichten oder Seiten zeigt sie in der Seitenleiste, jewe
 
 Die Seite eines Plugins nennt unter dem Titel immer den Namen des Plugins.
 
-Ein Plugin kann auch **Dashboard-Widgets** mitbringen: Auf einem Dashboard stehen sie unter **Widget hinzufügen** im Bereich **Plugins**, mit Live-Vorschau. Und manche Plugins zeichnen ihre **Einstellungsseite** selbst – die Seite unter **Plugins** in den Einstellungen zeigt dann das Formular des Plugins; was es speichert, prüft Barynt wie jede andere Einstellung.
+Ein Plugin kann auch **Dashboard-Widgets** mitbringen: Auf einem Dashboard stehen sie unter **Widget hinzufügen** im Bereich **Plugins**, mit Live-Vorschau. Manche sind Vorlagen aus Barynts eigenen Bausteinen: Einmal hinzugefügt, ist so ein Widget ein eigenes Widget des Dashboards – es bleibt, wenn das Plugin ausgeschaltet wird, und mit **Anpassen** änderst du es vor dem Hinzufügen. Und manche Plugins zeichnen ihre **Einstellungsseite** selbst – die Seite unter **Plugins** in den Einstellungen zeigt dann das Formular des Plugins; was es speichert, prüft Barynt wie jede andere Einstellung.
 
 ### Einstellungen eines Plugins im Workspace
 

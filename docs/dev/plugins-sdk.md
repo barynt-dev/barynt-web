@@ -139,7 +139,9 @@ registerWidget(widget: { id: string; render(el, context) }): void;
 
 A dashboard widget from `contributes.dashboardWidgets`. Its frame fills the
 widget below Barynt's header, in the size someone picked (S to XL) — watch
-`el` with a `ResizeObserver` to show more when there's room.
+`el` with a `ResizeObserver` to show more when there's room. For a widget of
+Barynt's own blocks you need no code at all — see
+[widget templates](plugins-manifest.md#widget-templates).
 
 ### `registerSettings()`
 
