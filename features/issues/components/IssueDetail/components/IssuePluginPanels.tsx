@@ -2,7 +2,8 @@
 
 import { Icon } from "@iconify/react";
 import { useLocale } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { takePanelFocus } from "@/features/plugins/components/PluginBadges/panelFocus";
 import { PluginFrame } from "@/features/plugins/components/PluginFrame/PluginFrame";
 import { PluginTile } from "@/features/plugins/components/PluginStore/PluginTile";
 import type { IssueDetail, IssuePluginPanel } from "@/types/issue";
@@ -53,13 +54,27 @@ function PluginPanel({
 }) {
   const locale = useLocale();
   const [open, setOpen] = useState(true);
+  const section = useRef<HTMLElement>(null);
   // Read after mounting: the server has no `localStorage`, and the first
-  // render has to match its HTML.
+  // render has to match its HTML. A badge row's click (BARY-208) opens it
+  // whatever was stored, and brings it into view.
   useEffect(() => {
+    if (takePanelFocus(issue.id, panel.pluginId, panel.panelId)) {
+      setOpen(true);
+      const timer = window.setTimeout(
+        () =>
+          section.current?.scrollIntoView({
+            block: "start",
+            behavior: "smooth",
+          }),
+        150,
+      );
+      return () => window.clearTimeout(timer);
+    }
     try {
       if (localStorage.getItem(storageKey(panel)) === "closed") setOpen(false);
     } catch {}
-  }, [panel]);
+  }, [panel, issue.id]);
   const toggle = () => {
     const next = !open;
     setOpen(next);
@@ -70,7 +85,7 @@ function PluginPanel({
   };
   const bodyId = `plugin-panel-${panel.pluginId}-${panel.panelId}`;
   return (
-    <section className={styles.section} data-plugin-panel>
+    <section ref={section} className={styles.section} data-plugin-panel>
       <header className={styles.sectionHead}>
         <button
           type="button"

@@ -65,11 +65,16 @@
   --tone: var(--on-surface-variant);
 
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
   min-width: 0;
   min-height: 2rem;
-  padding: 0.25rem 0.625rem;
+  /* Two lines at most (BARY-208): whatever a plugin builds, the card stays
+     a card. */
+  max-height: 4.25rem;
+  overflow: hidden;
+  padding: 0.3125rem 0.625rem;
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--tone) 10%, var(--surface-container));
   font-size: var(--text-sm);
@@ -89,6 +94,23 @@
   &[data-tone="danger"] {
     --tone: var(--error);
   }
+}
+
+/* A row with a panel (BARY-208) opens the issue there. */
+.row[data-panel] {
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, var(--tone) 16%, var(--surface-container));
+  }
+}
+
+/* One of a row's two lines. */
+.line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .steps {
@@ -157,6 +179,16 @@
 }
 
 .partText {
+  &[data-size="xs"] {
+    font-size: var(--text-xxs);
+  }
+  &[data-size="base"] {
+    font-size: var(--text-base);
+  }
+  &[data-italic] {
+    font-style: italic;
+  }
+
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -230,4 +262,167 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Free layout (BARY-208): a group lays its children out as the plugin
+   says; gap and padding come inline from Barynt's scale. */
+.group {
+  --tone: var(--on-surface-variant);
+
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  flex: none;
+
+  &[data-direction="column"] {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+  }
+  &[data-align="start"] {
+    align-items: flex-start;
+  }
+  &[data-align="center"] {
+    align-items: center;
+  }
+  &[data-align="end"] {
+    align-items: flex-end;
+  }
+  &[data-justify="between"] {
+    justify-content: space-between;
+  }
+  &[data-justify="end"] {
+    justify-content: flex-end;
+  }
+  &[data-grow] {
+    flex: 1;
+  }
+  &[data-background] {
+    background: color-mix(in srgb, var(--tone) 14%, transparent);
+  }
+  &[data-background="subtle"] {
+    background: var(--surface-container-high);
+  }
+  &[data-background="primary"] {
+    --tone: var(--primary);
+  }
+  &[data-background="info"] {
+    --tone: var(--info);
+  }
+  &[data-background="success"] {
+    --tone: var(--green);
+  }
+  &[data-background="warning"] {
+    --tone: var(--warning);
+  }
+  &[data-background="danger"] {
+    --tone: var(--error);
+  }
+  &[data-border] {
+    border: 1px solid var(--outline-variant);
+  }
+  &[data-radius="sm"] {
+    border-radius: var(--radius-sm);
+  }
+  &[data-radius="md"] {
+    border-radius: var(--radius);
+  }
+  &[data-radius="pill"] {
+    border-radius: var(--radius-pill);
+  }
+}
+
+.dot {
+  --tone: var(--on-surface-variant);
+
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--tone);
+
+  &[data-tone="primary"] {
+    --tone: var(--primary);
+  }
+  &[data-tone="info"] {
+    --tone: var(--info);
+  }
+  &[data-tone="success"] {
+    --tone: var(--green);
+  }
+  &[data-tone="warning"] {
+    --tone: var(--warning);
+  }
+  &[data-tone="danger"] {
+    --tone: var(--error);
+  }
+}
+
+.image {
+  flex: none;
+  object-fit: cover;
+  border-radius: 0.1875rem;
+
+  &[data-rounded] {
+    border-radius: 50%;
+  }
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: none;
+  max-width: 8rem;
+  height: 1.125rem;
+  padding: 0 0.4375rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xxs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  &::before {
+    content: "";
+    flex: none;
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: 50%;
+    background: var(--label);
+  }
+}
+
+.link {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--primary);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.sparkline {
+  flex: none;
+  stroke: var(--primary);
+
+  &[data-tone="success"] {
+    stroke: var(--green);
+  }
+  &[data-tone="warning"] {
+    stroke: var(--warning);
+  }
+  &[data-tone="danger"] {
+    stroke: var(--error);
+  }
+  &[data-tone="info"] {
+    stroke: var(--info);
+  }
+  &[data-tone="neutral"] {
+    stroke: var(--on-surface-variant);
+  }
 }

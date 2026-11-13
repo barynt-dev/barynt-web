@@ -182,41 +182,92 @@ dropped.
 **A row across the card.** With `kind: "row"`, a badge is a line across
 the board card, between the labels and the footer — a merge request, a
 build, a deployment. **You decide what's in it**: `parts`, left to right,
-in any order, up to 8. Barynt draws each part; in the list, where there's
-no room, the row shows as a chip of its `text` (or its texts). Up to 2 rows
-per issue, next to the 3 chips.
+in any order. Barynt draws every part — no frame per card, so a board with
+hundreds of cards stays fast and nothing a plugin sends can run on the
+page. In the list, where there's no room, a row shows as a chip: its first
+icon and its `text` (or its texts). Up to 2 rows per issue, next to the 3
+chips; each **at most two lines high**.
+
+There are two ways to fill a row, and you can mix them:
+
+- **Building blocks** for the usual things — a pipeline, a state, a date —
+  one line each:
 
 ```ts
-out[issue.id] = [{
+{
   badge: "review",
   kind: "row",
-  tone: "warning",                       // tints the row
+  tone: "warning",                        // tints the row
+  panel: "review",                        // a click opens the issue at this panel
   parts: [
     { type: "icon", icon: "git-pull-request", tone: "success" },
     { type: "text", text: "#410", mono: true, tone: "subtle" },
     { type: "text", text: "Changes requested", tone: "warning", strong: true },
-    { type: "spacer" },                  // the rest to the right
+    { type: "spacer" },
     { type: "steps", steps: ["success", "success", "success"] },
     { type: "status", status: "success" },
   ],
-}];
+}
 ```
 
-| Part | |
-| --- | --- |
-| `{ type: "icon", icon, tone? }` | one of the badge icons |
-| `{ type: "text", text, tone?, mono?, strong? }` | up to 40 characters; `tone` also `subtle` |
-| `{ type: "chip", text, tone? }` | a small chip inside the row |
-| `{ type: "avatar", name }` | a person's initials |
-| `{ type: "steps", steps }` | a pipeline: up to 8 of `success`, `running`, `warning`, `danger`, `pending` |
-| `{ type: "progress", value, max }` | a short bar |
-| `{ type: "status", status }` | a mark: `success`, `danger`, `warning`, `pending` |
-| `{ type: "spacer" }` | pushes what follows to the right end |
+- **Free layout** for anything else: `group`s — side by side or stacked,
+  with gap, alignment, growth, padding, background, border and corners —
+  of `text`, `icon`, `dot` and `image`, and a `break` for the second line:
 
-A part Barynt doesn't know is dropped; a row with nothing left isn't drawn.
+```ts
+{
+  badge: "deploy",
+  kind: "row",
+  text: "Deploy to staging",              // what the list shows
+  parts: [
+    { type: "group", direction: "column", gap: 0, grow: true, children: [
+      { type: "text", text: "Deploy to staging", strong: true },
+      { type: "text", text: "build 1842 · 4 min", size: "xs", tone: "subtle", mono: true },
+    ] },
+    { type: "image", src: canvas.toDataURL("image/png"), alt: "Build times", width: 48, height: 24 },
+    { type: "sparkline", values: [5, 7, 6, 9, 8, 11], tone: "success" },
+    { type: "break" },                    // second line
+    { type: "avatar", name: "Grace Hopper" },
+    { type: "label", name: "staging", color: "teal" },
+    { type: "date", date: deployedAt },
+    { type: "spacer" },
+    { type: "link", text: "Logs", href: "https://ci.example.com/builds/1842" },
+  ],
+}
+```
+
+| Free layout | |
+| --- | --- |
+| `{ type: "group", children, direction?, gap?, align?, justify?, grow?, padding?, background?, border?, radius? }` | `direction` `row` / `column`; `gap` 0–3 and `padding` 0–2 on Barynt's scale; `align` `start` / `center` / `end`; `justify` `start` / `between` / `end`; `background` a tone or `subtle`; `radius` `sm` / `md` / `pill` |
+| `{ type: "text", text, tone?, size?, mono?, strong?, italic? }` | up to 40 characters; `size` `xs` / `sm` / `base`; `tone` also `subtle` |
+| `{ type: "icon", icon, tone? }` | one of the badge icons |
+| `{ type: "dot", tone? }` | a small dot |
+| `{ type: "image", src, alt, width, height, rounded? }` | a `data:image/png`, `jpeg` or `webp` URL up to 24 kB — draw on a canvas and `toDataURL()`; up to 64 × 32 px; no SVG, no address |
+| `{ type: "spacer" }` | pushes what follows to its line's right end |
+| `{ type: "break" }` | starts the second line (once, at the top level) |
+
+| Building blocks | |
+| --- | --- |
+| `{ type: "steps", steps }` | a pipeline: up to 8 of `success`, `running`, `warning`, `danger`, `pending` |
+| `{ type: "status", status }` | a mark: `success`, `danger`, `warning`, `pending` |
+| `{ type: "progress", value, max }` | a short bar |
+| `{ type: "sparkline", values, tone? }` | a small line of 2–30 numbers |
+| `{ type: "date", date, format? }` | in the person's language: `relative` ("in 3 days", default) or `short` ("13 Nov") |
+| `{ type: "label", name, color }` | a label as Barynt shows one; `color` a palette name or `#hex` |
+| `{ type: "avatar", name }` | a person's initials |
+| `{ type: "chip", text, tone? }` | a small chip |
+| `{ type: "link", text, href }` | `https` only; opens in a new tab, not the issue |
+
+Limits: 24 parts in a row (groups and their children counted), groups 3
+deep, one `break`. A part Barynt doesn't know, or one with a value it
+won't take, is dropped; a row with nothing left to read isn't drawn.
+
+**More than a card can hold?** Give the row a `panel` — one of your
+`issuePanels`. A click on the row opens the issue at that panel, where you
+draw whatever you like ([`registerIssuePanel()`](#registerissuepanel)).
+
 The demo plugin **Demo Code Review** (`scripts/plugins/demo-plugins/code-review.ts`)
-builds rows like this. Need more than the issue gives you? Ask the API once for the batch
-(`api.issues.list`, `net.fetch`) — not once per issue.
+does all of this.
 
 ### `registerIssuePanel()`
 

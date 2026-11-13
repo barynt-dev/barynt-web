@@ -188,3 +188,100 @@ describe("rows across the card (BARY-207)", () => {
     expect(out.i1.filter((b) => b.kind !== "row")).toHaveLength(3);
   });
 });
+
+describe("free layout in a row (BARY-208)", () => {
+  const png = "data:image/png;base64,iVBORw0KGgo=";
+  const parse = (parts: unknown[], more: object = {}) =>
+    parseBadges(
+      { i1: [{ badge: "due", kind: "row", parts, ...more }] },
+      asked,
+      declared,
+    ).i1?.[0];
+
+  it("keeps groups, images and the ready-made blocks", () => {
+    const row = parse(
+      [
+        {
+          type: "group",
+          direction: "column",
+          gap: 0,
+          grow: true,
+          background: "subtle",
+          children: [
+            { type: "text", text: "Deploy", strong: true },
+            { type: "text", text: "build 1842", size: "xs", mono: true },
+          ],
+        },
+        { type: "image", src: png, alt: "Chart", width: 48, height: 24 },
+        { type: "sparkline", values: [1, 3, 2], tone: "success" },
+        { type: "break" },
+        { type: "label", name: "staging", color: "teal" },
+        { type: "date", date: "2026-11-13T10:00:00Z", format: "short" },
+        { type: "link", text: "Logs", href: "https://ci.example.com/b/1" },
+      ],
+      { panel: "review" },
+    );
+    expect(row?.panel).toBe("review");
+    expect(row?.text).toBe("Deploy build 1842 staging Logs");
+    expect(row?.parts?.map((p) => p.type)).toEqual([
+      "group",
+      "image",
+      "sparkline",
+      "break",
+      "label",
+      "date",
+      "link",
+    ]);
+  });
+
+  it("lets nothing through that could run or reach out", () => {
+    const row = parse([
+      { type: "text", text: "ok" },
+      {
+        type: "image",
+        src: "data:image/svg+xml;base64,PHN2Zz4=",
+        alt: "x",
+        width: 9,
+        height: 9,
+      },
+      {
+        type: "image",
+        src: "https://evil.example/x.png",
+        alt: "x",
+        width: 9,
+        height: 9,
+      },
+      {
+        type: "image",
+        src: `data:image/png;base64,${"A".repeat(30_000)}`,
+        alt: "x",
+        width: 9,
+        height: 9,
+      },
+      { type: "link", text: "x", href: "javascript:alert(1)" },
+      { type: "link", text: "x", href: "http://plain.example" },
+      { type: "label", name: "x", color: "red;background:url(x)" },
+    ]);
+    expect(row?.parts).toEqual([{ type: "text", text: "ok" }]);
+  });
+
+  it("stops at two lines, three levels and 24 parts", () => {
+    const deep = (d: number): unknown =>
+      d === 0
+        ? { type: "text", text: "leaf" }
+        : { type: "group", children: [deep(d - 1)] };
+    const row = parse([
+      deep(5),
+      { type: "break" },
+      { type: "text", text: "second" },
+      { type: "break" },
+      { type: "text", text: "third" },
+      ...Array.from({ length: 40 }, () => ({ type: "dot" })),
+    ]);
+    expect(row?.parts?.filter((p) => p.type === "break")).toHaveLength(1);
+    // Five deep doesn't fit: the group at the fourth level is dropped, and
+    // so are the empty ones around it.
+    expect(row?.parts?.[0]?.type).toBe("break");
+    expect(row?.parts?.length).toBeLessThanOrEqual(24);
+  });
+});
