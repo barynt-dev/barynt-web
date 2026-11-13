@@ -68,7 +68,24 @@ The store lists every plugin your platform admin installed, with search, categor
 
 ### Switching on in a project
 
-A released plugin for projects has an entry under **Plugins** in every project's settings, below the other sections. Project admins open it, check what it may do in the project and **Switch on**. Once it runs, the page holds the form the plugin brings (a channel name, what to post, …) and, at the bottom, switching it off again — its settings and data stay until **Delete data**.
+A released plugin for projects has an entry under **Plugins** in every project's settings, below the other sections. Project admins open it, check what it may do in the project and **Switch on**. Once it runs, the page holds the form the plugin brings (a channel name, a person to assign, labels, days of the week, …) and, at the bottom, switching it off again — its settings and data stay until **Delete data**.
+
+### Where plugins show
+
+A plugin that brings its own views or pages shows them in the sidebar, each with the plugin's mark:
+
+- **Switched on in a project**: under the project, next to its Dashboard, Board and Issues; pages below a **Plugins** heading.
+- **Switched on in the workspace**: views in the sidebar's top group, next to the workspace's Dashboard and Board (on a phone in the **Plugins** section); pages in a **Plugins** section of their own.
+
+A plugin's page always names the plugin under its title.
+
+A plugin can also bring **dashboard widgets**: on a dashboard, **Add widget** lists them under **Plugins**, with a live preview. Some are templates made of Barynt's own building blocks: once added, such a widget is the dashboard's own custom widget — it stays when the plugin is switched off, and **Customize** lets you change it before adding. And some plugins draw their **settings page** themselves — the page under **Plugins** in the settings then shows the plugin's own form; what it saves is checked by Barynt like any other setting. Others add a part below Barynt's form — a connection check, say.
+
+Plugins can also bring **building blocks** for custom widgets: in the widget builder, **Add block** lists them next to Barynt's own, each with the settings it brings. If the plugin is switched off, the block says so and the rest of the widget stays.
+
+Some plugins show a **panel in every issue** of a project where they're on — below the attachments, with the plugin's name. Fold one you don't need; it stays folded for you. Some plugins add a section to the issue's sidebar instead — "Development" with the branch, the merge request and the pipeline, next to the issue's fields. Others put **badges** on the board's cards and the list's rows — a due date, an open merge request. **Display** lists them under *Plugin badges*; switch off the ones you don't want. Some show a whole line on a card — a merge request with its state and pipeline, say. Clicking such a line can open the issue right at the plugin's panel.
+
+Plugins can also add **actions** — "Re-run pipeline", "Close merge request" — to an issue's **…** menu, to a card's quick actions and to the command palette while an issue is open. One that can't be undone asks first.
 
 ### A plugin's settings in the workspace
 

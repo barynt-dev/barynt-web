@@ -4,6 +4,8 @@ import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
+import type { BadgeIssue } from "@/lib/plugins/badges";
+import type { BlockData } from "@/lib/plugins/blocks";
 import {
   BRIDGE_MAX_PENDING,
   BRIDGE_TIMEOUT_MS,
@@ -24,12 +26,27 @@ import styles from "./pluginFrame.module.scss";
 // A plugin that throws, doesn't answer or doesn't start shows as the
 // plugin's error, with a way to load it again — never as a broken page.
 
-/** Barynt's tokens as the page has them right now — light or dark. */
-function readTheme(): Record<string, string> {
+/** Where a frame sits on a card or in a view of Barynt's — what's behind
+ *  it shows through. */
+const ON_A_CARD = new Set<FrameContext["slot"]["kind"]>([
+  "widget",
+  "block",
+  "issuePanel",
+]);
+
+/** Barynt's tokens as the page has them right now — light or dark — with
+ *  its colour scheme, and a see-through background on a card. */
+function readTheme(onCard: boolean): Record<string, string> {
   const style = getComputedStyle(document.documentElement);
-  return Object.fromEntries(
-    THEME_TOKENS.map((name) => [name, style.getPropertyValue(name).trim()]),
-  );
+  return {
+    ...Object.fromEntries(
+      THEME_TOKENS.map((name) => [name, style.getPropertyValue(name).trim()]),
+    ),
+    // The same scheme as the page, or the browser backs the frame with an
+    // opaque canvas and a transparent background shows white or black.
+    "--color-scheme": style.colorScheme || "normal",
+    ...(onCard && { "--frame-bg": "transparent" }),
+  };
 }
 
 type FrameState =
@@ -41,24 +58,64 @@ export function PluginFrame({
   pluginId,
   name,
   context,
+  headless,
+  onBlockData,
+  autoHeight,
+  badgeRequest,
+  onBadges,
+  actionRequest,
+  onActionDone,
+  onError,
 }: {
   pluginId: string;
   /** The plugin's name — the frame's title, and in its error. */
   name: string;
   context: FrameContext;
+  /** Runs out of sight — a building block whose data Barynt draws
+   *  (BARY-205). Its error still shows. */
+  headless?: boolean;
+  /** A building block's data, checked (`parseBlockData`). */
+  onBlockData?: (data: BlockData) => void;
+  /** As tall as its content, within these bounds (px) — a panel in an
+   *  issue (BARY-150). Without, it fills its slot. */
+  autoHeight?: { min: number; max: number };
+  /** A batch of issues for its badges, sent once it's ready and whenever
+   *  this changes (BARY-151). */
+  badgeRequest?: { seq: number; issues: BadgeIssue[] } | null;
+  /** Its answer, unchecked — the caller knows what it asked. */
+  onBadges?: (seq: number, badges: unknown) => void;
+  /** One of its actions to run, once it's ready (BARY-152). */
+  actionRequest?: {
+    seq: number;
+    actionId: string;
+    issueId: string | null;
+  } | null;
+  /** How it went: its answer (unchecked), or the error. */
+  onActionDone?: (seq: number, ok: boolean, result: unknown) => void;
+  /** It threw, or didn't start in time — besides showing so. */
+  onError?: (message: string) => void;
 }) {
   const t = useTranslations("plugins");
   const frame = useRef<HTMLIFrameElement>(null);
   const [state, setState] = useState<FrameState>({ status: "loading" });
+  const [height, setHeight] = useState<number | null>(null);
+  // The latest callbacks: the channel lives as long as the frame, the
+  // callbacks change with every render of the caller.
+  const callbacks = useRef({ onBlockData, onBadges, onActionDone, onError });
+  callbacks.current = { onBlockData, onBadges, onActionDone, onError };
+  // Sends to the frame's channel — set while one is open.
+  const send = useRef<((message: HostMessage) => void) | null>(null);
   // A new frame on "Load again".
   const [attempt, setAttempt] = useState(0);
   const { workspaceId, projectId, slot } = context;
+  const onCard = ON_A_CARD.has(slot.kind);
 
   const src = `/api/plugins/frame?${new URLSearchParams({
     plugin: pluginId,
     workspace: workspaceId,
     ...(projectId ? { project: projectId } : {}),
-    view: slot.id,
+    slot: slot.kind,
+    id: slot.id,
   })}`;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: one channel per loaded frame; `attempt` makes a new one
@@ -71,6 +128,7 @@ export function PluginFrame({
     const controllers = new Set<AbortController>();
 
     const post = (message: HostMessage) => channel?.port1.postMessage(message);
+    send.current = post;
 
     const forward = async (id: number, method: string, params: unknown) => {
       if (open >= BRIDGE_MAX_PENDING)
@@ -133,6 +191,19 @@ export function PluginFrame({
         } else if (message.type === "error") {
           window.clearTimeout(readyTimer);
           setState({ status: "error", message: message.message });
+          callbacks.current.onError?.(message.message);
+        } else if (message.type === "blockData") {
+          callbacks.current.onBlockData?.(message.data);
+        } else if (message.type === "resize") {
+          setHeight(message.height);
+        } else if (message.type === "actionDone") {
+          callbacks.current.onActionDone?.(
+            message.seq,
+            message.ok,
+            message.result,
+          );
+        } else if (message.type === "badges") {
+          callbacks.current.onBadges?.(message.seq, message.badges);
         } else {
           void forward(message.id, message.method, message.params);
         }
@@ -140,7 +211,7 @@ export function PluginFrame({
       const init: InitMessage = {
         type: "barynt:init",
         context,
-        theme: readTheme(),
+        theme: readTheme(onCard),
       };
       // The frame's origin is opaque, so "*" — the port is what makes the
       // channel private, not the target origin.
@@ -157,7 +228,7 @@ export function PluginFrame({
     el.src = src;
 
     // Light or dark switched: the frame follows.
-    const sendTheme = () => post({ type: "theme", theme: readTheme() });
+    const sendTheme = () => post({ type: "theme", theme: readTheme(onCard) });
     const observer = new MutationObserver(sendTheme);
     observer.observe(document.documentElement, {
       attributes: true,
@@ -173,17 +244,48 @@ export function PluginFrame({
       window.clearTimeout(readyTimer);
       for (const c of controllers) c.abort();
       channel?.port1.close();
+      send.current = null;
     };
   }, [attempt, src]);
 
+  // An action to run, once it listens (BARY-152).
+  useEffect(() => {
+    if (state.status === "ready" && actionRequest)
+      send.current?.({ type: "action:run", ...actionRequest });
+  }, [state.status, actionRequest]);
+
+  // The issues to put badges on, once it listens — and again when they
+  // change (BARY-151).
+  useEffect(() => {
+    if (state.status === "ready" && badgeRequest)
+      send.current?.({ type: "badges:request", ...badgeRequest });
+  }, [state.status, badgeRequest]);
+
   return (
-    <div className={styles.host} data-state={state.status}>
+    <div
+      className={styles.host}
+      data-state={state.status}
+      data-headless={headless || undefined}
+      data-auto-height={autoHeight ? "" : undefined}
+      style={
+        autoHeight
+          ? {
+              height: Math.min(
+                autoHeight.max,
+                Math.max(autoHeight.min, height ?? autoHeight.min),
+              ),
+            }
+          : undefined
+      }
+    >
       <iframe
         key={attempt}
         ref={frame}
         className={styles.frame}
         title={name}
         sandbox="allow-scripts"
+        // Writing only — a copy button (BARY-209); reading stays out.
+        allow="clipboard-write"
         referrerPolicy="no-referrer"
       />
       {state.status === "error" && (

@@ -5,6 +5,7 @@
 // comment, its own storage, and cleanup on unload.
 
 import { BaryntError, type Issue, Plugin } from "@barynt/plugin-sdk";
+import { button, kpi, row, stack, status } from "@barynt/plugin-sdk/ui";
 
 interface MergeRequest {
   iid: number;
@@ -23,6 +24,9 @@ const el = (tag: string, className?: string, text?: string) => {
 
 export default class GitLabMergeRequests extends Plugin {
   async onload() {
+    // Its part of the settings page (BARY-204): Barynt draws the form, this
+    // checks the project saved there against GitLab.
+    this.registerSettings({ render: (root) => this.drawSettings(root) });
     this.registerProjectView({
       id: "merge-requests",
       render: async (root) => {
@@ -31,6 +35,79 @@ export default class GitLabMergeRequests extends Plugin {
         this.registerInterval(() => void this.draw(root), 120_000);
       },
     });
+  }
+
+  /** Below Barynt's form of its settings (`settingsPage: "section"`): a
+   *  check of the project saved there, drawn with the SDK's UI kit. */
+  drawSettings(root: HTMLElement) {
+    const line = status();
+    const result = el("div", "mr-check-result");
+    const check = button({
+      label: "Check connection",
+      onClick: async () => {
+        const { gitlabProject } = await this.loadSettings<{
+          gitlabProject: string | null;
+        }>();
+        result.replaceChildren();
+        if (!gitlabProject) {
+          line.set("Save a GitLab project above first.", "warning");
+          return;
+        }
+        line.set("Checking with GitLab…");
+        const base = `https://gitlab.com/api/v4/projects/${encodeURIComponent(gitlabProject)}`;
+        try {
+          const res = await this.api.net.fetch(base);
+          if (res.status === 404) {
+            line.set(`GitLab doesn't know “${gitlabProject}”.`, "error");
+            return;
+          }
+          if (res.status === 401) {
+            line.set(
+              "GitLab didn't take your token — check it in your personal settings → Plugins.",
+              "error",
+            );
+            return;
+          }
+          if (!res.ok) {
+            line.set(`GitLab answered ${res.status}.`, "error");
+            return;
+          }
+          const project = res.json<{ name_with_namespace: string }>();
+          const open = await this.api.net.fetch(
+            `${base}/merge_requests?state=opened&per_page=100`,
+          );
+          result.replaceChildren(
+            kpi({
+              value: open.ok ? open.json<unknown[]>().length : "–",
+              label: `open merge requests in ${project.name_with_namespace}`,
+            }),
+          );
+          line.set("Connected.", "success");
+        } catch (error) {
+          line.set(
+            error instanceof BaryntError && error.code === "credential_missing"
+              ? "Keep your GitLab token in your personal settings → Plugins first."
+              : String(error),
+            "error",
+          );
+        }
+      },
+    });
+    const part = stack(
+      stack(
+        el("h3", "mr-check-title", "Connection"),
+        el(
+          "p",
+          "mr-check-hint",
+          "Checks the project above with your personal GitLab token.",
+        ),
+      ),
+      result,
+      row(check),
+      line.el,
+    );
+    part.classList.add("mr-check");
+    root.replaceChildren(part);
   }
 
   async draw(root: HTMLElement) {

@@ -318,6 +318,28 @@ export type WidgetData =
       type: "note";
       /** This person's own pages — nobody else's. */
       pages: NotePage[];
+    }
+  | {
+      /** A plugin's widget (BARY-149): drawn by its own frame. */
+      type: "plugin";
+      pluginId: string;
+      widgetId: string;
+      /** `null` while it doesn't run here (switched off, removed, not
+       *  confirmed) — the widget says so instead of a frame. */
+      plugin: { name: string; title: string } | null;
+      workspaceId: string;
+      projectId: string | null;
+    }
+  | {
+      type: "pluginBlock";
+      pluginId: string;
+      blockId: string;
+      /** `null` while it doesn't run here — the block says so; the rest
+       *  of the widget stays. `draw`: Barynt draws its data, or the plugin
+       *  draws it in its frame (BARY-205). */
+      plugin: { name: string; title: string; draw: "barynt" | "plugin" } | null;
+      workspaceId: string;
+      projectId: string | null;
     };
 
 /** Widget id → its data. */
@@ -337,9 +359,44 @@ export interface DashboardLayoutInfo {
   canEditShared: boolean;
 }
 
+/** A plugin's widget as a dashboard's gallery offers it. */
+export interface PluginWidgetEntry {
+  pluginId: string;
+  pluginName: string;
+  widgetId: string;
+  title: string;
+  /** Made of Barynt's blocks (`widgetTemplates`, BARY-203): added as the
+   *  custom widget it starts, no frame. Missing for a widget the plugin
+   *  draws itself. */
+  template?: Widget;
+}
+
+/** A plugin's building block, as the widget builder offers it (BARY-205). */
+export interface PluginBlockEntry {
+  pluginId: string;
+  pluginName: string;
+  blockId: string;
+  title: string;
+  description: string | null;
+  draw: "barynt" | "plugin";
+  /** Set per block in the builder. */
+  settings: {
+    key: string;
+    type: "text" | "number" | "boolean" | "select";
+    label: string;
+    description: string | null;
+    default: string | number | boolean | null;
+    options: { id: string; label: string }[];
+  }[];
+}
+
 export interface DashboardView {
   /** The viewer's custom widgets and the shared ones of others. */
   customWidgets: CustomWidgetEntry[];
+  /** Widgets the plugins switched on here bring (BARY-149, BARY-203). */
+  pluginWidgets: PluginWidgetEntry[];
+  /** Building blocks they bring, for custom widgets (BARY-205). */
+  pluginBlocks: PluginBlockEntry[];
   target: DashboardTarget;
   range: RangeKey;
   unit: BucketUnit;

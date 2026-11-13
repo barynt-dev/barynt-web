@@ -1,4 +1,11 @@
+import type { BadgeIssue } from "./badges";
+import {
+  type BlockData,
+  type BlockSettingValues,
+  parseBlockData,
+} from "./blocks";
 import type { Capability } from "./manifest";
+import { HOST_TOKENS } from "./tokens";
 
 // The host bridge's protocol (BARY-144): what a sandboxed plugin may ask its
 // host for, and which confirmed capability each request needs. Shared by the
@@ -33,6 +40,9 @@ export const BRIDGE_METHODS = {
   "storage.delete": "storage:own",
   "storage.list": "storage:own",
   "settings.get": null,
+  // Its own settings page saving (BARY-149) — needs `plugin.enable` there,
+  // checked against the manifest's `settings`.
+  "settings.set": null,
   // A host from the manifest's `network`, through Barynt (BARY-147) — the
   // hosts were confirmed with the plugin, no capability on top.
   "net.fetch": null,
@@ -64,25 +74,61 @@ export const STORAGE_LIMITS = {
 export const isBridgeMethod = (method: unknown): method is BridgeMethod =>
   typeof method === "string" && Object.hasOwn(BRIDGE_METHODS, method);
 
-/** Where a plugin's frame runs: the slot it fills and the place it's in. */
+/** Where a plugin's frame runs: the slot it fills (`lib/plugins/slots.ts`)
+ *  and the place it's in. */
 export interface FrameContext {
-  slot: { kind: "projectView"; id: string };
+  slot: {
+    kind:
+      | "projectView"
+      | "page"
+      | "widget"
+      | "block"
+      | "issuePanel"
+      | "badges"
+      | "actions"
+      | "settings";
+    id: string;
+  };
+  /** The issue an issue panel is about (BARY-150). */
+  issueId?: string;
   workspaceId: string;
   projectId: string | null;
   locale: string;
+  /** A building block's own settings, as the widget's builder set them
+   *  (BARY-205). */
+  config?: BlockSettingValues;
 }
 
 /** Frame → host, over the private channel. */
 export type FrameMessage =
   | { type: "call"; id: number; method: string; params: unknown }
   | { type: "ready" }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  /** A building block's data, for Barynt to draw (BARY-205). */
+  | { type: "blockData"; data: BlockData }
+  /** How tall its content is, in CSS pixels — a panel grows to fit
+   *  (BARY-150). */
+  | { type: "resize"; height: number }
+  /** Its answer to a batch of issues: chips by issue id, checked by the
+   *  host (`parseBadges`, BARY-151). */
+  | { type: "badges"; seq: number; badges: unknown }
+  /** How an action went (BARY-152): its answer, or the error it threw. */
+  | { type: "actionDone"; seq: number; ok: boolean; result: unknown };
 
 /** Host → frame. */
 export type HostMessage =
   | { type: "result"; id: number; ok: true; result: unknown }
   | { type: "result"; id: number; ok: false; error: string }
-  | { type: "theme"; theme: Record<string, string> };
+  | { type: "theme"; theme: Record<string, string> }
+  /** A batch of issues to put badges on (BARY-151). */
+  | { type: "badges:request"; seq: number; issues: BadgeIssue[] }
+  /** Run one of its actions, for an issue (BARY-152). */
+  | {
+      type: "action:run";
+      seq: number;
+      actionId: string;
+      issueId: string | null;
+    };
 
 /** The first message, posted to the frame's window with the channel's port. */
 export interface InitMessage {
@@ -111,36 +157,37 @@ export type BridgeError =
   | "timeout"
   | "too_many_requests";
 
-/** Design tokens a frame gets, so a plugin looks like Barynt — light or
- *  dark, whichever is on. Read from the host page's `:root`. */
-export const THEME_TOKENS = [
-  "--surface",
-  "--surface-container-low",
-  "--surface-container",
-  "--surface-container-high",
-  "--on-surface",
-  "--on-surface-variant",
-  "--outline",
-  "--outline-variant",
-  "--primary",
-  "--on-primary",
-  "--primary-container",
-  "--on-primary-container",
-  "--error",
-  "--warning",
-  "--radius",
-  "--radius-sm",
-  "--text-xs",
-  "--text-sm",
-  "--text-base",
-  "--font-ui",
-] as const;
+/** The host's variables a frame gets, light or dark as the page has them —
+ *  what its design tokens (`--barynt-*`, `lib/plugins/tokens.ts`) point at. */
+export const THEME_TOKENS = HOST_TOKENS;
 
 /** A frame message as the host accepts it — anything else is dropped. */
 export function parseFrameMessage(data: unknown): FrameMessage | null {
   if (!data || typeof data !== "object") return null;
   const m = data as Record<string, unknown>;
   if (m.type === "ready") return { type: "ready" };
+  if (m.type === "actionDone")
+    return Number.isSafeInteger(m.seq)
+      ? {
+          type: "actionDone",
+          seq: m.seq as number,
+          ok: m.ok === true,
+          result:
+            m.ok === true ? m.result : String(m.result ?? "").slice(0, 300),
+        }
+      : null;
+  if (m.type === "badges")
+    return Number.isSafeInteger(m.seq)
+      ? { type: "badges", seq: m.seq as number, badges: m.badges }
+      : null;
+  if (m.type === "resize")
+    return typeof m.height === "number" && Number.isFinite(m.height)
+      ? { type: "resize", height: Math.max(0, Math.min(m.height, 100_000)) }
+      : null;
+  if (m.type === "blockData") {
+    const data = parseBlockData(m.data);
+    return data ? { type: "blockData", data } : null;
+  }
   if (m.type === "error")
     return { type: "error", message: String(m.message ?? "").slice(0, 500) };
   if (

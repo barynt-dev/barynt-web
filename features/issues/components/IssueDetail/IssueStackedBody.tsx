@@ -13,6 +13,7 @@ import { IssueDescription } from "./components/IssueDescription";
 import { IssueLabels } from "./components/IssueLabels";
 import { IssueMeta } from "./components/IssueMeta";
 import { IssuePlanning } from "./components/IssuePlanning";
+import { IssuePluginPanels } from "./components/IssuePluginPanels";
 import { IssueProperties } from "./components/IssueProperties";
 import { IssueRelations } from "./components/IssueRelations";
 import { IssueTitle } from "./components/IssueTitle";
@@ -161,7 +162,15 @@ export function IssueStackedBody({
             )}
             <IssueMeta issue={issue} data={data} layout="column" />
           </PropertiesGroup>
-        ) : (
+        ) : null}
+        {isPhone && (
+          <IssuePluginPanels
+            issue={issue}
+            workspaceId={data.workspaceId}
+            placement="sidebar"
+          />
+        )}
+        {!isPhone && (
           <IssueProperties
             issue={issue}
             data={data}
@@ -190,6 +199,11 @@ export function IssueStackedBody({
             onRefresh={onRefresh}
           />
         )}
+        <IssuePluginPanels
+          issue={issue}
+          workspaceId={data.workspaceId}
+          placement="main"
+        />
         {!isPhone && (
           <>
             <IssuePlanning
@@ -207,6 +221,11 @@ export function IssueStackedBody({
               />
             )}
             <IssueMeta issue={issue} data={data} layout="column" />
+            <IssuePluginPanels
+              issue={issue}
+              workspaceId={data.workspaceId}
+              placement="sidebar"
+            />
           </>
         )}
         <IssueComments

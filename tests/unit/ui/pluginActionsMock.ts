@@ -10,6 +10,7 @@ export const pluginActionsMock = () => ({
   deactivatePlugin: mock(),
   deletePluginData: mock(),
   installPlugin: mock(),
+  listIssuePluginActions: mock(async () => null),
   previewRelease: mock(async () => ({ error: "test" })),
   refreshPluginSource: mock(),
   removePluginSource: mock(),

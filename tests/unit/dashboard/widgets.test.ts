@@ -530,7 +530,13 @@ describe("Blocks and templates (BARY-170)", () => {
 
   it("the gallery doesn't list the blocks kind itself", () => {
     expect(offeredOn("blocks", "project")).toBe(false);
-    expect(BLOCK_TYPES.every((type) => offeredOn(type, "project"))).toBe(true);
+    // Barynt's own blocks are widgets of their own too; a plugin's block
+    // (BARY-205) only ever sits in a custom widget.
+    expect(
+      BLOCK_TYPES.filter((type) => type !== "pluginBlock").every((type) =>
+        offeredOn(type, "project"),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -639,5 +645,88 @@ describe("external links among the shortcuts (BARY-182)", () => {
       }),
     );
     expect(parsed.success).toBe(false);
+  });
+});
+
+describe("plugin widgets (BARY-149)", () => {
+  it("stores which plugin and which of its widgets", () => {
+    const parsed = parseWidgets([
+      {
+        id: "w1",
+        type: "plugin",
+        size: "L",
+        config: {
+          pluginId: "demo-timeline",
+          pluginWidget: "oldest-open",
+          title: "Oldest",
+        },
+      },
+    ]);
+    expect(parsed?.[0]?.config).toMatchObject({
+      pluginId: "demo-timeline",
+      pluginWidget: "oldest-open",
+    });
+  });
+
+  it("refuses an id that isn't one", () => {
+    expect(
+      parseWidgets([
+        { id: "w1", type: "plugin", size: "L", config: { pluginId: "../x" } },
+      ]),
+    ).toBeNull();
+  });
+
+  it("isn't offered as a kind of its own", () => {
+    expect(offeredOn("plugin", "workspace")).toBe(false);
+  });
+});
+
+describe("plugin blocks in custom widgets (BARY-205)", () => {
+  const widget = (pluginConfig: unknown) => [
+    {
+      id: "w1",
+      type: "blocks",
+      size: "L",
+      config: {
+        blocks: [
+          { id: "b1", type: "kpi", config: { metric: "open" } },
+          {
+            id: "b2",
+            type: "pluginBlock",
+            config: {
+              pluginId: "demo-timeline",
+              pluginBlock: "due-soon",
+              pluginConfig,
+            },
+          },
+        ],
+      },
+    },
+  ];
+
+  it("keeps a plugin's block with its settings, next to Barynt's", () => {
+    const parsed = parseWidgets(widget({ days: 14, overdue: true }));
+    expect(parsed?.[0]?.config.blocks?.[1]).toMatchObject({
+      type: "pluginBlock",
+      config: { pluginBlock: "due-soon", pluginConfig: { days: 14 } },
+    });
+  });
+
+  it("refuses settings it can't keep", () => {
+    expect(parseWidgets(widget({ "../x": 1 }))).toBeNull();
+    expect(parseWidgets(widget({ days: { nested: 1 } }))).toBeNull();
+    expect(
+      parseWidgets(
+        widget(
+          Object.fromEntries(
+            Array.from({ length: 11 }, (_, i) => [`k${i}`, i]),
+          ),
+        ),
+      ),
+    ).toBeNull();
+  });
+
+  it("isn't a widget of its own", () => {
+    expect(offeredOn("pluginBlock", "workspace")).toBe(false);
   });
 });

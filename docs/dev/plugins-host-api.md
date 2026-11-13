@@ -46,6 +46,10 @@ Needs `issues:read`. `api.issues.list(params?)`
 
 Returns `{ issues: Issue[], nextCursor: string | null }`, newest first.
 
+A **workspace's** plugin without `projectId` gets the newest across the
+workspace's projects the person can see — one page of up to `take`, with
+`nextCursor` always `null`. Name a `projectId` to page through one.
+
 ```ts
 let cursor: string | undefined;
 do {
@@ -120,6 +124,15 @@ gone when someone deletes the plugin's data.
 Over a limit, `set` is refused with `storage_full`.
 
 ## Settings
+
+`api.settings.set(values)` saves them — from its own settings page
+(`settingsPage`), and only when the person may change the plugin's
+settings there (`plugin.enable` in the project or workspace; otherwise
+`forbidden`). Values are checked against the manifest's `settings` like
+Barynt's own form (a key it doesn't declare is dropped, a wrong type — or a
+`member` or `label` that isn't one of the place's — is `invalid_params`),
+and the change lands in the audit log. It saves every setting at once:
+send the ones you leave alone too.
 
 `api.settings.get()` (or [`loadSettings()`](plugins-sdk.md#loadsettings)) needs no
 capability: the plugin's own [settings](plugins-manifest.md#settings) in this

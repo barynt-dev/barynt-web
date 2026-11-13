@@ -193,6 +193,7 @@
     "assignee": "Zuständig"
   },
   "display": {
+    "pluginBadges": "Plugin-Badges",
     "label": "Anzeige",
     "grouping": "Gruppierung",
     "ordering": "Sortierung",
@@ -2292,7 +2293,23 @@
     "flowBy_category": "Phasen",
     "flowBy_status": "Status",
     "showDone": "Erledigte zeigen",
-    "stays": "{count, plural, one {# Aufenthalt} other {# Aufenthalte}}"
+    "stays": "{count, plural, one {# Aufenthalt} other {# Aufenthalte}}",
+    "type_plugin": "Plugin",
+    "desc_plugin": "Ein Widget aus einem Plugin.",
+    "group_plugins": "Plugins",
+    "pluginOff": "„{name}“ läuft hier nicht mehr.",
+    "pluginOffHint": "Das Plugin ist ausgeschaltet oder entfernt. Entferne das Widget oder schalte das Plugin wieder ein.",
+    "blockHint_pluginBlock": "Aus einem Plugin",
+    "type_pluginBlock": "Plugin-Baustein",
+    "desc_pluginBlock": "Ein Baustein, den ein Plugin mitbringt.",
+    "pluginBlockOff": "Der Baustein von „{name}“ läuft hier nicht mehr.",
+    "pluginBlockOffHint": "Das Plugin ist ausgeschaltet oder entfernt. Der Rest des Widgets bleibt.",
+    "pluginBlockSettings": "Einstellungen des Bausteins",
+    "pluginBlockLoading": "Lädt …",
+    "pluginFrom": "Aus {name}",
+    "pluginPreview": "Vorschau mit echten Daten, so wie das Plugin es zeichnet.",
+    "pluginTemplate": "Vorlage aus Barynts Bausteinen – nach dem Hinzufügen frei anpassbar.",
+    "pluginCustomize": "Anpassen"
   },
   "customFields": {
     "title": "Custom Felder",
@@ -2403,6 +2420,10 @@
     "numberUnitPlaceholder": "z. B. %, €, $, kg"
   },
   "plugins": {
+    "actionFailed": "{name}: {detail}",
+    "actionTimeout": "Die Aktion hat nicht rechtzeitig geantwortet.",
+    "actionDone": "„{name}“ ausgeführt.",
+    "actionsTitle": "Plugins",
     "cap": {
       "issues:read": "Issues lesen",
       "issues:write": "Issues anlegen und ändern",

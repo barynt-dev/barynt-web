@@ -60,6 +60,12 @@ export const WIDGET_TYPES = [
   // A custom widget made of building blocks (BARY-170) — only the builder
   // makes these; the gallery doesn't list the kind itself.
   "blocks",
+  // A sandboxed plugin's widget (BARY-149) — the gallery lists each one the
+  // plugins switched on here bring, not the kind itself.
+  "plugin",
+  // A plugin's building block in a custom widget (BARY-205) — never a
+  // widget of its own.
+  "pluginBlock",
 ] as const;
 export type WidgetType = (typeof WIDGET_TYPES)[number];
 
@@ -353,6 +359,14 @@ export interface WidgetConfig {
   fit?: EmbedFit;
   /** Embed, website: reload every so many minutes; unset: never. */
   refresh?: EmbedRefresh;
+  /** A plugin's widget (`plugin` kind, BARY-149): which plugin, and which
+   *  of its `contributes.dashboardWidgets`. */
+  pluginId?: string;
+  pluginWidget?: string;
+  /** A plugin's building block (`pluginBlock` kind, BARY-205): which of its
+   *  `contributes.widgetBlocks`, with its own settings. */
+  pluginBlock?: string;
+  pluginConfig?: Record<string, string | number | boolean>;
   /** A custom widget's building blocks, top to bottom (`blocks` kind). */
   blocks?: WidgetBlock[];
   /** Burnup: done against everything, or what's left counting down. */
@@ -386,6 +400,8 @@ export const BLOCK_TYPES = [
   "flow",
   "matrix",
   "issues",
+  // A plugin's (BARY-205): the builder lists each one the plugins bring.
+  "pluginBlock",
 ] as const satisfies readonly WidgetType[];
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -406,6 +422,9 @@ export type BlockConfig = Pick<
   | "sort"
   | "labels"
   | "elements"
+  | "pluginId"
+  | "pluginBlock"
+  | "pluginConfig"
 >;
 
 /** One building block of a custom widget, with its own extras
@@ -1128,6 +1147,29 @@ export const WIDGETS: Record<WidgetType, WidgetDef> = {
     hidden: true,
     config: {},
   },
+  plugin: {
+    type: "plugin",
+    icon: "lucide:puzzle",
+    sizes: ["S", "M", "L", "T", "XL"],
+    size: "L",
+    accent: "gray",
+    issues: false,
+    group: "other",
+    hidden: true,
+    config: {},
+  },
+  pluginBlock: {
+    type: "pluginBlock",
+    icon: "lucide:puzzle",
+    sizes: ["S", "M", "L", "T", "XL"],
+    size: "L",
+    accent: "gray",
+    issues: false,
+    group: "other",
+    hidden: true,
+    config: {},
+  },
+
   note: {
     type: "note",
     icon: "lucide:sticky-note",
@@ -1513,6 +1555,25 @@ const baseConfigShape = z.object({
     .optional()
     .transform((list) => list as ShortcutChoice[] | undefined),
   embedKind: z.enum(EMBED_KINDS).optional(),
+  pluginId: z
+    .string()
+    .regex(/^[a-z][a-z0-9-]{1,38}[a-z0-9]$/)
+    .optional(),
+  pluginWidget: z
+    .string()
+    .regex(/^[a-z][a-z0-9-]{0,39}$/)
+    .optional(),
+  pluginBlock: z
+    .string()
+    .regex(/^[a-z][a-z0-9-]{0,39}$/)
+    .optional(),
+  pluginConfig: z
+    .record(
+      z.string().regex(/^[a-z][a-zA-Z0-9_]{0,39}$/),
+      z.union([z.string().max(500), z.number(), z.boolean()]),
+    )
+    .refine((values) => Object.keys(values).length <= 10)
+    .optional(),
   url: z
     .string()
     .max(2000)
@@ -1579,29 +1640,92 @@ const baseConfigShape = z.object({
     .optional(),
 });
 
+const blockConfigSchema = baseConfigShape
+  .pick({
+    filter: true,
+    metric: true,
+    groupBy: true,
+    groupBy2: true,
+    chart: true,
+    measure: true,
+    timeBy: true,
+    splitBy: true,
+    seriesChart: true,
+    openOnly: true,
+    sort: true,
+    labels: true,
+    elements: true,
+    pluginId: true,
+    pluginBlock: true,
+    pluginConfig: true,
+  })
+  .strict();
+
 const blockSchema = z
   .object({
     id: z.string().min(1).max(40),
     type: z.enum(BLOCK_TYPES),
-    config: baseConfigShape
-      .pick({
-        filter: true,
-        metric: true,
-        groupBy: true,
-        groupBy2: true,
-        chart: true,
-        measure: true,
-        timeBy: true,
-        splitBy: true,
-        seriesChart: true,
-        openOnly: true,
-        sort: true,
-        labels: true,
-        elements: true,
-      })
-      .strict(),
+    config: blockConfigSchema,
   })
   .strict();
+
+/** The sizes a custom widget comes in — what a plugin's template may ask
+ *  for (BARY-203). */
+export const TEMPLATE_SIZES = [
+  "S",
+  "M",
+  "L",
+  "T",
+  "XL",
+] as const satisfies readonly WidgetSize[];
+
+/**
+ * A widget template a plugin ships in its manifest (BARY-203): a custom
+ * widget's blocks, without ids — Barynt numbers them. Checked with the same
+ * rules as a custom widget the builder saves.
+ */
+export const pluginTemplateSchema = z.strictObject({
+  size: z.enum(TEMPLATE_SIZES).optional(),
+  accent: z.enum(ACCENTS).optional(),
+  blocks: z
+    .array(
+      z
+        .object({
+          type: z.enum(BLOCK_TYPES),
+          config: blockConfigSchema.optional(),
+        })
+        .strict(),
+    )
+    .min(1)
+    .max(6),
+});
+export type PluginTemplate = z.infer<typeof pluginTemplateSchema>;
+
+/** A plugin's template as the custom widget it starts — what the gallery
+ *  previews and adds; changed afterwards like any other. */
+export function pluginTemplateWidget(
+  template: PluginTemplate,
+  title: string,
+): Widget {
+  return normalizeWidget({
+    id: "template",
+    type: "blocks",
+    size: template.size ?? WIDGETS.blocks.size,
+    config: {
+      ...WIDGETS.blocks.config,
+      title,
+      ...(template.accent && { accent: template.accent }),
+      blocks: template.blocks.map((block, i) => ({
+        id: `b${i + 1}`,
+        type: block.type,
+        config: {
+          ...WIDGETS[block.type].config,
+          ...(block.config as BlockConfig),
+        },
+      })),
+    },
+  });
+}
 
 const configSchema = baseConfigShape
   .extend({

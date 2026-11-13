@@ -157,4 +157,192 @@ describe("plugin SDK", () => {
       params: { url: "https://api.acme.example/items" },
     });
   });
+
+  it("draws a page only in its own frame, and not as a view", async () => {
+    const drawn: string[] = [];
+    class Pages extends Plugin {
+      onload() {
+        this.registerProjectView({
+          id: "roadmap",
+          render: () => void drawn.push("view"),
+        });
+        this.registerPage({
+          id: "roadmap",
+          render: () => void drawn.push("page"),
+        });
+      }
+    }
+    await loadPlugin(
+      Pages,
+      createTestHost({ context: { slot: { kind: "page", id: "roadmap" } } }),
+    );
+    expect(drawn).toEqual(["page"]);
+  });
+
+  it("draws a widget or its settings page only in its own frame", async () => {
+    const drawn: string[] = [];
+    class All extends Plugin {
+      onload() {
+        this.registerWidget({
+          id: "w",
+          render: () => void drawn.push("widget"),
+        });
+        this.registerSettings({ render: () => void drawn.push("settings") });
+        this.registerProjectView({
+          id: "w",
+          render: () => void drawn.push("view"),
+        });
+      }
+    }
+    await loadPlugin(
+      All,
+      createTestHost({ context: { slot: { kind: "widget", id: "w" } } }),
+    );
+    await loadPlugin(
+      All,
+      createTestHost({
+        context: { slot: { kind: "settings", id: "settings" } },
+      }),
+    );
+    // Its part below Barynt's form (BARY-204) is drawn by the same call.
+    await loadPlugin(
+      All,
+      createTestHost({
+        context: { slot: { kind: "settings", id: "section" } },
+      }),
+    );
+    expect(drawn).toEqual(["widget", "settings", "settings"]);
+  });
+
+  it("runs its actions for an issue, only in the actions frame (BARY-152)", async () => {
+    class Actions extends Plugin {
+      onload() {
+        this.registerAction({
+          id: "rerun",
+          run: ({ issueId }) => ({ message: `rerun ${issueId}` }),
+        });
+        this.registerAction({ id: "quiet", run: () => undefined });
+      }
+    }
+    const host = createTestHost({
+      context: { slot: { kind: "actions", id: "actions" } },
+    });
+    await loadPlugin(Actions, host);
+    expect(await host.runAction("rerun", { issueId: "i1" })).toEqual({
+      message: "rerun i1",
+    });
+    expect(await host.runAction("quiet")).toEqual({});
+    await expect(host.runAction("nope")).rejects.toThrow('No action "nope"');
+    const other = createTestHost({
+      context: { slot: { kind: "widget", id: "w" } },
+    });
+    await loadPlugin(Actions, other);
+    await expect(other.runAction("rerun")).rejects.toThrow("no actions");
+  });
+
+  it("answers a board's issues with badges (BARY-151)", async () => {
+    class Badges extends Plugin {
+      onload() {
+        this.registerBadges({
+          provide: (issues) =>
+            Object.fromEntries(
+              issues.map((i) => [i.id, [{ badge: "ref", text: i.ref }]]),
+            ),
+        });
+      }
+    }
+    const host = createTestHost({
+      context: { slot: { kind: "badges", id: "badges" } },
+    });
+    await loadPlugin(Badges, host);
+    expect(await host.badges([{ id: "i1", ref: "WEB-1" }])).toEqual({
+      i1: [{ badge: "ref", text: "WEB-1" }],
+    });
+    // In any other frame it doesn't answer.
+    const other = createTestHost({
+      context: { slot: { kind: "widget", id: "w" } },
+    });
+    await loadPlugin(Badges, other);
+    expect(await other.badges([{ id: "i1", ref: "WEB-1" }])).toEqual({});
+  });
+
+  it("draws an issue panel for its issue (BARY-150)", async () => {
+    const seen: (string | undefined)[] = [];
+    class Panel extends Plugin {
+      onload() {
+        this.registerIssuePanel({
+          id: "schedule",
+          render: (_el, { issueId }) => void seen.push(issueId),
+        });
+      }
+    }
+    await loadPlugin(
+      Panel,
+      createTestHost({
+        context: {
+          slot: { kind: "issuePanel", id: "schedule" },
+          issueId: "i7",
+        },
+      }),
+    );
+    await loadPlugin(
+      Panel,
+      createTestHost({ context: { slot: { kind: "widget", id: "schedule" } } }),
+    );
+    expect(seen).toEqual(["i7"]);
+  });
+
+  it("hands a block's data to Barynt, only in its own frame (BARY-205)", async () => {
+    class Blocks extends Plugin {
+      onload() {
+        this.registerBlock({
+          id: "count",
+          data: ({ config }) => ({
+            kind: "kpi",
+            value: Number(config?.base ?? 0) + 1,
+            label: "Count",
+          }),
+        });
+        this.registerBlock({
+          id: "drawn",
+          render: (el) => {
+            el.textContent = "drawn";
+          },
+        });
+      }
+    }
+    const mine = createTestHost({
+      context: { slot: { kind: "block", id: "count" }, config: { base: 41 } },
+    });
+    await loadPlugin(Blocks, mine);
+    expect(mine.shown).toEqual([{ kind: "kpi", value: 42, label: "Count" }]);
+
+    const other = createTestHost({
+      context: { slot: { kind: "widget", id: "count" } },
+    });
+    await loadPlugin(Blocks, other);
+    expect(other.shown).toEqual([]);
+
+    const root = { textContent: "" } as HTMLElement;
+    const drawn = createTestHost({
+      root,
+      context: { slot: { kind: "block", id: "drawn" } },
+    });
+    await loadPlugin(Blocks, drawn);
+    expect(root.textContent).toBe("drawn");
+    expect(drawn.shown).toEqual([]);
+  });
+
+  it("saves its settings through the host", async () => {
+    class Saver extends Plugin {
+      async onload() {
+        await this.api.settings.set({ zoom: 2 });
+      }
+    }
+    const host = createTestHost({ handlers: { "settings.set": () => null } });
+    await loadPlugin(Saver, host);
+    expect(host.calls).toEqual([
+      { method: "settings.set", params: { values: { zoom: 2 } } },
+    ]);
+  });
 });

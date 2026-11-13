@@ -17,10 +17,15 @@ import {
 } from "@/features/dashboard/widgets";
 import type { IssueFilter } from "@/features/issues/filter";
 import { randomId } from "@/lib/utils/id";
+import { usePluginBlocks } from "../Widget/pluginBlocks";
 import { useWidgetTitle } from "../Widget/Widget";
 import styles from "./blocksEditor.module.scss";
 import { ElementsEditor } from "./ElementsEditor";
 import { KindFields } from "./KindFields";
+import { PluginBlockFields } from "./PluginBlockFields";
+
+const pluginKey = (e: { pluginId: string; blockId: string }) =>
+  `plugin:${e.pluginId}:${e.blockId}`;
 
 /** At most this many blocks in one widget. */
 const MAX_BLOCKS = 6;
@@ -52,6 +57,16 @@ export function BlocksEditor({
 }: Props) {
   const t = useTranslations("widgets");
   const titleOf = useWidgetTitle();
+  const pluginBlocks = usePluginBlocks();
+  /** A plugin block's entry — while its plugin runs here. */
+  const entryOf = (block: WidgetBlock) =>
+    block.type === "pluginBlock"
+      ? pluginBlocks.find(
+          (e) =>
+            e.pluginId === block.config.pluginId &&
+            e.blockId === block.config.pluginBlock,
+        )
+      : undefined;
   const blocks = widget.config.blocks ?? [];
   const shown = new Set(shownBlocks(widget).map((b) => b.id));
   const [openBlock, openElement] = (open ?? "").split(":");
@@ -73,17 +88,35 @@ export function BlocksEditor({
     next.splice(to, 0, item);
     onChange(next);
   };
-  const add = (type: BlockType) => {
-    const block = newBlock(type, randomId().slice(0, 8));
+  const add = (type: BlockType, config: Partial<BlockConfig> = {}) => {
+    const fresh = newBlock(type, randomId().slice(0, 8));
+    const block = { ...fresh, config: { ...fresh.config, ...config } };
     onChange([...blocks, block]);
     onOpen(block.id);
+  };
+  /** A plugin's block (BARY-205), with its settings' defaults. */
+  const addPluginBlock = (key: string) => {
+    const entry = pluginBlocks.find((e) => pluginKey(e) === key);
+    if (!entry) return;
+    const pluginConfig = Object.fromEntries(
+      entry.settings.flatMap((s) =>
+        s.default === null ? [] : [[s.key, s.default] as const],
+      ),
+    );
+    add("pluginBlock", {
+      pluginId: entry.pluginId,
+      pluginBlock: entry.blockId,
+      pluginConfig,
+    });
   };
 
   return (
     <div className={styles.list}>
       {blocks.map((block, i) => {
         const as = blockWidget(widget, block);
-        const name = t(`type_${block.type}`);
+        const entry = entryOf(block);
+        const isPlugin = block.type === "pluginBlock";
+        const name = entry?.title ?? t(`type_${block.type}`);
         const isOpen = openBlock === block.id;
         const rules = block.config.filter?.rules.length ?? 0;
         return (
@@ -109,9 +142,17 @@ export function BlocksEditor({
                 <span className={styles.text}>
                   {name}
                   <small>
-                    {shown.has(block.id)
-                      ? titleOf({ ...as, config: { ...as.config, title: "" } })
-                      : t("elHiddenFrom", { size: t("size_L") })}
+                    {!shown.has(block.id)
+                      ? t("elHiddenFrom", { size: t("size_L") })
+                      : isPlugin
+                        ? t("pluginFrom", {
+                            name:
+                              entry?.pluginName ?? block.config.pluginId ?? "",
+                          })
+                        : titleOf({
+                            ...as,
+                            config: { ...as.config, title: "" },
+                          })}
                     {rules > 0 && ` · ${t("filterCount", { count: rules })}`}
                   </small>
                 </span>
@@ -152,7 +193,19 @@ export function BlocksEditor({
               </button>
             </div>
 
-            {isOpen && (
+            {isOpen && isPlugin && (
+              <div className={styles.form}>
+                <PluginBlockFields
+                  entry={entry}
+                  pluginId={block.config.pluginId ?? ""}
+                  values={block.config.pluginConfig ?? {}}
+                  onChange={(pluginConfig) =>
+                    update(block.id, { pluginConfig })
+                  }
+                />
+              </div>
+            )}
+            {isOpen && !isPlugin && (
               <div className={styles.form}>
                 <KindFields
                   widget={as}
@@ -212,15 +265,28 @@ export function BlocksEditor({
         >
           {(close) => (
             <SelectMenu
-              items={BLOCK_TYPES.map((type) => ({
-                value: type,
-                label: t(`type_${type}`),
-                hint: t(`blockHint_${type}`),
-                icon: <Icon icon={WIDGETS[type].icon} width={14} />,
-              }))}
+              items={[
+                ...BLOCK_TYPES.filter((type) => type !== "pluginBlock").map(
+                  (type) => ({
+                    value: type,
+                    label: t(`type_${type}`),
+                    hint: t(`blockHint_${type}`),
+                    icon: <Icon icon={WIDGETS[type].icon} width={14} />,
+                  }),
+                ),
+                // What the plugins switched on here bring (BARY-205).
+                ...pluginBlocks.map((entry) => ({
+                  value: pluginKey(entry),
+                  label: entry.title,
+                  hint: t("pluginFrom", { name: entry.pluginName }),
+                  icon: <Icon icon="lucide:puzzle" width={14} />,
+                })),
+              ]}
               value={null}
-              onPick={(type) => {
-                add(type as BlockType);
+              onPick={(value) => {
+                const picked = String(value);
+                if (picked.startsWith("plugin:")) addPluginBlock(picked);
+                else add(picked as BlockType);
                 close();
               }}
               onClose={close}

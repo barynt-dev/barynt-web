@@ -1,5 +1,14 @@
 import type { Plugin } from "./plugin";
-import type { Context, Host, Method, Methods } from "./types";
+import type {
+  ActionResult,
+  Badge,
+  BadgeIssue,
+  BlockData,
+  Context,
+  Host,
+  Method,
+  Methods,
+} from "./types";
 
 // Testing a plugin without Barynt: a host that answers from your handlers
 // and records every call.
@@ -13,6 +22,17 @@ type Handlers = {
 export interface TestHost extends Host {
   /** Every request the plugin made, in order. */
   readonly calls: { method: string; params: unknown }[];
+  /** Every building block's data the plugin showed, in order. */
+  readonly shown: BlockData[];
+  /** Runs one of the plugin's actions, as a menu would. */
+  runAction(
+    id: string,
+    context?: { issueId: string | null },
+  ): Promise<ActionResult>;
+  /** Asks the plugin's badges for these issues, as a board would. */
+  badges(
+    issues: BadgeIssue[],
+  ): Record<string, Badge[]> | Promise<Record<string, Badge[]>>;
 }
 
 /**
@@ -28,8 +48,26 @@ export function createTestHost(
   } = {},
 ): TestHost {
   const calls: TestHost["calls"] = [];
+  const shown: TestHost["shown"] = [];
+  let badgeHandler: Parameters<NonNullable<Host["serveBadges"]>>[0] | null =
+    null;
+  let actionHandler: Parameters<NonNullable<Host["serveActions"]>>[0] | null =
+    null;
   return {
     calls,
+    shown,
+    show: (data) => void shown.push(data),
+    serveBadges: (handler) => {
+      badgeHandler = handler;
+    },
+    badges: (issues) => badgeHandler?.(issues) ?? {},
+    serveActions: (handler) => {
+      actionHandler = handler;
+    },
+    runAction: async (id, context = { issueId: null }) => {
+      if (!actionHandler) throw new Error("no actions registered");
+      return (await actionHandler(id, context)) ?? {};
+    },
     context: {
       slot: { kind: "projectView", id: "main" },
       workspaceId: "workspace",

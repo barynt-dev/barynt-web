@@ -26,6 +26,7 @@ import {
   IssueActionsMenu,
   OpenPageButton,
 } from "./components/IssueDetailActions";
+import { IssuePluginPanels } from "./components/IssuePluginPanels";
 import { IssueRelations } from "./components/IssueRelations";
 import { IssueSidebar } from "./components/IssueSidebar";
 import { IssueTitle } from "./components/IssueTitle";
@@ -412,6 +413,12 @@ export function IssueDetailView({
                     }
                   : undefined
               }
+              plugins={{
+                actions: issue.pluginActions,
+                issueId: issue.id,
+                workspaceId: data.workspaceId,
+                projectId: issue.project,
+              }}
             />
           </>
         }
@@ -476,6 +483,11 @@ export function IssueDetailView({
                     onRefresh={onRefresh}
                   />
                 )}
+                <IssuePluginPanels
+                  issue={issue}
+                  workspaceId={data.workspaceId}
+                  placement="main"
+                />
                 <IssueComments
                   issueId={issue.id}
                   workspaceId={data.workspaceId}

@@ -15,6 +15,7 @@ import {
 } from "@/lib/plugins/bridge";
 import { buildFrameDocument, frameCsp } from "@/lib/plugins/frame";
 import { type PluginManifest, validateManifest } from "@/lib/plugins/manifest";
+import { settingsSlotId, slotEntries } from "@/lib/plugins/slots";
 import { HANDLERS } from "./bridge-methods";
 
 // Running a sandboxed plugin (BARY-144): which plugin may run where for
@@ -97,18 +98,56 @@ export async function findRunningPlugin(
   };
 }
 
-/** Whether the plugin fills this slot here: the slot in its manifest and
- *  its capability confirmed. */
-function fillsSlot(plugin: RunningPlugin, slot: FrameContext["slot"]): boolean {
-  if (slot.kind === "projectView")
-    return (
-      plugin.projectId !== null &&
-      plugin.capabilities.includes("ui:project-view") &&
-      (plugin.manifest.contributes.projectViews ?? []).some(
-        (v) => v.id === slot.id,
-      )
-    );
-  return false;
+/** What the plugin fills in this slot here: the entry from its manifest,
+ *  with its capability confirmed (`lib/plugins/slots.ts`). */
+function slotEntry(plugin: RunningPlugin, slot: FrameContext["slot"]) {
+  // Its own settings page (BARY-149), or its part below Barynt's form
+  // (`section`, BARY-204): one, needing no capability — it's the plugin's
+  // own page; saving checks `plugin.enable` (`settings.set`).
+  // Its badges (BARY-151): one frame for all of them, out of sight — with
+  // `ui:issue-badge` confirmed and at least one badge declared.
+  if (slot.kind === "badges")
+    return plugin.manifest.kind === "sandbox" &&
+      slot.id === "badges" &&
+      (plugin.manifest.contributes.issueBadges ?? []).length > 0 &&
+      plugin.capabilities.includes("ui:issue-badge")
+      ? {
+          kind: slot.kind,
+          id: slot.id,
+          title: plugin.manifest.name,
+          icon: null,
+        }
+      : null;
+  // Its actions (BARY-152): one frame, out of sight, while one runs — with
+  // `ui:action` confirmed and at least one action declared.
+  if (slot.kind === "actions")
+    return plugin.manifest.kind === "sandbox" &&
+      slot.id === "actions" &&
+      (plugin.manifest.contributes.actions ?? []).length > 0 &&
+      plugin.capabilities.includes("ui:action")
+      ? {
+          kind: slot.kind,
+          id: slot.id,
+          title: plugin.manifest.name,
+          icon: null,
+        }
+      : null;
+  if (slot.kind === "settings")
+    return plugin.manifest.kind === "sandbox" &&
+      plugin.manifest.contributes.settingsPage &&
+      slot.id === settingsSlotId(plugin.manifest.contributes.settingsPage)
+      ? {
+          kind: slot.kind,
+          id: slot.id,
+          title: plugin.manifest.name,
+          icon: null,
+        }
+      : null;
+  return (
+    slotEntries(plugin.manifest, plugin.capabilities).find(
+      (e) => e.kind === slot.kind && e.id === slot.id,
+    ) ?? null
+  );
 }
 
 /** The frame document of a sandboxed plugin in a slot, with its CSP —
@@ -120,7 +159,7 @@ export async function getPluginFrame(
 ): Promise<{ html: string; csp: string } | null> {
   const plugin = await findRunningPlugin(userId, place);
   if (!plugin || plugin.manifest.kind !== "sandbox") return null;
-  if (!fillsSlot(plugin, slot)) return null;
+  if (!slotEntry(plugin, slot)) return null;
   const files = await db.pluginFile.findMany({
     where: {
       pluginRowId: plugin.rowId,
@@ -200,19 +239,29 @@ export async function callBridge(
   return result;
 }
 
-/** A project view a plugin contributes, for its page in the project — the
- *  plugin's and the view's names. `null` where it doesn't run for the
- *  logged-in person. */
-export async function getProjectPluginView(
+/** A slot a plugin fills, for its page — the plugin's name and the
+ *  entry's title. `null` where it doesn't run for this person. */
+export async function getPluginSlotView(
   userId: string,
-  place: PluginPlace & { projectId: string },
-  viewId: string,
-): Promise<{ pluginName: string; title: string } | null> {
+  place: PluginPlace,
+  slot: FrameContext["slot"],
+): Promise<{
+  pluginName: string;
+  title: string;
+  /** For a building block: who draws it (BARY-205). */
+  draw?: "barynt" | "plugin";
+} | null> {
   const plugin = await findRunningPlugin(userId, place);
-  if (!plugin || plugin.manifest.kind !== "sandbox") return null;
-  if (!fillsSlot(plugin, { kind: "projectView", id: viewId })) return null;
-  const view = plugin.manifest.contributes.projectViews?.find(
-    (v) => v.id === viewId,
-  );
-  return view ? { pluginName: plugin.manifest.name, title: view.title } : null;
+  if (!plugin) return null;
+  const entry = slotEntry(plugin, slot);
+  if (!entry) return null;
+  const block =
+    slot.kind === "block"
+      ? plugin.manifest.contributes.widgetBlocks?.find((b) => b.id === slot.id)
+      : undefined;
+  return {
+    pluginName: plugin.manifest.name,
+    title: entry.title,
+    ...(block && { draw: block.draw ?? "barynt" }),
+  };
 }

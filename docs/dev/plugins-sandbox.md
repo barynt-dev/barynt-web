@@ -12,6 +12,7 @@ the plugin's code and nothing of Barynt's.
 | **The network** | `fetch`, `XMLHttpRequest`, WebSockets and `<img src="https://…">` are blocked. Barynt's data comes through the [host API](plugins-host-api.md); your own servers through [`net.fetch`](plugins-host-api.md#netfetch), for the hosts in your manifest. |
 | **Other code** | No scripts from anywhere: your `main.js` is all that runs. No `<script src>`, no CDN. Bundle what you need. |
 | **The page around it** | The frame can't reach Barynt's page, navigate it or open pop-ups. |
+| **Forms** | A `<form>` doesn't submit — not even to a `submit` listener. Handle the button's `click` (and Enter in a field) yourself, or use the [UI kit](plugins-sdk.md#the-ui-kit), which does. |
 
 What's left is plain DOM, CSS, timers, `requestAnimationFrame`, canvas, SVG,
 and images from `data:` or `blob:` URLs.
@@ -19,6 +20,15 @@ and images from `data:` or `blob:` URLs.
 > [!WARNING]
 > Never put data into `innerHTML`. Titles, comments and names are text
 > people typed; use `textContent` or build the elements.
+
+## Where it shows
+
+A plugin's views and pages appear in the sidebar — under the project it's
+switched on in, or in the workspace's main group and "Plugins" section;
+see [Manifest → Where they show](plugins-manifest.md#where-they-show).
+Each opens a page with the plugin's frame under a header naming the
+plugin. Slots are a fixed list (`lib/plugins/slots.ts`); a plugin can't put
+anything anywhere else.
 
 ## How it starts
 
@@ -32,23 +42,49 @@ and images from `data:` or `blob:` URLs.
 
 ## Looking like Barynt
 
-Barynt's design tokens are set on the frame's `:root` and follow light and
-dark mode while the plugin runs:
+Barynt's **design tokens** are set on the frame's `:root` as CSS variables
+with stable names — `--barynt-<group>-<name>` — and follow light and dark
+while the plugin runs, the way VS Code hands webviews `--vscode-*`. Use them
+instead of fixed colours and sizes, and your plugin fits in either theme:
 
-| Token | For |
+```css
+.mr-item {
+  padding: var(--barynt-space-2) var(--barynt-space-3);
+  border-bottom: 1px solid var(--barynt-color-border);
+  color: var(--barynt-color-text);
+  font-size: var(--barynt-font-size-sm);
+}
+[data-theme="dark"] .mr-chart { opacity: 0.9; }
+```
+
+| Group | Tokens |
 | --- | --- |
-| `--surface`, `--surface-container-low`, `--surface-container`, `--surface-container-high` | Backgrounds, from the page up to raised areas. |
-| `--on-surface`, `--on-surface-variant` | Text, and quieter text. |
-| `--outline`, `--outline-variant` | Borders and dividers. |
-| `--primary`, `--on-primary`, `--primary-container`, `--on-primary-container` | The accent, and text on it. |
-| `--error`, `--warning` | States. |
-| `--radius`, `--radius-sm` | Corners. |
-| `--text-xs`, `--text-sm`, `--text-base` | Font sizes. |
-| `--font-ui` | The font. |
+| Surfaces | `color.surface`, `color.surface.sunken` (inputs), `.raised` (cards), `.overlay` (dialogs), `.hovered`, `.pressed` |
+| Text and lines | `color.text`, `color.text.subtle`, `color.text.inverse`, `color.border`, `color.border.strong`, `color.focus` |
+| Roles | `color.primary`, `color.secondary`, `color.danger` — each with `.text` (on it), `.subtle` and `.subtle.text`; `color.warning`, `color.success`, `color.info` |
+| Palette | `color.blue`, `.teal`, `.green`, `.lime`, `.amber`, `.orange`, `.red`, `.purple`, `.indigo`, `color.chart.1`–`3`, `color.scrim` |
+| Type | `font.family`, `font.family.mono`, `font.size.xxs` … `2xl`, `font.weight.regular` … `bold`, `line.height.tight` / `normal` / `loose` |
+| Space | `space.0`, `1` (4px), `2`, `3`, `4` (16px), `5`, `6`, `8`, `10`, `12` |
+| Shape and size | `radius.sm` / `md` / `lg` / `pill`, `size.control`, `size.control.sm`, `size.touch`, `shadow.card`, `shadow.overlay`, `opacity.disabled`, `duration.fast` / `normal` |
+
+A token `color.text.subtle` is the variable `--barynt-color-text-subtle`.
+From code, the SDK gives you the same names, typed: `token("color.text")` is
+`"var(--barynt-color-text)"` for a style, `tokenValue("color.primary")` the
+colour itself for a canvas, and `theme()` / `onThemeChange()` tell light from
+dark — see [SDK → Design tokens](plugins-sdk.md#design-tokens). `<html>` also
+carries `data-theme="light"` or `"dark"` for your CSS.
+
+> [!NOTE]
+> Barynt's own variables (`--surface`, `--on-surface`, `--text-sm` …) are
+> still there, but they may change with Barynt. The `--barynt-*` names
+> won't.
 
 The frame starts with Barynt's background, text colour and font; your
-`styles.css` does the rest. Make it work at phone width — a project view
-fills the screen there.
+`styles.css` does the rest — or the SDK's [UI kit](plugins-sdk.md#the-ui-kit)
+does, for inputs and widget pieces. In a dashboard widget or a building
+block the frame has no background, so the widget's card (tinted, gradient or
+full colour) shows through — don't give `body` one there. Make it work at
+phone width — a project view fills the screen there.
 
 ## Limits
 

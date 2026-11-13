@@ -304,3 +304,247 @@ describe("credentials (BARY-147)", () => {
     );
   });
 });
+
+describe("settingsPage (BARY-149)", () => {
+  it("lets a sandbox plugin with settings draw them itself", () => {
+    expect(
+      errors({
+        ...base,
+        contributes: {
+          ...base.contributes,
+          settings: [{ key: "zoom", type: "number", label: "Zoom" }],
+          settingsPage: true,
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  it("needs settings to save, and code to draw them", () => {
+    expect(
+      errors({
+        ...base,
+        contributes: { ...base.contributes, settingsPage: true },
+      }),
+    ).toContain(
+      "contributes.settingsPage: needs settings to save — the page draws them, Barynt keeps them",
+    );
+    expect(
+      errors({
+        ...base,
+        kind: "service",
+        capabilities: [],
+        contributes: {
+          settings: [{ key: "zoom", type: "number", label: "Zoom" }],
+          settingsPage: true,
+        },
+      }),
+    ).toContain(
+      "contributes.settingsPage: a service plugin cannot have settingsPage",
+    );
+  });
+});
+
+describe("widgetTemplates (BARY-203)", () => {
+  const template = {
+    id: "bugs",
+    title: "Open bugs",
+    blocks: [
+      { type: "kpi", config: { metric: "open" } },
+      { type: "issues", config: { sort: "priority" } },
+    ],
+  };
+
+  it("lets any kind bring templates of Barynt's blocks", () => {
+    for (const kind of ["sandbox", "declarative", "service"])
+      expect(
+        errors({
+          ...base,
+          kind,
+          capabilities: ["ui:dashboard-widget"],
+          contributes: { widgetTemplates: [template] },
+        }),
+      ).toEqual([]);
+  });
+
+  it("checks the blocks like a custom widget, and the capability", () => {
+    expect(
+      errors({
+        ...base,
+        contributes: { ...base.contributes, widgetTemplates: [template] },
+      }),
+    ).toContain(
+      "contributes.widgetTemplates: needs the capability ui:dashboard-widget",
+    );
+    const bad = (t: unknown) =>
+      errors({
+        ...base,
+        capabilities: ["ui:dashboard-widget"],
+        contributes: { widgetTemplates: [t] },
+      });
+    expect(bad({ ...template, blocks: [] })).not.toEqual([]);
+    expect(bad({ ...template, blocks: [{ type: "note" }] })).not.toEqual([]);
+    expect(
+      bad({ ...template, blocks: [{ type: "kpi", config: { colour: 1 } }] }),
+    ).not.toEqual([]);
+    expect(bad({ ...template, size: "W" })).not.toEqual([]);
+  });
+
+  it("keeps template ids apart from the drawn widgets'", () => {
+    expect(
+      errors({
+        ...base,
+        capabilities: ["ui:dashboard-widget"],
+        contributes: {
+          dashboardWidgets: [{ id: "bugs", title: "Bugs" }],
+          widgetTemplates: [template],
+        },
+      }),
+    ).toContain(
+      "contributes.widgetTemplates.0.id: already the id of one of dashboardWidgets",
+    );
+  });
+});
+
+describe("more setting types and a settings section (BARY-204)", () => {
+  const withSettings = (settings: unknown[], more: object = {}) =>
+    errors({
+      ...base,
+      contributes: { ...base.contributes, settings, ...more },
+    });
+
+  it("accepts every type", () => {
+    expect(
+      withSettings([
+        { key: "body", type: "textarea", label: "Body" },
+        { key: "link", type: "url", label: "Link" },
+        {
+          key: "days",
+          type: "multiselect",
+          label: "Days",
+          options: [{ id: "mon", label: "Mon" }],
+          default: ["mon"],
+        },
+        { key: "who", type: "member", label: "Who" },
+        { key: "tag", type: "label", label: "Tag" },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("needs options of its own only for select and multiselect", () => {
+    expect(
+      withSettings([{ key: "days", type: "multiselect", label: "Days" }]),
+    ).toContain(
+      "contributes.settings.0.options: a multiselect setting needs options",
+    );
+    expect(
+      withSettings([
+        {
+          key: "who",
+          type: "member",
+          label: "Who",
+          options: [{ id: "u1", label: "Ada" }],
+        },
+      ]),
+    ).toContain(
+      "contributes.settings.0.options: only select and multiselect settings have options",
+    );
+  });
+
+  it("keeps lists as defaults to multiselects", () => {
+    expect(
+      withSettings([
+        { key: "body", type: "text", label: "Body", default: ["x"] },
+      ]),
+    ).toContain(
+      "contributes.settings.0.default: only a multiselect's default is a list",
+    );
+  });
+
+  it("takes a section below Barynt's form", () => {
+    expect(
+      withSettings([{ key: "zoom", type: "number", label: "Zoom" }], {
+        settingsPage: "section",
+      }),
+    ).toEqual([]);
+    expect(
+      withSettings([{ key: "zoom", type: "number", label: "Zoom" }], {
+        settingsPage: "below",
+      }),
+    ).not.toEqual([]);
+  });
+});
+
+describe("widgetBlocks (BARY-205)", () => {
+  const withBlocks = (widgetBlocks: unknown[], over: object = {}) =>
+    errors({
+      ...base,
+      capabilities: ["ui:dashboard-widget"],
+      contributes: { widgetBlocks },
+      ...over,
+    });
+
+  it("lets a sandbox plugin bring blocks, with settings", () => {
+    expect(
+      withBlocks([
+        {
+          id: "due-soon",
+          title: "Due soon",
+          settings: [{ key: "days", type: "number", label: "Days" }],
+        },
+        { id: "ring", title: "Done", draw: "plugin" },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("needs code, the capability, and simple settings", () => {
+    expect(
+      withBlocks([{ id: "x", title: "X" }], { kind: "declarative" }),
+    ).toContain(
+      "contributes.widgetBlocks: a declarative plugin cannot contribute widgetBlocks",
+    );
+    expect(
+      errors({
+        ...base,
+        contributes: { widgetBlocks: [{ id: "x", title: "X" }] },
+      }),
+    ).toContain(
+      "contributes.widgetBlocks: needs the capability ui:dashboard-widget",
+    );
+    expect(
+      withBlocks([
+        {
+          id: "x",
+          title: "X",
+          settings: [{ key: "who", type: "member", label: "Who" }],
+        },
+      ]),
+    ).not.toEqual([]);
+    expect(
+      withBlocks([
+        {
+          id: "x",
+          title: "X",
+          settings: [{ key: "pick", type: "select", label: "Pick" }],
+        },
+      ]),
+    ).toContain(
+      "contributes.widgetBlocks.0.settings.0.options: a select setting needs options",
+    );
+  });
+});
+
+describe("issue panels in the sidebar (BARY-209)", () => {
+  it("takes main or sidebar, nothing else", () => {
+    const panels = (placement: unknown) =>
+      errors({
+        ...base,
+        capabilities: ["ui:issue-panel"],
+        contributes: {
+          issuePanels: [{ id: "dev", title: "Development", placement }],
+        },
+      });
+    expect(panels("sidebar")).toEqual([]);
+    expect(panels("main")).toEqual([]);
+    expect(panels("footer")).not.toEqual([]);
+  });
+});

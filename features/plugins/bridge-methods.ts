@@ -16,15 +16,19 @@ import {
   listProjectsForUser,
   listWorkspaceMembersForUser,
 } from "@/features/api-v1/queries";
+import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
+import { can } from "@/lib/permissions";
 import {
   type BridgeMethod,
   type BridgeResponse,
   STORAGE_LIMITS,
 } from "@/lib/plugins/bridge";
+import { checkSettings } from "@/lib/plugins/settings";
 import { proxyFetch } from "./proxy";
 import type { RunningPlugin } from "./runtime";
+import { placeSettings } from "./settings-options";
 
 // What each host-bridge method does (BARY-145), once `callBridge` has let
 // the request through: the plugin is on here, the capability confirmed. The
@@ -114,12 +118,35 @@ const jsonSize = (value: unknown) =>
 
 export const HANDLERS: Record<BridgeMethod, Handler> = {
   async "issues.list"(userId, plugin, p) {
-    const projectId = await projectOf(plugin, p);
-    if (refused(projectId)) return projectId;
     const take = Math.min(
       Math.max(Number.isInteger(p.take) ? (p.take as number) : 50, 1),
       100,
     );
+    // A workspace's plugin without a project: the newest across the
+    // workspace's projects the person can see (BARY-148) — one page, no
+    // cursor.
+    if (!plugin.projectId && str(p.projectId) === undefined) {
+      const projects = await listProjectsForUser(userId, plugin.workspaceId);
+      const pages = await Promise.all(
+        projects.map((project) =>
+          listIssuesForUser(userId, project.id, {
+            q: str(p.q),
+            status: str(p.status),
+            take,
+          }),
+        ),
+      );
+      const issues = pages
+        .flatMap((page) => page?.rows ?? [])
+        .sort(
+          (a, b) =>
+            new Date(b.created).getTime() - new Date(a.created).getTime(),
+        )
+        .slice(0, take);
+      return ok({ issues, nextCursor: null });
+    }
+    const projectId = await projectOf(plugin, p);
+    if (refused(projectId)) return projectId;
     const page = await listIssuesForUser(userId, projectId, {
       q: str(p.q),
       status: str(p.status),
@@ -309,6 +336,47 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
         ]),
       ),
     );
+  },
+
+  async "settings.set"(userId, plugin, p) {
+    // Whoever may change the plugin's settings here — `plugin.enable` in
+    // the project or the workspace, as on Barynt's own form.
+    const allowed = await can(
+      userId,
+      "plugin.enable",
+      plugin.projectId
+        ? { projectId: plugin.projectId }
+        : { workspaceId: plugin.workspaceId },
+    );
+    if (!allowed) return no("forbidden");
+    const values =
+      p.values && typeof p.values === "object" && !Array.isArray(p.values)
+        ? (p.values as Record<string, unknown>)
+        : null;
+    if (!values) return no("invalid_params");
+    const checked = checkSettings(
+      await placeSettings(plugin, plugin.manifest.contributes.settings ?? []),
+      values,
+    );
+    if (!checked.ok) return no("invalid_params");
+    await db.pluginSettings.upsert({
+      where: { activationId: plugin.activationId },
+      create: { activationId: plugin.activationId, values: checked.values },
+      update: { values: checked.values },
+    });
+    await recordAudit({
+      action: "plugin.settings.updated",
+      actorId: userId,
+      target: {
+        type: "plugin",
+        id: plugin.pluginId,
+        label: plugin.manifest.name,
+      },
+      workspaceId: plugin.workspaceId,
+      projectId: plugin.projectId,
+      meta: { keys: Object.keys(checked.values) },
+    });
+    return ok(null);
   },
 
   "net.fetch": (userId, plugin, p) => proxyFetch(userId, plugin, p),

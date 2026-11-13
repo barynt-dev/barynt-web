@@ -21,6 +21,7 @@ import { isGroupHidden } from "@/features/issues/hidden-groups";
 import { useIssueOpen } from "@/features/issues/issue-links";
 import type { SortKey } from "@/features/issues/sort";
 import type { IssueComposerData, IssueLookups } from "@/features/issues/types";
+import { usePluginBadgeIssues } from "@/features/plugins/components/PluginBadges/PluginBadges";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useHasOpenModal } from "@/lib/context";
 import { useShortcut } from "@/lib/shortcuts/useShortcut";
@@ -104,6 +105,8 @@ export function Board({
   collapsedLanes = [],
   onCollapsedLanesChange,
 }: BoardProps) {
+  // The plugins' badges (BARY-151) are asked for the issues shown here.
+  usePluginBadgeIssues(issues);
   // A grouping by a custom field that has since gone is a status board.
   const groupKey = resolveGroupKey(requestedGroupKey, composer.customFields);
   const lookups: IssueLookups = {

@@ -62,6 +62,10 @@ import { rankBetween } from "@/features/issues/rank";
 import { type SortKey, sortByKey } from "@/features/issues/sort";
 import type { IssueComposerData, IssuePatch } from "@/features/issues/types";
 import {
+  PluginBadgeChips,
+  usePluginBadgeIssues,
+} from "@/features/plugins/components/PluginBadges/PluginBadges";
+import {
   type DetailFieldKey,
   visibleDetailFields,
 } from "@/features/projects/detail-fields";
@@ -87,6 +91,7 @@ import {
   TypeCell,
   UpdatedCell,
 } from "./components/IssueCells";
+
 import { IssueRowLink } from "./components/IssueRowLink";
 import { ListGroupHeader } from "./components/ListGroupHeader";
 import styles from "./listView.module.scss";
@@ -225,6 +230,9 @@ export function ListView({
   // cell: the table needs to know that this one row can't be dragged for
   // the duration.
   const [editing, setEditing] = useState<string | null>(null);
+
+  // The plugins' badges (BARY-151) are asked for the issues shown here.
+  usePluginBadgeIssues(issues);
 
   // Whatever just changed shows up immediately; the server catches up
   // afterward. Without this, the row would jump back to its old place for
@@ -612,14 +620,22 @@ export function ListView({
             <LabelsCell issue={issue} labels={labels} />
           ) : null;
       case "fields":
+        // The custom fields, and the plugins' badges (BARY-151) after them.
         return (issue) => (
-          <FieldChips
-            issue={issue}
-            fields={composer.customFields}
-            members={members}
-            hidden={hiddenCardFields}
-            max={2}
-          />
+          <span className={styles.fieldsCell}>
+            <FieldChips
+              issue={issue}
+              fields={composer.customFields}
+              members={members}
+              hidden={hiddenCardFields}
+              max={2}
+            />
+            <PluginBadgeChips
+              issueId={issue.id}
+              hidden={hiddenCardFields}
+              max={2}
+            />
+          </span>
         );
       case "comments":
         return (issue) => <CommentsCell issue={issue} />;

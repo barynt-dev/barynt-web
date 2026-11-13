@@ -95,6 +95,7 @@ function TabItem({ item }: { item: TabGroup }) {
         <NavLink
           href={item.href}
           icon={item.icon}
+          leading={item.leading}
           label={item.label}
           activeHref={item.activeHref}
           badge={item.badge}

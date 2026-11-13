@@ -1,11 +1,37 @@
 import { type Api, createApi } from "./api";
-import type { Context, Host, Json } from "./types";
+import type {
+  ActionResult,
+  Badge,
+  BadgeIssue,
+  BlockData,
+  Context,
+  Host,
+  Json,
+} from "./types";
 
 /** Something that undoes what a plugin set up. */
 export type Cleanup = () => void;
 
+/** A building block for custom widgets (`contributes.widgetBlocks`). */
+export interface WidgetBlock {
+  /** As in the manifest's `contributes.widgetBlocks`. */
+  id: string;
+  /**
+   * What it shows, for Barynt to draw (`draw: "barynt"`, the default) —
+   * `context.config` holds its settings. Call `showBlock()` later to show
+   * something new.
+   */
+  data?(context: Context): BlockData | Promise<BlockData>;
+  /** Draws it yourself (`draw: "plugin"`), like a view. */
+  render?(
+    el: HTMLElement,
+    context: Context,
+  ): void | Cleanup | Promise<void | Cleanup>;
+}
+
 export interface ProjectView {
-  /** As in the manifest's `contributes.projectViews`. */
+  /** As in the manifest's `contributes.projectViews` (or `navItems`, for
+   *  `registerPage`). */
   id: string;
   /** Draws the view into `el`. May return what undoes it. */
   render(
@@ -44,7 +70,20 @@ export abstract class Plugin {
   readonly #cleanups: Cleanup[] = [];
   readonly #renders: Promise<unknown>[] = [];
 
+  readonly #show: Host["show"];
+  readonly #serveBadges: Host["serveBadges"];
+  readonly #serveActions: Host["serveActions"];
+  readonly #actions = new Map<
+    string,
+    (context: {
+      issueId: string | null;
+    }) => ActionResult | undefined | Promise<ActionResult | undefined>
+  >();
+
   constructor(host: Host) {
+    this.#show = host.show;
+    this.#serveBadges = host.serveBadges;
+    this.#serveActions = host.serveActions;
     this.api = createApi(host);
     this.context = host.context;
     this.root = host.root;
@@ -79,8 +118,119 @@ export abstract class Plugin {
    * for it, and never otherwise.
    */
   registerProjectView(view: ProjectView): void {
+    this.#renderSlot("projectView", view);
+  }
+
+  /**
+   * A page from the manifest's `contributes.navItems` — opened from its
+   * entry in the sidebar's "Plugins" section. Drawn right away when this
+   * frame is for it, never otherwise.
+   */
+  registerPage(page: ProjectView): void {
+    this.#renderSlot("page", page);
+  }
+
+  /**
+   * A panel in an issue's detail, from the manifest's
+   * `contributes.issuePanels` — in the side panel, the dialog, the page and
+   * the phone sheet. `context.issueId` is the issue; the frame grows to
+   * your content's height on its own (up to a limit, then it scrolls).
+   */
+  registerIssuePanel(panel: ProjectView): void {
+    this.#renderSlot("issuePanel", panel);
+  }
+
+  /**
+   * An action from the manifest's `contributes.actions` — in an issue's
+   * "…" menu, a card's quick actions and the command palette (as the
+   * manifest's `where` says). Barynt runs it in a hidden frame when someone
+   * picks it, for that issue (`issueId`); what you return shows as a toast.
+   * Do the work through `this.api` — it's checked like everything else.
+   */
+  registerAction(action: {
+    id: string;
+    run(context: {
+      issueId: string | null;
+    }): ActionResult | undefined | Promise<ActionResult | undefined>;
+  }): void {
+    if (this.context.slot.kind !== "actions") return;
+    if (this.#actions.size === 0)
+      this.#serveActions?.((id, context) => {
+        const run = this.#actions.get(id);
+        if (!run) throw new Error(`No action "${id}"`);
+        return run(context);
+      });
+    this.#actions.set(action.id, (context) => action.run(context));
+  }
+
+  /**
+   * Badges on a project's board cards and list rows, for the badges in the
+   * manifest's `contributes.issueBadges`. Barynt runs one hidden frame per
+   * board and hands `provide` the issues it shows, in batches; return the
+   * chips by issue id — Barynt draws them. Nothing is drawn by you here.
+   */
+  registerBadges(badges: {
+    provide(
+      issues: BadgeIssue[],
+    ): Record<string, Badge[]> | Promise<Record<string, Badge[]>>;
+  }): void {
+    if (this.context.slot.kind !== "badges") return;
+    this.#serveBadges?.((issues) => badges.provide(issues));
+  }
+
+  /**
+   * A dashboard widget from the manifest's `contributes.dashboardWidgets`.
+   * Its frame fills the widget below Barynt's header, in whatever size it
+   * was added — watch `el`'s size (a `ResizeObserver`) to show more when
+   * there's room.
+   */
+  registerWidget(widget: ProjectView): void {
+    this.#renderSlot("widget", widget);
+  }
+
+  /**
+   * Its own settings (`contributes.settingsPage`): with `true` a page shown
+   * instead of Barynt's form, with `"section"` a part below it — a check, a
+   * preview, a picker that asks your service. `context.slot.id` says which
+   * (`"settings"` or `"section"`). Read with `loadSettings()`, save with
+   * `api.settings.set(values)`.
+   */
+  registerSettings(page: Omit<ProjectView, "id">): void {
+    const { id } = this.context.slot;
+    if (id === "settings" || id === "section")
+      this.#renderSlot("settings", { ...page, id });
+  }
+
+  /**
+   * A building block from the manifest's `contributes.widgetBlocks`, for
+   * people to put in their custom widgets. Barynt opens one frame per block
+   * in a widget, so it's run right away when this frame is for it, and
+   * never otherwise. With `data`, Barynt draws what it returns; with
+   * `render`, you draw it (`draw: "plugin"` in the manifest).
+   */
+  registerBlock(block: WidgetBlock): void {
     const { slot } = this.context;
-    if (slot.kind !== "projectView" || slot.id !== view.id) return;
+    if (slot.kind !== "block" || slot.id !== block.id) return;
+    if (block.render) {
+      this.#renderSlot("block", { id: block.id, render: block.render });
+      return;
+    }
+    const data = block.data;
+    if (!data) return;
+    this.#renders.push(
+      Promise.resolve(data(this.context)).then((d) => this.showBlock(d)),
+    );
+  }
+
+  /** Shows new data in this frame's building block — after a refresh,
+   *  say (`registerInterval`). */
+  showBlock(data: BlockData): void {
+    this.#show?.(data);
+  }
+
+  #renderSlot(kind: Context["slot"]["kind"], view: ProjectView) {
+    const { slot } = this.context;
+    if (slot.kind !== kind || slot.id !== view.id) return;
     const done = Promise.resolve(view.render(this.root, this.context)).then(
       (cleanup) => {
         if (typeof cleanup === "function") this.register(cleanup);

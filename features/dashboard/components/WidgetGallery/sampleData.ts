@@ -437,5 +437,23 @@ export function sampleData(widget: Widget, words: SampleWords): WidgetData {
       return { type: "note", pages: [{ id: "p1", text: words.note }] };
     case "embed":
       return { type: "embed", framing: null };
+    case "plugin":
+      return {
+        type: "plugin",
+        pluginId: widget.config.pluginId ?? "",
+        widgetId: widget.config.pluginWidget ?? "",
+        plugin: null,
+        workspaceId: "",
+        projectId: null,
+      };
+    case "pluginBlock":
+      return {
+        type: "pluginBlock",
+        pluginId: widget.config.pluginId ?? "",
+        blockId: widget.config.pluginBlock ?? "",
+        plugin: null,
+        workspaceId: "",
+        projectId: null,
+      };
   }
 }

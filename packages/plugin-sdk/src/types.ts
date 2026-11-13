@@ -4,12 +4,202 @@
 
 /** Where a plugin's frame runs. */
 export interface Context {
-  slot: { kind: "projectView"; id: string };
+  /** Which of its views or pages this frame is for. */
+  slot: {
+    kind:
+      | "projectView"
+      | "page"
+      | "widget"
+      | "block"
+      | "issuePanel"
+      | "badges"
+      | "actions"
+      | "settings";
+    id: string;
+  };
+  /** In an issue panel: the issue it's about — `api.issues.get(issueId)`. */
+  issueId?: string;
   workspaceId: string;
   /** `null` for a workspace's plugin. */
   projectId: string | null;
   /** The person's language, e.g. `de`. */
   locale: string;
+  /** A building block's own settings, as the widget's builder set them. */
+  config?: Record<string, string | number | boolean>;
+}
+
+/**
+ * What a building block shows, for Barynt to draw like its own blocks
+ * (`registerBlock`). Texts are cut to 200 characters, lists and bars to 20,
+ * links to `http(s)`, colours to a `#hex` or a `var(--token)`.
+ */
+export type BlockData =
+  | {
+      kind: "kpi";
+      value: string | number;
+      label: string;
+      trend?: { text: string; good?: boolean };
+    }
+  | {
+      kind: "list";
+      items: { title: string; meta?: string; href?: string }[];
+      /** Shown when there are no items. */
+      empty?: string;
+    }
+  | { kind: "bars"; bars: { label: string; value: number; color?: string }[] }
+  | { kind: "progress"; value: number; max?: number; label?: string };
+
+/** An issue a board shows, as `registerBadges` gets it: always id and
+ *  reference; with `issues:read` confirmed, what the card shows too. */
+export interface BadgeIssue {
+  id: string;
+  /** `PREFIX-123`. */
+  ref: string;
+  title?: string;
+  priority?: number;
+  dueDate?: string | null;
+  /** When it was created, ISO. */
+  created?: string;
+}
+
+/** The icons a badge may carry — Barynt's own, nothing is loaded. */
+export type BadgeIcon =
+  | "clock"
+  | "timer"
+  | "calendar"
+  | "check"
+  | "circle-check"
+  | "circle-x"
+  | "triangle-alert"
+  | "info"
+  | "flag"
+  | "star"
+  | "bug"
+  | "zap"
+  | "lock"
+  | "eye"
+  | "link"
+  | "user"
+  | "message-square"
+  | "git-pull-request"
+  | "git-merge"
+  | "git-branch"
+  | "rocket"
+  | "package";
+
+export type BadgeTone =
+  | "neutral"
+  | "primary"
+  | "info"
+  | "success"
+  | "warning"
+  | "danger";
+
+/** A step of a row's pipeline — a build, a review, a check. */
+export type StepState =
+  | "success"
+  | "running"
+  | "warning"
+  | "danger"
+  | "pending";
+
+/** What a row across the card is made of, in the order you choose — Barynt
+ *  draws each part. Two ways, mixed as you like: **building blocks** for
+ *  the usual things (`steps`, `status`, `progress`, `sparkline`, `date`,
+ *  `label`, `avatar`, `chip`, `link`), and **free layout** — `group`s of
+ *  `text`, `icon`, `dot`, `image` — for anything else. Up to 24 parts,
+ *  groups 3 deep, two lines at most (`break`). */
+export type RowPart =
+  | {
+      type: "group";
+      direction?: "row" | "column";
+      /** Space between children, a step of Barynt's scale (0–3). */
+      gap?: 0 | 1 | 2 | 3;
+      align?: "start" | "center" | "end";
+      justify?: "start" | "between" | "end";
+      /** Takes the room left in its line. */
+      grow?: boolean;
+      padding?: 0 | 1 | 2;
+      background?: BadgeTone | "subtle";
+      border?: boolean;
+      radius?: "sm" | "md" | "pill";
+      children: RowPart[];
+    }
+  | { type: "icon"; icon: BadgeIcon; tone?: BadgeTone }
+  | {
+      type: "text";
+      /** Up to 40 characters. */
+      text: string;
+      tone?: BadgeTone | "subtle";
+      size?: "xs" | "sm" | "base";
+      /** In the monospace font — a number, a hash. */
+      mono?: boolean;
+      strong?: boolean;
+      italic?: boolean;
+    }
+  | { type: "dot"; tone?: BadgeTone }
+  | {
+      type: "image";
+      /** `data:image/png|jpeg|webp;base64,…`, up to 24 kB — draw it on a
+       *  canvas and `toDataURL()`. No SVG, no address. */
+      src: string;
+      alt: string;
+      /** Up to 64 × 32 px. */
+      width: number;
+      height: number;
+      rounded?: boolean;
+    }
+  | { type: "chip"; text: string; tone?: BadgeTone }
+  | {
+      type: "label";
+      name: string;
+      /** A palette name (`"teal"`) or a `#hex`. */
+      color: string;
+    }
+  | { type: "avatar"; name: string }
+  | { type: "steps"; steps: StepState[] }
+  | { type: "progress"; value: number; max: number }
+  | { type: "sparkline"; values: number[]; tone?: BadgeTone }
+  /** Shown in the person's language: "in 3 days", "13 Nov". */
+  | { type: "date"; date: string; format?: "relative" | "short" }
+  /** `https` only; opens in a new tab, not the issue. */
+  | { type: "link"; text: string; href: string }
+  | { type: "status"; status: "success" | "danger" | "warning" | "pending" }
+  /** Pushes what follows to its line's right end. */
+  | { type: "spacer" }
+  /** Starts the row's second line. */
+  | { type: "break" };
+
+/** On a card or row: a small chip (up to 3 per issue, `text` up to 24
+ *  characters) — or, `kind: "row"`, a line across the card made of `parts`
+ *  (up to 2 per issue). */
+export interface Badge {
+  /** Which of your `contributes.issueBadges` — what people can hide. */
+  badge: string;
+  kind?: "chip" | "row";
+  /** A chip's text. A row's summary — shown where there's no room for the
+   *  row (the list) and read out; without it, the row's texts. */
+  text?: string;
+  icon?: BadgeIcon;
+  tone?: BadgeTone;
+  /** Up to 120 characters. */
+  tooltip?: string;
+  /** A row's parts, left to right. */
+  parts?: RowPart[];
+  /** A row's click opens the issue at this one of your `issuePanels` —
+   *  where you can draw whatever you like. */
+  panel?: string;
+}
+
+/** What an action answers — all of it optional. */
+export interface ActionResult {
+  /** Shown as a toast, up to 120 characters. */
+  message?: string;
+  tone?: BadgeTone;
+  /** Load the page's data again — the action changed something. */
+  refresh?: boolean;
+  /** Open this one of your issue panels in the issue. */
+  openPanel?: string;
 }
 
 /** The object Barynt hands a plugin's default export. */
@@ -17,6 +207,21 @@ export interface Host {
   call(method: string, params?: unknown): Promise<unknown>;
   readonly context: Context;
   readonly root: HTMLElement;
+  /** Hands a building block's data to Barynt to draw. */
+  show?(data: BlockData): void;
+  /** What runs its actions. */
+  serveActions?(
+    handler: (
+      actionId: string,
+      context: { issueId: string | null },
+    ) => ActionResult | undefined | Promise<ActionResult | undefined>,
+  ): void;
+  /** What answers a board's batches of issues with badges. */
+  serveBadges?(
+    handler: (
+      issues: BadgeIssue[],
+    ) => Record<string, Badge[]> | Promise<Record<string, Badge[]>>,
+  ): void;
 }
 
 export interface Person {
@@ -59,6 +264,9 @@ export interface Issue {
   closedAt: string | null;
   dueDate: string | null;
   storyPoints: number | null;
+  /** Its custom fields' values, by field key — a field without a value has
+   *  no entry; a choice comes as `{ id, label }`. */
+  customFields?: Record<string, unknown>;
 }
 
 export interface Comment {
@@ -142,6 +350,7 @@ export interface Methods {
   "storage.delete": [{ key: string }, null];
   "storage.list": [Record<string, never>, string[]];
   "settings.get": [Record<string, never>, Record<string, Json>];
+  "settings.set": [{ values: Record<string, Json> }, null];
   "net.fetch": [
     {
       url: string;

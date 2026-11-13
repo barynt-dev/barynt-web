@@ -46,3 +46,15 @@
   color: var(--on-surface-variant);
   cursor: default;
 }
+.mr-check {
+  padding: 1rem 1.25rem;
+}
+.mr-check-title {
+  margin: 0;
+  font-size: var(--text-base);
+}
+.mr-check-hint {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font-size: var(--text-sm);
+}

@@ -12,6 +12,7 @@ mock.module("next-intl", () => {
   const t = Object.assign((key: string) => key, { has: () => false });
   return {
     useTranslations: () => t,
+    useLocale: () => "en",
     useFormatter: () => ({ dateTime: () => "date" }),
   };
 });
@@ -67,6 +68,7 @@ const view = (over: Partial<PluginSettingsView> = {}): PluginSettingsView => ({
   state: "active",
   views: [],
   credentials: [],
+  settingsPage: false,
   ...over,
 });
 
@@ -110,5 +112,54 @@ describe("PluginSettings", () => {
     const html = render(view(), { workspaceId: "ws-1", projectId: null });
     expect(html).toContain("openInStore");
     expect(html).not.toContain("offInProject");
+  });
+
+  it("draws every kind of setting (BARY-204)", () => {
+    const field = (
+      key: string,
+      type: PluginSettingsView["fields"][number]["type"],
+      options: { id: string; label: string }[] = [],
+    ) => ({ key, type, label: key, description: null, default: null, options });
+    const html = render(
+      view({
+        fields: [
+          field("body", "textarea"),
+          field("link", "url"),
+          field("days", "multiselect", [
+            { id: "mon", label: "Mon" },
+            { id: "tue", label: "Tue" },
+          ]),
+          field("assignee", "member", [{ id: "u1", label: "Ada Lovelace" }]),
+          field("tag", "label", [{ id: "l1", label: "Bug" }]),
+        ],
+        values: { days: ["tue"], body: "Hello" },
+      }),
+    );
+    expect(html).toMatch(/<textarea[^>]*>Hello<\/textarea>/);
+    expect(html).toContain('type="url"');
+    expect(html).toMatch(/aria-pressed="false"[^>]*>.*?Mon/);
+    expect(html).toMatch(/aria-pressed="true"[^>]*>.*?Tue/);
+    expect(html).toContain("Ada Lovelace");
+    expect(html).toContain("Bug");
+  });
+
+  it("puts a plugin's own page instead of the form, its section below it", () => {
+    const page = render(
+      view({
+        plugin: { ...view().plugin, kind: "sandbox" },
+        settingsPage: "page",
+      }),
+    );
+    expect(page).toContain("<iframe");
+    expect(page).not.toContain("Channel");
+    const section = render(
+      view({
+        plugin: { ...view().plugin, kind: "sandbox" },
+        settingsPage: "section",
+      }),
+    );
+    expect(section).toContain("Channel");
+    expect(section).toContain('data-part="section"');
+    expect(section.indexOf("Channel")).toBeLessThan(section.indexOf("<iframe"));
   });
 });

@@ -68,7 +68,24 @@ Der Store zeigt alle Plugins, die deine Plattform-Admins installiert haben, mit 
 
 ### Einschalten in einem Projekt
 
-Ein freigeschaltetes Plugin für Projekte hat in den Einstellungen jedes Projekts einen Eintrag unter **Plugins**, unterhalb der anderen Bereiche. Projekt-Admins öffnen ihn, prüfen, was es im Projekt darf, und klicken **Einschalten**. Läuft es, enthält die Seite das Formular, das das Plugin mitbringt (ein Kanalname, was gepostet wird, …), und unten das Ausschalten – Einstellungen und Daten bleiben, bis du **Daten löschen** wählst.
+Ein freigeschaltetes Plugin für Projekte hat in den Einstellungen jedes Projekts einen Eintrag unter **Plugins**, unterhalb der anderen Bereiche. Projekt-Admins öffnen ihn, prüfen, was es im Projekt darf, und klicken **Einschalten**. Läuft es, enthält die Seite das Formular, das das Plugin mitbringt (ein Kanalname, wem zugewiesen wird, Labels, Wochentage, …), und unten das Ausschalten – Einstellungen und Daten bleiben, bis du **Daten löschen** wählst.
+
+### Wo Plugins erscheinen
+
+Ein Plugin mit eigenen Ansichten oder Seiten zeigt sie in der Seitenleiste, jeweils mit dem Zeichen des Plugins:
+
+- **Im Projekt eingeschaltet**: unter dem Projekt, neben Dashboard, Board und Aufgaben; Seiten unter der Überschrift **Plugins**.
+- **Im Workspace eingeschaltet**: Ansichten oben in der Seitenleiste, neben Dashboard und Board des Workspaces (auf dem Handy im Abschnitt **Plugins**); Seiten in einem eigenen Abschnitt **Plugins**.
+
+Die Seite eines Plugins nennt unter dem Titel immer den Namen des Plugins.
+
+Ein Plugin kann auch **Dashboard-Widgets** mitbringen: Auf einem Dashboard stehen sie unter **Widget hinzufügen** im Bereich **Plugins**, mit Live-Vorschau. Manche sind Vorlagen aus Barynts eigenen Bausteinen: Einmal hinzugefügt, ist so ein Widget ein eigenes Widget des Dashboards – es bleibt, wenn das Plugin ausgeschaltet wird, und mit **Anpassen** änderst du es vor dem Hinzufügen. Und manche Plugins zeichnen ihre **Einstellungsseite** selbst – die Seite unter **Plugins** in den Einstellungen zeigt dann das Formular des Plugins; was es speichert, prüft Barynt wie jede andere Einstellung. Andere ergänzen unter Barynts Formular einen eigenen Teil – etwa eine Verbindungsprüfung.
+
+Plugins können auch **Bausteine** für eigene Widgets mitbringen: Im Widget-Builder listet **Baustein hinzufügen** sie neben Barynts eigenen, jeweils mit ihren Einstellungen. Ist das Plugin ausgeschaltet, sagt der Baustein das – der Rest des Widgets bleibt.
+
+Manche Plugins zeigen ein **Panel in jedem Issue** eines Projekts, in dem sie eingeschaltet sind – unter den Anhängen, mit dem Namen des Plugins. Ein Panel, das du nicht brauchst, klappst du zu; es bleibt für dich zugeklappt. Manche Plugins ergänzen stattdessen einen Bereich in der Seitenleiste des Issues – „Entwicklung“ mit Branch, Merge Request und Pipeline, neben den Feldern des Issues. Andere setzen **Badges** auf die Karten im Board und die Zeilen der Liste – eine Fälligkeit, ein offener Merge Request. **Anzeige** listet sie unter *Plugin-Badges*; was du nicht brauchst, schaltest du dort aus. Manche zeigen eine ganze Zeile auf der Karte – etwa einen Merge Request mit Status und Pipeline. Ein Klick auf so eine Zeile kann das Issue direkt beim Panel des Plugins öffnen.
+
+Plugins können außerdem **Aktionen** ergänzen – „Pipeline neu starten“, „Merge Request schließen“ – im **…**-Menü eines Issues, in den Quick Actions einer Karte und in der Befehlspalette, solange ein Issue offen ist. Was sich nicht rückgängig machen lässt, fragt vorher nach.
 
 ### Einstellungen eines Plugins im Workspace
 

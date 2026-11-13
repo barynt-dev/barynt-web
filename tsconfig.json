@@ -21,7 +21,8 @@
     "paths": {
       "@/*": ["./*"],
       "@barynt/plugin-sdk": ["./packages/plugin-sdk/src/index.ts"],
-      "@barynt/plugin-sdk/testing": ["./packages/plugin-sdk/src/testing.ts"]
+      "@barynt/plugin-sdk/testing": ["./packages/plugin-sdk/src/testing.ts"],
+      "@barynt/plugin-sdk/ui": ["./packages/plugin-sdk/src/ui.ts"]
     }
   },
   "include": [

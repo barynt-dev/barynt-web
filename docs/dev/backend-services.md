@@ -298,6 +298,90 @@ host, its typed API (`METHODS` — `tests/unit/plugins/sdk.test.ts` keeps it equ
 `BRIDGE_METHODS`) and a test host. The app resolves it through `tsconfig.json`'s `paths`;
 `bun run --cwd packages/plugin-sdk build` writes `dist/` with types. For plugin authors: [Building plugins](plugins.md).
 
+**Slots (BARY-148).** `lib/plugins/slots.ts` is the fixed list of places a sandboxed plugin
+fills — today `projectView` (`contributes.projectViews`, `ui:project-view`) and `page`
+(`navItems`, `ui:nav-item`) — with the manifest list, the capability and the address
+segment of each. `features/plugins/slots.ts#getPluginNav` reads the enabled activations of
+the workspace once per request and gives the sidebar its entries: a workspace's views in the
+main group (`NavGroups/WorkspaceDashboard`), its pages in `NavGroups/Plugins`, a project's
+views and pages under the project (`NavGroups/Projects`). They open
+`…/plugin/<id>/<view|page>/<entry>` (workspace and project routes, `PluginSlotPage`), and the
+frame route checks the slot again (`slotEntry` in `runtime.ts`).
+
+**Widgets and settings pages (BARY-149).** A `widget` slot (`dashboardWidgets`,
+`ui:dashboard-widget`) has no page of its own: a dashboard widget of kind `plugin`
+(`features/dashboard/widgets.ts`, `config.pluginId`/`pluginWidget`) draws `PluginFrame` in
+its body; `widgetData` resolves whether it still runs there (`getPluginSlotView`), and the
+gallery lists the place's plugin widgets (`getPluginWidgets`). `contributes.settingsPage`
+puts the plugin's `settings` slot frame on its settings page instead of the form; it saves
+through `settings.set`, which checks `plugin.enable` and `checkSettings` like
+`savePluginSettings`.
+
+**Widget templates (BARY-203).** `contributes.widgetTemplates` are validated in the manifest with
+`pluginTemplateSchema` (`features/dashboard/widgets.ts`, the builder's block rules);
+`getPluginWidgets` hands each out as `template`, the `blocks` widget `pluginTemplateWidget` makes
+of it. The gallery previews and adds it like a custom widget (a copy, no frame, no runtime
+link to the plugin); **Customize** opens it in the builder.
+
+**Setting types and the settings section (BARY-204).** `lib/plugins/settings.ts` knows every
+setting type (`SETTING_TYPES`) and checks values (`checkSettings`); a `member` or `label` is
+checked against `options` that `placeSettings` (`features/plugins/settings-options.ts`) fills
+with the place's members and labels — the settings query, `savePluginSettings` and
+`settings.set` all go through it. `settingsPage: "section"` keeps Barynt's form and puts the
+`settings` frame below it with the slot id `section` (`settingsSlotId`, `lib/plugins/slots.ts`).
+**Building blocks (BARY-205).** `contributes.widgetBlocks` is the slot `block`. In a custom
+widget a block of kind `pluginBlock` (`config.pluginId`/`pluginBlock`/`pluginConfig`) draws
+`PluginBlockBody`: with `draw: "barynt"` a headless `PluginFrame` whose plugin calls
+`host.show(data)` — the frame message `blockData`, checked by `parseBlockData`
+(`lib/plugins/blocks.ts`) — and Barynt draws the result (`BlockDataView`); with `"plugin"` the
+frame itself. `widgetData` resolves whether it runs (`getPluginSlotView`, now with `draw`);
+`getPluginBlocks` feeds the builder through `PluginBlocksProvider`.
+**Issue panels (BARY-150).** The slot `issuePanel` (`contributes.issuePanels`,
+`ui:issue-panel`) comes with the issue: `getIssueById`/`getIssueByRef` add `pluginPanels`
+(`getPluginIssuePanels`, the project's activations, cached per request). `IssuePluginPanels`
+draws each in the stacked body, the dialog and the page; an open one is a `PluginFrame` with
+`issueId` in its context and `autoHeight` — the frame runtime measures `#root` and sends
+`resize`, which the host clamps (48–640 px).
+
+**Actions (BARY-152).** `contributes.actions` (`ui:action`) come with the issue
+(`pluginActions`, `getPluginIssueActions`) for its "…" menu; a card's quick actions and the
+palette (with an issue open) ask `listIssuePluginActions`. Picking one goes through
+`usePluginAction` (the manifest's `confirm` first) into `startPluginAction`; `PluginActionRunner`
+in the app shell runs it in a hidden `PluginFrame` (slot `actions`): `action:run` → `actionDone`
+over the frame's channel, checked by `parseActionResult` (`lib/plugins/plugin-actions.ts`),
+then a toast, `router.refresh()` or the panel (`barynt:focus-panel`). 20 s at most.
+
+**Sidebar panels (BARY-209).** `issuePanels[].placement` (`main` default, `sidebar`) comes
+along in `pluginPanels`; `IssuePluginPanels placement=…` draws the main ones after the
+attachments and the sidebar ones in `IssueSidebar` after the custom fields (in the stacked
+body after the meta, on a phone after the properties group). The frame may write to the
+clipboard (`allow="clipboard-write"`) for the kit's `copyField`.
+
+**Badges (BARY-151).** The project layout wraps its views in `ProjectPluginBadges`
+(`getPluginBadgeProviders`: the project's activations with `ui:issue-badge`, for someone with
+`project.view`). Board and list report their issues (`usePluginBadgeIssues`); per plugin one
+headless `PluginFrame` (slot `badges`) gets them in batches of `BADGE_BATCH` over the frame's
+channel (`badges:request` → `badges`, with a sequence number) and the answer goes through
+`parseBadges` (`lib/plugins/badges.ts`) before `PluginBadgeChips` draws it. Hidden in
+"Display" as `pb:<plugin>:<badge>` in `hiddenFields`. A badge with `kind: "row"` (BARY-207) is
+made of `parts` (`RowPart`, checked part by part in `parseParts`) and drawn across the card by
+`PluginBadgeRows`; the list shows it as a chip. Since BARY-208 parts nest (`group`, 3 deep, 24 in all,
+one `break` for a second line, the row capped at two lines in CSS); `image` takes only small
+raster data URLs, `link` only `https`. A row's `panel` makes its click call `focusPanelNext`
+(`PluginBadges/panelFocus.ts`) before the card opens the issue; `IssuePluginPanels` takes it,
+opens that panel and scrolls to it.
+
+**Design tokens and the full kit (BARY-206).** `lib/plugins/tokens.ts` is the token catalog:
+each public name (`color.text.subtle`) points at a host variable or holds a fixed value;
+`tokenCss()` writes the `--barynt-*` variables into every frame and `HOST_TOKENS` (=
+`THEME_TOKENS`) is what `PluginFrame` sends, light or dark, live — the runtime also sets
+`<html data-theme>` and fires `barynt:themechange`. The SDK keeps the same names
+(`packages/plugin-sdk/src/tokens.ts`; `tests/unit/plugins/sdkUiMore.test.ts` checks they match).
+The kit's modules are `packages/plugin-sdk/src/ui/` (`core`, `css`, `icons` — Lucide shapes
+built with `createElementNS`, `inputs`, `display`, `data`, `overlay`).
+The SDK's UI kit is `packages/plugin-sdk/src/ui.ts` (`@barynt/plugin-sdk/ui`), tested on
+happy-dom (`tests/unit/plugins/sdkUi.test.ts`).
+
 **The host proxy (BARY-147).** `net.fetch` sends a sandboxed plugin's request to one of the
 manifest's `network` hosts (`features/plugins/proxy.ts`, rules in `lib/plugins/proxy.ts`):
 https only, the host resolved and refused when any address is private (unless it's in

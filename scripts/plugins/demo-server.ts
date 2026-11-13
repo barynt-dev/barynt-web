@@ -82,13 +82,72 @@ const DEMOS: Demo[] = [
       minBaryntVersion: "0.9.0",
       license: "MIT",
       authorUrl: "https://example.com",
-      contributes: { projectViews: [{ id: "timeline", title: "Timeline" }] },
+      contributes: {
+        projectViews: [{ id: "timeline", title: "Timeline" }],
+        navItems: [{ id: "roadmap", title: "Roadmap" }],
+        dashboardWidgets: [{ id: "oldest-open", title: "Oldest open issues" }],
+        // In every issue: how long it's been open, how far to its due date
+        // (BARY-150).
+        issuePanels: [
+          { id: "schedule", title: "Schedule", icon: "lucide:calendar-clock" },
+        ],
+        // On every card and row: how old, and when it's due (BARY-151).
+        issueBadges: [
+          { id: "due", title: "Due" },
+          { id: "age", title: "Age" },
+        ],
+        // Building blocks for custom widgets (BARY-205): two Barynt draws
+        // from the plugin's data, one the plugin draws itself.
+        widgetBlocks: [
+          {
+            id: "due-soon",
+            title: "Due soon",
+            description: "Open issues due in the next days.",
+            settings: [
+              {
+                key: "days",
+                type: "number",
+                label: "Days ahead",
+                default: 7,
+              },
+            ],
+          },
+          {
+            id: "by-age",
+            title: "Open by age",
+            description: "How long the open issues have waited.",
+          },
+          {
+            id: "done-ring",
+            title: "Done",
+            description: "The share of issues done, as a ring.",
+            draw: "plugin",
+          },
+        ],
+      },
     },
     versions: {
-      "1.0.0": { capabilities: ["issues:read", "ui:project-view"] },
+      "1.0.0": {
+        capabilities: [
+          "issues:read",
+          "ui:project-view",
+          "ui:nav-item",
+          "ui:dashboard-widget",
+          "ui:issue-panel",
+          "ui:issue-badge",
+        ],
+      },
       // The update asks for one more: workspaces have to confirm again.
       "1.1.0": {
-        capabilities: ["issues:read", "issues:write", "ui:project-view"],
+        capabilities: [
+          "issues:read",
+          "issues:write",
+          "ui:project-view",
+          "ui:nav-item",
+          "ui:dashboard-widget",
+          "ui:issue-panel",
+          "ui:issue-badge",
+        ],
       },
     },
     code: "timeline",
@@ -142,6 +201,8 @@ const DEMOS: Demo[] = [
             format: "{value}",
           },
         ],
+        // Barynt's form for the project, and the plugin's check below it.
+        settingsPage: "section",
       },
     },
     versions: {
@@ -279,10 +340,258 @@ const DEMOS: Demo[] = [
       minBaryntVersion: "0.9.0",
       license: "MIT",
       contributes: {
-        settings: [{ key: "cron", type: "text", label: "Schedule" }],
+        // Every kind of setting Barynt draws (BARY-204).
+        settings: [
+          {
+            key: "title",
+            type: "text",
+            label: "Issue title",
+            description: "{date} becomes the day it's created.",
+            default: "Weekly review {date}",
+          },
+          {
+            key: "body",
+            type: "textarea",
+            label: "Description",
+            description: "What every new issue says.",
+          },
+          {
+            key: "days",
+            type: "multiselect",
+            label: "Days",
+            options: [
+              { id: "mon", label: "Mon" },
+              { id: "tue", label: "Tue" },
+              { id: "wed", label: "Wed" },
+              { id: "thu", label: "Thu" },
+              { id: "fri", label: "Fri" },
+              { id: "sat", label: "Sat" },
+              { id: "sun", label: "Sun" },
+            ],
+            default: ["mon"],
+          },
+          {
+            key: "time",
+            type: "select",
+            label: "Time",
+            options: [
+              { id: "h08", label: "08:00" },
+              { id: "h12", label: "12:00" },
+              { id: "h17", label: "17:00" },
+            ],
+            default: "h08",
+          },
+          {
+            key: "assignee",
+            type: "member",
+            label: "Assign to",
+            description: "Someone in this project.",
+          },
+          { key: "label", type: "label", label: "Label" },
+          {
+            key: "link",
+            type: "url",
+            label: "Agenda",
+            description: "A page every issue links to.",
+          },
+          {
+            key: "skipHolidays",
+            type: "boolean",
+            label: "Skip public holidays",
+            default: true,
+          },
+        ],
       },
     },
     versions: { "0.3.0": { capabilities: [] } },
+  },
+  {
+    // Rows across board cards, made of parts the plugin picks (BARY-207).
+    entry: {
+      id: "demo-code-review",
+      name: "Demo Code Review",
+      author: "Barynt demo",
+      description:
+        "A merge request's state on every card it belongs to — made-up data, to show badge rows.",
+      repo: `${ORIGIN}/barynt-demo/code-review`,
+      levels: ["project"],
+      kind: "sandbox",
+      categories: ["development"],
+      added: "2026-11-13",
+    },
+    manifest: {
+      minBaryntVersion: "0.9.0",
+      license: "MIT",
+      contributes: {
+        issueBadges: [
+          { id: "review", title: "Merge request" },
+          { id: "deploy", title: "Deployment" },
+        ],
+        // Where a merge request's row leads (BARY-208).
+        issuePanels: [
+          { id: "review", title: "Merge request" },
+          // In the issue's sidebar, next to its fields (BARY-209).
+          { id: "development", title: "Development", placement: "sidebar" },
+        ],
+        // In the issue's menu, a card's quick actions, the palette (BARY-152).
+        actions: [
+          { id: "rerun", title: "Re-run pipeline", icon: "lucide:rocket" },
+          {
+            id: "show-review",
+            title: "Show merge request",
+            icon: "lucide:git-pull-request",
+            where: ["issueMenu", "commandPalette"],
+          },
+          {
+            id: "comment-state",
+            title: "Post pipeline state as comment",
+            icon: "lucide:message-square",
+          },
+          {
+            id: "close-mr",
+            title: "Close merge request",
+            icon: "lucide:circle-x",
+            confirm:
+              "The merge request is closed in GitLab; the issue stays as it is.",
+            danger: true,
+          },
+        ],
+      },
+    },
+    versions: {
+      "1.0.0": {
+        capabilities: [
+          "issues:read",
+          "comments:write",
+          "ui:issue-badge",
+          "ui:issue-panel",
+          "ui:action",
+        ],
+      },
+    },
+    code: "code-review",
+  },
+  {
+    // Every component of the SDK's UI kit and every design token (BARY-206).
+    entry: {
+      id: "demo-ui-kit",
+      name: "Demo UI Kit",
+      author: "Barynt demo",
+      description:
+        "Every component of the plugin SDK's UI kit and every design token, on one page.",
+      repo: `${ORIGIN}/barynt-demo/ui-kit`,
+      levels: ["workspace"],
+      kind: "sandbox",
+      categories: ["development"],
+      added: "2026-11-13",
+    },
+    manifest: {
+      minBaryntVersion: "0.9.0",
+      license: "MIT",
+      contributes: {
+        navItems: [{ id: "gallery", title: "UI Kit", icon: "lucide:palette" }],
+      },
+    },
+    versions: { "1.0.0": { capabilities: ["ui:nav-item"] } },
+    code: "ui-kit",
+  },
+  {
+    // Widget templates of Barynt's own blocks — no code (BARY-203).
+    entry: {
+      id: "demo-team-pulse",
+      name: "Demo Team Pulse",
+      author: "Barynt demo",
+      description:
+        "Ready-made dashboard widgets: sprint health, what's overdue, where the work sits.",
+      repo: `${ORIGIN}/barynt-demo/team-pulse`,
+      levels: ["workspace", "project"],
+      kind: "declarative",
+      categories: ["reports"],
+      added: "2026-11-13",
+    },
+    manifest: {
+      minBaryntVersion: "0.9.0",
+      license: "MIT",
+      contributes: {
+        widgetTemplates: [
+          {
+            id: "sprint-health",
+            title: "Sprint health",
+            description: "Progress, what got done, and what's next.",
+            size: "T",
+            accent: "green",
+            blocks: [
+              {
+                type: "progress",
+                config: {
+                  elements: [
+                    { id: "breakdown", kind: "breakdown" },
+                    { id: "deadline", kind: "deadline" },
+                  ],
+                },
+              },
+              {
+                type: "kpi",
+                config: {
+                  metric: "closed",
+                  elements: [{ id: "trend", kind: "trend" }],
+                },
+              },
+              {
+                type: "issues",
+                config: {
+                  sort: "priority",
+                  elements: [
+                    { id: "rows", kind: "rows", value: 3 },
+                    { id: "col_assignee", kind: "col_assignee" },
+                  ],
+                },
+              },
+            ],
+          },
+          {
+            id: "overdue",
+            title: "Overdue",
+            description: "How many are late, and which.",
+            accent: "red",
+            blocks: [
+              {
+                type: "kpi",
+                config: {
+                  metric: "overdue",
+                  elements: [{ id: "trend", kind: "trend" }],
+                },
+              },
+              {
+                type: "issues",
+                config: {
+                  sort: "dueDate",
+                  filter: {
+                    op: "and",
+                    rules: [{ field: "dueDate", is: "before", value: "today" }],
+                  },
+                  elements: [
+                    { id: "rows", kind: "rows", value: 4 },
+                    {
+                      id: "col_dueDate",
+                      kind: "col_dueDate",
+                      style: "relative",
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          {
+            id: "workload",
+            title: "Open by priority",
+            size: "M",
+            blocks: [{ type: "distribution", config: { groupBy: "priority" } }],
+          },
+        ],
+      },
+    },
+    versions: { "1.0.0": { capabilities: ["ui:dashboard-widget"] } },
   },
   {
     entry: {

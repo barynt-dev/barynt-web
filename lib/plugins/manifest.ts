@@ -1,14 +1,17 @@
 // The plugin manifest (`manifest.json`): what a plugin is, where it works,
 // what it asks for and what it adds. One schema, used by the installer, the
 // store repository's CI and the plugin author's own tooling — so it has no
-// dependency on the app (no Prisma, no `server-only`).
+// dependency on the app (no Prisma, no `server-only`; the dashboard's widget
+// rules it borrows are plain too).
 //
 // Strict on purpose: an unknown field is an error, not something to ignore.
 // A plugin that declares more than Barynt understands should fail loudly
 // instead of half-working.
 
 import { z } from "zod";
+import { pluginTemplateSchema } from "@/features/dashboard/widgets";
 import { compareSemver, isSemver } from "./semver";
+import { SETTING_TYPES } from "./settings";
 
 /** How a plugin runs. In-process code is Barynt's own and not a plugin kind. */
 export const PLUGIN_KINDS = ["declarative", "sandbox", "service"] as const;
@@ -71,6 +74,32 @@ const icon = z
 
 const entry = z.strictObject({ id: localId, title, icon: icon.optional() });
 
+/** An action (BARY-152): where it shows — every place by default — and,
+ *  for one that can't be undone, the question Barynt asks first. */
+const actionEntry = entry.extend({
+  where: z
+    .array(z.enum(["issueMenu", "cardMenu", "commandPalette"]))
+    .min(1)
+    .max(3)
+    .optional(),
+  confirm: z.string().trim().min(1).max(120).optional(),
+  danger: z.boolean().optional(),
+});
+
+/** An issue panel: in the issue's main column (default), or a section of
+ *  the sidebar next to its fields (BARY-209). */
+const panelEntry = entry.extend({
+  placement: z.enum(["main", "sidebar"]).optional(),
+});
+
+/** A dashboard widget made of Barynt's own blocks (BARY-203): no code, no
+ *  frame — Barynt draws it like a custom widget. */
+const widgetTemplateSchema = pluginTemplateSchema.extend({
+  id: localId,
+  title,
+  description: z.string().trim().max(200).optional(),
+});
+
 const optionSchema = z.strictObject({
   id: localId,
   label: title,
@@ -98,11 +127,38 @@ const fieldSchema = z.strictObject({
 
 const settingSchema = z.strictObject({
   key: z.string().regex(/^[a-z][a-zA-Z0-9_]{0,39}$/),
-  type: z.enum(["text", "number", "boolean", "select"]),
+  type: z.enum(SETTING_TYPES),
   label: title,
   description: z.string().max(300).optional(),
-  default: z.union([z.string().max(500), z.number(), z.boolean()]).optional(),
+  default: z
+    .union([
+      z.string().max(500),
+      z.number(),
+      z.boolean(),
+      z.array(z.string().max(40)).max(50),
+    ])
+    .optional(),
   options: z.array(optionSchema).max(50).optional(),
+});
+
+/** A building block for custom widgets (BARY-205): Barynt draws the data
+ *  the plugin hands over (`draw: "barynt"`, the default), or the plugin
+ *  draws it in a frame of its own (`"plugin"`). Its settings are set per
+ *  block in the widget's builder. */
+const blockSchema = z.strictObject({
+  id: localId,
+  title,
+  icon: icon.optional(),
+  description: z.string().trim().max(200).optional(),
+  draw: z.enum(["barynt", "plugin"]).optional(),
+  settings: z
+    .array(
+      settingSchema.extend({
+        type: z.enum(["text", "number", "boolean", "select"]),
+      }),
+    )
+    .max(10)
+    .optional(),
 });
 
 /** Where a credential is kept: once for the workspace, once per project,
@@ -136,39 +192,51 @@ const contributesSchema = z.strictObject({
   navItems: z.array(entry).max(5).optional(),
   projectViews: z.array(entry).max(5).optional(),
   dashboardWidgets: z.array(entry).max(5).optional(),
-  issuePanels: z.array(entry).max(5).optional(),
+  widgetTemplates: z.array(widgetTemplateSchema).max(10).optional(),
+  widgetBlocks: z.array(blockSchema).max(10).optional(),
+  issuePanels: z.array(panelEntry).max(5).optional(),
   issueBadges: z.array(entry).max(5).optional(),
-  actions: z.array(entry).max(20).optional(),
+  actions: z.array(actionEntry).max(20).optional(),
   fields: z.array(fieldSchema).max(20).optional(),
   settings: z.array(settingSchema).max(30).optional(),
   credentials: z.array(credentialSchema).max(10).optional(),
+  /** Draws its settings itself, in its own frame, instead of Barynt's form
+   *  of `settings` (BARY-149) — or, `"section"`, below that form (BARY-204).
+   *  Saving still goes through Barynt, checked against `settings`. */
+  settingsPage: z.union([z.boolean(), z.literal("section")]).optional(),
 });
 
 type Contributes = z.infer<typeof contributesSchema>;
 
 /** Which capability each contribution needs. */
 const CONTRIBUTION_CAPABILITY: Record<
-  Exclude<keyof Contributes, "settings" | "credentials">,
+  Exclude<keyof Contributes, "settings" | "credentials" | "settingsPage">,
   Capability
 > = {
   navItems: "ui:nav-item",
   projectViews: "ui:project-view",
   dashboardWidgets: "ui:dashboard-widget",
+  widgetTemplates: "ui:dashboard-widget",
+  widgetBlocks: "ui:dashboard-widget",
   issuePanels: "ui:issue-panel",
   issueBadges: "ui:issue-badge",
   actions: "ui:action",
   fields: "fields:write",
 };
 
-/** What each kind may contribute: no code, no browser surface for services. */
+/** What each kind may contribute: no code, no browser surface for services.
+ *  Widget templates are data Barynt draws, so every kind may bring them. */
 const KIND_CONTRIBUTIONS: Record<PluginKind, readonly (keyof Contributes)[]> = {
-  declarative: ["fields", "settings", "issueBadges"],
-  service: ["fields", "settings"],
+  declarative: ["fields", "settings", "issueBadges", "widgetTemplates"],
+  service: ["fields", "settings", "widgetTemplates"],
   sandbox: [
+    "widgetTemplates",
     "credentials",
+    "settingsPage",
     "navItems",
     "projectViews",
     "dashboardWidgets",
+    "widgetBlocks",
     "issuePanels",
     "issueBadges",
     "actions",
@@ -252,6 +320,11 @@ export const manifestSchema = z
     const allowed = KIND_CONTRIBUTIONS[m.kind];
     for (const key of Object.keys(m.contributes) as (keyof Contributes)[]) {
       const list = m.contributes[key];
+      if (typeof list === "boolean" || typeof list === "string") {
+        if (list && !allowed.includes(key))
+          add(["contributes", key], `a ${m.kind} plugin cannot have ${key}`);
+        continue;
+      }
       if (!list || list.length === 0) continue;
 
       if (!allowed.includes(key))
@@ -260,7 +333,11 @@ export const manifestSchema = z
           `a ${m.kind} plugin cannot contribute ${key}`,
         );
 
-      if (key !== "settings" && key !== "credentials") {
+      if (
+        key !== "settings" &&
+        key !== "credentials" &&
+        key !== "settingsPage"
+      ) {
         const needed = CONTRIBUTION_CAPABILITY[key];
         if (!m.capabilities.includes(needed))
           add(["contributes", key], `needs the capability ${needed}`);
@@ -291,6 +368,42 @@ export const manifestSchema = z
         );
     });
 
+    (m.contributes.widgetBlocks ?? []).forEach((b, i) => {
+      (b.settings ?? []).forEach((setting, j) => {
+        const path = ["contributes", "widgetBlocks", i, "settings", j];
+        if (setting.type === "select" && !setting.options?.length)
+          add([...path, "options"], "a select setting needs options");
+        if (setting.type !== "select" && setting.options)
+          add([...path, "options"], "only select settings have options");
+      });
+      const keys = (b.settings ?? []).map((x) => x.key);
+      if (new Set(keys).size !== keys.length)
+        add(
+          ["contributes", "widgetBlocks", i, "settings"],
+          "keys must be unique",
+        );
+    });
+
+    const widgetIds = new Set(
+      (m.contributes.dashboardWidgets ?? []).map((w) => w.id),
+    );
+    (m.contributes.widgetTemplates ?? []).forEach((t, i) => {
+      if (widgetIds.has(t.id))
+        add(
+          ["contributes", "widgetTemplates", i, "id"],
+          "already the id of one of dashboardWidgets",
+        );
+    });
+
+    if (
+      m.contributes.settingsPage &&
+      (m.contributes.settings ?? []).length === 0
+    )
+      add(
+        ["contributes", "settingsPage"],
+        "needs settings to save — the page draws them, Barynt keeps them",
+      );
+
     const fields = m.contributes.fields ?? [];
     fields.forEach((f, i) => {
       const hasOptions = f.type === "SELECT" || f.type === "MULTI_SELECT";
@@ -308,15 +421,27 @@ export const manifestSchema = z
 
     const settings = m.contributes.settings ?? [];
     settings.forEach((s, i) => {
-      if (s.type === "select" && !(s.options && s.options.length > 0))
+      // `member` and `label` choose from the place's — Barynt fills those.
+      const ownOptions = s.type === "select" || s.type === "multiselect";
+      if (ownOptions && !(s.options && s.options.length > 0))
         add(
           ["contributes", "settings", i, "options"],
-          "a select setting needs options",
+          `a ${s.type} setting needs options`,
         );
-      if (s.type !== "select" && s.options)
+      if (!ownOptions && s.options)
         add(
           ["contributes", "settings", i, "options"],
-          "only select settings have options",
+          "only select and multiselect settings have options",
+        );
+      if (
+        Array.isArray(s.default) !== (s.type === "multiselect") &&
+        s.default !== undefined
+      )
+        add(
+          ["contributes", "settings", i, "default"],
+          s.type === "multiselect"
+            ? "a multiselect's default is a list of option ids"
+            : "only a multiselect's default is a list",
         );
     });
   });

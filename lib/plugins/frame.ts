@@ -1,4 +1,5 @@
 import { BRIDGE_MAX_PENDING, BRIDGE_TIMEOUT_MS } from "./bridge";
+import { tokenCss } from "./tokens";
 
 // The document a sandboxed plugin runs in (BARY-144). Everything the plugin
 // gets is inside it: its code and styles inline, a small runtime, nothing
@@ -22,15 +23,26 @@ const RUNTIME = `(() => {
   let port = null;
   let seq = 0;
   let instance = null;
+  let badgeHandler = null;
+  let actionHandler = null;
 
   const send = (message) => port && port.postMessage(message);
   const fail = (error) =>
     send({ type: "error", message: String((error && error.message) || error) });
 
-  const applyTheme = (theme) => {
+  // Barynt's variables, and \`data-theme\` (light or dark) for a plugin's
+  // own CSS; a change after the start is announced (BARY-206).
+  const applyTheme = (theme, announce) => {
+    const root = document.documentElement;
     for (const [name, value] of Object.entries(theme || {}))
-      if (/^--[a-z0-9-]+$/.test(name))
-        document.documentElement.style.setProperty(name, String(value));
+      if (/^--[a-z0-9-]+$/.test(name)) root.style.setProperty(name, String(value));
+    const scheme = String((theme || {})["--color-scheme"] || "");
+    root.dataset.theme = /dark/.test(scheme)
+      ? "dark"
+      : /light/.test(scheme)
+        ? "light"
+        : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    if (announce) window.dispatchEvent(new Event("barynt:themechange"));
   };
 
   const call = (method, params) =>
@@ -57,7 +69,39 @@ const RUNTIME = `(() => {
     applyTheme(data.theme);
     port.onmessage = (e) => {
       const m = e.data || {};
-      if (m.type === "theme") return applyTheme(m.theme);
+      if (m.type === "theme") return applyTheme(m.theme, true);
+      // A batch of issues for its badges (BARY-151): the answer goes back
+      // with the request's number, so a late one can be told apart.
+      // One of its actions (BARY-152): the answer, or what it threw.
+      if (m.type === "action:run") {
+        const seq = m.seq;
+        if (!actionHandler)
+          return send({ type: "actionDone", seq, ok: false, result: "no actions" });
+        Promise.resolve()
+          .then(() => actionHandler(String(m.actionId), { issueId: m.issueId || null }))
+          .then((result) => send({ type: "actionDone", seq, ok: true, result: result || {} }))
+          .catch((error) =>
+            send({
+              type: "actionDone",
+              seq,
+              ok: false,
+              result: String((error && error.message) || error),
+            }),
+          );
+        return;
+      }
+      if (m.type === "badges:request") {
+        const seq = m.seq;
+        if (!badgeHandler) return send({ type: "badges", seq, badges: {} });
+        Promise.resolve()
+          .then(() => badgeHandler(Array.isArray(m.issues) ? m.issues : []))
+          .then((badges) => send({ type: "badges", seq, badges: badges || {} }))
+          .catch((error) => {
+            send({ type: "badges", seq, badges: {} });
+            fail(error);
+          });
+        return;
+      }
       if (m.type !== "result") return;
       const open = pending.get(m.id);
       if (!open) return;
@@ -77,10 +121,36 @@ const RUNTIME = `(() => {
         call,
         context: Object.freeze(data.context),
         root: document.getElementById("root"),
+        // A building block's data, for Barynt to draw (BARY-205).
+        show: (blockData) => send({ type: "blockData", data: blockData }),
+        // What answers a batch of issues with badges (BARY-151).
+        serveBadges: (handler) => {
+          badgeHandler = typeof handler === "function" ? handler : null;
+        },
+        // What runs its actions (BARY-152).
+        serveActions: (handler) => {
+          actionHandler = typeof handler === "function" ? handler : null;
+        },
       });
       instance = new Plugin(host);
       if (instance && typeof instance.onload === "function") await instance.onload();
       send({ type: "ready" });
+      // A panel in an issue grows to fit its content (BARY-150): how tall
+      // it is, whenever that changes — once per frame, at most.
+      if (data.context && data.context.slot && data.context.slot.kind === "issuePanel") {
+        const root = document.getElementById("root");
+        root.style.minHeight = "0";
+        let sent = -1;
+        let queued = false;
+        const measure = () => {
+          queued = false;
+          const height = Math.ceil(root.getBoundingClientRect().height);
+          if (height !== sent) send({ type: "resize", height: (sent = height) });
+        };
+        new ResizeObserver(() => {
+          if (!queued) { queued = true; requestAnimationFrame(measure); }
+        }).observe(root);
+      }
     } catch (error) {
       fail(error);
     }
@@ -93,16 +163,21 @@ const RUNTIME = `(() => {
   });
 })();`;
 
-/** What every frame starts with: Barynt's tokens as a plugin's defaults. */
+/** What every frame starts with: Barynt's tokens as a plugin's defaults.
+ *  The host sets `--color-scheme` to its own — a frame whose scheme differs
+ *  from the page's gets an opaque backdrop — and `--frame-bg` to
+ *  `transparent` where the frame sits on a card (a widget, a block). */
 const BASE_CSS = `
-:root { color-scheme: light dark; }
+:root { color-scheme: var(--color-scheme, light dark); }
+${tokenCss()}
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body {
-  background: var(--surface, transparent);
-  color: var(--on-surface, CanvasText);
-  font-family: var(--font-ui, system-ui, sans-serif);
-  font-size: var(--text-sm, 14px);
+  background: var(--frame-bg, var(--barynt-color-surface, transparent));
+  color: var(--barynt-color-text, CanvasText);
+  font-family: var(--barynt-font-family, system-ui, sans-serif);
+  font-size: var(--barynt-font-size-sm, 14px);
+  line-height: var(--barynt-line-height-normal);
 }
 #root { min-height: 100%; }
 `;

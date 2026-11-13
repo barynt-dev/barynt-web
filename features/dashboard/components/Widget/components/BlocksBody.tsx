@@ -10,9 +10,11 @@ import styles from "../widget.module.scss";
 import { ChartBody } from "./ChartBody";
 import { ListBody } from "./ListBody";
 import { NumberBody } from "./NumberBody";
+import { PluginBlockBody } from "./PluginBlockBody";
 import type { BodyProps } from "./shared";
 
-/** Blocks that take the room left over — charts and lists. */
+/** Blocks that take the room left over — charts and lists. A plugin's
+ *  block says itself whether it grows (`PluginBlockBody`, by what it shows). */
 const GROWS = new Set(["distribution", "flow", "matrix", "issues"]);
 
 /**
@@ -56,6 +58,8 @@ export function BlocksBody({
               own.type === "flow" ||
               own.type === "matrix" ? (
               <ChartBody {...body} data={own} />
+            ) : own.type === "pluginBlock" ? (
+              <PluginBlockBody data={own} config={block.config.pluginConfig} />
             ) : null}
           </div>
         );

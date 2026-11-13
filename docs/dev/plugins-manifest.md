@@ -77,7 +77,7 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `events:issue`, `events:comment` | Hear about changes | reserved, not callable yet |
 | `ui:project-view` | Add a project view | `contributes.projectViews` |
 | `ui:nav-item` | Add an entry to the sidebar | `contributes.navItems` |
-| `ui:dashboard-widget` | Add a dashboard widget | `contributes.dashboardWidgets` |
+| `ui:dashboard-widget` | Add a dashboard widget | `contributes.dashboardWidgets`, `contributes.widgetTemplates`, `contributes.widgetBlocks` |
 | `ui:issue-panel` | Add a panel to issues | `contributes.issuePanels` |
 | `ui:issue-badge` | Show badges on cards and rows | `contributes.issueBadges` |
 | `ui:action` | Add actions and commands | `contributes.actions` |
@@ -95,9 +95,11 @@ capability, and each entry an `id` that's unique in its list.
 | `projectViews` | `{ id, title, icon? }`, up to 5 | `ui:project-view` | sandbox |
 | `navItems` | `{ id, title, icon? }`, up to 5 | `ui:nav-item` | sandbox |
 | `dashboardWidgets` | `{ id, title, icon? }`, up to 5 | `ui:dashboard-widget` | sandbox |
+| `widgetTemplates` | [widget templates](#widget-templates), up to 10 | `ui:dashboard-widget` | all |
+| `widgetBlocks` | [building blocks](#building-blocks), up to 10 | `ui:dashboard-widget` | sandbox |
 | `issuePanels` | `{ id, title, icon? }`, up to 5 | `ui:issue-panel` | sandbox |
 | `issueBadges` | `{ id, title, icon? }`, up to 5 | `ui:issue-badge` | sandbox, declarative |
-| `actions` | `{ id, title, icon? }`, up to 20 | `ui:action` | sandbox |
+| `actions` | `{ id, title, icon?, where?, confirm?, danger? }`, up to 20 — see [Actions](#actions) | `ui:action` | sandbox |
 | `fields` | custom fields, up to 20 | `fields:write` | all |
 | `settings` | settings, up to 30 | — | all |
 | `credentials` | credentials, up to 10 | a host in `network` | sandbox |
@@ -105,10 +107,164 @@ capability, and each entry an `id` that's unique in its list.
 `icon` is an [Iconify](https://icon-sets.iconify.design) name like
 `lucide:clock`.
 
-> [!NOTE]
-> Today a sandboxed plugin runs in **project views**. Sidebar entries,
-> dashboard widgets, issue panels, badges and actions can be declared
-> already; Barynt shows them in a coming release.
+### Where they show
+
+| Contribution | Switched on in a project | Switched on in the workspace |
+| --- | --- | --- |
+| `projectViews` | in the sidebar under the project, next to its Dashboard, Board and Issues | in the sidebar's main group, next to the workspace's Dashboard and Board (on a phone, whose main group is the bottom bar: in the "Plugins" section) |
+| `navItems` | in the sidebar under the project, below a "Plugins" heading | in the sidebar's own "Plugins" section |
+| `dashboardWidgets`, `widgetTemplates` | in the project's dashboard's widget gallery, under "Plugins" | in the workspace's (and its views') dashboard gallery, under "Plugins" |
+| `issuePanels` | in every issue of the project — side panel, dialog, page, phone sheet — below the attachments; with `"placement": "sidebar"` a section of the issue's sidebar, next to its fields | — (a workspace plugin has no issue panels) |
+| `issueBadges` | on the project's board cards and list rows (the list's "Fields" column); each can be hidden in **Display** | — |
+
+Each entry carries the plugin's mark, and its page names the plugin under
+the title, so it's always clear what comes from a plugin. `icon` isn't
+shown yet.
+
+A widget is added like any other: **Add widget**, then the plugin's entry
+in the gallery, in the sizes S, M, L, T and XL. Its frame fills the widget
+below Barynt's header. If the plugin is switched off later, the widget says
+so instead of staying empty.
+
+An issue panel is a section of its own in the issue, after the attachments,
+headed by the panel's title and the plugin's name. People can fold it; only
+an open panel has a frame, and it stays folded for them. The frame grows to
+its content's height (up to 640 px, then it scrolls), so draw what you need
+and no more. See [`registerIssuePanel()`](plugins-sdk.md#registerissuepanel).
+
+An issue panel can also live in the **sidebar**, next to the issue's
+properties, labels and custom fields — "Development" with a branch, a merge
+request and a pipeline, say:
+
+```json
+"issuePanels": [{ "id": "development", "title": "Development", "placement": "sidebar" }]
+```
+
+There it's headed like the sidebar's own sections (the title, the plugin's
+name on the right) and has no box of its own. Where an issue has no sidebar
+— the side panel, a phone — it sits with the properties.
+
+A badge is a small chip on a card or row — "in 3d", "MR open" — or a row
+across the card that you put together from parts (a merge request's number,
+state and pipeline). You don't
+draw it: Barynt runs one hidden frame per plugin and board, hands it the
+issues shown in batches, and draws the chips you return with its own
+components — at most 3 per issue from you, the rest as "+N", texts short,
+icons only from a fixed set. Each entry in `issueBadges` is one switch in
+**Display**, so people can hide what they don't need. See
+[`registerBadges()`](plugins-sdk.md#registerbadges). Only a `sandbox`
+plugin fills badges for now.
+
+### Actions
+
+An action is an entry people pick for an issue: in its **"…" menu**, in a
+**card's quick actions** (a long press on a phone or tablet) and in the
+**command palette** while an issue is open. Barynt runs it in the plugin's
+hidden frame and shows what it answers as a toast.
+
+```json
+"actions": [
+  { "id": "rerun", "title": "Re-run pipeline", "icon": "lucide:rocket" },
+  { "id": "close-mr", "title": "Close merge request", "icon": "lucide:circle-x",
+    "where": ["issueMenu"], "confirm": "It's closed in GitLab; the issue stays.", "danger": true }
+]
+```
+
+| Field | |
+| --- | --- |
+| `where` | `issueMenu`, `cardMenu`, `commandPalette` — every place by default |
+| `confirm` | up to 120 characters: Barynt asks this first, and runs the action only on yes |
+| `danger` | the question's button is red |
+| `icon` | one of the badge icons (`lucide:rocket`, `lucide:git-pull-request` …); any other shows the puzzle |
+
+What the action does, it does through the [host API](plugins-host-api.md)
+— with the capabilities that were confirmed, and in the audit log like
+everything a plugin does. See [`registerAction()`](plugins-sdk.md#registeraction).
+
+### Building blocks
+
+A building block is smaller than a widget: people put it into their own
+custom widgets — next to Barynt's blocks (a number, a list …), several in
+one widget if they like. In the builder, **Add block** lists the blocks of
+the plugins switched on there.
+
+```json
+"widgetBlocks": [
+  {
+    "id": "due-soon",
+    "title": "Due soon",
+    "description": "Open issues due in the next days.",
+    "settings": [{ "key": "days", "type": "number", "label": "Days ahead", "default": 7 }]
+  },
+  { "id": "done-ring", "title": "Done", "draw": "plugin" }
+]
+```
+
+| Field | |
+| --- | --- |
+| `id`, `title`, `icon` | Like every entry. |
+| `description` | Optional, up to 200 characters — in the builder. |
+| `draw` | `barynt` (default): you hand over data, Barynt draws it like its own blocks. `plugin`: you draw it in a frame of your own. |
+| `settings` | Up to 10, set per block in the builder: `text`, `number`, `boolean` or `select`, written like [settings](#settings). The plugin gets them in `context.config`. |
+
+With `draw: "barynt"` your code still runs — out of sight — and hands
+over one of four shapes: a number, a list, bars or a progress; see
+[`registerBlock()`](plugins-sdk.md#registerblock). That's the default
+because it looks like the rest of the widget at every size. If the plugin
+is switched off, the block says so; the widget's other blocks stay.
+
+A [widget template](#widget-templates) can bring a plugin's block too:
+`{ "type": "pluginBlock", "config": { "pluginId": "…", "pluginBlock": "due-soon" } }`.
+
+### Widget templates
+
+A plugin doesn't have to draw a widget itself. `widgetTemplates` are
+dashboard widgets made of the same building blocks as a custom widget —
+Barynt draws them, with no frame and no code, so any kind of plugin can
+bring them, a `declarative` one too. They count Barynt's issues; for your
+own data, draw the widget yourself (`dashboardWidgets`).
+
+```json
+"widgetTemplates": [
+  {
+    "id": "overdue",
+    "title": "Overdue",
+    "description": "How many are late, and which.",
+    "size": "L",
+    "accent": "red",
+    "blocks": [
+      { "type": "kpi", "config": { "metric": "overdue", "elements": [{ "id": "trend", "kind": "trend" }] } },
+      {
+        "type": "issues",
+        "config": {
+          "sort": "dueDate",
+          "filter": { "op": "and", "rules": [{ "field": "dueDate", "is": "before", "value": "today" }] },
+          "elements": [{ "id": "rows", "kind": "rows", "value": 4 }]
+        }
+      }
+    ]
+  }
+]
+```
+
+| Field | |
+| --- | --- |
+| `id`, `title` | Like every entry; `id` mustn't be one of the plugin's `dashboardWidgets`. |
+| `description` | Optional, up to 200 characters. |
+| `size` | `S`, `M`, `L` (default), `T` or `XL` — what it starts with. |
+| `accent` | Optional colour: `blue`, `teal`, `green`, `lime`, `ochre`, `amber`, `orange`, `red`, `pink`, `purple`, `indigo`, `gray`. |
+| `blocks` | 1 to 6 blocks, top to bottom: `type` is `kpi`, `progress`, `distribution`, `flow`, `matrix` or `issues`; `config` what a block in the builder sets (`metric`, `groupBy`, `chart`, `sort`, `filter`, `elements` …). Barynt numbers the blocks. |
+
+The `config` is checked with the same rules as a custom widget the builder
+saves (`features/dashboard/widgets.ts`) — the quickest way to one is to
+build it in the builder and copy its blocks. A filter only uses what's the
+same everywhere (status categories, priorities, dates); ids of statuses,
+labels or people differ between workspaces.
+
+In the gallery a template shows with the workspace's real numbers. **Add**
+puts it on the dashboard as the dashboard's own custom widget — it stays
+when the plugin is switched off, and it's changed like any other.
+**Customize** opens it in the builder first.
 
 ### Settings
 
@@ -123,14 +279,57 @@ under **Plugins** — and the plugin reads them with
 | Field | Meaning |
 | --- | --- |
 | `key` | Starts with a letter: letters, digits, `_`, up to 40 characters. |
-| `type` | `text`, `number`, `boolean` or `select`. |
+| `type` | One of the types below. |
 | `label` | Up to 60 characters. |
 | `description` | Optional, up to 300 characters, shown under the field. |
-| `default` | Optional: a string, number or boolean. For `select`, an option's `id`. |
-| `options` | For `select` only, and required there: `{ id, label }`, up to 50. |
+| `default` | Optional: a string, number or boolean — for `select` an option's `id`, for `multiselect` a list of them. |
+| `options` | For `select` and `multiselect` only, and required there: `{ id, label }`, up to 50. |
 
-Barynt checks what's saved against these types; text is trimmed and at most
-2000 characters.
+| Type | Barynt draws | The plugin gets |
+| --- | --- | --- |
+| `text` | a text field | a string, trimmed, up to 2000 characters |
+| `textarea` | a multi-line text field | a string, trimmed, up to 10,000 characters |
+| `number` | a number field | a number |
+| `boolean` | a switch | `true` or `false` |
+| `url` | an address field | an `http(s)` address |
+| `select` | a choice of one of `options` | the option's `id` |
+| `multiselect` | a chip per option, any number chosen | a list of option `id`s |
+| `member` | a choice of the place's people — the project's members, or the workspace's | a user id |
+| `label` | a choice of the place's labels — the ones the project shows, or the workspace's own | a label id |
+
+Barynt checks what's saved against these types — a `member` or `label`
+against the people and labels of that place, when it's saved. Something
+left empty isn't stored, so the plugin falls back to its default.
+
+### Its own settings page
+
+With `"settingsPage": true` in `contributes`, the plugin's page in the
+workspace's or project's settings shows the plugin's own frame instead of
+Barynt's form — for settings that need more than fields.
+
+```json
+"contributes": {
+  "settings": [{ "key": "gitlabProject", "type": "text", "label": "GitLab project" }],
+  "settingsPage": "section"
+}
+```
+
+Often Barynt's form is enough, and you only want **something below it**: a
+connection check, a preview, a picker that asks your service. Then use
+`"settingsPage": "section"` — Barynt draws the form of `settings` as usual,
+and the plugin's frame below it.
+
+| `settingsPage` | Shows |
+| --- | --- |
+| `true` | the plugin's frame instead of Barynt's form |
+| `"section"` | Barynt's form, and the plugin's frame below it |
+
+Both are drawn with [`registerSettings()`](plugins-sdk.md#registersettings);
+the [UI kit](plugins-sdk.md#the-ui-kit) has the inputs. The values are still
+the ones in `settings`: the frame reads them with `loadSettings()` and saves
+them with `api.settings.set(values)`, and Barynt checks them as it does its
+own form. So `settingsPage` needs `settings`, and only a `sandbox` plugin
+has it. Credentials stay on Barynt's side of the page, never in the frame.
 
 ### Credentials
 
@@ -186,13 +385,18 @@ A plugin can bring custom fields its issues carry:
 - Each contribution needs its capability (`projectViews` → `ui:project-view`,
   `fields` → `fields:write` …).
 - A `declarative` plugin has no code and no `network`; it may only contribute
-  `fields`, `settings` and `issueBadges`.
-- A `service` plugin has no browser surface; it may only contribute `fields`
-  and `settings`.
+  `fields`, `settings`, `issueBadges` and `widgetTemplates`.
+- A `service` plugin has no browser surface; it may only contribute `fields`,
+  `settings` and `widgetTemplates`.
+- A widget template's blocks follow the custom widget's rules.
+- `widgetBlocks` need a `sandbox` plugin; their settings are `text`,
+  `number`, `boolean` or `select`, keys unique within a block.
+- `settingsPage` needs `settings`, and only a `sandbox` plugin has it.
 - A credential's `host` is in `network`, and a `workspace` or `project`
   credential matches one of the plugin's `levels`.
-- Ids are unique within each list; `select` settings and choice fields need
-  options, other types must not have them.
+- Ids are unique within each list; `select` and `multiselect` settings and
+  choice fields need options, other types must not have them; only a
+  `multiselect`'s default is a list.
 - `maxBaryntVersion` isn't lower than `minBaryntVersion`.
 - The release's manifest must have the same `id`, `version`, `kind` and
   `levels` as its [directory entry](plugins-publishing.md#the-directory-entry).

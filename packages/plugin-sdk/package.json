@@ -13,6 +13,10 @@
     "./testing": {
       "types": "./dist/testing.d.ts",
       "import": "./dist/testing.js"
+    },
+    "./ui": {
+      "types": "./dist/ui.d.ts",
+      "import": "./dist/ui.js"
     }
   },
   "files": [
@@ -20,6 +24,6 @@
     "README.md"
   ],
   "scripts": {
-    "build": "bun build src/index.ts src/testing.ts --outdir dist --format esm --target browser && tsc -p tsconfig.build.json"
+    "build": "bun build src/index.ts src/testing.ts src/ui.ts --outdir dist --format esm --target browser && tsc -p tsconfig.build.json"
   }
 }

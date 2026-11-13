@@ -103,6 +103,20 @@
   }
 }
 
+/* A plugin's own settings page: its frame, at a height a form needs. Its
+   part below the form (BARY-204) is a smaller addition. */
+.ownSettings {
+  display: flex;
+  min-height: 22rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+
+  &[data-part="section"] {
+    min-height: 12rem;
+  }
+}
+
 .form {
   display: flex;
   flex-direction: column;
@@ -123,6 +137,83 @@
 .hint {
   color: var(--on-surface-variant);
   font-size: var(--text-xs);
+}
+
+fieldset.field {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+/* A multi-line text: the input's look, grown to its lines. */
+.textarea {
+  width: 100%;
+  min-height: 6rem;
+  padding: 0.5rem 0.6875rem;
+  color: var(--on-surface);
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-base);
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.12s;
+
+  &:focus {
+    border-color: var(--tertiary);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+/* A multiselect: one chip per option, pressed when chosen. */
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  color: var(--on-surface-variant);
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 999px;
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+
+  /* The check only shows on a chosen one. */
+  & > svg {
+    display: none;
+  }
+
+  &[aria-pressed="true"] {
+    color: var(--on-primary-container);
+    background: var(--primary-container);
+    border-color: transparent;
+
+    & > svg {
+      display: block;
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--tertiary);
+    outline-offset: 2px;
+  }
+
+  @include bp.coarse {
+    min-height: var(--touch-min);
+  }
 }
 
 .switchRow {
