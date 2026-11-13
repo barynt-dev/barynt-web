@@ -19,6 +19,7 @@ import { IssueAttachments } from "./components/IssueAttachments";
 import { IssueComments } from "./components/IssueComments";
 import { IssueDescription } from "./components/IssueDescription";
 import { IssueActionsMenu } from "./components/IssueDetailActions";
+import { IssuePluginPanels } from "./components/IssuePluginPanels";
 import { IssueRelations } from "./components/IssueRelations";
 import { IssueSidebar, PAGE_SIDEBAR_W } from "./components/IssueSidebar";
 import { IssueTitle } from "./components/IssueTitle";
@@ -244,6 +245,7 @@ export function IssueDetailPageView({
                 onRefresh={onRefresh}
               />
             )}
+            <IssuePluginPanels issue={issue} workspaceId={data.workspaceId} />
             <IssueComments
               issueId={issue.id}
               workspaceId={data.workspaceId}

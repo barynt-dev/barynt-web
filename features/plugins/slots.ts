@@ -10,6 +10,7 @@ import { currentUserCanEnterWorkspace } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
 import { validateManifest } from "@/lib/plugins/manifest";
 import { SLOTS, type SlotEntry, slotEntries } from "@/lib/plugins/slots";
+import type { IssuePluginPanel } from "@/types/issue";
 
 // Where sandboxed plugins show in the sidebar (BARY-148): their views and
 // pages, for the workspace and each project the person can see. Read once
@@ -196,3 +197,45 @@ export async function getPluginBlocks(place: {
         x.title.localeCompare(y.title),
     );
 }
+
+/** The panels the plugins switched on in a project show in its issues
+ *  (BARY-150), with their capability confirmed there. Read once per
+ *  request; each panel's frame is checked again (`/api/plugins/frame`). */
+export const getPluginIssuePanels = cache(
+  async (place: {
+    workspaceId: string;
+    projectId: string;
+  }): Promise<IssuePluginPanel[]> => {
+    const activations = await db.pluginActivation.findMany({
+      where: { scopeKey: activationScopeKey(place), enabled: true },
+      select: { pluginId: true, capabilities: true },
+    });
+    if (activations.length === 0) return [];
+    const rows = await db.plugin.findMany({
+      where: {
+        pluginId: { in: activations.map((a) => a.pluginId) },
+        status: "active",
+      },
+      select: { pluginId: true, manifest: true },
+    });
+    return activations
+      .flatMap((a): IssuePluginPanel[] => {
+        const row = rows.find((r) => r.pluginId === a.pluginId);
+        const parsed = row ? validateManifest(row.manifest) : null;
+        if (!parsed?.ok) return [];
+        return slotEntries(parsed.manifest, a.capabilities)
+          .filter((e) => e.kind === "issuePanel")
+          .map((e) => ({
+            pluginId: a.pluginId,
+            pluginName: parsed.manifest.name,
+            panelId: e.id,
+            title: e.title,
+          }));
+      })
+      .sort(
+        (x, y) =>
+          x.pluginName.localeCompare(y.pluginName) ||
+          x.title.localeCompare(y.title),
+      );
+  },
+);

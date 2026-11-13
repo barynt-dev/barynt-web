@@ -113,6 +113,16 @@ export abstract class Plugin {
   }
 
   /**
+   * A panel in an issue's detail, from the manifest's
+   * `contributes.issuePanels` — in the side panel, the dialog, the page and
+   * the phone sheet. `context.issueId` is the issue; the frame grows to
+   * your content's height on its own (up to a limit, then it scrolls).
+   */
+  registerIssuePanel(panel: ProjectView): void {
+    this.#renderSlot("issuePanel", panel);
+  }
+
+  /**
    * A dashboard widget from the manifest's `contributes.dashboardWidgets`.
    * Its frame fills the widget below Barynt's header, in whatever size it
    * was added — watch `el`'s size (a `ResizeObserver`) to show more when

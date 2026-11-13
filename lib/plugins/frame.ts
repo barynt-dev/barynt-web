@@ -93,6 +93,22 @@ const RUNTIME = `(() => {
       instance = new Plugin(host);
       if (instance && typeof instance.onload === "function") await instance.onload();
       send({ type: "ready" });
+      // A panel in an issue grows to fit its content (BARY-150): how tall
+      // it is, whenever that changes — once per frame, at most.
+      if (data.context && data.context.slot && data.context.slot.kind === "issuePanel") {
+        const root = document.getElementById("root");
+        root.style.minHeight = "0";
+        let sent = -1;
+        let queued = false;
+        const measure = () => {
+          queued = false;
+          const height = Math.ceil(root.getBoundingClientRect().height);
+          if (height !== sent) send({ type: "resize", height: (sent = height) });
+        };
+        new ResizeObserver(() => {
+          if (!queued) { queued = true; requestAnimationFrame(measure); }
+        }).observe(root);
+      }
     } catch (error) {
       fail(error);
     }

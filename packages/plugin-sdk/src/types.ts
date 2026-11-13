@@ -6,9 +6,17 @@
 export interface Context {
   /** Which of its views or pages this frame is for. */
   slot: {
-    kind: "projectView" | "page" | "widget" | "block" | "settings";
+    kind:
+      | "projectView"
+      | "page"
+      | "widget"
+      | "block"
+      | "issuePanel"
+      | "settings";
     id: string;
   };
+  /** In an issue panel: the issue it's about — `api.issues.get(issueId)`. */
+  issueId?: string;
   workspaceId: string;
   /** `null` for a workspace's plugin. */
   projectId: string | null;

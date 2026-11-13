@@ -83,6 +83,8 @@ Ein Plugin kann auch **Dashboard-Widgets** mitbringen: Auf einem Dashboard stehe
 
 Plugins können auch **Bausteine** für eigene Widgets mitbringen: Im Widget-Builder listet **Baustein hinzufügen** sie neben Barynts eigenen, jeweils mit ihren Einstellungen. Ist das Plugin ausgeschaltet, sagt der Baustein das – der Rest des Widgets bleibt.
 
+Manche Plugins zeigen ein **Panel in jedem Issue** eines Projekts, in dem sie eingeschaltet sind – unter den Anhängen, mit dem Namen des Plugins. Ein Panel, das du nicht brauchst, klappst du zu; es bleibt für dich zugeklappt.
+
 ### Einstellungen eines Plugins im Workspace
 
 Ein Plugin, das im Workspace läuft und Einstellungen hat, bekommt in den Workspace-Einstellungen einen Eintrag unter **Plugins** mit seinem Formular.

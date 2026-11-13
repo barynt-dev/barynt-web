@@ -5,7 +5,16 @@
 // was confirmed. Plain DOM, no innerHTML with data — a plugin is a guest.
 
 import { type Issue, Plugin } from "@barynt/plugin-sdk";
-import { kpi, list, progressRing } from "@barynt/plugin-sdk/ui";
+import {
+  badge,
+  keyValue,
+  kpi,
+  list,
+  progressBar,
+  progressRing,
+  stack,
+  text,
+} from "@barynt/plugin-sdk/ui";
 
 const DAY = 86_400_000;
 
@@ -34,6 +43,17 @@ export default class Timeline extends Plugin {
       render: async (root) => {
         const { issues } = await this.api.issues.list({ take: 100 });
         this.drawOldest(root, issues);
+      },
+    });
+
+    // A panel in every issue (BARY-150): how long it's been open, and how
+    // far it is to its due date — drawn with the UI kit, as tall as it is.
+    this.registerIssuePanel({
+      id: "schedule",
+      render: async (root, { issueId }) => {
+        if (!issueId) return;
+        const issue = await this.api.issues.get(issueId);
+        root.replaceChildren(this.drawSchedule(issue));
       },
     });
 
@@ -111,6 +131,70 @@ export default class Timeline extends Plugin {
         root.replaceChildren(wrap);
       },
     });
+  }
+
+  drawSchedule(issue: Issue): HTMLElement {
+    const day = (iso: string) =>
+      new Date(iso).toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "short",
+      });
+    const created = new Date(issue.created).getTime();
+    const done = issue.closedAt ? new Date(issue.closedAt).getTime() : null;
+    const open = Math.max(
+      0,
+      Math.round(((done ?? Date.now()) - created) / DAY),
+    );
+    const items: { label: string; value: string | HTMLElement }[] = [
+      { label: "Created", value: day(issue.created) },
+      {
+        label: done ? "Closed after" : "Open for",
+        value: `${open} ${open === 1 ? "day" : "days"}`,
+      },
+    ];
+    const parts: HTMLElement[] = [];
+    if (issue.dueDate) {
+      const due = new Date(issue.dueDate).getTime();
+      const left = Math.round((due - Date.now()) / DAY);
+      items.push({
+        label: "Due",
+        value: badge({
+          text:
+            done !== null
+              ? day(issue.dueDate)
+              : left < 0
+                ? `${-left} d late`
+                : left === 0
+                  ? "today"
+                  : `in ${left} d`,
+          tone:
+            done !== null
+              ? "success"
+              : left < 0
+                ? "danger"
+                : left <= 2
+                  ? "warning"
+                  : "neutral",
+        }),
+      });
+      parts.push(
+        progressBar({
+          value: Math.min(Date.now(), due) - created,
+          max: Math.max(1, due - created),
+          label: "Time to the due date",
+          tone: left < 0 && done === null ? "danger" : "primary",
+        }),
+      );
+    } else
+      parts.push(
+        text({
+          text: "No due date — set one to see how close it is.",
+          tone: "subtle",
+        }),
+      );
+    const box = stack(keyValue({ items }), ...parts);
+    box.classList.add("tl-panel");
+    return box;
   }
 
   drawOldest(root: HTMLElement, issues: Issue[]) {

@@ -25,8 +25,13 @@ import styles from "./pluginFrame.module.scss";
 // A plugin that throws, doesn't answer or doesn't start shows as the
 // plugin's error, with a way to load it again — never as a broken page.
 
-/** Where a frame sits on a card of Barynt's — the card shows through. */
-const ON_A_CARD = new Set<FrameContext["slot"]["kind"]>(["widget", "block"]);
+/** Where a frame sits on a card or in a view of Barynt's — what's behind
+ *  it shows through. */
+const ON_A_CARD = new Set<FrameContext["slot"]["kind"]>([
+  "widget",
+  "block",
+  "issuePanel",
+]);
 
 /** Barynt's tokens as the page has them right now — light or dark — with
  *  its colour scheme, and a see-through background on a card. */
@@ -54,6 +59,7 @@ export function PluginFrame({
   context,
   headless,
   onBlockData,
+  autoHeight,
 }: {
   pluginId: string;
   /** The plugin's name — the frame's title, and in its error. */
@@ -64,10 +70,14 @@ export function PluginFrame({
   headless?: boolean;
   /** A building block's data, checked (`parseBlockData`). */
   onBlockData?: (data: BlockData) => void;
+  /** As tall as its content, within these bounds (px) — a panel in an
+   *  issue (BARY-150). Without, it fills its slot. */
+  autoHeight?: { min: number; max: number };
 }) {
   const t = useTranslations("plugins");
   const frame = useRef<HTMLIFrameElement>(null);
   const [state, setState] = useState<FrameState>({ status: "loading" });
+  const [height, setHeight] = useState<number | null>(null);
   // A new frame on "Load again".
   const [attempt, setAttempt] = useState(0);
   const { workspaceId, projectId, slot } = context;
@@ -155,6 +165,8 @@ export function PluginFrame({
           setState({ status: "error", message: message.message });
         } else if (message.type === "blockData") {
           onBlockData?.(message.data);
+        } else if (message.type === "resize") {
+          setHeight(message.height);
         } else {
           void forward(message.id, message.method, message.params);
         }
@@ -203,6 +215,17 @@ export function PluginFrame({
       className={styles.host}
       data-state={state.status}
       data-headless={headless || undefined}
+      data-auto-height={autoHeight ? "" : undefined}
+      style={
+        autoHeight
+          ? {
+              height: Math.min(
+                autoHeight.max,
+                Math.max(autoHeight.min, height ?? autoHeight.min),
+              ),
+            }
+          : undefined
+      }
     >
       <iframe
         key={attempt}

@@ -129,9 +129,12 @@ const { callBridge, getPluginFrame, getPluginSlotView } = await import(
   "@/features/plugins/runtime"
 );
 const { parseWidgets } = await import("@/features/dashboard/widgets");
-const { getPluginBlocks, getPluginNav, getPluginWidgets } = await import(
-  "@/features/plugins/slots"
-);
+const {
+  getPluginBlocks,
+  getPluginIssuePanels,
+  getPluginNav,
+  getPluginWidgets,
+} = await import("@/features/plugins/slots");
 
 const manifest = {
   id: "timeline",
@@ -859,5 +862,67 @@ describe("building blocks (BARY-205)", () => {
     expect(
       await getPluginBlocks({ workspaceId: "ws1", projectId: "p1" }),
     ).toEqual([]);
+  });
+});
+
+describe("issue panels (BARY-150)", () => {
+  const withPanel = {
+    ...manifest,
+    capabilities: [...manifest.capabilities, "ui:issue-panel"],
+    contributes: {
+      ...manifest.contributes,
+      issuePanels: [{ id: "schedule", title: "Schedule" }],
+    },
+  };
+
+  it("lists a project's panels where they're confirmed", async () => {
+    db.plugin.findMany.mockResolvedValue([
+      { pluginId: "timeline", manifest: withPanel },
+    ]);
+    db.pluginActivation.findMany.mockResolvedValue([
+      { pluginId: "timeline", capabilities: ["ui:issue-panel"] },
+    ]);
+    expect(
+      await getPluginIssuePanels({ workspaceId: "ws1", projectId: "p-panels" }),
+    ).toEqual([
+      {
+        pluginId: "timeline",
+        pluginName: "Timeline",
+        panelId: "schedule",
+        title: "Schedule",
+      },
+    ]);
+    expect(db.pluginActivation.findMany.mock.calls.at(-1)?.[0]).toMatchObject({
+      where: { scopeKey: "pr:p-panels", enabled: true },
+    });
+    db.pluginActivation.findMany.mockResolvedValue([
+      { pluginId: "timeline", capabilities: ["issues:read"] },
+    ]);
+    expect(
+      await getPluginIssuePanels({ workspaceId: "ws1", projectId: "p-other" }),
+    ).toEqual([]);
+  });
+
+  it("serves a panel's frame only with its capability", async () => {
+    db.pluginFile.findMany.mockResolvedValue([
+      { name: "main.js", content: new TextEncoder().encode("x") },
+    ]);
+    db.plugin.findFirst.mockResolvedValue({ id: "row1", manifest: withPanel });
+    db.pluginActivation.findUnique.mockResolvedValue({
+      id: "act1",
+      enabled: true,
+      capabilities: ["issues:read", "ui:issue-panel"],
+    });
+    expect(
+      await getPluginFrame("u1", place, { kind: "issuePanel", id: "schedule" }),
+    ).not.toBeNull();
+    db.pluginActivation.findUnique.mockResolvedValue({
+      id: "act1",
+      enabled: true,
+      capabilities: ["issues:read"],
+    });
+    expect(
+      await getPluginFrame("u1", place, { kind: "issuePanel", id: "schedule" }),
+    ).toBeNull();
   });
 });

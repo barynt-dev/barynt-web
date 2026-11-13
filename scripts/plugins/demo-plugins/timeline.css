@@ -99,3 +99,7 @@
   height: 100%;
   padding: 0.25rem 0.75rem;
 }
+.tl-panel {
+  gap: var(--barynt-space-3);
+  padding: var(--barynt-space-3) var(--barynt-space-4);
+}

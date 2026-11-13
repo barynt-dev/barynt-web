@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { getPluginIssuePanels } from "@/features/plugins/slots";
 import { listAudit } from "@/lib/audit";
 import { getCurrentWorkspaceId } from "@/lib/current-workspace";
 import {
@@ -715,6 +716,7 @@ export async function getIssuesByProject(
       children: [],
       relations: [],
       activity: [],
+      pluginPanels: [],
     })),
   );
 }
@@ -797,6 +799,7 @@ export async function getWorkspaceIssues(
       children: [],
       relations: [],
       activity: [],
+      pluginPanels: [],
     })),
   );
 }
@@ -981,15 +984,20 @@ export async function getIssueById(id: string): Promise<IssueDetail | null> {
   const access = await issueAccessFor(i);
   const attachments = await resolveIssueAttachments(i.attachments);
   const viewerId = await currentUserId();
-  const [relations, activity] = await Promise.all([
+  const [relations, activity, pluginPanels] = await Promise.all([
     loadIssueRelations(i.id, i.parentId, i.project.workspaceId),
     listAudit({ targetId: i.id, projectId: i.projectId }),
+    getPluginIssuePanels({
+      workspaceId: i.project.workspaceId,
+      projectId: i.projectId,
+    }),
   ]);
   return {
     ...withIssueAttachments(mapIssue(i, viewerId), attachments),
     access,
     ...relations,
     activity,
+    pluginPanels,
   };
 }
 
@@ -1032,15 +1040,17 @@ export const getIssueByRef = cache(
     const access = await issueAccessFor(i);
     const attachments = await resolveIssueAttachments(i.attachments);
     const viewerId = await currentUserId();
-    const [relations, activity] = await Promise.all([
+    const [relations, activity, pluginPanels] = await Promise.all([
       loadIssueRelations(i.id, i.parentId, workspaceId),
       listAudit({ targetId: i.id, projectId: project.id }),
+      getPluginIssuePanels({ workspaceId, projectId: project.id }),
     ]);
     return {
       ...withIssueAttachments(mapIssue(i, viewerId), attachments),
       access,
       ...relations,
       activity,
+      pluginPanels,
     };
   },
 );
