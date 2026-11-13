@@ -536,6 +536,11 @@
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-lg);
   overflow: hidden;
+
+  /* `display: flex` would otherwise keep a folded panel's empty frame. */
+  &[hidden] {
+    display: none;
+  }
 }
 
 /* ---------- Attribute bar ---------- */
