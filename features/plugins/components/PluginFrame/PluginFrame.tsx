@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
+import type { BlockData } from "@/lib/plugins/blocks";
 import {
   BRIDGE_MAX_PENDING,
   BRIDGE_TIMEOUT_MS,
@@ -41,11 +42,18 @@ export function PluginFrame({
   pluginId,
   name,
   context,
+  headless,
+  onBlockData,
 }: {
   pluginId: string;
   /** The plugin's name — the frame's title, and in its error. */
   name: string;
   context: FrameContext;
+  /** Runs out of sight — a building block whose data Barynt draws
+   *  (BARY-205). Its error still shows. */
+  headless?: boolean;
+  /** A building block's data, checked (`parseBlockData`). */
+  onBlockData?: (data: BlockData) => void;
 }) {
   const t = useTranslations("plugins");
   const frame = useRef<HTMLIFrameElement>(null);
@@ -134,6 +142,8 @@ export function PluginFrame({
         } else if (message.type === "error") {
           window.clearTimeout(readyTimer);
           setState({ status: "error", message: message.message });
+        } else if (message.type === "blockData") {
+          onBlockData?.(message.data);
         } else {
           void forward(message.id, message.method, message.params);
         }
@@ -178,7 +188,11 @@ export function PluginFrame({
   }, [attempt, src]);
 
   return (
-    <div className={styles.host} data-state={state.status}>
+    <div
+      className={styles.host}
+      data-state={state.status}
+      data-headless={headless || undefined}
+    >
       <iframe
         key={attempt}
         ref={frame}

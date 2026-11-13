@@ -8,6 +8,17 @@
   min-height: 0;
 }
 
+/* A building block whose data Barynt draws (BARY-205): its frame runs out
+   of sight. Only its error takes the block's place. */
+.host[data-headless]:not([data-state="error"]) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .frame {
   flex: 1;
   width: 100%;

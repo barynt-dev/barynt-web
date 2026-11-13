@@ -473,3 +473,62 @@ describe("more setting types and a settings section (BARY-204)", () => {
     ).not.toEqual([]);
   });
 });
+
+describe("widgetBlocks (BARY-205)", () => {
+  const withBlocks = (widgetBlocks: unknown[], over: object = {}) =>
+    errors({
+      ...base,
+      capabilities: ["ui:dashboard-widget"],
+      contributes: { widgetBlocks },
+      ...over,
+    });
+
+  it("lets a sandbox plugin bring blocks, with settings", () => {
+    expect(
+      withBlocks([
+        {
+          id: "due-soon",
+          title: "Due soon",
+          settings: [{ key: "days", type: "number", label: "Days" }],
+        },
+        { id: "ring", title: "Done", draw: "plugin" },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("needs code, the capability, and simple settings", () => {
+    expect(
+      withBlocks([{ id: "x", title: "X" }], { kind: "declarative" }),
+    ).toContain(
+      "contributes.widgetBlocks: a declarative plugin cannot contribute widgetBlocks",
+    );
+    expect(
+      errors({
+        ...base,
+        contributes: { widgetBlocks: [{ id: "x", title: "X" }] },
+      }),
+    ).toContain(
+      "contributes.widgetBlocks: needs the capability ui:dashboard-widget",
+    );
+    expect(
+      withBlocks([
+        {
+          id: "x",
+          title: "X",
+          settings: [{ key: "who", type: "member", label: "Who" }],
+        },
+      ]),
+    ).not.toEqual([]);
+    expect(
+      withBlocks([
+        {
+          id: "x",
+          title: "X",
+          settings: [{ key: "pick", type: "select", label: "Pick" }],
+        },
+      ]),
+    ).toContain(
+      "contributes.widgetBlocks.0.settings.0.options: a select setting needs options",
+    );
+  });
+});

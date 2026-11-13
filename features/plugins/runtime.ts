@@ -217,11 +217,23 @@ export async function getPluginSlotView(
   userId: string,
   place: PluginPlace,
   slot: FrameContext["slot"],
-): Promise<{ pluginName: string; title: string } | null> {
+): Promise<{
+  pluginName: string;
+  title: string;
+  /** For a building block: who draws it (BARY-205). */
+  draw?: "barynt" | "plugin";
+} | null> {
   const plugin = await findRunningPlugin(userId, place);
   if (!plugin) return null;
   const entry = slotEntry(plugin, slot);
-  return entry
-    ? { pluginName: plugin.manifest.name, title: entry.title }
-    : null;
+  if (!entry) return null;
+  const block =
+    slot.kind === "block"
+      ? plugin.manifest.contributes.widgetBlocks?.find((b) => b.id === slot.id)
+      : undefined;
+  return {
+    pluginName: plugin.manifest.name,
+    title: entry.title,
+    ...(block && { draw: block.draw ?? "barynt" }),
+  };
 }

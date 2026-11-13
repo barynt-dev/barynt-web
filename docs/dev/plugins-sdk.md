@@ -143,6 +143,49 @@ widget below Barynt's header, in the size someone picked (S to XL) — watch
 Barynt's own blocks you need no code at all — see
 [widget templates](plugins-manifest.md#widget-templates).
 
+### `registerBlock()`
+
+```ts
+registerBlock(block: { id: string; data?(context): BlockData; render?(el, context) }): void;
+showBlock(data: BlockData): void;
+```
+
+A [building block](plugins-manifest.md#building-blocks) from
+`contributes.widgetBlocks`, which people put into their custom widgets. Barynt
+opens a frame per block in a widget; `context.config` holds the settings
+someone chose for it in the builder.
+
+With `data` (`draw: "barynt"`, the default) your frame runs out of sight:
+return what to show, and Barynt draws it like its own blocks. Call
+`showBlock()` to show something new later — on a timer, say.
+
+```ts
+this.registerBlock({
+  id: "due-soon",
+  data: async ({ config }) => {
+    const days = Number(config?.days ?? 7);
+    const { issues } = await this.api.issues.list({ take: 100 });
+    const soon = issues.filter((i) => i.dueDate && daysUntil(i.dueDate) <= days);
+    return {
+      kind: "list",
+      items: soon.map((i) => ({ title: `${i.ref} ${i.title}`, meta: `in ${daysUntil(i.dueDate!)} d` })),
+      empty: `Nothing due in the next ${days} days.`,
+    };
+  },
+});
+```
+
+| `kind` | Fields |
+| --- | --- |
+| `kpi` | `value`, `label`, `trend?: { text, good? }` |
+| `list` | `items: { title, meta?, href? }[]`, `empty?` |
+| `bars` | `bars: { label, value, color? }[]` — `color` a `#hex` or `var(--token)` |
+| `progress` | `value`, `max?` (100), `label?` |
+
+Texts are cut to 200 characters, lists and bars to 20 entries, links to
+`http(s)`; anything else is dropped. With `render` instead (`draw: "plugin"`),
+you draw the block yourself, like a view — the [UI kit](#the-ui-kit) helps.
+
 ### `registerSettings()`
 
 ```ts

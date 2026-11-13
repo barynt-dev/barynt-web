@@ -446,5 +446,14 @@ export function sampleData(widget: Widget, words: SampleWords): WidgetData {
         workspaceId: "",
         projectId: null,
       };
+    case "pluginBlock":
+      return {
+        type: "pluginBlock",
+        pluginId: widget.config.pluginId ?? "",
+        blockId: widget.config.pluginBlock ?? "",
+        plugin: null,
+        workspaceId: "",
+        projectId: null,
+      };
   }
 }

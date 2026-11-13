@@ -5,7 +5,7 @@
 // was confirmed. Plain DOM, no innerHTML with data — a plugin is a guest.
 
 import { type Issue, Plugin } from "@barynt/plugin-sdk";
-import { kpi, list } from "@barynt/plugin-sdk/ui";
+import { kpi, list, progressRing } from "@barynt/plugin-sdk/ui";
 
 const DAY = 86_400_000;
 
@@ -34,6 +34,81 @@ export default class Timeline extends Plugin {
       render: async (root) => {
         const { issues } = await this.api.issues.list({ take: 100 });
         this.drawOldest(root, issues);
+      },
+    });
+
+    // Building blocks for custom widgets (BARY-205). Barynt draws what
+    // `data` returns, like its own blocks…
+    const isOpen = (i: Issue) =>
+      i.statusCategory !== "completed" && i.statusCategory !== "canceled";
+    const daysSince = (date: string) =>
+      Math.floor((Date.now() - new Date(date).getTime()) / DAY);
+    this.registerBlock({
+      id: "due-soon",
+      data: async ({ config }) => {
+        const days = Number(config?.days ?? 7);
+        const { issues } = await this.api.issues.list({ take: 100 });
+        const soon = issues
+          .filter((i) => isOpen(i) && i.dueDate)
+          .map((i) => ({ issue: i, left: -daysSince(i.dueDate as string) }))
+          .filter((x) => x.left <= days)
+          .sort((a, b) => a.left - b.left);
+        return {
+          kind: "list",
+          items: soon.slice(0, 5).map(({ issue, left }) => ({
+            title: `${issue.ref}  ${issue.title}`,
+            meta:
+              left < 0
+                ? `${-left} d late`
+                : left === 0
+                  ? "today"
+                  : `in ${left} d`,
+          })),
+          empty: `Nothing due in the next ${days} days.`,
+        };
+      },
+    });
+    this.registerBlock({
+      id: "by-age",
+      data: async () => {
+        const { issues } = await this.api.issues.list({ take: 100 });
+        const ages = issues.filter(isOpen).map((i) => daysSince(i.created));
+        const count = (from: number, to: number) =>
+          ages.filter((a) => a >= from && a < to).length;
+        return {
+          kind: "bars",
+          bars: [
+            { label: "Under a week", value: count(0, 7) },
+            { label: "1–2 weeks", value: count(7, 14) },
+            {
+              label: "2–4 weeks",
+              value: count(14, 28),
+              color: "var(--warning)",
+            },
+            {
+              label: "Older",
+              value: count(28, Infinity),
+              color: "var(--error)",
+            },
+          ],
+        };
+      },
+    });
+    // …and this one it draws itself, with the SDK's UI kit.
+    this.registerBlock({
+      id: "done-ring",
+      render: async (root) => {
+        const { issues } = await this.api.issues.list({ take: 100 });
+        const done = issues.filter((i) => i.statusCategory === "completed");
+        const wrap = el("div", "tl-ring");
+        wrap.append(
+          progressRing({
+            value: done.length,
+            max: Math.max(1, issues.length),
+            label: `${done.length} of ${issues.length} done`,
+          }),
+        );
+        root.replaceChildren(wrap);
       },
     });
   }

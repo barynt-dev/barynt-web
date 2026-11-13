@@ -77,6 +77,8 @@ const RUNTIME = `(() => {
         call,
         context: Object.freeze(data.context),
         root: document.getElementById("root"),
+        // A building block's data, for Barynt to draw (BARY-205).
+        show: (blockData) => send({ type: "blockData", data: blockData }),
       });
       instance = new Plugin(host);
       if (instance && typeof instance.onload === "function") await instance.onload();

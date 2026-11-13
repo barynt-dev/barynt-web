@@ -1,5 +1,5 @@
 import type { Plugin } from "./plugin";
-import type { Context, Host, Method, Methods } from "./types";
+import type { BlockData, Context, Host, Method, Methods } from "./types";
 
 // Testing a plugin without Barynt: a host that answers from your handlers
 // and records every call.
@@ -13,6 +13,8 @@ type Handlers = {
 export interface TestHost extends Host {
   /** Every request the plugin made, in order. */
   readonly calls: { method: string; params: unknown }[];
+  /** Every building block's data the plugin showed, in order. */
+  readonly shown: BlockData[];
 }
 
 /**
@@ -28,8 +30,11 @@ export function createTestHost(
   } = {},
 ): TestHost {
   const calls: TestHost["calls"] = [];
+  const shown: TestHost["shown"] = [];
   return {
     calls,
+    shown,
+    show: (data) => void shown.push(data),
     context: {
       slot: { kind: "projectView", id: "main" },
       workspaceId: "workspace",

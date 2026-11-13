@@ -125,11 +125,11 @@ mock.module("node:https", () => {
 });
 const { sealSecret } = await import("@/lib/secret-box");
 
-const { callBridge, getPluginFrame } = await import(
+const { callBridge, getPluginFrame, getPluginSlotView } = await import(
   "@/features/plugins/runtime"
 );
 const { parseWidgets } = await import("@/features/dashboard/widgets");
-const { getPluginNav, getPluginWidgets } = await import(
+const { getPluginBlocks, getPluginNav, getPluginWidgets } = await import(
   "@/features/plugins/slots"
 );
 
@@ -804,5 +804,60 @@ describe("getPluginFrame", () => {
         id: "timeline",
       }),
     ).toBeNull();
+  });
+});
+
+describe("building blocks (BARY-205)", () => {
+  const blocks = [
+    {
+      id: "due-soon",
+      title: "Due soon",
+      settings: [{ key: "days", type: "number", label: "Days", default: 7 }],
+    },
+    { id: "ring", title: "Done", draw: "plugin" },
+  ];
+  const withBlocks = {
+    ...manifest,
+    capabilities: [...manifest.capabilities, "ui:dashboard-widget"],
+    contributes: { ...manifest.contributes, widgetBlocks: blocks },
+  };
+
+  it("says who draws a block, where it runs", async () => {
+    db.pluginActivation.findUnique.mockResolvedValue({
+      id: "act1",
+      enabled: true,
+      capabilities: ["issues:read", "ui:dashboard-widget"],
+    });
+    db.plugin.findFirst.mockResolvedValue({ id: "row1", manifest: withBlocks });
+    expect(
+      await getPluginSlotView("u1", place, { kind: "block", id: "due-soon" }),
+    ).toEqual({ pluginName: "Timeline", title: "Due soon", draw: "barynt" });
+    expect(
+      await getPluginSlotView("u1", place, { kind: "block", id: "ring" }),
+    ).toMatchObject({ draw: "plugin" });
+    expect(
+      await getPluginSlotView("u1", place, { kind: "block", id: "nope" }),
+    ).toBeNull();
+  });
+
+  it("offers a place's blocks to the builder, with the capability confirmed", async () => {
+    db.plugin.findMany.mockResolvedValue([
+      { pluginId: "timeline", manifest: withBlocks },
+    ]);
+    db.pluginActivation.findMany.mockResolvedValue([
+      { pluginId: "timeline", capabilities: ["ui:dashboard-widget"] },
+    ]);
+    const list = await getPluginBlocks({ workspaceId: "ws1", projectId: "p1" });
+    expect(list.map((b) => [b.blockId, b.draw])).toEqual([
+      ["ring", "plugin"],
+      ["due-soon", "barynt"],
+    ]);
+    expect(list[1].settings[0]).toMatchObject({ key: "days", default: 7 });
+    db.pluginActivation.findMany.mockResolvedValue([
+      { pluginId: "timeline", capabilities: [] },
+    ]);
+    expect(
+      await getPluginBlocks({ workspaceId: "ws1", projectId: "p1" }),
+    ).toEqual([]);
   });
 });

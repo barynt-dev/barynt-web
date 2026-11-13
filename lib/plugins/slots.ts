@@ -30,6 +30,13 @@ export const SLOTS = {
     capability: "ui:dashboard-widget",
     path: null,
   },
+  /** A building block in a custom widget (BARY-205) — drawn there, either
+   *  by Barynt from the plugin's data or in a frame of the plugin's. */
+  block: {
+    contributes: "widgetBlocks",
+    capability: "ui:dashboard-widget",
+    path: null,
+  },
 } as const satisfies Record<
   string,
   {
@@ -45,7 +52,7 @@ export const isSlotKind = (kind: unknown): kind is SlotKind =>
   typeof kind === "string" && Object.hasOwn(SLOTS, kind);
 
 /** A slot kind by the path segment it's addressed with (`view`, `page`);
- *  a widget has none — it's only ever on a dashboard. */
+ *  a widget or block has none — it's only ever on a dashboard. */
 export function slotKindOfPath(path: string): SlotKind | null {
   for (const [kind, slot] of Object.entries(SLOTS))
     if (slot.path !== null && slot.path === path) return kind as SlotKind;

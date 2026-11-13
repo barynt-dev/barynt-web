@@ -1,8 +1,25 @@
 import { type Api, createApi } from "./api";
-import type { Context, Host, Json } from "./types";
+import type { BlockData, Context, Host, Json } from "./types";
 
 /** Something that undoes what a plugin set up. */
 export type Cleanup = () => void;
+
+/** A building block for custom widgets (`contributes.widgetBlocks`). */
+export interface WidgetBlock {
+  /** As in the manifest's `contributes.widgetBlocks`. */
+  id: string;
+  /**
+   * What it shows, for Barynt to draw (`draw: "barynt"`, the default) —
+   * `context.config` holds its settings. Call `showBlock()` later to show
+   * something new.
+   */
+  data?(context: Context): BlockData | Promise<BlockData>;
+  /** Draws it yourself (`draw: "plugin"`), like a view. */
+  render?(
+    el: HTMLElement,
+    context: Context,
+  ): void | Cleanup | Promise<void | Cleanup>;
+}
 
 export interface ProjectView {
   /** As in the manifest's `contributes.projectViews` (or `navItems`, for
@@ -45,7 +62,10 @@ export abstract class Plugin {
   readonly #cleanups: Cleanup[] = [];
   readonly #renders: Promise<unknown>[] = [];
 
+  readonly #show: Host["show"];
+
   constructor(host: Host) {
+    this.#show = host.show;
     this.api = createApi(host);
     this.context = host.context;
     this.root = host.root;
@@ -113,6 +133,33 @@ export abstract class Plugin {
     const { id } = this.context.slot;
     if (id === "settings" || id === "section")
       this.#renderSlot("settings", { ...page, id });
+  }
+
+  /**
+   * A building block from the manifest's `contributes.widgetBlocks`, for
+   * people to put in their custom widgets. Barynt opens one frame per block
+   * in a widget, so it's run right away when this frame is for it, and
+   * never otherwise. With `data`, Barynt draws what it returns; with
+   * `render`, you draw it (`draw: "plugin"` in the manifest).
+   */
+  registerBlock(block: WidgetBlock): void {
+    const { slot } = this.context;
+    if (slot.kind !== "block" || slot.id !== block.id) return;
+    if (block.render) {
+      this.#renderSlot("block", { id: block.id, render: block.render });
+      return;
+    }
+    const data = block.data;
+    if (!data) return;
+    this.#renders.push(
+      Promise.resolve(data(this.context)).then((d) => this.showBlock(d)),
+    );
+  }
+
+  /** Shows new data in this frame's building block — after a refresh,
+   *  say (`registerInterval`). */
+  showBlock(data: BlockData): void {
+    this.#show?.(data);
   }
 
   #renderSlot(kind: Context["slot"]["kind"], view: ProjectView) {

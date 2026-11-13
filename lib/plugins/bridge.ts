@@ -1,3 +1,8 @@
+import {
+  type BlockData,
+  type BlockSettingValues,
+  parseBlockData,
+} from "./blocks";
 import type { Capability } from "./manifest";
 
 // The host bridge's protocol (BARY-144): what a sandboxed plugin may ask its
@@ -70,17 +75,25 @@ export const isBridgeMethod = (method: unknown): method is BridgeMethod =>
 /** Where a plugin's frame runs: the slot it fills (`lib/plugins/slots.ts`)
  *  and the place it's in. */
 export interface FrameContext {
-  slot: { kind: "projectView" | "page" | "widget" | "settings"; id: string };
+  slot: {
+    kind: "projectView" | "page" | "widget" | "block" | "settings";
+    id: string;
+  };
   workspaceId: string;
   projectId: string | null;
   locale: string;
+  /** A building block's own settings, as the widget's builder set them
+   *  (BARY-205). */
+  config?: BlockSettingValues;
 }
 
 /** Frame → host, over the private channel. */
 export type FrameMessage =
   | { type: "call"; id: number; method: string; params: unknown }
   | { type: "ready" }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  /** A building block's data, for Barynt to draw (BARY-205). */
+  | { type: "blockData"; data: BlockData };
 
 /** Host → frame. */
 export type HostMessage =
@@ -147,6 +160,10 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
   if (!data || typeof data !== "object") return null;
   const m = data as Record<string, unknown>;
   if (m.type === "ready") return { type: "ready" };
+  if (m.type === "blockData") {
+    const data = parseBlockData(m.data);
+    return data ? { type: "blockData", data } : null;
+  }
   if (m.type === "error")
     return { type: "error", message: String(m.message ?? "").slice(0, 500) };
   if (

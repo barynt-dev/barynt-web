@@ -123,6 +123,26 @@ const settingSchema = z.strictObject({
   options: z.array(optionSchema).max(50).optional(),
 });
 
+/** A building block for custom widgets (BARY-205): Barynt draws the data
+ *  the plugin hands over (`draw: "barynt"`, the default), or the plugin
+ *  draws it in a frame of its own (`"plugin"`). Its settings are set per
+ *  block in the widget's builder. */
+const blockSchema = z.strictObject({
+  id: localId,
+  title,
+  icon: icon.optional(),
+  description: z.string().trim().max(200).optional(),
+  draw: z.enum(["barynt", "plugin"]).optional(),
+  settings: z
+    .array(
+      settingSchema.extend({
+        type: z.enum(["text", "number", "boolean", "select"]),
+      }),
+    )
+    .max(10)
+    .optional(),
+});
+
 /** Where a credential is kept: once for the workspace, once per project,
  *  or each person their own (BARY-147). */
 export const CREDENTIAL_LEVELS = ["workspace", "project", "user"] as const;
@@ -155,6 +175,7 @@ const contributesSchema = z.strictObject({
   projectViews: z.array(entry).max(5).optional(),
   dashboardWidgets: z.array(entry).max(5).optional(),
   widgetTemplates: z.array(widgetTemplateSchema).max(10).optional(),
+  widgetBlocks: z.array(blockSchema).max(10).optional(),
   issuePanels: z.array(entry).max(5).optional(),
   issueBadges: z.array(entry).max(5).optional(),
   actions: z.array(entry).max(20).optional(),
@@ -178,6 +199,7 @@ const CONTRIBUTION_CAPABILITY: Record<
   projectViews: "ui:project-view",
   dashboardWidgets: "ui:dashboard-widget",
   widgetTemplates: "ui:dashboard-widget",
+  widgetBlocks: "ui:dashboard-widget",
   issuePanels: "ui:issue-panel",
   issueBadges: "ui:issue-badge",
   actions: "ui:action",
@@ -196,6 +218,7 @@ const KIND_CONTRIBUTIONS: Record<PluginKind, readonly (keyof Contributes)[]> = {
     "navItems",
     "projectViews",
     "dashboardWidgets",
+    "widgetBlocks",
     "issuePanels",
     "issueBadges",
     "actions",
@@ -324,6 +347,22 @@ export const manifestSchema = z
         add(
           ["contributes", "credentials", i, "header"],
           "Barynt sets this header itself",
+        );
+    });
+
+    (m.contributes.widgetBlocks ?? []).forEach((b, i) => {
+      (b.settings ?? []).forEach((setting, j) => {
+        const path = ["contributes", "widgetBlocks", i, "settings", j];
+        if (setting.type === "select" && !setting.options?.length)
+          add([...path, "options"], "a select setting needs options");
+        if (setting.type !== "select" && setting.options)
+          add([...path, "options"], "only select settings have options");
+      });
+      const keys = (b.settings ?? []).map((x) => x.key);
+      if (new Set(keys).size !== keys.length)
+        add(
+          ["contributes", "widgetBlocks", i, "settings"],
+          "keys must be unique",
         );
     });
 

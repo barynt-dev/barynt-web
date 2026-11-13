@@ -81,6 +81,8 @@ A plugin's page always names the plugin under its title.
 
 A plugin can also bring **dashboard widgets**: on a dashboard, **Add widget** lists them under **Plugins**, with a live preview. Some are templates made of Barynt's own building blocks: once added, such a widget is the dashboard's own custom widget — it stays when the plugin is switched off, and **Customize** lets you change it before adding. And some plugins draw their **settings page** themselves — the page under **Plugins** in the settings then shows the plugin's own form; what it saves is checked by Barynt like any other setting. Others add a part below Barynt's form — a connection check, say.
 
+Plugins can also bring **building blocks** for custom widgets: in the widget builder, **Add block** lists them next to Barynt's own, each with the settings it brings. If the plugin is switched off, the block says so and the rest of the widget stays.
+
 ### A plugin's settings in the workspace
 
 A plugin running in the workspace that has settings gets an entry under **Plugins** in the workspace settings, with its form.
