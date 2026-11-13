@@ -267,7 +267,7 @@ minutes, per server process; `refreshPluginSource` and every source change forge
 What's open is in the address (`?plugin=`, `?tab=overview|capabilities|versions|places`,
 `?view=sources`); "where it's on" comes from `getPluginPlaces`, only for that tab. The
 start page uses the directory's optional `categories`, `featured` and `added`
-([directory format](../plugins/directory.md)). The install dialog shows
+([directory format](plugins-publishing.md#the-directory-entry)). The install dialog shows
 `previewRelease` (loaded and checked, not stored); installing loads the release once more,
 so the server never trusts what a dialog was shown.
 
@@ -292,7 +292,11 @@ confirmed ones) and answers through the same `*ForUser` functions as the REST AP
 (`countRequest` in `lib/api/rateLimit.ts`, the API keys' Redis window), the plugin's own
 storage (`PluginStorage`, per activation, with the limits in `STORAGE_LIMITS`), and for
 every write an audit entry `plugin.acted` with the plugin and the person. What it writes
-is the person's (`source: APP`, no badge); the audit entry is where the plugin shows. For plugin authors: `docs/plugins/runtime.md`.
+is the person's (`source: APP`, no badge); the audit entry is where the plugin shows.
+Plugin authors build against `packages/plugin-sdk` (BARY-146): a `Plugin` class over that
+host, its typed API (`METHODS` — `tests/unit/plugins/sdk.test.ts` keeps it equal to
+`BRIDGE_METHODS`) and a test host. The app resolves it through `tsconfig.json`'s `paths`;
+`bun run --cwd packages/plugin-sdk build` writes `dist/` with types. For plugin authors: [Building plugins](plugins.md).
 
 ## Smaller pieces
 

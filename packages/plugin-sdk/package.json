@@ -1,0 +1,25 @@
+{
+  "name": "@barynt/plugin-sdk",
+  "version": "0.1.0",
+  "description": "Build sandboxed plugins for Barynt.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "bun build src/index.ts src/testing.ts --outdir dist --format esm --target browser && tsc -p tsconfig.build.json"
+  }
+}

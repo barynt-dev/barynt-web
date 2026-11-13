@@ -129,3 +129,7 @@ Nimmst du die Freischaltung zurück, wird das Plugin im Workspace und in allen s
 ### Einstellungen eines Plugins
 
 Ein eingeschaltetes Plugin mit Einstellungen bekommt in den Einstellungen des Workspaces oder Projekts einen Eintrag unter **Plugins**, unterhalb der anderen Bereiche. Seine Seite enthält das Formular, das das Plugin mitbringt (ein Kanalname, was gepostet wird, …), und unten das Ausschalten an dieser Stelle.
+
+## Eigene Plugins bauen
+
+Wie man selbst ein Plugin schreibt, steht unter [Building plugins](../../../dev/plugins.md) in der Entwickler-Doku (auf Englisch).

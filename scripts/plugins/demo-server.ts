@@ -12,7 +12,8 @@
 //     http://localhost:4555/plugins.json          (web server)
 //
 // Most plugins only exist to be installed and switched on. Demo Timeline
-// runs for real (BARY-144): its code is `demo-plugins/timeline.js`.
+// runs for real (BARY-144): `demo-plugins/timeline.ts`, built with the
+// plugin SDK into one `main.js` when the server starts (BARY-146).
 
 import { readFileSync } from "node:fs";
 import {
@@ -29,6 +30,21 @@ const enc = (s: string) => new TextEncoder().encode(s);
 const demoFile = (name: string) =>
   readFileSync(new URL(`./demo-plugins/${name}`, import.meta.url), "utf8");
 
+/** A demo plugin's `main.js`: its TypeScript with the SDK bundled in, one
+ *  ES module for the browser — what a plugin's release ships. */
+async function bundle(name: string): Promise<string> {
+  const built = await Bun.build({
+    entrypoints: [
+      new URL(`./demo-plugins/${name}.ts`, import.meta.url).pathname,
+    ],
+    format: "esm",
+    target: "browser",
+  });
+  if (!built.success)
+    throw new Error(built.logs.map((log) => log.message).join("\n"));
+  return built.outputs[0].text();
+}
+
 interface Demo {
   entry: Omit<DirectoryEntry, "versions">;
   manifest: Record<string, unknown>;
@@ -38,8 +54,8 @@ interface Demo {
   tampered?: boolean;
   /** Screenshots in the release (BARY-199). */
   previews?: { title: string; screen: DemoScreen; accent: string }[];
-  /** Real code instead of the placeholder: `demo-plugins/<name>.js` and
-   *  `.css` (BARY-144). */
+  /** Real code instead of the placeholder: `demo-plugins/<name>.ts`
+   *  (bundled with the SDK) and `.css` (BARY-144). */
   code?: string;
 }
 
@@ -236,6 +252,10 @@ const DEMOS: Demo[] = [
 
 /** Every release's files, by `<repo>/<version>`. */
 const releases = new Map<string, ReleaseFiles>();
+const bundled = new Map<string, string>();
+for (const demo of DEMOS)
+  if (demo.code) bundled.set(demo.code, await bundle(demo.code));
+
 const directory = DEMOS.map((demo) => {
   const versions: Record<string, string> = {};
   for (const [version, extra] of Object.entries(demo.versions)) {
@@ -267,7 +287,7 @@ const directory = DEMOS.map((demo) => {
       ...(demo.entry.kind === "sandbox" &&
         (demo.code
           ? {
-              "main.js": enc(demoFile(`${demo.code}.js`)),
+              "main.js": enc(bundled.get(demo.code) ?? ""),
               "styles.css": enc(demoFile(`${demo.code}.css`)),
             }
           : {

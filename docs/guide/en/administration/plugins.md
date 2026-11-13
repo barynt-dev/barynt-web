@@ -130,3 +130,7 @@ Taking the release back switches the plugin off in the workspace and every one o
 ### A plugin's settings
 
 A switched-on plugin that has settings gets an entry under **Plugins** in the workspace's or project's settings, below the other sections. Its page holds the form the plugin brings (a channel name, what to post, …) and, at the bottom, switching it off there.
+
+## Building your own
+
+To write a plugin yourself, see [Building plugins](../../../dev/plugins.md) in the developer docs.
