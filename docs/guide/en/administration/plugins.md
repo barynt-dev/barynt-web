@@ -83,7 +83,7 @@ A plugin can also bring **dashboard widgets**: on a dashboard, **Add widget** li
 
 Plugins can also bring **building blocks** for custom widgets: in the widget builder, **Add block** lists them next to Barynt's own, each with the settings it brings. If the plugin is switched off, the block says so and the rest of the widget stays.
 
-Some plugins show a **panel in every issue** of a project where they're on — below the attachments, with the plugin's name. Fold one you don't need; it stays folded for you. Others put **badges** on the board's cards and the list's rows — a due date, an open merge request. **Display** lists them under *Plugin badges*; switch off the ones you don't want.
+Some plugins show a **panel in every issue** of a project where they're on — below the attachments, with the plugin's name. Fold one you don't need; it stays folded for you. Others put **badges** on the board's cards and the list's rows — a due date, an open merge request. **Display** lists them under *Plugin badges*; switch off the ones you don't want. Some show a whole line on a card — a merge request with its state and pipeline, say.
 
 ### A plugin's settings in the workspace
 

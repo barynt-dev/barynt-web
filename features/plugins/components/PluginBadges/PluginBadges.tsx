@@ -18,6 +18,7 @@ import {
   type BadgeIssue,
   parseBadges,
   pluginBadgeEntry,
+  type RowPart,
 } from "@/lib/plugins/badges";
 import type { IssueDetail } from "@/types";
 import { PluginFrame } from "../PluginFrame/PluginFrame";
@@ -202,29 +203,48 @@ export function usePluginBadgeEntries(): {
   );
 }
 
-/** An issue's chips from every plugin, the hidden ones left out — up to
- *  `max`, then "+N" with the rest in its tooltip. */
+/** An issue's badges from every plugin, the hidden ones left out. */
+function useIssueBadges(issueId: string, hidden: string[]) {
+  const ctx = useContext(PluginBadgesContext);
+  if (!ctx) return [];
+  const hiddenSet = new Set(hidden);
+  return ctx.providers.flatMap((p) =>
+    (ctx.badges[p.pluginId]?.[issueId] ?? [])
+      .filter((b) => !hiddenSet.has(pluginBadgeEntry(p.pluginId, b.badge)))
+      .map((b, i) => ({
+        ...b,
+        plugin: p.pluginName,
+        key: `${p.pluginId}:${b.badge}:${i}`,
+      })),
+  );
+}
+
+const STATUS_ICON = {
+  success: "lucide:circle-check",
+  danger: "lucide:circle-x",
+  warning: "lucide:triangle-alert",
+  pending: "lucide:clock",
+} as const;
+
+/**
+ * An issue's chips from every plugin — up to `max`, then "+N" with the
+ * rest in its tooltip. A row (BARY-207) shows as a chip too, its reference
+ * first, unless `rows="skip"` — the card draws those across itself
+ * (`PluginBadgeRows`).
+ */
 export function PluginBadgeChips({
   issueId,
   hidden,
   max = 3,
+  rows = "compact",
 }: {
   issueId: string;
   hidden: string[];
   max?: number;
+  rows?: "compact" | "skip";
 }) {
-  const ctx = useContext(PluginBadgesContext);
-  if (!ctx) return null;
-  const hiddenSet = new Set(hidden);
-  const chips = ctx.providers.flatMap((p) =>
-    (ctx.badges[p.pluginId]?.[issueId] ?? [])
-      .filter((b) => !hiddenSet.has(pluginBadgeEntry(p.pluginId, b.badge)))
-      .map((b) => ({
-        ...b,
-        plugin: p.pluginName,
-        key: `${p.pluginId}:${b.badge}:${b.text}`,
-      })),
-  );
+  const all = useIssueBadges(issueId, hidden);
+  const chips = rows === "skip" ? all.filter((b) => b.kind !== "row") : all;
   if (chips.length === 0) return null;
   const shown = chips.slice(0, max);
   const rest = chips.slice(max);
@@ -252,4 +272,120 @@ export function PluginBadgeChips({
       )}
     </span>
   );
+}
+
+/**
+ * The rows plugins put across an issue's card (BARY-207), each made of the
+ * parts the plugin chose, left to right — an icon, a reference, a state in
+ * its tone, a pipeline, a person, a mark at the end. Barynt draws every part.
+ */
+export function PluginBadgeRows({
+  issueId,
+  hidden,
+}: {
+  issueId: string;
+  hidden: string[];
+}) {
+  const rows = useIssueBadges(issueId, hidden).filter((b) => b.kind === "row");
+  if (rows.length === 0) return null;
+  return (
+    <div className={styles.rows}>
+      {rows.map((b) => (
+        <div
+          key={b.key}
+          className={styles.row}
+          data-tone={b.tone ?? "neutral"}
+          title={`${b.tooltip ?? b.text} · ${b.plugin}`}
+        >
+          {(b.parts ?? []).map((part, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: parts have no id; their order is what they are
+            <RowPartView key={i} part={part} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RowPartView({ part }: { part: RowPart }) {
+  switch (part.type) {
+    case "icon":
+      return (
+        <Icon
+          icon={BADGE_ICONS[part.icon]}
+          width={15}
+          className={styles.partIcon}
+          data-tone={part.tone}
+          aria-hidden
+        />
+      );
+    case "text":
+      return (
+        <span
+          className={styles.partText}
+          data-tone={part.tone}
+          data-mono={part.mono || undefined}
+          data-strong={part.strong || undefined}
+        >
+          {part.text}
+        </span>
+      );
+    case "chip":
+      return (
+        <span className={styles.chip} data-tone={part.tone ?? "neutral"}>
+          {part.text}
+        </span>
+      );
+    case "avatar":
+      // Initials to look at, the name for screen readers.
+      return (
+        <span className={styles.partAvatar} title={part.name}>
+          <span aria-hidden>
+            {part.name
+              .split(/\s+/)
+              .slice(0, 2)
+              .map((w) => w[0]?.toUpperCase() ?? "")
+              .join("")}
+          </span>
+          <span className={styles.srOnly}>{part.name}</span>
+        </span>
+      );
+    case "steps":
+      return (
+        <span
+          className={styles.steps}
+          role="img"
+          aria-label={part.steps.join(", ")}
+        >
+          {part.steps.map((step, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: steps have no id; their order is what they are
+            <i key={i} data-step={step} />
+          ))}
+        </span>
+      );
+    case "progress":
+      return (
+        <span
+          className={styles.partProgress}
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={part.max}
+          aria-valuenow={part.value}
+        >
+          <i style={{ width: `${(part.value / part.max) * 100}%` }} />
+        </span>
+      );
+    case "status":
+      return (
+        <Icon
+          icon={STATUS_ICON[part.status]}
+          width={15}
+          className={styles.rowStatus}
+          data-status={part.status}
+          aria-label={part.status}
+        />
+      );
+    case "spacer":
+      return <span className={styles.spacer} />;
+  }
 }

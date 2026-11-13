@@ -177,7 +177,45 @@ this.registerBadges({
 | `tooltip` | up to 120 characters |
 
 At most 3 chips per issue are taken; anything that isn't one of these is
-dropped. Need more than the issue gives you? Ask the API once for the batch
+dropped.
+
+**A row across the card.** With `kind: "row"`, a badge is a line across
+the board card, between the labels and the footer — a merge request, a
+build, a deployment. **You decide what's in it**: `parts`, left to right,
+in any order, up to 8. Barynt draws each part; in the list, where there's
+no room, the row shows as a chip of its `text` (or its texts). Up to 2 rows
+per issue, next to the 3 chips.
+
+```ts
+out[issue.id] = [{
+  badge: "review",
+  kind: "row",
+  tone: "warning",                       // tints the row
+  parts: [
+    { type: "icon", icon: "git-pull-request", tone: "success" },
+    { type: "text", text: "#410", mono: true, tone: "subtle" },
+    { type: "text", text: "Changes requested", tone: "warning", strong: true },
+    { type: "spacer" },                  // the rest to the right
+    { type: "steps", steps: ["success", "success", "success"] },
+    { type: "status", status: "success" },
+  ],
+}];
+```
+
+| Part | |
+| --- | --- |
+| `{ type: "icon", icon, tone? }` | one of the badge icons |
+| `{ type: "text", text, tone?, mono?, strong? }` | up to 40 characters; `tone` also `subtle` |
+| `{ type: "chip", text, tone? }` | a small chip inside the row |
+| `{ type: "avatar", name }` | a person's initials |
+| `{ type: "steps", steps }` | a pipeline: up to 8 of `success`, `running`, `warning`, `danger`, `pending` |
+| `{ type: "progress", value, max }` | a short bar |
+| `{ type: "status", status }` | a mark: `success`, `danger`, `warning`, `pending` |
+| `{ type: "spacer" }` | pushes what follows to the right end |
+
+A part Barynt doesn't know is dropped; a row with nothing left isn't drawn.
+The demo plugin **Demo Code Review** (`scripts/plugins/demo-plugins/code-review.ts`)
+builds rows like this. Need more than the issue gives you? Ask the API once for the batch
 (`api.issues.list`, `net.fetch`) — not once per issue.
 
 ### `registerIssuePanel()`

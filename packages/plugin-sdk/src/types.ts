@@ -86,15 +86,59 @@ export type BadgeIcon =
   | "rocket"
   | "package";
 
-/** A chip on a card or row. Up to 3 per issue; `text` up to 24 characters,
- *  `tooltip` up to 120. */
+export type BadgeTone =
+  | "neutral"
+  | "primary"
+  | "info"
+  | "success"
+  | "warning"
+  | "danger";
+
+/** A step of a row's pipeline — a build, a review, a check. */
+export type StepState =
+  | "success"
+  | "running"
+  | "warning"
+  | "danger"
+  | "pending";
+
+/** What a row across the card is made of, left to right, in the order you
+ *  choose — Barynt draws each part. At most 8 parts. */
+export type RowPart =
+  | { type: "icon"; icon: BadgeIcon; tone?: BadgeTone }
+  | {
+      type: "text";
+      /** Up to 40 characters. */
+      text: string;
+      tone?: BadgeTone | "subtle";
+      /** In the monospace font — a number, a hash. */
+      mono?: boolean;
+      strong?: boolean;
+    }
+  | { type: "chip"; text: string; tone?: BadgeTone }
+  | { type: "avatar"; name: string }
+  | { type: "steps"; steps: StepState[] }
+  | { type: "progress"; value: number; max: number }
+  | { type: "status"; status: "success" | "danger" | "warning" | "pending" }
+  /** Pushes what follows to the row's right end. */
+  | { type: "spacer" };
+
+/** On a card or row: a small chip (up to 3 per issue, `text` up to 24
+ *  characters) — or, `kind: "row"`, a line across the card made of `parts`
+ *  (up to 2 per issue). */
 export interface Badge {
   /** Which of your `contributes.issueBadges` — what people can hide. */
   badge: string;
-  text: string;
+  kind?: "chip" | "row";
+  /** A chip's text. A row's summary — shown where there's no room for the
+   *  row (the list) and read out; without it, the row's texts. */
+  text?: string;
   icon?: BadgeIcon;
-  tone?: "neutral" | "primary" | "info" | "success" | "warning" | "danger";
+  tone?: BadgeTone;
+  /** Up to 120 characters. */
   tooltip?: string;
+  /** A row's parts, left to right. */
+  parts?: RowPart[];
 }
 
 /** The object Barynt hands a plugin's default export. */

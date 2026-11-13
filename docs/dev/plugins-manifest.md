@@ -132,7 +132,9 @@ an open panel has a frame, and it stays folded for them. The frame grows to
 its content's height (up to 640 px, then it scrolls), so draw what you need
 and no more. See [`registerIssuePanel()`](plugins-sdk.md#registerissuepanel).
 
-A badge is a small chip on a card or row — "in 3d", "MR open". You don't
+A badge is a small chip on a card or row — "in 3d", "MR open" — or a row
+across the card that you put together from parts (a merge request's number,
+state and pipeline). You don't
 draw it: Barynt runs one hidden frame per plugin and board, hands it the
 issues shown in batches, and draws the chips you return with its own
 components — at most 3 per issue from you, the rest as "+N", texts short,
