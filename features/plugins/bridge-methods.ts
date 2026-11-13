@@ -16,13 +16,16 @@ import {
   listProjectsForUser,
   listWorkspaceMembersForUser,
 } from "@/features/api-v1/queries";
+import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
+import { can } from "@/lib/permissions";
 import {
   type BridgeMethod,
   type BridgeResponse,
   STORAGE_LIMITS,
 } from "@/lib/plugins/bridge";
+import { checkSettings } from "@/lib/plugins/settings";
 import { proxyFetch } from "./proxy";
 import type { RunningPlugin } from "./runtime";
 
@@ -332,6 +335,47 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
         ]),
       ),
     );
+  },
+
+  async "settings.set"(userId, plugin, p) {
+    // Whoever may change the plugin's settings here — `plugin.enable` in
+    // the project or the workspace, as on Barynt's own form.
+    const allowed = await can(
+      userId,
+      "plugin.enable",
+      plugin.projectId
+        ? { projectId: plugin.projectId }
+        : { workspaceId: plugin.workspaceId },
+    );
+    if (!allowed) return no("forbidden");
+    const values =
+      p.values && typeof p.values === "object" && !Array.isArray(p.values)
+        ? (p.values as Record<string, unknown>)
+        : null;
+    if (!values) return no("invalid_params");
+    const checked = checkSettings(
+      plugin.manifest.contributes.settings ?? [],
+      values,
+    );
+    if (!checked.ok) return no("invalid_params");
+    await db.pluginSettings.upsert({
+      where: { activationId: plugin.activationId },
+      create: { activationId: plugin.activationId, values: checked.values },
+      update: { values: checked.values },
+    });
+    await recordAudit({
+      action: "plugin.settings.updated",
+      actorId: userId,
+      target: {
+        type: "plugin",
+        id: plugin.pluginId,
+        label: plugin.manifest.name,
+      },
+      workspaceId: plugin.workspaceId,
+      projectId: plugin.projectId,
+      meta: { keys: Object.keys(checked.values) },
+    });
+    return ok(null);
   },
 
   "net.fetch": (userId, plugin, p) => proxyFetch(userId, plugin, p),

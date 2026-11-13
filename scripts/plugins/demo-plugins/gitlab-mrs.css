@@ -46,3 +46,42 @@
   color: var(--on-surface-variant);
   cursor: default;
 }
+.mr-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 28rem;
+  padding: 1.25rem 1.5rem;
+}
+.mr-label {
+  font-weight: 600;
+}
+.mr-input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  font: inherit;
+}
+.mr-status {
+  min-height: 1.25rem;
+  margin: 0;
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+}
+.mr-save {
+  align-self: flex-start;
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: var(--on-primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mr-save:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

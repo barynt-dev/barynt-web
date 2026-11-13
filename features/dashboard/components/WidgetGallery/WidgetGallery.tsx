@@ -30,6 +30,7 @@ import {
   type WidgetType,
 } from "@/features/dashboard/widgets";
 import type { FilterLabelLookups } from "@/features/issues/components/Topbar/filterLabels";
+import { PluginTile } from "@/features/plugins/components/PluginStore/PluginTile";
 import type { BucketUnit } from "@/lib/buckets";
 import { randomId } from "@/lib/utils/id";
 import { useSwipeToClose } from "@/lib/utils/useSwipeToClose";
@@ -54,12 +55,26 @@ interface Props {
   load: (widgets: WidgetModel[]) => Promise<WidgetDataMap | null>;
   lookups: FilterLabelLookups;
   area: "project" | "my";
+  /** Widgets the plugins switched on here bring (BARY-149). */
+  pluginWidgets: PluginWidgetEntry[];
 }
+
+/** A plugin's widget, as the gallery offers it. */
+export interface PluginWidgetEntry {
+  pluginId: string;
+  pluginName: string;
+  widgetId: string;
+  title: string;
+}
+
+const pluginKey = (e: { pluginId: string; widgetId: string }) =>
+  `${e.pluginId}:${e.widgetId}`;
 
 /** What the right side shows: a kind, a saved custom widget, the builder. */
 type Selection =
   | { mode: "type"; type: WidgetType }
   | { mode: "custom"; id: string }
+  | { mode: "plugin"; key: string }
   | { mode: "build"; editing: CustomWidgetEntry | null };
 
 /** Real data for widgets — fetched once per configuration. */
@@ -116,6 +131,7 @@ export function WidgetGallery({
   load,
   lookups,
   area,
+  pluginWidgets,
 }: Props) {
   const t = useTranslations("widgets");
   const confirm = useConfirm();
@@ -141,13 +157,34 @@ export function WidgetGallery({
     selection.mode === "custom"
       ? (customs.find((c) => c.id === selection.id) ?? null)
       : null;
+  const plugin =
+    selection.mode === "plugin"
+      ? (pluginWidgets.find((e) => pluginKey(e) === selection.key) ?? null)
+      : null;
+  // A plugin's widget as it'd be added — its data comes from the server,
+  // which checks the plugin runs here; the preview is its live frame.
+  const pluginWidget: WidgetModel | null = plugin
+    ? {
+        id: "preview",
+        type: "plugin",
+        size: WIDGETS.plugin.size,
+        config: {
+          pluginId: plugin.pluginId,
+          pluginWidget: plugin.widgetId,
+          title: plugin.title,
+        },
+      }
+    : null;
   const type: WidgetType =
     selection.mode === "type"
       ? selection.type
-      : selection.mode === "custom" && custom
-        ? custom.widget.type
-        : draft.type;
+      : selection.mode === "plugin"
+        ? "plugin"
+        : selection.mode === "custom" && custom
+          ? custom.widget.type
+          : draft.type;
   const customData = useLiveData(load, custom?.widget ?? null);
+  const pluginData = useLiveData(load, pluginWidget);
   const [activeElement, setActiveElement] = useState<string | null>(null);
   const draftData = useLiveData(
     load,
@@ -176,17 +213,28 @@ export function WidgetGallery({
     role: (key) => t(`sampleRole_${key}`),
     note: t("sampleNote"),
   };
-  const preview: WidgetModel = custom
-    ? {
-        ...custom.widget,
-        config: { ...custom.widget.config, title: custom.name },
-      }
-    : newWidget(type, "preview");
-  const data = custom ? customData : sampleData(preview, words);
+  const preview: WidgetModel = pluginWidget
+    ? pluginWidget
+    : custom
+      ? {
+          ...custom.widget,
+          config: { ...custom.widget.config, title: custom.name },
+        }
+      : newWidget(type, "preview");
+  const data = pluginWidget
+    ? pluginData
+    : custom
+      ? customData
+      : sampleData(preview, words);
 
   const choose = (next: WidgetType) => {
     setSelection({ mode: "type", type: next });
     setSize(WIDGETS[next].size);
+  };
+
+  const choosePlugin = (entry: PluginWidgetEntry) => {
+    setSelection({ mode: "plugin", key: pluginKey(entry) });
+    setSize(WIDGETS.plugin.size);
   };
 
   const chooseCustom = (entry: CustomWidgetEntry) => {
@@ -205,15 +253,17 @@ export function WidgetGallery({
 
   const add = (chosen: WidgetSize = size) =>
     onAdd(
-      custom
-        ? {
-            // A copy: later changes to the custom widget don't reach it.
-            ...custom.widget,
-            id: randomId().slice(0, 12),
-            size: chosen,
-            config: { ...custom.widget.config, title: custom.name },
-          }
-        : { ...newWidget(type, randomId().slice(0, 12)), size: chosen },
+      pluginWidget
+        ? { ...pluginWidget, id: randomId().slice(0, 12), size: chosen }
+        : custom
+          ? {
+              // A copy: later changes to the custom widget don't reach it.
+              ...custom.widget,
+              id: randomId().slice(0, 12),
+              size: chosen,
+              config: { ...custom.widget.config, title: custom.name },
+            }
+          : { ...newWidget(type, randomId().slice(0, 12)), size: chosen },
     );
 
   const saveDraft = (thenAdd: boolean) =>
@@ -328,6 +378,45 @@ export function WidgetGallery({
               </div>
             );
           })}
+
+          {/* What the plugins switched on here bring (BARY-149). */}
+          {pluginWidgets.some(
+            (e) =>
+              !needle ||
+              e.title.toLowerCase().includes(needle) ||
+              e.pluginName.toLowerCase().includes(needle),
+          ) && (
+            <div className={styles.group}>
+              <span className={styles.groupLabel}>{t("group_plugins")}</span>
+              {pluginWidgets
+                .filter(
+                  (e) =>
+                    !needle ||
+                    e.title.toLowerCase().includes(needle) ||
+                    e.pluginName.toLowerCase().includes(needle),
+                )
+                .map((entry) => (
+                  <button
+                    key={pluginKey(entry)}
+                    type="button"
+                    className={styles.kind}
+                    aria-current={
+                      (selection.mode === "plugin" &&
+                        selection.key === pluginKey(entry)) ||
+                      undefined
+                    }
+                    onClick={() => choosePlugin(entry)}
+                  >
+                    <PluginTile
+                      id={entry.pluginId}
+                      name={entry.pluginName}
+                      size="sm"
+                    />
+                    <span className={styles.kindName}>{entry.title}</span>
+                  </button>
+                ))}
+            </div>
+          )}
 
           {/* Own widgets, at the bottom: the saved ones, then the builder. */}
           <div className={styles.group}>
@@ -469,14 +558,20 @@ export function WidgetGallery({
           <section className={styles.preview} aria-live="polite">
             <div>
               <h3 className={styles.previewTitle}>
-                {custom ? custom.name : t(`type_${type}`)}
+                {plugin
+                  ? plugin.title
+                  : custom
+                    ? custom.name
+                    : t(`type_${type}`)}
               </h3>
               <p className={styles.previewDesc}>
-                {custom
-                  ? custom.mine
-                    ? t(`type_${type}`)
-                    : t("customFromOthers", { kind: t(`type_${type}`) })
-                  : t(`desc_${type}`)}
+                {plugin
+                  ? `${t("pluginFrom", { name: plugin.pluginName })} · ${t("pluginPreview")}`
+                  : custom
+                    ? custom.mine
+                      ? t(`type_${type}`)
+                      : t("customFromOthers", { kind: t(`type_${type}`) })
+                    : t(`desc_${type}`)}
               </p>
             </div>
             <fieldset className={styles.sizes} aria-label={t("size")}>

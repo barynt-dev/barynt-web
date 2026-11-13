@@ -27,6 +27,43 @@ export default class Timeline extends Plugin {
     // for the workspace) and a page of its own under "Plugins".
     this.registerProjectView({ id: "timeline", render });
     this.registerPage({ id: "roadmap", render });
+    // A dashboard widget: the open issues that have waited longest.
+    this.registerWidget({
+      id: "oldest-open",
+      render: async (root) => {
+        const { issues } = await this.api.issues.list({ take: 100 });
+        this.drawOldest(root, issues);
+      },
+    });
+  }
+
+  drawOldest(root: HTMLElement, issues: Issue[]) {
+    const open = issues
+      .filter(
+        (i) =>
+          i.statusCategory !== "completed" && i.statusCategory !== "canceled",
+      )
+      .sort(
+        (a, b) => new Date(a.created).getTime() - new Date(b.created).getTime(),
+      );
+    const wrap = el("div", "tl-widget");
+    wrap.append(el("strong", "tl-count", String(open.length)));
+    wrap.append(el("span", "tl-muted", "open, oldest first"));
+    const list = el("ol", "tl-oldest");
+    for (const issue of open.slice(0, 6)) {
+      const days = Math.floor(
+        (Date.now() - new Date(issue.created).getTime()) / DAY,
+      );
+      const item = el("li");
+      item.append(
+        el("span", "tl-ref", issue.ref),
+        el("span", "tl-title", issue.title),
+        el("span", "tl-muted", `${days} d`),
+      );
+      list.append(item);
+    }
+    wrap.append(list);
+    root.replaceChildren(wrap);
   }
 
   draw(root: HTMLElement, issues: Issue[]) {

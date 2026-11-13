@@ -2292,7 +2292,14 @@
     "flowBy_category": "Phases",
     "flowBy_status": "Status",
     "showDone": "Show done",
-    "stays": "{count, plural, one {# stay} other {# stays}}"
+    "stays": "{count, plural, one {# stay} other {# stays}}",
+    "type_plugin": "Plugin",
+    "desc_plugin": "A widget from a plugin.",
+    "group_plugins": "Plugins",
+    "pluginOff": "“{name}” doesn't run here anymore.",
+    "pluginOffHint": "The plugin was switched off or removed. Remove the widget, or switch the plugin on again.",
+    "pluginFrom": "From {name}",
+    "pluginPreview": "A preview with real data, as the plugin draws it."
   },
   "customFields": {
     "title": "Custom Fields",

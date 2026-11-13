@@ -34,11 +34,11 @@ const db = {
     deleteMany: mock(),
     findMany: mock(),
   },
-  pluginSettings: { findUnique: mock() },
+  pluginSettings: { findUnique: mock(), upsert: mock() },
   pluginCredential: { findUnique: mock() },
 };
 mock.module("@/lib/db", () => ({ db }));
-const can = mock(async () => true);
+const can = mock(async (_u?: string, _permission?: string) => true);
 const canEnterWorkspace = mock(async () => true);
 const currentUserCanEnterWorkspace = mock(async () => true);
 mock.module("@/lib/permissions", () => ({
@@ -125,7 +125,9 @@ const { sealSecret } = await import("@/lib/secret-box");
 const { callBridge, getPluginFrame } = await import(
   "@/features/plugins/runtime"
 );
-const { getPluginNav } = await import("@/features/plugins/slots");
+const { getPluginNav, getPluginWidgets } = await import(
+  "@/features/plugins/slots"
+);
 
 const manifest = {
   id: "timeline",
@@ -463,6 +465,100 @@ describe("getPluginNav (BARY-148)", () => {
     ]);
     // A project the person can't see stays out.
     expect(nav.projects.hidden).toBeUndefined();
+  });
+});
+
+describe("widgets and settings pages (BARY-149)", () => {
+  const withSettings = (extra: Record<string, unknown> = {}) =>
+    db.plugin.findFirst.mockResolvedValue({
+      id: "row1",
+      manifest: {
+        ...manifest,
+        contributes: {
+          ...manifest.contributes,
+          settings: [{ key: "zoom", type: "number", label: "Zoom" }],
+          settingsPage: true,
+          ...extra,
+        },
+      },
+    });
+
+  it("saves its settings for someone who may change them, checked and logged", async () => {
+    withSettings();
+    db.pluginSettings.upsert.mockReset();
+    expect(
+      await callBridge("u1", place, "settings.set", {
+        values: { zoom: 3, sneaky: "x" },
+      }),
+    ).toEqual({ ok: true, result: null });
+    expect(db.pluginSettings.upsert.mock.calls[0]?.[0]).toMatchObject({
+      create: { activationId: "act1", values: { zoom: 3 } },
+    });
+    expect(recordAudit.mock.calls.at(-1)?.[0]).toMatchObject({
+      action: "plugin.settings.updated",
+      meta: { keys: ["zoom"] },
+    });
+  });
+
+  it("refuses someone without plugin.enable, and a value that doesn't fit", async () => {
+    withSettings();
+    // Sees the project, may not change the plugin.
+    can.mockImplementation(
+      async (_u?: string, permission?: string) =>
+        permission !== "plugin.enable",
+    );
+    expect(
+      await callBridge("u1", place, "settings.set", { values: { zoom: 3 } }),
+    ).toEqual({ ok: false, error: "forbidden" });
+    can.mockImplementation(async () => true);
+    expect(
+      await callBridge("u1", place, "settings.set", {
+        values: { zoom: "big" },
+      }),
+    ).toEqual({ ok: false, error: "invalid_params" });
+  });
+
+  it("serves its settings page only when it brings one", async () => {
+    db.pluginFile.findMany.mockResolvedValue([
+      { name: "main.js", content: new TextEncoder().encode("x") },
+    ]);
+    withSettings();
+    expect(
+      await getPluginFrame("u1", place, { kind: "settings", id: "settings" }),
+    ).not.toBeNull();
+    withSettings({ settingsPage: false });
+    expect(
+      await getPluginFrame("u1", place, { kind: "settings", id: "settings" }),
+    ).toBeNull();
+  });
+
+  it("offers a place's plugin widgets with their capability confirmed", async () => {
+    db.pluginActivation.findMany.mockResolvedValue([
+      { pluginId: "timeline", capabilities: ["ui:dashboard-widget"] },
+    ]);
+    db.plugin.findMany.mockResolvedValue([
+      {
+        pluginId: "timeline",
+        manifest: {
+          ...manifest,
+          capabilities: [...manifest.capabilities, "ui:dashboard-widget"],
+          contributes: {
+            ...manifest.contributes,
+            dashboardWidgets: [{ id: "oldest", title: "Oldest open" }],
+          },
+        },
+      },
+    ]);
+    expect(
+      await getPluginWidgets({ workspaceId: "ws1", projectId: "p1" }),
+    ).toEqual([
+      {
+        pluginId: "timeline",
+        pluginName: "Timeline",
+        widgetId: "oldest",
+        title: "Oldest open",
+      },
+    ]);
   });
 });
 

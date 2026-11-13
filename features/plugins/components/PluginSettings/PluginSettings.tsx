@@ -2,7 +2,7 @@
 
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import { Input } from "@/components/ui/atoms/Input/Input";
@@ -23,6 +23,7 @@ import type {
 import { Link } from "@/i18n/navigation";
 import { pluginStorePath } from "@/lib/nav";
 import { PluginCredentials } from "../PluginCredentials/PluginCredentials";
+import { PluginFrame } from "../PluginFrame/PluginFrame";
 import { CapabilityCards } from "../PluginStore/capabilities";
 import { PluginTile } from "../PluginStore/PluginTile";
 import shared from "../plugins.module.scss";
@@ -60,6 +61,7 @@ export function PluginSettings({
   const t = useTranslations();
   const text = usePluginText();
   const router = useRouter();
+  const locale = useLocale();
   const confirm = useConfirm();
   const [isPending, startTransition] = useTransition();
   const [values, setValues] = useState<Record<string, Value>>(() =>
@@ -229,7 +231,27 @@ export function PluginSettings({
           </section>
         )}
 
-        {running && view.fields.length > 0 && (
+        {/* Its own settings page (BARY-149): its frame instead of the
+            form — saving still goes through Barynt (`settings.set`). */}
+        {running && view.settingsPage && (
+          <section
+            className={styles.ownSettings}
+            aria-label={text.t("pluginSettings")}
+          >
+            <PluginFrame
+              pluginId={plugin.pluginId}
+              name={plugin.name}
+              context={{
+                slot: { kind: "settings", id: "settings" },
+                workspaceId: scope.workspaceId,
+                projectId: scope.projectId,
+                locale,
+              }}
+            />
+          </section>
+        )}
+
+        {running && !view.settingsPage && view.fields.length > 0 && (
           <form
             className={styles.form}
             onSubmit={(e) => {

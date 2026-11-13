@@ -641,3 +641,36 @@ describe("external links among the shortcuts (BARY-182)", () => {
     expect(parsed.success).toBe(false);
   });
 });
+
+describe("plugin widgets (BARY-149)", () => {
+  it("stores which plugin and which of its widgets", () => {
+    const parsed = parseWidgets([
+      {
+        id: "w1",
+        type: "plugin",
+        size: "L",
+        config: {
+          pluginId: "demo-timeline",
+          pluginWidget: "oldest-open",
+          title: "Oldest",
+        },
+      },
+    ]);
+    expect(parsed?.[0]?.config).toMatchObject({
+      pluginId: "demo-timeline",
+      pluginWidget: "oldest-open",
+    });
+  });
+
+  it("refuses an id that isn't one", () => {
+    expect(
+      parseWidgets([
+        { id: "w1", type: "plugin", size: "L", config: { pluginId: "../x" } },
+      ]),
+    ).toBeNull();
+  });
+
+  it("isn't offered as a kind of its own", () => {
+    expect(offeredOn("plugin", "workspace")).toBe(false);
+  });
+});

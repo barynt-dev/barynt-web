@@ -142,13 +142,17 @@ const contributesSchema = z.strictObject({
   fields: z.array(fieldSchema).max(20).optional(),
   settings: z.array(settingSchema).max(30).optional(),
   credentials: z.array(credentialSchema).max(10).optional(),
+  /** Draws its settings itself, in its own frame, instead of Barynt's form
+   *  of `settings` (BARY-149). Saving still goes through Barynt, checked
+   *  against `settings`. */
+  settingsPage: z.boolean().optional(),
 });
 
 type Contributes = z.infer<typeof contributesSchema>;
 
 /** Which capability each contribution needs. */
 const CONTRIBUTION_CAPABILITY: Record<
-  Exclude<keyof Contributes, "settings" | "credentials">,
+  Exclude<keyof Contributes, "settings" | "credentials" | "settingsPage">,
   Capability
 > = {
   navItems: "ui:nav-item",
@@ -166,6 +170,7 @@ const KIND_CONTRIBUTIONS: Record<PluginKind, readonly (keyof Contributes)[]> = {
   service: ["fields", "settings"],
   sandbox: [
     "credentials",
+    "settingsPage",
     "navItems",
     "projectViews",
     "dashboardWidgets",
@@ -252,6 +257,11 @@ export const manifestSchema = z
     const allowed = KIND_CONTRIBUTIONS[m.kind];
     for (const key of Object.keys(m.contributes) as (keyof Contributes)[]) {
       const list = m.contributes[key];
+      if (typeof list === "boolean") {
+        if (list && !allowed.includes(key))
+          add(["contributes", key], `a ${m.kind} plugin cannot have ${key}`);
+        continue;
+      }
       if (!list || list.length === 0) continue;
 
       if (!allowed.includes(key))
@@ -260,7 +270,11 @@ export const manifestSchema = z
           `a ${m.kind} plugin cannot contribute ${key}`,
         );
 
-      if (key !== "settings" && key !== "credentials") {
+      if (
+        key !== "settings" &&
+        key !== "credentials" &&
+        key !== "settingsPage"
+      ) {
         const needed = CONTRIBUTION_CAPABILITY[key];
         if (!m.capabilities.includes(needed))
           add(["contributes", key], `needs the capability ${needed}`);
@@ -290,6 +304,15 @@ export const manifestSchema = z
           "Barynt sets this header itself",
         );
     });
+
+    if (
+      m.contributes.settingsPage &&
+      (m.contributes.settings ?? []).length === 0
+    )
+      add(
+        ["contributes", "settingsPage"],
+        "needs settings to save — the page draws them, Barynt keeps them",
+      );
 
     const fields = m.contributes.fields ?? [];
     fields.forEach((f, i) => {

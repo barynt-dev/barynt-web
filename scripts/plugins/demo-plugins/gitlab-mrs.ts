@@ -23,6 +23,9 @@ const el = (tag: string, className?: string, text?: string) => {
 
 export default class GitLabMergeRequests extends Plugin {
   async onload() {
+    // Its own settings page (BARY-149): the GitLab project, checked against
+    // GitLab before it's saved.
+    this.registerSettings({ render: (root) => this.drawSettings(root) });
     this.registerProjectView({
       id: "merge-requests",
       render: async (root) => {
@@ -31,6 +34,53 @@ export default class GitLabMergeRequests extends Plugin {
         this.registerInterval(() => void this.draw(root), 120_000);
       },
     });
+  }
+
+  async drawSettings(root: HTMLElement) {
+    const { gitlabProject } = await this.loadSettings<{
+      gitlabProject: string | null;
+    }>();
+    const form = el("form", "mr-settings") as HTMLFormElement;
+    const label = el("label", "mr-label", "GitLab project");
+    const input = el("input", "mr-input") as HTMLInputElement;
+    input.value = gitlabProject ?? "";
+    input.placeholder = "acme/web";
+    input.id = "gitlab-project";
+    label.setAttribute("for", "gitlab-project");
+    const status = el("p", "mr-status");
+    const save = el("button", "mr-save", "Check and save") as HTMLButtonElement;
+    save.type = "submit";
+    form.append(label, input, status, save);
+    this.registerDomEvent(form, "submit", async (event) => {
+      event.preventDefault();
+      const path = input.value.trim();
+      save.disabled = true;
+      status.textContent = "Checking with GitLab…";
+      try {
+        const res = await this.api.net.fetch(
+          `https://gitlab.com/api/v4/projects/${encodeURIComponent(path)}`,
+        );
+        if (res.status === 404) {
+          status.textContent = `GitLab doesn't know “${path}”.`;
+          return;
+        }
+        const name = res.ok
+          ? res.json<{ name_with_namespace: string }>().name_with_namespace
+          : path;
+        await this.api.settings.set({ gitlabProject: path });
+        status.textContent = `Saved: ${name}.`;
+      } catch (error) {
+        status.textContent =
+          error instanceof BaryntError && error.code === "credential_missing"
+            ? "Keep your GitLab token in your personal settings → Plugins first."
+            : error instanceof BaryntError && error.code === "forbidden"
+              ? "Only project admins can change this."
+              : String(error);
+      } finally {
+        save.disabled = false;
+      }
+    });
+    root.replaceChildren(form);
   }
 
   async draw(root: HTMLElement) {

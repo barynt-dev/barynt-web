@@ -79,6 +79,8 @@ A plugin that brings its own views or pages shows them in the sidebar, each with
 
 A plugin's page always names the plugin under its title.
 
+A plugin can also bring **dashboard widgets**: on a dashboard, **Add widget** lists them under **Plugins**, with a live preview. And some plugins draw their **settings page** themselves — the page under **Plugins** in the settings then shows the plugin's own form; what it saves is checked by Barynt like any other setting.
+
 ### A plugin's settings in the workspace
 
 A plugin running in the workspace that has settings gets an entry under **Plugins** in the workspace settings, with its form.

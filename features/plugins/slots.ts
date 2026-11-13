@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { db } from "@/lib/db";
 import { currentUserCanEnterWorkspace } from "@/lib/permissions";
+import { activationScopeKey } from "@/lib/plugins/activation";
 import { validateManifest } from "@/lib/plugins/manifest";
 import { SLOTS, type SlotEntry, slotEntries } from "@/lib/plugins/slots";
 
@@ -59,7 +60,7 @@ export const getPluginNav = cache(
         ...e,
         pluginId: a.pluginId,
         pluginName: manifest.name,
-        path: `plugin/${a.pluginId}/${SLOTS[e.kind].path}/${e.id}`,
+        path: `plugin/${a.pluginId}/${SLOTS[e.kind].path ?? e.kind}/${e.id}`,
       }));
       if (!a.projectId) nav.workspace.push(...entries);
       else
@@ -76,3 +77,45 @@ export const getPluginNav = cache(
     return nav;
   },
 );
+
+/** The widgets the plugins switched on in a place bring — what a
+ *  dashboard's gallery offers there (BARY-149). Whether one still runs is
+ *  checked again when it's drawn. */
+export async function getPluginWidgets(place: {
+  workspaceId: string;
+  projectId: string | null;
+}): Promise<
+  { pluginId: string; pluginName: string; widgetId: string; title: string }[]
+> {
+  const activations = await db.pluginActivation.findMany({
+    where: { scopeKey: activationScopeKey(place), enabled: true },
+    select: { pluginId: true, capabilities: true },
+  });
+  if (activations.length === 0) return [];
+  const rows = await db.plugin.findMany({
+    where: {
+      pluginId: { in: activations.map((a) => a.pluginId) },
+      status: "active",
+    },
+    select: { pluginId: true, manifest: true },
+  });
+  return activations
+    .flatMap((a) => {
+      const row = rows.find((r) => r.pluginId === a.pluginId);
+      const parsed = row ? validateManifest(row.manifest) : null;
+      if (!parsed?.ok) return [];
+      return slotEntries(parsed.manifest, a.capabilities)
+        .filter((e) => e.kind === "widget")
+        .map((e) => ({
+          pluginId: a.pluginId,
+          pluginName: parsed.manifest.name,
+          widgetId: e.id,
+          title: e.title,
+        }));
+    })
+    .sort(
+      (x, y) =>
+        x.pluginName.localeCompare(y.pluginName) ||
+        x.title.localeCompare(y.title),
+    );
+}

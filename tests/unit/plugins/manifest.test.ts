@@ -304,3 +304,42 @@ describe("credentials (BARY-147)", () => {
     );
   });
 });
+
+describe("settingsPage (BARY-149)", () => {
+  it("lets a sandbox plugin with settings draw them itself", () => {
+    expect(
+      errors({
+        ...base,
+        contributes: {
+          ...base.contributes,
+          settings: [{ key: "zoom", type: "number", label: "Zoom" }],
+          settingsPage: true,
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  it("needs settings to save, and code to draw them", () => {
+    expect(
+      errors({
+        ...base,
+        contributes: { ...base.contributes, settingsPage: true },
+      }),
+    ).toContain(
+      "contributes.settingsPage: needs settings to save — the page draws them, Barynt keeps them",
+    );
+    expect(
+      errors({
+        ...base,
+        kind: "service",
+        capabilities: [],
+        contributes: {
+          settings: [{ key: "zoom", type: "number", label: "Zoom" }],
+          settingsPage: true,
+        },
+      }),
+    ).toContain(
+      "contributes.settingsPage: a service plugin cannot have settingsPage",
+    );
+  });
+});

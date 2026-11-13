@@ -25,6 +25,7 @@ export const METHODS = [
   "storage.delete",
   "storage.list",
   "settings.get",
+  "settings.set",
   "net.fetch",
 ] as const satisfies readonly Method[];
 
@@ -100,7 +101,12 @@ export function createApi(host: Host) {
       delete: (key: string) => call("storage.delete", { key }),
       list: () => call("storage.list", {}),
     },
-    settings: { get: () => call("settings.get", {}) },
+    settings: {
+      get: () => call("settings.get", {}),
+      /** Saves its settings — from its own settings page, for someone who
+       *  may change them; checked against the manifest's `settings`. */
+      set: (values: Record<string, Json>) => call("settings.set", { values }),
+    },
     net: {
       /**
        * A request to one of the hosts in the manifest's `network`, sent by

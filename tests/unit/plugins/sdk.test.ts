@@ -178,4 +178,45 @@ describe("plugin SDK", () => {
     );
     expect(drawn).toEqual(["page"]);
   });
+
+  it("draws a widget or its settings page only in its own frame", async () => {
+    const drawn: string[] = [];
+    class All extends Plugin {
+      onload() {
+        this.registerWidget({
+          id: "w",
+          render: () => void drawn.push("widget"),
+        });
+        this.registerSettings({ render: () => void drawn.push("settings") });
+        this.registerProjectView({
+          id: "w",
+          render: () => void drawn.push("view"),
+        });
+      }
+    }
+    await loadPlugin(
+      All,
+      createTestHost({ context: { slot: { kind: "widget", id: "w" } } }),
+    );
+    await loadPlugin(
+      All,
+      createTestHost({
+        context: { slot: { kind: "settings", id: "settings" } },
+      }),
+    );
+    expect(drawn).toEqual(["widget", "settings"]);
+  });
+
+  it("saves its settings through the host", async () => {
+    class Saver extends Plugin {
+      async onload() {
+        await this.api.settings.set({ zoom: 2 });
+      }
+    }
+    const host = createTestHost({ handlers: { "settings.set": () => null } });
+    await loadPlugin(Saver, host);
+    expect(host.calls).toEqual([
+      { method: "settings.set", params: { values: { zoom: 2 } } },
+    ]);
+  });
 });

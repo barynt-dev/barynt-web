@@ -588,6 +588,8 @@ export interface PluginSettingsView {
   views: { id: string; title: string }[];
   /** The credentials kept at this level — whether each is, never what. */
   credentials: PluginCredentialField[];
+  /** Draws its settings itself, in its own frame (BARY-149). */
+  settingsPage: boolean;
 }
 
 /** A credential a plugin declares, as its form shows it (BARY-147). */
@@ -716,6 +718,9 @@ export async function getPluginSettingsView(
           }))
         : [],
     credentials,
+    settingsPage:
+      parsed.manifest.kind === "sandbox" &&
+      !!parsed.manifest.contributes.settingsPage,
   };
 }
 

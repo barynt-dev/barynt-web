@@ -17,6 +17,7 @@ import { ChartBody } from "./components/ChartBody";
 import { EmbedBody } from "./components/EmbedBody";
 import { ListBody } from "./components/ListBody";
 import { NumberBody } from "./components/NumberBody";
+import { PluginBody } from "./components/PluginBody";
 import type { BodyProps } from "./components/shared";
 import { TeamBody } from "./components/TeamBody";
 import { useWidgetFieldNames } from "./fieldNames";
@@ -84,6 +85,9 @@ export function useWidgetTitle() {
         return t("type_embed");
       }
     }
+    // A plugin's widget: the title it brings, kept with the widget when
+    // it was added.
+    if (widget.type === "plugin") return t("type_plugin");
     if (widget.type === "matrix")
       return t("matrixTitle", {
         rows: names.group(widget.config.groupBy ?? "assignee"),
@@ -170,6 +174,8 @@ export function Widget({
         </div>
       ) : data.type === "embed" ? (
         <EmbedBody widget={widget} data={data} title={titleOf(widget)} />
+      ) : data.type === "plugin" ? (
+        <PluginBody data={data} />
       ) : data.type === "blocks" ? (
         <BlocksBody {...body} data={data} />
       ) : data.type === "kpi" || data.type === "progress" ? (

@@ -33,6 +33,9 @@ export const BRIDGE_METHODS = {
   "storage.delete": "storage:own",
   "storage.list": "storage:own",
   "settings.get": null,
+  // Its own settings page saving (BARY-149) — needs `plugin.enable` there,
+  // checked against the manifest's `settings`.
+  "settings.set": null,
   // A host from the manifest's `network`, through Barynt (BARY-147) — the
   // hosts were confirmed with the plugin, no capability on top.
   "net.fetch": null,
@@ -67,7 +70,7 @@ export const isBridgeMethod = (method: unknown): method is BridgeMethod =>
 /** Where a plugin's frame runs: the slot it fills (`lib/plugins/slots.ts`)
  *  and the place it's in. */
 export interface FrameContext {
-  slot: { kind: "projectView" | "page"; id: string };
+  slot: { kind: "projectView" | "page" | "widget" | "settings"; id: string };
   workspaceId: string;
   projectId: string | null;
   locale: string;

@@ -85,11 +85,17 @@ const DEMOS: Demo[] = [
       contributes: {
         projectViews: [{ id: "timeline", title: "Timeline" }],
         navItems: [{ id: "roadmap", title: "Roadmap" }],
+        dashboardWidgets: [{ id: "oldest-open", title: "Oldest open issues" }],
       },
     },
     versions: {
       "1.0.0": {
-        capabilities: ["issues:read", "ui:project-view", "ui:nav-item"],
+        capabilities: [
+          "issues:read",
+          "ui:project-view",
+          "ui:nav-item",
+          "ui:dashboard-widget",
+        ],
       },
       // The update asks for one more: workspaces have to confirm again.
       "1.1.0": {
@@ -98,6 +104,7 @@ const DEMOS: Demo[] = [
           "issues:write",
           "ui:project-view",
           "ui:nav-item",
+          "ui:dashboard-widget",
         ],
       },
     },
@@ -152,6 +159,7 @@ const DEMOS: Demo[] = [
             format: "{value}",
           },
         ],
+        settingsPage: true,
       },
     },
     versions: {

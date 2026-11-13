@@ -83,7 +83,7 @@ Where this instance runs:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `slot` | `{ kind: "projectView" \| "page"; id: string }` | The place it fills: which of its views or pages. |
+| `slot` | `{ kind: "projectView" \| "page" \| "widget" \| "settings"; id: string }` | The place it fills: which of its views, pages or widgets, or its settings page. |
 | `workspaceId` | `string` | The workspace. |
 | `projectId` | `string \| null` | The project, or `null` for a workspace's plugin. |
 | `locale` | `string` | The person's language, e.g. `de` or `en`. |
@@ -130,6 +130,26 @@ registerPage(page: { id: string; render(el, context) }): void;
 The same for a page from `contributes.navItems`, opened from its entry in
 the sidebar's "Plugins" section. A view and a page may share an `id`; each
 frame is for one of them.
+
+### `registerWidget()`
+
+```ts
+registerWidget(widget: { id: string; render(el, context) }): void;
+```
+
+A dashboard widget from `contributes.dashboardWidgets`. Its frame fills the
+widget below Barynt's header, in the size someone picked (S to XL) — watch
+`el` with a `ResizeObserver` to show more when there's room.
+
+### `registerSettings()`
+
+```ts
+registerSettings(page: { render(el, context) }): void;
+```
+
+Its own settings page (`contributes.settingsPage: true`), shown on the
+plugin's page in the settings instead of Barynt's form. Read the values
+with `loadSettings()`, save them with `api.settings.set(values)`.
 
 ### `register()`
 
@@ -195,6 +215,7 @@ method returns a `Promise` and rejects with a [`BaryntError`](#errors).
 | `api.storage.delete(key)` | `storage.delete` |
 | `api.storage.list()` | `storage.list` |
 | `api.settings.get()` | `settings.get` (what `loadSettings()` uses) |
+| `api.settings.set(values)` | `settings.set`: saves its settings, for someone with `plugin.enable` there |
 | `api.net.fetch(url, init?)` | `net.fetch`: a request to one of the manifest's hosts; returns a `NetResponse` with `status`, `ok`, `headers`, `text`, `base64` and `json()` |
 
 ```ts

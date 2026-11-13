@@ -111,14 +111,20 @@ capability, and each entry an `id` that's unique in its list.
 | --- | --- | --- |
 | `projectViews` | in the sidebar under the project, next to its Dashboard, Board and Issues | in the sidebar's main group, next to the workspace's Dashboard and Board (on a phone, whose main group is the bottom bar: in the "Plugins" section) |
 | `navItems` | in the sidebar under the project, below a "Plugins" heading | in the sidebar's own "Plugins" section |
+| `dashboardWidgets` | in the project's dashboard's widget gallery, under "Plugins" | in the workspace's (and its views') dashboard gallery, under "Plugins" |
 
 Each entry carries the plugin's mark, and its page names the plugin under
 the title, so it's always clear what comes from a plugin. `icon` isn't
 shown yet.
 
+A widget is added like any other: **Add widget**, then the plugin's entry
+in the gallery, in the sizes S, M, L, T and XL. Its frame fills the widget
+below Barynt's header. If the plugin is switched off later, the widget says
+so instead of staying empty.
+
 > [!NOTE]
-> Dashboard widgets, issue panels, badges and actions can be declared
-> already; Barynt shows them in a coming release.
+> Issue panels, badges and actions can be declared already; Barynt shows
+> them in a coming release.
 
 ### Settings
 
@@ -141,6 +147,26 @@ under **Plugins** — and the plugin reads them with
 
 Barynt checks what's saved against these types; text is trimmed and at most
 2000 characters.
+
+### Its own settings page
+
+With `"settingsPage": true` in `contributes`, the plugin's page in the
+workspace's or project's settings shows the plugin's own frame instead of
+Barynt's form — for settings that need more than fields: a picker, a check
+against the other service, a preview.
+
+```json
+"contributes": {
+  "settings": [{ "key": "gitlabProject", "type": "text", "label": "GitLab project" }],
+  "settingsPage": true
+}
+```
+
+The values are still the ones in `settings`: the page reads them with
+`loadSettings()` and saves them with `api.settings.set(values)`, and Barynt
+checks them against `settings` as it does its own form. So `settingsPage`
+needs `settings`, and only a `sandbox` plugin has it. Credentials stay on
+Barynt's side of the page, never in the frame.
 
 ### Credentials
 
@@ -199,6 +225,7 @@ A plugin can bring custom fields its issues carry:
   `fields`, `settings` and `issueBadges`.
 - A `service` plugin has no browser surface; it may only contribute `fields`
   and `settings`.
+- `settingsPage` needs `settings`, and only a `sandbox` plugin has it.
 - A credential's `host` is in `network`, and a `workspace` or `project`
   credential matches one of the plugin's `levels`.
 - Ids are unique within each list; `select` settings and choice fields need

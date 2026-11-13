@@ -56,6 +56,8 @@ import {
   getPriorities,
   getStatuses,
 } from "@/features/issues/queries";
+import { getPluginSlotView } from "@/features/plugins/runtime";
+import { getPluginWidgets } from "@/features/plugins/slots";
 import { getVisibleViewById } from "@/features/views/queries";
 import { systemViewSlug } from "@/features/views/system";
 import { viewPath } from "@/features/views/url";
@@ -2716,6 +2718,29 @@ async function widgetData(ctx: Ctx, widget: Widget): Promise<WidgetData> {
       };
     case "shortcuts":
       return shortcuts(resolved.workspaceId, resolved.projectId);
+    case "plugin": {
+      const pluginId = config.pluginId ?? "";
+      const widgetId = config.pluginWidget ?? "";
+      const view = pluginId
+        ? await getPluginSlotView(
+            ctx.userId,
+            {
+              pluginId,
+              workspaceId: resolved.workspaceId,
+              projectId: resolved.projectId,
+            },
+            { kind: "widget", id: widgetId },
+          )
+        : null;
+      return {
+        type: "plugin",
+        pluginId,
+        widgetId,
+        plugin: view && { name: view.pluginName, title: view.title },
+        workspaceId: resolved.workspaceId,
+        projectId: resolved.projectId,
+      };
+    }
     case "note": {
       // Only this person's own text — never anyone else's.
       const row = await db.dashboardNote.findUnique({
@@ -2784,9 +2809,13 @@ export async function getDashboard(
   const scope: DashboardScope = resolved.canViewAll ? wanted : "mine";
   const layout = await layoutFor(target, resolved, userId, scope);
 
-  const [data, customWidgets] = await Promise.all([
+  const [data, customWidgets, pluginWidgets] = await Promise.all([
     computeWidgets(target, layout.widgets, range, scope).then((d) => d ?? {}),
     customWidgetsFor(resolved.workspaceId, userId),
+    getPluginWidgets({
+      workspaceId: resolved.workspaceId,
+      projectId: resolved.projectId,
+    }),
   ]);
 
   return {
@@ -2802,6 +2831,7 @@ export async function getDashboard(
     },
     data,
     customWidgets,
+    pluginWidgets,
   };
 }
 

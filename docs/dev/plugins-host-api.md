@@ -125,6 +125,13 @@ Over a limit, `set` is refused with `storage_full`.
 
 ## Settings
 
+`api.settings.set(values)` saves them — from its own settings page
+(`settingsPage`), and only when the person may change the plugin's
+settings there (`plugin.enable` in the project or workspace; otherwise
+`forbidden`). Values are checked against the manifest's `settings` like
+Barynt's own form (a key it doesn't declare is dropped, a wrong type is
+`invalid_params`), and the change lands in the audit log.
+
 `api.settings.get()` (or [`loadSettings()`](plugins-sdk.md#loadsettings)) needs no
 capability: the plugin's own [settings](plugins-manifest.md#settings) in this
 place, each with its saved value or its default.
