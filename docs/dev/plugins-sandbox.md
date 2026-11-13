@@ -58,8 +58,11 @@ dark mode while the plugin runs:
 | `--font-ui` | The font. |
 
 The frame starts with Barynt's background, text colour and font; your
-`styles.css` does the rest — or the SDK's [UI kit](plugins-sdk.md#the-ui-kit) does, for inputs and widget pieces. Make it work at phone width — a project view
-fills the screen there.
+`styles.css` does the rest — or the SDK's [UI kit](plugins-sdk.md#the-ui-kit)
+does, for inputs and widget pieces. In a dashboard widget or a building
+block the frame has no background, so the widget's card (tinted, gradient or
+full colour) shows through — don't give `body` one there. Make it work at
+phone width — a project view fills the screen there.
 
 ## Limits
 
