@@ -554,7 +554,7 @@
   flex-direction: column;
   gap: 0.75rem;
 
-  &:not(:has(> [data-grow])) {
+  &:not(:has(> [data-grow], > * > .pluginBlock[data-grow])) {
     justify-content: flex-end;
   }
 }
@@ -565,7 +565,9 @@
   flex: none;
   min-height: 0;
 
-  &[data-grow] {
+  /* A plugin's block grows by what it shows (BARY-205). */
+  &[data-grow],
+  &:has(> .pluginBlock[data-grow]) {
     flex: 1;
   }
 
