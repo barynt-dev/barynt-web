@@ -155,7 +155,8 @@ export function IssueActionsMenu({
 
   return (
     <InlinePicker
-      width={260}
+      // Room for a plugin's action and its name (BARY-152).
+      width={pluginActions.length > 0 ? 340 : 260}
       align="end"
       trigger={
         <Button

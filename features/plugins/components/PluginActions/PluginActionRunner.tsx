@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { parseActionResult } from "@/lib/plugins/plugin-actions";
 import { useUI } from "@/lib/ui-store";
 import { focusPanelNext } from "../PluginBadges/panelFocus";
@@ -41,6 +41,11 @@ function ActionFrame({ job }: { job: ActionJob }) {
   const router = useRouter();
   const { toast } = useUI();
   const { entry } = job;
+  // Once per job: a new object would send it again.
+  const request = useMemo(
+    () => ({ seq: job.key, actionId: entry.actionId, issueId: job.issueId }),
+    [job.key, entry.actionId, job.issueId],
+  );
 
   const fail = useCallback(
     (detail: string) => {
@@ -70,11 +75,7 @@ function ActionFrame({ job }: { job: ActionJob }) {
         ...(job.issueId && { issueId: job.issueId }),
         locale,
       }}
-      actionRequest={{
-        seq: job.key,
-        actionId: entry.actionId,
-        issueId: job.issueId,
-      }}
+      actionRequest={request}
       onError={fail}
       onActionDone={(seq, ok, raw) => {
         if (seq !== job.key) return;
