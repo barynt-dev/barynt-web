@@ -75,7 +75,7 @@ Ein freigeschaltetes Plugin für Projekte hat in den Einstellungen jedes Projekt
 Ein Plugin mit eigenen Ansichten oder Seiten zeigt sie in der Seitenleiste, jeweils mit dem Zeichen des Plugins:
 
 - **Im Projekt eingeschaltet**: unter dem Projekt, neben Dashboard, Board und Aufgaben; Seiten unter der Überschrift **Plugins**.
-- **Im Workspace eingeschaltet**: Ansichten oben in der Seitenleiste, neben Dashboard und Board des Workspaces; Seiten in einem eigenen Abschnitt **Plugins**.
+- **Im Workspace eingeschaltet**: Ansichten oben in der Seitenleiste, neben Dashboard und Board des Workspaces (auf dem Handy im Abschnitt **Plugins**); Seiten in einem eigenen Abschnitt **Plugins**.
 
 Die Seite eines Plugins nennt unter dem Titel immer den Namen des Plugins.
 

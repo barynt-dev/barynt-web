@@ -109,7 +109,7 @@ capability, and each entry an `id` that's unique in its list.
 
 | Contribution | Switched on in a project | Switched on in the workspace |
 | --- | --- | --- |
-| `projectViews` | in the sidebar under the project, next to its Dashboard, Board and Issues | in the sidebar's main group, next to the workspace's Dashboard and Board |
+| `projectViews` | in the sidebar under the project, next to its Dashboard, Board and Issues | in the sidebar's main group, next to the workspace's Dashboard and Board (on a phone, whose main group is the bottom bar: in the "Plugins" section) |
 | `navItems` | in the sidebar under the project, below a "Plugins" heading | in the sidebar's own "Plugins" section |
 
 Each entry carries the plugin's mark, and its page names the plugin under

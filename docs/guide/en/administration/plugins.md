@@ -75,7 +75,7 @@ A released plugin for projects has an entry under **Plugins** in every project's
 A plugin that brings its own views or pages shows them in the sidebar, each with the plugin's mark:
 
 - **Switched on in a project**: under the project, next to its Dashboard, Board and Issues; pages below a **Plugins** heading.
-- **Switched on in the workspace**: views in the sidebar's top group, next to the workspace's Dashboard and Board; pages in a **Plugins** section of their own.
+- **Switched on in the workspace**: views in the sidebar's top group, next to the workspace's Dashboard and Board (on a phone in the **Plugins** section); pages in a **Plugins** section of their own.
 
 A plugin's page always names the plugin under its title.
 

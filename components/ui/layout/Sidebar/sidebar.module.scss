@@ -454,3 +454,26 @@
 .addProject {
   @include bp.touch-target;
 }
+
+/* The sidebar's "Plugins" section (BARY-148). Without pages of its own it
+   only lists the workspace's plugin views, and only on a phone: elsewhere
+   they sit in the main group. */
+.pluginsGroup {
+  display: contents;
+
+  &[data-phone-only] {
+    display: none;
+
+    @include bp.phone {
+      display: contents;
+    }
+  }
+}
+
+.phoneOnly {
+  display: none;
+
+  @include bp.phone {
+    display: block;
+  }
+}
