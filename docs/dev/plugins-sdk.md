@@ -312,56 +312,142 @@ the plugin's error in Barynt.
 
 ## The UI kit
 
-`@barynt/plugin-sdk/ui` has Barynt's inputs and widget pieces, so you don't
-rebuild every text field. They're plain DOM, drawn with the
-[design tokens](plugins-sandbox.md#looking-like-barynt) — light and dark,
-like Barynt — and they mix with your own elements. Their styles go into
-the frame once, the first time you use one. Text always goes in as text.
+`@barynt/plugin-sdk/ui` has Barynt's components for your frame — the pieces
+Barynt's own pages are made of — so a plugin looks like Barynt without
+rebuilding it. They're plain DOM, no framework: each function returns an
+element (an input returns a field with its element in `el`) to put wherever
+you like, next to your own. They're drawn with the
+[design tokens](#design-tokens), light and dark like Barynt, keyboard- and
+screen-reader-friendly. Their styles go into the frame once, the first time
+you use one.
 
 ```ts
-import { button, kpi, list, stack, status, textField } from "@barynt/plugin-sdk/ui";
+import { badge, button, card, stack, table, textField, toast, user } from "@barynt/plugin-sdk/ui";
 
-const project = textField({
-  label: "GitLab project",
-  placeholder: "acme/web",
-  hint: "The path in its address.",
-  onEnter: () => save(),
-});
-const line = status();
+const project = textField({ label: "GitLab project", placeholder: "acme/web", onEnter: () => save() });
 const save = async () => {
   await this.api.settings.set({ gitlabProject: project.value.trim() });
-  line.set("Saved.", "success");
+  toast("Saved", { tone: "success" });
 };
 el.replaceChildren(
-  stack(project.el, button({ label: "Save", variant: "primary", onClick: save }), line.el),
+  stack(
+    card({ title: "Connection", children: [project.el, button({ label: "Save", variant: "primary", onClick: save })] }),
+    table({
+      columns: [{ key: "title", label: "Title" }, { key: "author", label: "Author" }, { key: "state", label: "State" }],
+      rows: mrs.map((mr) => ({ title: mr.title, author: user({ name: mr.author }), state: badge({ text: "Open", tone: "primary" }) })),
+    }),
+  ),
 );
 ```
 
-**Inputs** return a field: its element in `el`, and `value`, `disabled`,
-`focus()`.
+> [!TIP]
+> The demo plugin **Demo UI Kit** (`scripts/plugins/demo-plugins/ui-kit.ts`)
+> shows every component and token on one page — the quickest way to see
+> what there is.
 
-| Function | What | Options besides `label` and `hint` |
+**Safe by default.** Text always goes in as text, never as HTML — a title
+like `<img onerror=…>` shows as those characters. A `link` or a list's
+`href` only takes `http(s)` and `mailto`; anything else stays plain text. A
+`color` only takes a palette name (`"teal"`), a `#hex` or a token — nothing
+else reaches a style.
+
+### Inputs
+
+Each returns a field: `el`, `value`, `disabled`, `focus()`. All take
+`label` and `hint`; the label is tied to the control.
+
+| Function | What | Options |
 | --- | --- | --- |
-| `textField()` | one line of text | `value`, `placeholder`, `type` (`text`, `url`, `email`, `number`, `password`, `search`), `onInput`, `onEnter` |
+| `textField()` | one line | `value`, `placeholder`, `type` (`text`, `url`, `email`, `number`, `password`, `search`), `onInput`, `onEnter` |
 | `textArea()` | several lines | `value`, `placeholder`, `rows`, `onInput` |
-| `select()` | a choice of one | `options: { value, label }[]`, `value`, `onChange` |
-| `toggle()` | on or off — `value` is a boolean | `checked`, `onChange` |
+| `dateField()` | a date, `YYYY-MM-DD` | `value`, `min`, `max`, `onChange` |
+| `select()` | one of many, as a dropdown | `options: { value, label }[]`, `value`, `onChange` |
+| `radioGroup()` | one of a few, all in view | `options: { value, label, hint? }[]`, `value`, `onChange` |
+| `segmentedControl()` | one of a few, side by side (arrow keys) | `options`, `value`, `onChange` |
+| `multiSelect()` | any number, as chips | `options`, `value: string[]`, `onChange` |
+| `toggle()` | on or off — a switch | `checked`, `onChange` |
+| `checkbox()` | on or off — a box | `checked`, `onChange` |
+| `swatchPicker()` | a colour of the palette | `value`, `colors`, `onChange` |
+| `button()` | an action | `label`, `variant` (`primary`, `secondary`, `ghost`, `danger`), `size` (`sm`), `icon`, `iconOnly`, `onClick` — disabled while a returned promise runs |
 
-**The rest** return an element.
+The sandbox doesn't submit forms, so there's no `form()`: a field's
+`onEnter` and a button's `onClick` do the saving.
+
+### Text and layout
 
 | Function | What |
 | --- | --- |
-| `button({ label, variant?, onClick? })` | `primary`, `secondary` (default), `ghost` or `danger`. While an `onClick` that returns a promise runs, the button is disabled. |
-| `status()` | a line that says how it went: `set(text, tone?)` with `info`, `success`, `warning` or `error`; `clear()`. Screen readers read it out. |
-| `stack(...nodes)`, `row(...nodes)` | under each other, or next to each other — with room between. |
-| `kpi({ value, label, trend? })` | a big number; `trend: { text, good? }` colours how it moved. |
-| `list({ items, empty? })` | rows of `{ title, meta?, href? }`; `empty` when there are none. |
-| `barChart({ bars, max? })` | horizontal bars of `{ label, value, color? }` (a `#hex` or `var(--token)`). |
-| `progressRing({ value, max?, label?, size? })` | how far along, with the percentage. |
+| `heading({ text, level? })` | `h1`–`h4`, sized like Barynt's |
+| `text({ text, tone?, size?, weight?, mono?, inline? })` | a paragraph; `tone` `subtle`, `primary`, `success`, `warning`, `danger` |
+| `link({ text, href })` | a link out, in a new tab |
+| `stack(...children)`, `row(...children)` | under each other / next to each other, with room between |
+| `grid({ children, minWidth? })` | as many columns as fit, each at least `minWidth` (`12rem`) |
+| `card({ title?, description?, children?, actions? })` | a framed section |
+| `divider()` | a line |
+| `icon(name, { size?, label? })` | one of the built-in icons (`IconName`: `check`, `x`, `plus`, `search`, `calendar`, `git-pull-request` … — `ICONS` lists them); no network needed |
 
-> [!TIP]
-> The sandbox doesn't submit forms, so there's no `form()`: a field's
-> `onEnter` and a button's `onClick` do the saving.
+### Small things and feedback
+
+| Function | What |
+| --- | --- |
+| `badge({ text, tone? })` | a short state: `neutral`, `primary`, `info`, `success`, `warning`, `danger` |
+| `tag({ text, color?, onRemove? })` | a coloured tag, removable |
+| `labelChip({ name, color? })` | a label as Barynt shows one |
+| `avatar({ name, color?, size? })`, `user({ name, color?, meta? })` | initials; a person with a line about them |
+| `statusDot({ label, category })` | a status by its category: `backlog`, `unstarted`, `started`, `completed`, `canceled` |
+| `tooltip(element, text)` | shows on hover and focus, read out by screen readers |
+| `notice({ text, title?, tone?, action? })` | a message in the page — `danger` is announced at once |
+| `toast(text, { tone?, duration? })` | a short message in the corner |
+| `status()` | a line that says how it went: `set(text, tone?)`, `clear()` |
+| `spinner({ label? })`, `skeleton({ lines? })` | while something loads |
+| `emptyState({ title, text?, icon?, action? })` | where there's nothing yet |
+
+### Data and numbers
+
+| Function | What |
+| --- | --- |
+| `table({ columns, rows, caption?, empty? })` | rows under headings; a cell is text or an element; `align: "end"` for numbers; scrolls sideways when narrow |
+| `keyValue({ items })` | labels and values side by side |
+| `tabs({ tabs, value?, label?, onChange? })` | tabs (arrow keys); a tab's `content` can be a function, drawn when first opened |
+| `accordion({ items })` | sections that open and close |
+| `kpi({ value, label, trend? })` | a big number; `trend: { text, good? }` |
+| `list({ items, empty? })` | rows of `{ title, meta?, href? }` |
+| `barChart({ bars, max? })` | horizontal bars of `{ label, value, color? }` |
+| `progressBar({ value, max?, label?, tone? })`, `progressRing({ value, max?, label?, size? })` | how far along |
+
+### Overlays
+
+| Function | What |
+| --- | --- |
+| `dialog({ title, content?, actions?, onClose? })` | a dialog over the frame: `open()`, `close()`; Escape and ✕ close it |
+| `confirm({ title, text?, confirmLabel?, cancelLabel?, danger? })` | asks first, resolves `true` or `false` — the sandbox blocks the browser's own `confirm()` |
+
+## Design tokens
+
+Barynt's colours, sizes and spaces, under stable names, light or dark as
+Barynt is right now — see
+[Sandbox → Looking like Barynt](plugins-sandbox.md#looking-like-barynt) for
+the list. From code:
+
+```ts
+import { onThemeChange, theme, token, tokenValue } from "@barynt/plugin-sdk";
+
+el.style.gap = token("space.3");                 // "var(--barynt-space-3)"
+ctx.strokeStyle = tokenValue("color.primary");   // the colour itself, for a canvas
+this.register(onThemeChange(() => redraw()));    // light ↔ dark
+if (theme() === "dark") …
+```
+
+| Function | Gives |
+| --- | --- |
+| `token(name)` | `var(--barynt-…)` — for a style; follows the theme on its own |
+| `tokenVariable(name)` | the variable's name, `--barynt-…` |
+| `tokenValue(name)` | its value right now — read again after a theme change |
+| `theme()` | `"light"` or `"dark"` (also `<html data-theme>`) |
+| `onThemeChange(callback)` | runs on a switch; returns what stops it |
+| `TOKEN_NAMES` | every name, for tooling |
+
+`TokenName` is the type of a name, so your editor completes them.
 
 ## Types
 

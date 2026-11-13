@@ -1,4 +1,5 @@
 import { BRIDGE_MAX_PENDING, BRIDGE_TIMEOUT_MS } from "./bridge";
+import { tokenCss } from "./tokens";
 
 // The document a sandboxed plugin runs in (BARY-144). Everything the plugin
 // gets is inside it: its code and styles inline, a small runtime, nothing
@@ -27,10 +28,19 @@ const RUNTIME = `(() => {
   const fail = (error) =>
     send({ type: "error", message: String((error && error.message) || error) });
 
-  const applyTheme = (theme) => {
+  // Barynt's variables, and \`data-theme\` (light or dark) for a plugin's
+  // own CSS; a change after the start is announced (BARY-206).
+  const applyTheme = (theme, announce) => {
+    const root = document.documentElement;
     for (const [name, value] of Object.entries(theme || {}))
-      if (/^--[a-z0-9-]+$/.test(name))
-        document.documentElement.style.setProperty(name, String(value));
+      if (/^--[a-z0-9-]+$/.test(name)) root.style.setProperty(name, String(value));
+    const scheme = String((theme || {})["--color-scheme"] || "");
+    root.dataset.theme = /dark/.test(scheme)
+      ? "dark"
+      : /light/.test(scheme)
+        ? "light"
+        : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    if (announce) window.dispatchEvent(new Event("barynt:themechange"));
   };
 
   const call = (method, params) =>
@@ -57,7 +67,7 @@ const RUNTIME = `(() => {
     applyTheme(data.theme);
     port.onmessage = (e) => {
       const m = e.data || {};
-      if (m.type === "theme") return applyTheme(m.theme);
+      if (m.type === "theme") return applyTheme(m.theme, true);
       if (m.type !== "result") return;
       const open = pending.get(m.id);
       if (!open) return;
@@ -101,13 +111,15 @@ const RUNTIME = `(() => {
  *  `transparent` where the frame sits on a card (a widget, a block). */
 const BASE_CSS = `
 :root { color-scheme: var(--color-scheme, light dark); }
+${tokenCss()}
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body {
-  background: var(--frame-bg, var(--surface, transparent));
-  color: var(--on-surface, CanvasText);
-  font-family: var(--font-ui, system-ui, sans-serif);
-  font-size: var(--text-sm, 14px);
+  background: var(--frame-bg, var(--barynt-color-surface, transparent));
+  color: var(--barynt-color-text, CanvasText);
+  font-family: var(--barynt-font-family, system-ui, sans-serif);
+  font-size: var(--barynt-font-size-sm, 14px);
+  line-height: var(--barynt-line-height-normal);
 }
 #root { min-height: 100%; }
 `;

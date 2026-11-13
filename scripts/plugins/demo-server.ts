@@ -392,6 +392,30 @@ const DEMOS: Demo[] = [
     versions: { "0.3.0": { capabilities: [] } },
   },
   {
+    // Every component of the SDK's UI kit and every design token (BARY-206).
+    entry: {
+      id: "demo-ui-kit",
+      name: "Demo UI Kit",
+      author: "Barynt demo",
+      description:
+        "Every component of the plugin SDK's UI kit and every design token, on one page.",
+      repo: `${ORIGIN}/barynt-demo/ui-kit`,
+      levels: ["workspace"],
+      kind: "sandbox",
+      categories: ["development"],
+      added: "2026-11-13",
+    },
+    manifest: {
+      minBaryntVersion: "0.9.0",
+      license: "MIT",
+      contributes: {
+        navItems: [{ id: "gallery", title: "UI Kit", icon: "lucide:palette" }],
+      },
+    },
+    versions: { "1.0.0": { capabilities: ["ui:nav-item"] } },
+    code: "ui-kit",
+  },
+  {
     // Widget templates of Barynt's own blocks — no code (BARY-203).
     entry: {
       id: "demo-team-pulse",

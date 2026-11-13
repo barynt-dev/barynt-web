@@ -336,6 +336,14 @@ widget a block of kind `pluginBlock` (`config.pluginId`/`pluginBlock`/`pluginCon
 (`lib/plugins/blocks.ts`) — and Barynt draws the result (`BlockDataView`); with `"plugin"` the
 frame itself. `widgetData` resolves whether it runs (`getPluginSlotView`, now with `draw`);
 `getPluginBlocks` feeds the builder through `PluginBlocksProvider`.
+**Design tokens and the full kit (BARY-206).** `lib/plugins/tokens.ts` is the token catalog:
+each public name (`color.text.subtle`) points at a host variable or holds a fixed value;
+`tokenCss()` writes the `--barynt-*` variables into every frame and `HOST_TOKENS` (=
+`THEME_TOKENS`) is what `PluginFrame` sends, light or dark, live — the runtime also sets
+`<html data-theme>` and fires `barynt:themechange`. The SDK keeps the same names
+(`packages/plugin-sdk/src/tokens.ts`; `tests/unit/plugins/sdkUiMore.test.ts` checks they match).
+The kit's modules are `packages/plugin-sdk/src/ui/` (`core`, `css`, `icons` — Lucide shapes
+built with `createElementNS`, `inputs`, `display`, `data`, `overlay`).
 The SDK's UI kit is `packages/plugin-sdk/src/ui.ts` (`@barynt/plugin-sdk/ui`), tested on
 happy-dom (`tests/unit/plugins/sdkUi.test.ts`).
 
