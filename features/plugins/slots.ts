@@ -61,8 +61,12 @@ export const getPluginNav = cache(
         pluginName: manifest.name,
         path: `plugin/${a.pluginId}/${SLOTS[e.kind].path}/${e.id}`,
       }));
-      if (a.projectId) (nav.projects[a.projectId] ??= []).push(...entries);
-      else nav.workspace.push(...entries);
+      if (!a.projectId) nav.workspace.push(...entries);
+      else
+        nav.projects[a.projectId] = [
+          ...(nav.projects[a.projectId] ?? []),
+          ...entries,
+        ];
     }
     const byName = (x: PluginNavEntry, y: PluginNavEntry) =>
       x.pluginName.localeCompare(y.pluginName) ||
