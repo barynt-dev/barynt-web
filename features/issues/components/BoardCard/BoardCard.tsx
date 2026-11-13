@@ -22,6 +22,7 @@ import type { GroupDef } from "@/features/issues/group";
 import { isBrowserClick } from "@/features/issues/issue-links";
 import type { IssueLookups } from "@/features/issues/types";
 import { useIssuePatch } from "@/features/issues/useIssuePatch";
+import { PluginBadgeChips } from "@/features/plugins/components/PluginBadges/PluginBadges";
 import { visibleDetailFields } from "@/features/projects/detail-fields";
 import { onActivate } from "@/lib/a11y";
 import { useModal } from "@/lib/context";
@@ -366,6 +367,8 @@ export function BoardCard({
         {showField("dueDate") && issue.dueDate !== null && (
           <DueDateBadge dueDate={issue.dueDate} />
         )}
+        {/* What plugins put on it (BARY-151) — hidden per badge in "Display". */}
+        <PluginBadgeChips issueId={issue.id} hidden={hiddenCardFields} />
         <Stamp className={styles.time} ts={issue.updated} />
         {issue.comments.length > 0 && (
           <span className={styles.comments}>

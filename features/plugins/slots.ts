@@ -6,7 +6,7 @@ import type {
 } from "@/features/dashboard/types";
 import { pluginTemplateWidget } from "@/features/dashboard/widgets";
 import { db } from "@/lib/db";
-import { currentUserCanEnterWorkspace } from "@/lib/permissions";
+import { currentUserCanEnterWorkspace, hasPermission } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
 import { validateManifest } from "@/lib/plugins/manifest";
 import { SLOTS, type SlotEntry, slotEntries } from "@/lib/plugins/slots";
@@ -237,5 +237,75 @@ export const getPluginIssuePanels = cache(
           x.pluginName.localeCompare(y.pluginName) ||
           x.title.localeCompare(y.title),
       );
+  },
+);
+
+/** A plugin that puts badges on a project's cards and rows (BARY-151). */
+export interface PluginBadgeProvider {
+  pluginId: string;
+  pluginName: string;
+  /** Its `contributes.issueBadges` — what "Display" lets people hide. */
+  badges: { id: string; title: string }[];
+  /** `issues:read` confirmed: it gets title, priority and due date with
+   *  each issue, not only id and reference. */
+  canRead: boolean;
+}
+
+/** The plugins that put badges on a project's cards and rows, for someone
+ *  who sees the project — with `ui:issue-badge` confirmed there. */
+export const getPluginBadgeProviders = cache(
+  async (place: {
+    workspaceId: string;
+    projectSlug: string;
+  }): Promise<{
+    projectId: string;
+    prefix: string;
+    providers: PluginBadgeProvider[];
+  } | null> => {
+    const project = await db.project.findFirst({
+      where: { workspaceId: place.workspaceId, slug: place.projectSlug },
+      select: { id: true, prefix: true },
+    });
+    if (!project) return null;
+    if (!(await hasPermission("project.view", { projectId: project.id })))
+      return null;
+    const activations = await db.pluginActivation.findMany({
+      where: {
+        scopeKey: activationScopeKey({
+          workspaceId: place.workspaceId,
+          projectId: project.id,
+        }),
+        enabled: true,
+      },
+      select: { pluginId: true, capabilities: true },
+    });
+    const withBadges = activations.filter((a) =>
+      a.capabilities.includes("ui:issue-badge"),
+    );
+    if (withBadges.length === 0)
+      return { projectId: project.id, prefix: project.prefix, providers: [] };
+    const rows = await db.plugin.findMany({
+      where: {
+        pluginId: { in: withBadges.map((a) => a.pluginId) },
+        status: "active",
+      },
+      select: { pluginId: true, manifest: true },
+    });
+    const providers = withBadges.flatMap((a): PluginBadgeProvider[] => {
+      const row = rows.find((r) => r.pluginId === a.pluginId);
+      const parsed = row ? validateManifest(row.manifest) : null;
+      if (!parsed?.ok || parsed.manifest.kind !== "sandbox") return [];
+      const badges = parsed.manifest.contributes.issueBadges ?? [];
+      if (badges.length === 0) return [];
+      return [
+        {
+          pluginId: a.pluginId,
+          pluginName: parsed.manifest.name,
+          badges: badges.map((b) => ({ id: b.id, title: b.title })),
+          canRead: a.capabilities.includes("issues:read"),
+        },
+      ];
+    });
+    return { projectId: project.id, prefix: project.prefix, providers };
   },
 );

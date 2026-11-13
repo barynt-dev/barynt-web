@@ -131,6 +131,55 @@ The same for a page from `contributes.navItems`, opened from its entry in
 the sidebar's "Plugins" section. A view and a page may share an `id`; each
 frame is for one of them.
 
+### `registerBadges()`
+
+```ts
+registerBadges(badges: { provide(issues: BadgeIssue[]): Record<string, Badge[]> }): void;
+```
+
+Badges on a project's board cards and list rows, for the badges in
+`contributes.issueBadges`. Barynt runs one hidden frame per plugin and board
+and calls `provide` with the issues it shows, in batches of up to 200 — and
+again when they change. Return the chips by issue id; Barynt checks and
+draws them.
+
+```ts
+this.registerBadges({
+  provide: (issues) => {
+    const out: Record<string, Badge[]> = {};
+    for (const issue of issues) {
+      if (!issue.dueDate) continue;
+      const left = Math.round((Date.parse(issue.dueDate) - Date.now()) / 86_400_000);
+      out[issue.id] = [{
+        badge: "due",                       // one of your issueBadges
+        text: left < 0 ? `${-left}d late` : `in ${left}d`,
+        icon: "calendar",
+        tone: left < 0 ? "danger" : "neutral",
+        tooltip: "Due date",
+      }];
+    }
+    return out;
+  },
+});
+```
+
+| `BadgeIssue` | |
+| --- | --- |
+| `id`, `ref` | always |
+| `title`, `priority`, `dueDate`, `created` | with `issues:read` confirmed |
+
+| `Badge` | |
+| --- | --- |
+| `badge` | which of your `issueBadges` — what "Display" hides |
+| `text` | up to 24 characters |
+| `icon` | `BadgeIcon`: `clock`, `timer`, `calendar`, `check`, `circle-check`, `circle-x`, `triangle-alert`, `info`, `flag`, `star`, `bug`, `zap`, `lock`, `eye`, `link`, `user`, `message-square`, `git-pull-request`, `git-merge`, `git-branch`, `rocket`, `package` |
+| `tone` | `neutral`, `primary`, `info`, `success`, `warning`, `danger` |
+| `tooltip` | up to 120 characters |
+
+At most 3 chips per issue are taken; anything that isn't one of these is
+dropped. Need more than the issue gives you? Ask the API once for the batch
+(`api.issues.list`, `net.fetch`) — not once per issue.
+
 ### `registerIssuePanel()`
 
 ```ts

@@ -83,7 +83,7 @@ Ein Plugin kann auch **Dashboard-Widgets** mitbringen: Auf einem Dashboard stehe
 
 Plugins können auch **Bausteine** für eigene Widgets mitbringen: Im Widget-Builder listet **Baustein hinzufügen** sie neben Barynts eigenen, jeweils mit ihren Einstellungen. Ist das Plugin ausgeschaltet, sagt der Baustein das – der Rest des Widgets bleibt.
 
-Manche Plugins zeigen ein **Panel in jedem Issue** eines Projekts, in dem sie eingeschaltet sind – unter den Anhängen, mit dem Namen des Plugins. Ein Panel, das du nicht brauchst, klappst du zu; es bleibt für dich zugeklappt.
+Manche Plugins zeigen ein **Panel in jedem Issue** eines Projekts, in dem sie eingeschaltet sind – unter den Anhängen, mit dem Namen des Plugins. Ein Panel, das du nicht brauchst, klappst du zu; es bleibt für dich zugeklappt. Andere setzen **Badges** auf die Karten im Board und die Zeilen der Liste – eine Fälligkeit, ein offener Merge Request. **Anzeige** listet sie unter *Plugin-Badges*; was du nicht brauchst, schaltest du dort aus.
 
 ### Einstellungen eines Plugins im Workspace
 

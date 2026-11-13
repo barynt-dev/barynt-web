@@ -115,6 +115,7 @@ capability, and each entry an `id` that's unique in its list.
 | `navItems` | in the sidebar under the project, below a "Plugins" heading | in the sidebar's own "Plugins" section |
 | `dashboardWidgets`, `widgetTemplates` | in the project's dashboard's widget gallery, under "Plugins" | in the workspace's (and its views') dashboard gallery, under "Plugins" |
 | `issuePanels` | in every issue of the project — side panel, dialog, page, phone sheet — below the attachments | — (a workspace plugin has no issue panels) |
+| `issueBadges` | on the project's board cards and list rows (the list's "Fields" column); each can be hidden in **Display** | — |
 
 Each entry carries the plugin's mark, and its page names the plugin under
 the title, so it's always clear what comes from a plugin. `icon` isn't
@@ -131,9 +132,17 @@ an open panel has a frame, and it stays folded for them. The frame grows to
 its content's height (up to 640 px, then it scrolls), so draw what you need
 and no more. See [`registerIssuePanel()`](plugins-sdk.md#registerissuepanel).
 
+A badge is a small chip on a card or row — "in 3d", "MR open". You don't
+draw it: Barynt runs one hidden frame per plugin and board, hands it the
+issues shown in batches, and draws the chips you return with its own
+components — at most 3 per issue from you, the rest as "+N", texts short,
+icons only from a fixed set. Each entry in `issueBadges` is one switch in
+**Display**, so people can hide what they don't need. See
+[`registerBadges()`](plugins-sdk.md#registerbadges). Only a `sandbox`
+plugin fills badges for now.
+
 > [!NOTE]
-> Badges and actions can be declared already; Barynt shows them in a coming
-> release.
+> Actions can be declared already; Barynt shows them in a coming release.
 
 ### Building blocks
 

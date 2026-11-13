@@ -1,3 +1,4 @@
+import type { BadgeIssue } from "./badges";
 import {
   type BlockData,
   type BlockSettingValues,
@@ -83,6 +84,7 @@ export interface FrameContext {
       | "widget"
       | "block"
       | "issuePanel"
+      | "badges"
       | "settings";
     id: string;
   };
@@ -105,13 +107,18 @@ export type FrameMessage =
   | { type: "blockData"; data: BlockData }
   /** How tall its content is, in CSS pixels — a panel grows to fit
    *  (BARY-150). */
-  | { type: "resize"; height: number };
+  | { type: "resize"; height: number }
+  /** Its answer to a batch of issues: chips by issue id, checked by the
+   *  host (`parseBadges`, BARY-151). */
+  | { type: "badges"; seq: number; badges: unknown };
 
 /** Host → frame. */
 export type HostMessage =
   | { type: "result"; id: number; ok: true; result: unknown }
   | { type: "result"; id: number; ok: false; error: string }
-  | { type: "theme"; theme: Record<string, string> };
+  | { type: "theme"; theme: Record<string, string> }
+  /** A batch of issues to put badges on (BARY-151). */
+  | { type: "badges:request"; seq: number; issues: BadgeIssue[] };
 
 /** The first message, posted to the frame's window with the channel's port. */
 export interface InitMessage {
@@ -149,6 +156,10 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
   if (!data || typeof data !== "object") return null;
   const m = data as Record<string, unknown>;
   if (m.type === "ready") return { type: "ready" };
+  if (m.type === "badges")
+    return Number.isSafeInteger(m.seq)
+      ? { type: "badges", seq: m.seq as number, badges: m.badges }
+      : null;
   if (m.type === "resize")
     return typeof m.height === "number" && Number.isFinite(m.height)
       ? { type: "resize", height: Math.max(0, Math.min(m.height, 100_000)) }

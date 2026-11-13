@@ -38,6 +38,7 @@ import {
 } from "@/features/issues/hidden-groups";
 import { useListColumnsControl } from "@/features/issues/list-columns-control";
 import { SORT_KEYS, type SortKey } from "@/features/issues/sort";
+import { usePluginBadgeEntries } from "@/features/plugins/components/PluginBadges/PluginBadges";
 import {
   type DetailFieldKey,
   visibleDetailFields,
@@ -725,6 +726,8 @@ export function DisplayPanel({
   const t = useTranslations();
   // The open list's columns (BARY-175) — the same switches as its "+".
   const columns = useListColumnsControl();
+  // Plugins' badges this project shows (BARY-151).
+  const pluginBadges = usePluginBadgeEntries();
   const { sortKeys, groupKeys } = availableKeys(
     state.projectHiddenFields,
     state.hidden,
@@ -1012,6 +1015,28 @@ export function DisplayPanel({
                 onClick={() => onToggleField(customCardFieldEntry(field.id))}
               >
                 {field.name}
+              </Chip>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Plugins' badges on cards and rows (BARY-151), one chip each. */}
+      {pluginBadges.length > 0 && (
+        <div className={styles.section}>
+          <span className={styles.sectionTitle}>
+            {t("display.pluginBadges")}
+          </span>
+          <div className={styles.chips}>
+            {pluginBadges.map((b) => (
+              <Chip
+                key={b.entry}
+                type="filter"
+                variant="text"
+                selected={!state.hidden.has(b.entry)}
+                onClick={() => onToggleField(b.entry)}
+                title={b.pluginName}
+              >
+                {b.title}
               </Chip>
             ))}
           </div>

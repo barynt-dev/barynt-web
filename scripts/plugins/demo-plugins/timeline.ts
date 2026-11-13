@@ -4,7 +4,7 @@
 // cookies; data only through `this.api`, which Barynt checks against what
 // was confirmed. Plain DOM, no innerHTML with data — a plugin is a guest.
 
-import { type Issue, Plugin } from "@barynt/plugin-sdk";
+import { type Badge, type Issue, Plugin } from "@barynt/plugin-sdk";
 import {
   badge,
   keyValue,
@@ -54,6 +54,50 @@ export default class Timeline extends Plugin {
         if (!issueId) return;
         const issue = await this.api.issues.get(issueId);
         root.replaceChildren(this.drawSchedule(issue));
+      },
+    });
+
+    // Badges on the board's cards and the list's rows (BARY-151): Barynt
+    // hands over the issues it shows; the chips go back, Barynt draws them.
+    this.registerBadges({
+      provide: (issues) => {
+        const now = Date.now();
+        const out: Record<string, Badge[]> = {};
+        for (const issue of issues) {
+          const chips: Badge[] = [];
+          if (issue.dueDate) {
+            const left = Math.round(
+              (new Date(issue.dueDate).getTime() - now) / DAY,
+            );
+            chips.push({
+              badge: "due",
+              icon: "calendar",
+              text:
+                left < 0
+                  ? `${-left}d late`
+                  : left === 0
+                    ? "today"
+                    : `in ${left}d`,
+              tone: left < 0 ? "danger" : left <= 2 ? "warning" : "neutral",
+              tooltip: `Due ${new Date(issue.dueDate).toLocaleDateString()}`,
+            });
+          }
+          if (issue.created) {
+            const age = Math.floor(
+              (now - new Date(issue.created).getTime()) / DAY,
+            );
+            if (age >= 7)
+              chips.push({
+                badge: "age",
+                icon: "clock",
+                text: `${age}d`,
+                tone: age >= 14 ? "warning" : "neutral",
+                tooltip: `Created ${age} days ago`,
+              });
+          }
+          if (chips.length) out[issue.id] = chips;
+        }
+        return out;
       },
     });
 

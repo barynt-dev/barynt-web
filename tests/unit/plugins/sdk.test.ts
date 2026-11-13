@@ -214,6 +214,32 @@ describe("plugin SDK", () => {
     expect(drawn).toEqual(["widget", "settings", "settings"]);
   });
 
+  it("answers a board's issues with badges (BARY-151)", async () => {
+    class Badges extends Plugin {
+      onload() {
+        this.registerBadges({
+          provide: (issues) =>
+            Object.fromEntries(
+              issues.map((i) => [i.id, [{ badge: "ref", text: i.ref }]]),
+            ),
+        });
+      }
+    }
+    const host = createTestHost({
+      context: { slot: { kind: "badges", id: "badges" } },
+    });
+    await loadPlugin(Badges, host);
+    expect(await host.badges([{ id: "i1", ref: "WEB-1" }])).toEqual({
+      i1: [{ badge: "ref", text: "WEB-1" }],
+    });
+    // In any other frame it doesn't answer.
+    const other = createTestHost({
+      context: { slot: { kind: "widget", id: "w" } },
+    });
+    await loadPlugin(Badges, other);
+    expect(await other.badges([{ id: "i1", ref: "WEB-1" }])).toEqual({});
+  });
+
   it("draws an issue panel for its issue (BARY-150)", async () => {
     const seen: (string | undefined)[] = [];
     class Panel extends Plugin {
