@@ -151,24 +151,26 @@ export function parseBadges(
         continue;
       const parts = row ? parseParts(b.parts) : [];
       if (row && parts.length === 0) continue;
-      // A row without its own summary reads as its texts and names; one
-      // with none of them isn't drawn — there'd be nothing to read out.
+      // A row without its own summary reads as its texts — or, with none,
+      // its people; one with neither isn't drawn: nothing to read out.
+      const summary = (types: RowPart["type"][]) =>
+        text(
+          parts
+            .flatMap((p) =>
+              !types.includes(p.type)
+                ? []
+                : p.type === "avatar"
+                  ? [p.name]
+                  : p.type === "text" || p.type === "chip"
+                    ? [p.text]
+                    : [],
+            )
+            .join(" "),
+          TEXT_MAX * 2,
+        );
       const label =
         text(b.text, TEXT_MAX) ??
-        (row
-          ? text(
-              parts
-                .flatMap((p) =>
-                  p.type === "text" || p.type === "chip"
-                    ? [p.text]
-                    : p.type === "avatar"
-                      ? [p.name]
-                      : [],
-                )
-                .join(" "),
-              TEXT_MAX * 2,
-            )
-          : null);
+        (row ? (summary(["text", "chip"]) ?? summary(["avatar"])) : null);
       if (typeof b.badge !== "string" || !declared.has(b.badge) || !label)
         continue;
       const tooltip = text(b.tooltip, TOOLTIP_MAX);

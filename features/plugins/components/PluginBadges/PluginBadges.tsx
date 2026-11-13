@@ -250,17 +250,25 @@ export function PluginBadgeChips({
   const rest = chips.slice(max);
   return (
     <span className={styles.chips}>
-      {shown.map((b) => (
-        <span
-          key={b.key}
-          className={styles.chip}
-          data-tone={b.tone ?? "neutral"}
-          title={`${b.tooltip ?? b.text} · ${b.plugin}`}
-        >
-          {b.icon && <Icon icon={BADGE_ICONS[b.icon]} width={11} aria-hidden />}
-          {b.text}
-        </span>
-      ))}
+      {shown.map((b) => {
+        // A row as a chip shows its first icon, if it has one.
+        const icon =
+          b.icon ??
+          b.parts?.find(
+            (p): p is Extract<RowPart, { type: "icon" }> => p.type === "icon",
+          )?.icon;
+        return (
+          <span
+            key={b.key}
+            className={styles.chip}
+            data-tone={b.tone ?? "neutral"}
+            title={`${b.tooltip ?? b.text} · ${b.plugin}`}
+          >
+            {icon && <Icon icon={BADGE_ICONS[icon]} width={11} aria-hidden />}
+            {b.text}
+          </span>
+        );
+      })}
       {rest.length > 0 && (
         <span
           className={styles.chip}

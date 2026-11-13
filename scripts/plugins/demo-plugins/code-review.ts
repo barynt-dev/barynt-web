@@ -62,6 +62,8 @@ function review(issue: BadgeIssue): Badge[] {
     badges.push({
       badge: "review",
       kind: "row",
+      // What the list shows, where there's no room for the row.
+      text: "Review 2/3",
       parts: [
         { type: "avatar", name: PEOPLE[n % PEOPLE.length] },
         { type: "text", text: PEOPLE[n % PEOPLE.length], tone: "subtle" },
