@@ -40,7 +40,9 @@ export default class GitLabMergeRequests extends Plugin {
     const { gitlabProject } = await this.loadSettings<{
       gitlabProject: string | null;
     }>();
-    const form = el("form", "mr-settings") as HTMLFormElement;
+    // No <form>: the sandbox doesn't submit forms, so the button and Enter
+    // in the field do the saving.
+    const form = el("div", "mr-settings");
     const label = el("label", "mr-label", "GitLab project");
     const input = el("input", "mr-input") as HTMLInputElement;
     input.value = gitlabProject ?? "";
@@ -49,10 +51,9 @@ export default class GitLabMergeRequests extends Plugin {
     label.setAttribute("for", "gitlab-project");
     const status = el("p", "mr-status");
     const save = el("button", "mr-save", "Check and save") as HTMLButtonElement;
-    save.type = "submit";
+    save.type = "button";
     form.append(label, input, status, save);
-    this.registerDomEvent(form, "submit", async (event) => {
-      event.preventDefault();
+    const submit = async () => {
       const path = input.value.trim();
       save.disabled = true;
       status.textContent = "Checking with GitLab…";
@@ -79,6 +80,10 @@ export default class GitLabMergeRequests extends Plugin {
       } finally {
         save.disabled = false;
       }
+    };
+    this.registerDomEvent(save, "click", submit);
+    this.registerDomEvent(input, "keydown", (event) => {
+      if (event.key === "Enter") submit();
     });
     root.replaceChildren(form);
   }
