@@ -86,6 +86,10 @@ export function PluginFrame({
   const frame = useRef<HTMLIFrameElement>(null);
   const [state, setState] = useState<FrameState>({ status: "loading" });
   const [height, setHeight] = useState<number | null>(null);
+  // The latest callbacks: the channel lives as long as the frame, the
+  // callbacks change with every render of the caller.
+  const callbacks = useRef({ onBlockData, onBadges });
+  callbacks.current = { onBlockData, onBadges };
   // Sends to the frame's channel — set while one is open.
   const send = useRef<((message: HostMessage) => void) | null>(null);
   // A new frame on "Load again".
@@ -175,11 +179,11 @@ export function PluginFrame({
           window.clearTimeout(readyTimer);
           setState({ status: "error", message: message.message });
         } else if (message.type === "blockData") {
-          onBlockData?.(message.data);
+          callbacks.current.onBlockData?.(message.data);
         } else if (message.type === "resize") {
           setHeight(message.height);
         } else if (message.type === "badges") {
-          onBadges?.(message.seq, message.badges);
+          callbacks.current.onBadges?.(message.seq, message.badges);
         } else {
           void forward(message.id, message.method, message.params);
         }
