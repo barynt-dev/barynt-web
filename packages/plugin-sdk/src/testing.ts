@@ -1,5 +1,6 @@
 import type { Plugin } from "./plugin";
 import type {
+  ActionResult,
   Badge,
   BadgeIssue,
   BlockData,
@@ -23,6 +24,11 @@ export interface TestHost extends Host {
   readonly calls: { method: string; params: unknown }[];
   /** Every building block's data the plugin showed, in order. */
   readonly shown: BlockData[];
+  /** Runs one of the plugin's actions, as a menu would. */
+  runAction(
+    id: string,
+    context?: { issueId: string | null },
+  ): Promise<ActionResult>;
   /** Asks the plugin's badges for these issues, as a board would. */
   badges(
     issues: BadgeIssue[],
@@ -45,6 +51,8 @@ export function createTestHost(
   const shown: TestHost["shown"] = [];
   let badgeHandler: Parameters<NonNullable<Host["serveBadges"]>>[0] | null =
     null;
+  let actionHandler: Parameters<NonNullable<Host["serveActions"]>>[0] | null =
+    null;
   return {
     calls,
     shown,
@@ -53,6 +61,13 @@ export function createTestHost(
       badgeHandler = handler;
     },
     badges: (issues) => badgeHandler?.(issues) ?? {},
+    serveActions: (handler) => {
+      actionHandler = handler;
+    },
+    runAction: async (id, context = { issueId: null }) => {
+      if (!actionHandler) throw new Error("no actions registered");
+      return (await actionHandler(id, context)) ?? {};
+    },
     context: {
       slot: { kind: "projectView", id: "main" },
       workspaceId: "workspace",

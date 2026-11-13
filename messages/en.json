@@ -2420,6 +2420,10 @@
     "numberUnitPlaceholder": "e.g. %, €, $, kg"
   },
   "plugins": {
+    "actionFailed": "{name}: {detail}",
+    "actionTimeout": "The action didn't answer in time.",
+    "actionDone": "“{name}” done.",
+    "actionsTitle": "Plugins",
     "cap": {
       "issues:read": "Read issues",
       "issues:write": "Create and change issues",

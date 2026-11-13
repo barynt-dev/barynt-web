@@ -9,6 +9,11 @@ import { db } from "@/lib/db";
 import { currentUserCanEnterWorkspace, hasPermission } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
 import { validateManifest } from "@/lib/plugins/manifest";
+import {
+  ACTION_PLACES,
+  actionIcon,
+  type PluginActionEntry,
+} from "@/lib/plugins/plugin-actions";
 import { SLOTS, type SlotEntry, slotEntries } from "@/lib/plugins/slots";
 import type { IssuePluginPanel } from "@/types/issue";
 
@@ -309,5 +314,52 @@ export const getPluginBadgeProviders = cache(
       ];
     });
     return { projectId: project.id, prefix: project.prefix, providers };
+  },
+);
+
+/** The actions the plugins switched on in a project bring (BARY-152) —
+ *  what an issue's menu, a card's quick actions and the palette offer
+ *  there, with `ui:action` confirmed. Running one is checked again. */
+export const getPluginIssueActions = cache(
+  async (place: {
+    workspaceId: string;
+    projectId: string;
+  }): Promise<PluginActionEntry[]> => {
+    const activations = await db.pluginActivation.findMany({
+      where: { scopeKey: activationScopeKey(place), enabled: true },
+      select: { pluginId: true, capabilities: true },
+    });
+    const withActions = activations.filter((a) =>
+      a.capabilities.includes("ui:action"),
+    );
+    if (withActions.length === 0) return [];
+    const rows = await db.plugin.findMany({
+      where: {
+        pluginId: { in: withActions.map((a) => a.pluginId) },
+        status: "active",
+      },
+      select: { pluginId: true, manifest: true },
+    });
+    return withActions
+      .flatMap((a): PluginActionEntry[] => {
+        const row = rows.find((r) => r.pluginId === a.pluginId);
+        const parsed = row ? validateManifest(row.manifest) : null;
+        if (!parsed?.ok || parsed.manifest.kind !== "sandbox") return [];
+        return (parsed.manifest.contributes.actions ?? []).map((action) => ({
+          pluginId: a.pluginId,
+          pluginName: parsed.manifest.name,
+          actionId: action.id,
+          title: action.title,
+          icon: actionIcon(action.icon) ?? "lucide:puzzle",
+          where: action.where ?? [...ACTION_PLACES],
+          confirm: action.confirm ?? null,
+          danger: action.danger ?? false,
+        }));
+      })
+      .sort(
+        (x, y) =>
+          x.pluginName.localeCompare(y.pluginName) ||
+          x.title.localeCompare(y.title),
+      );
   },
 );

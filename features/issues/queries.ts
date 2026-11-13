@@ -1,5 +1,8 @@
 import { cache } from "react";
-import { getPluginIssuePanels } from "@/features/plugins/slots";
+import {
+  getPluginIssueActions,
+  getPluginIssuePanels,
+} from "@/features/plugins/slots";
 import { listAudit } from "@/lib/audit";
 import { getCurrentWorkspaceId } from "@/lib/current-workspace";
 import {
@@ -717,6 +720,7 @@ export async function getIssuesByProject(
       relations: [],
       activity: [],
       pluginPanels: [],
+      pluginActions: [],
     })),
   );
 }
@@ -800,6 +804,7 @@ export async function getWorkspaceIssues(
       relations: [],
       activity: [],
       pluginPanels: [],
+      pluginActions: [],
     })),
   );
 }
@@ -984,13 +989,12 @@ export async function getIssueById(id: string): Promise<IssueDetail | null> {
   const access = await issueAccessFor(i);
   const attachments = await resolveIssueAttachments(i.attachments);
   const viewerId = await currentUserId();
-  const [relations, activity, pluginPanels] = await Promise.all([
+  const place = { workspaceId: i.project.workspaceId, projectId: i.projectId };
+  const [relations, activity, pluginPanels, pluginActions] = await Promise.all([
     loadIssueRelations(i.id, i.parentId, i.project.workspaceId),
     listAudit({ targetId: i.id, projectId: i.projectId }),
-    getPluginIssuePanels({
-      workspaceId: i.project.workspaceId,
-      projectId: i.projectId,
-    }),
+    getPluginIssuePanels(place),
+    getPluginIssueActions(place),
   ]);
   return {
     ...withIssueAttachments(mapIssue(i, viewerId), attachments),
@@ -998,6 +1002,7 @@ export async function getIssueById(id: string): Promise<IssueDetail | null> {
     ...relations,
     activity,
     pluginPanels,
+    pluginActions,
   };
 }
 
@@ -1040,17 +1045,21 @@ export const getIssueByRef = cache(
     const access = await issueAccessFor(i);
     const attachments = await resolveIssueAttachments(i.attachments);
     const viewerId = await currentUserId();
-    const [relations, activity, pluginPanels] = await Promise.all([
-      loadIssueRelations(i.id, i.parentId, workspaceId),
-      listAudit({ targetId: i.id, projectId: project.id }),
-      getPluginIssuePanels({ workspaceId, projectId: project.id }),
-    ]);
+    const place = { workspaceId, projectId: project.id };
+    const [relations, activity, pluginPanels, pluginActions] =
+      await Promise.all([
+        loadIssueRelations(i.id, i.parentId, workspaceId),
+        listAudit({ targetId: i.id, projectId: project.id }),
+        getPluginIssuePanels(place),
+        getPluginIssueActions(place),
+      ]);
     return {
       ...withIssueAttachments(mapIssue(i, viewerId), attachments),
       access,
       ...relations,
       activity,
       pluginPanels,
+      pluginActions,
     };
   },
 );

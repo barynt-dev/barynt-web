@@ -3,7 +3,10 @@ import { isSlotKind } from "@/lib/plugins/slots";
 
 /** A slot from the list, or the plugin's own settings page (BARY-149). */
 const isFrameSlot = (kind: string | null) =>
-  kind === "settings" || kind === "badges" || isSlotKind(kind);
+  kind === "settings" ||
+  kind === "badges" ||
+  kind === "actions" ||
+  isSlotKind(kind);
 
 import { getSession } from "@/lib/session";
 

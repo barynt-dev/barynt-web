@@ -286,6 +286,37 @@ export default class CodeReview extends Plugin {
       },
     });
 
+    // Actions (BARY-152): in the issue's menu, a card's quick actions and
+    // the palette. What they return shows as a toast.
+    this.registerAction({
+      id: "rerun",
+      run: () => ({
+        message: `Pipeline #${2290 + Math.floor(Math.random() * 9)} started`,
+        tone: "success",
+      }),
+    });
+    this.registerAction({
+      id: "show-review",
+      run: () => ({ openPanel: "review" }),
+    });
+    this.registerAction({
+      id: "comment-state",
+      run: async ({ issueId }) => {
+        if (!issueId) return { message: "No issue to comment on" };
+        const issue = await this.api.issues.get(issueId);
+        const state = STATES[seed(issue.id) % STATES.length];
+        await this.api.comments.create(
+          issueId,
+          `**Merge request #${400 + (seed(issue.id) % 90)}:** ${state.text}`,
+        );
+        return { message: "Comment posted", tone: "success", refresh: true };
+      },
+    });
+    this.registerAction({
+      id: "close-mr",
+      run: () => ({ message: "Merge request closed", tone: "warning" }),
+    });
+
     // Where a row's click leads: the plugin's own panel in the issue —
     // drawn freely, here with the UI kit.
     this.registerIssuePanel({

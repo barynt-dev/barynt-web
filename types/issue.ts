@@ -1,5 +1,6 @@
 import type { AuditEntry } from "@/lib/audit/actions";
 import type { FieldValue } from "@/lib/custom-fields";
+import type { PluginActionEntry } from "@/lib/plugins/plugin-actions";
 import type { PMDoc } from "@/lib/richtext/types";
 import type { StatusCategory } from "@/lib/status-category";
 import type { SearchableIssue } from "./workspace";
@@ -216,6 +217,8 @@ export interface IssueDetail extends Issue {
   activity: AuditEntry[];
   /** The panels plugins switched on in its project show in it (BARY-150). */
   pluginPanels: IssuePluginPanel[];
+  /** The actions they offer for it (BARY-152). */
+  pluginActions: PluginActionEntry[];
 }
 
 /** A plugin's panel in an issue's detail — a frame of its own per panel. */

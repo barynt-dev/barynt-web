@@ -433,11 +433,40 @@ const DEMOS: Demo[] = [
           // In the issue's sidebar, next to its fields (BARY-209).
           { id: "development", title: "Development", placement: "sidebar" },
         ],
+        // In the issue's menu, a card's quick actions, the palette (BARY-152).
+        actions: [
+          { id: "rerun", title: "Re-run pipeline", icon: "lucide:rocket" },
+          {
+            id: "show-review",
+            title: "Show merge request",
+            icon: "lucide:git-pull-request",
+            where: ["issueMenu", "commandPalette"],
+          },
+          {
+            id: "comment-state",
+            title: "Post pipeline state as comment",
+            icon: "lucide:message-square",
+          },
+          {
+            id: "close-mr",
+            title: "Close merge request",
+            icon: "lucide:circle-x",
+            confirm:
+              "The merge request is closed in GitLab; the issue stays as it is.",
+            danger: true,
+          },
+        ],
       },
     },
     versions: {
       "1.0.0": {
-        capabilities: ["issues:read", "ui:issue-badge", "ui:issue-panel"],
+        capabilities: [
+          "issues:read",
+          "comments:write",
+          "ui:issue-badge",
+          "ui:issue-panel",
+          "ui:action",
+        ],
       },
     },
     code: "code-review",

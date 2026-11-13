@@ -62,6 +62,23 @@ function PluginPanel({
   // Read after mounting: the server has no `localStorage`, and the first
   // render has to match its HTML. A badge row's click (BARY-208) opens it
   // whatever was stored, and brings it into view.
+  // An action's answer can ask for it too, while the issue is open.
+  useEffect(() => {
+    const onFocus = () => {
+      if (!takePanelFocus(issue.id, panel.pluginId, panel.panelId)) return;
+      setOpen(true);
+      window.setTimeout(
+        () =>
+          section.current?.scrollIntoView({
+            block: "start",
+            behavior: "smooth",
+          }),
+        150,
+      );
+    };
+    window.addEventListener("barynt:focus-panel", onFocus);
+    return () => window.removeEventListener("barynt:focus-panel", onFocus);
+  }, [panel, issue.id]);
   useEffect(() => {
     if (takePanelFocus(issue.id, panel.pluginId, panel.panelId)) {
       setOpen(true);

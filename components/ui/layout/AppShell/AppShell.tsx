@@ -6,6 +6,7 @@ import { ShortcutsHelpTrigger } from "@/features/account/components/AccountShort
 import { getMyPreferences } from "@/features/account/queries";
 import { CommandPaletteTrigger } from "@/features/issues/components/CommandPalette/CommandPaletteTrigger";
 import { NewIssueFab } from "@/features/issues/components/NewIssueButton/NewIssueFab";
+import { PluginActionRunner } from "@/features/plugins/components/PluginActions/PluginActionRunner";
 import { GoToShortcuts } from "@/features/workspaces/components/GoToShortcuts/GoToShortcuts";
 import { DockOutlet, ModalOutlet } from "@/lib/context";
 import { TabBar } from "../TabBar/TabBar";
@@ -96,6 +97,8 @@ export async function AppShell({
       <CommandPaletteTrigger isAdminRoute={isAdminRoute} />
       {/* Phone only (CSS): the floating "new issue" plus. */}
       {!isAdminRoute && <NewIssueFab />}
+      {/* Runs plugins' actions, out of sight (BARY-152). */}
+      {!isAdminRoute && <PluginActionRunner />}
       <Toast />
     </ShellFrame>
   );

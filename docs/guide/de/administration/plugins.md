@@ -85,6 +85,8 @@ Plugins können auch **Bausteine** für eigene Widgets mitbringen: Im Widget-Bui
 
 Manche Plugins zeigen ein **Panel in jedem Issue** eines Projekts, in dem sie eingeschaltet sind – unter den Anhängen, mit dem Namen des Plugins. Ein Panel, das du nicht brauchst, klappst du zu; es bleibt für dich zugeklappt. Manche Plugins ergänzen stattdessen einen Bereich in der Seitenleiste des Issues – „Entwicklung“ mit Branch, Merge Request und Pipeline, neben den Feldern des Issues. Andere setzen **Badges** auf die Karten im Board und die Zeilen der Liste – eine Fälligkeit, ein offener Merge Request. **Anzeige** listet sie unter *Plugin-Badges*; was du nicht brauchst, schaltest du dort aus. Manche zeigen eine ganze Zeile auf der Karte – etwa einen Merge Request mit Status und Pipeline. Ein Klick auf so eine Zeile kann das Issue direkt beim Panel des Plugins öffnen.
 
+Plugins können außerdem **Aktionen** ergänzen – „Pipeline neu starten“, „Merge Request schließen“ – im **…**-Menü eines Issues, in den Quick Actions einer Karte und in der Befehlspalette, solange ein Issue offen ist. Was sich nicht rückgängig machen lässt, fragt vorher nach.
+
 ### Einstellungen eines Plugins im Workspace
 
 Ein Plugin, das im Workspace läuft und Einstellungen hat, bekommt in den Workspace-Einstellungen einen Eintrag unter **Plugins** mit seinem Formular.

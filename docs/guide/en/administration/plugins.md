@@ -85,6 +85,8 @@ Plugins can also bring **building blocks** for custom widgets: in the widget bui
 
 Some plugins show a **panel in every issue** of a project where they're on — below the attachments, with the plugin's name. Fold one you don't need; it stays folded for you. Some plugins add a section to the issue's sidebar instead — "Development" with the branch, the merge request and the pipeline, next to the issue's fields. Others put **badges** on the board's cards and the list's rows — a due date, an open merge request. **Display** lists them under *Plugin badges*; switch off the ones you don't want. Some show a whole line on a card — a merge request with its state and pipeline, say. Clicking such a line can open the issue right at the plugin's panel.
 
+Plugins can also add **actions** — "Re-run pipeline", "Close merge request" — to an issue's **…** menu, to a card's quick actions and to the command palette while an issue is open. One that can't be undone asks first.
+
 ### A plugin's settings in the workspace
 
 A plugin running in the workspace that has settings gets an entry under **Plugins** in the workspace settings, with its form.

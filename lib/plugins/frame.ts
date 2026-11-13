@@ -24,6 +24,7 @@ const RUNTIME = `(() => {
   let seq = 0;
   let instance = null;
   let badgeHandler = null;
+  let actionHandler = null;
 
   const send = (message) => port && port.postMessage(message);
   const fail = (error) =>
@@ -71,6 +72,24 @@ const RUNTIME = `(() => {
       if (m.type === "theme") return applyTheme(m.theme, true);
       // A batch of issues for its badges (BARY-151): the answer goes back
       // with the request's number, so a late one can be told apart.
+      // One of its actions (BARY-152): the answer, or what it threw.
+      if (m.type === "action:run") {
+        const seq = m.seq;
+        if (!actionHandler)
+          return send({ type: "actionDone", seq, ok: false, result: "no actions" });
+        Promise.resolve()
+          .then(() => actionHandler(String(m.actionId), { issueId: m.issueId || null }))
+          .then((result) => send({ type: "actionDone", seq, ok: true, result: result || {} }))
+          .catch((error) =>
+            send({
+              type: "actionDone",
+              seq,
+              ok: false,
+              result: String((error && error.message) || error),
+            }),
+          );
+        return;
+      }
       if (m.type === "badges:request") {
         const seq = m.seq;
         if (!badgeHandler) return send({ type: "badges", seq, badges: {} });
@@ -107,6 +126,10 @@ const RUNTIME = `(() => {
         // What answers a batch of issues with badges (BARY-151).
         serveBadges: (handler) => {
           badgeHandler = typeof handler === "function" ? handler : null;
+        },
+        // What runs its actions (BARY-152).
+        serveActions: (handler) => {
+          actionHandler = typeof handler === "function" ? handler : null;
         },
       });
       instance = new Plugin(host);

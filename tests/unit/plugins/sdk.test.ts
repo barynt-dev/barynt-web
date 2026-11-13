@@ -214,6 +214,32 @@ describe("plugin SDK", () => {
     expect(drawn).toEqual(["widget", "settings", "settings"]);
   });
 
+  it("runs its actions for an issue, only in the actions frame (BARY-152)", async () => {
+    class Actions extends Plugin {
+      onload() {
+        this.registerAction({
+          id: "rerun",
+          run: ({ issueId }) => ({ message: `rerun ${issueId}` }),
+        });
+        this.registerAction({ id: "quiet", run: () => undefined });
+      }
+    }
+    const host = createTestHost({
+      context: { slot: { kind: "actions", id: "actions" } },
+    });
+    await loadPlugin(Actions, host);
+    expect(await host.runAction("rerun", { issueId: "i1" })).toEqual({
+      message: "rerun i1",
+    });
+    expect(await host.runAction("quiet")).toEqual({});
+    await expect(host.runAction("nope")).rejects.toThrow('No action "nope"');
+    const other = createTestHost({
+      context: { slot: { kind: "widget", id: "w" } },
+    });
+    await loadPlugin(Actions, other);
+    await expect(other.runAction("rerun")).rejects.toThrow("no actions");
+  });
+
   it("answers a board's issues with badges (BARY-151)", async () => {
     class Badges extends Plugin {
       onload() {

@@ -8,10 +8,16 @@ import {
   readSource,
   sealSourceToken,
 } from "@/features/plugins/directory";
+import { getPluginIssueActions } from "@/features/plugins/slots";
 import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
-import { currentUserId, PLATFORM, requirePermission } from "@/lib/permissions";
+import {
+  currentUserId,
+  hasPermission,
+  PLATFORM,
+  requirePermission,
+} from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
 import { isDevUrl } from "@/lib/plugins/dev";
 import type { PreviewFileName } from "@/lib/plugins/directory";
@@ -29,6 +35,7 @@ import {
   unblockTarget,
 } from "@/lib/plugins/lifecycle";
 import { validateManifest } from "@/lib/plugins/manifest";
+import type { PluginActionEntry } from "@/lib/plugins/plugin-actions";
 import { credentialScopeKey } from "@/lib/plugins/proxy";
 import { compareSemver } from "@/lib/plugins/semver";
 import { checkSettings } from "@/lib/plugins/settings";
@@ -983,5 +990,53 @@ export async function previewRelease(input: {
         ).toString("base64")}`,
       })),
     },
+  };
+}
+
+/**
+ * The plugins' actions for an issue (BARY-152) — for a card's quick actions
+ * and the palette, which don't have the issue's detail at hand. By id, or
+ * by `PREFIX-123` in a workspace; nothing for an issue this person doesn't
+ * see.
+ */
+export async function listIssuePluginActions(input: {
+  issue: string;
+  workspaceId?: string;
+}): Promise<{
+  issueId: string;
+  workspaceId: string;
+  projectId: string;
+  actions: PluginActionEntry[];
+} | null> {
+  const ref = input.issue.match(/^([A-Z0-9]+)-(\d+)$/i);
+  const select = {
+    id: true,
+    projectId: true,
+    project: { select: { workspaceId: true } },
+  } as const;
+  const row =
+    ref && input.workspaceId
+      ? await db.issue.findFirst({
+          where: {
+            key: Number(ref[2]),
+            project: {
+              workspaceId: input.workspaceId,
+              prefix: ref[1].toUpperCase(),
+            },
+          },
+          select,
+        })
+      : await db.issue.findUnique({ where: { id: input.issue }, select });
+  if (!row) return null;
+  if (!(await hasPermission("project.view", { projectId: row.projectId })))
+    return null;
+  const place = {
+    workspaceId: row.project.workspaceId,
+    projectId: row.projectId,
+  };
+  return {
+    issueId: row.id,
+    ...place,
+    actions: await getPluginIssueActions(place),
   };
 }
