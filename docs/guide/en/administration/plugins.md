@@ -70,6 +70,15 @@ The store lists every plugin your platform admin installed, with search, categor
 
 A released plugin for projects has an entry under **Plugins** in every project's settings, below the other sections. Project admins open it, check what it may do in the project and **Switch on**. Once it runs, the page holds the form the plugin brings (a channel name, what to post, …) and, at the bottom, switching it off again — its settings and data stay until **Delete data**.
 
+### Where plugins show
+
+A plugin that brings its own views or pages shows them in the sidebar, each with the plugin's mark:
+
+- **Switched on in a project**: under the project, next to its Dashboard, Board and Issues; pages below a **Plugins** heading.
+- **Switched on in the workspace**: views in the sidebar's top group, next to the workspace's Dashboard and Board (on a phone in the **Plugins** section); pages in a **Plugins** section of their own.
+
+A plugin's page always names the plugin under its title.
+
 ### A plugin's settings in the workspace
 
 A plugin running in the workspace that has settings gets an entry under **Plugins** in the workspace settings, with its form.

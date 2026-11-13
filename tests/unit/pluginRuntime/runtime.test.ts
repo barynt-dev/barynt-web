@@ -24,8 +24,8 @@ afterAll(() => {
 
 const db = {
   project: { findUnique: mock() },
-  pluginActivation: { findUnique: mock() },
-  plugin: { findFirst: mock() },
+  pluginActivation: { findUnique: mock(), findMany: mock() },
+  plugin: { findFirst: mock(), findMany: mock() },
   pluginFile: { findMany: mock() },
   pluginStorage: {
     findUnique: mock(),
@@ -40,8 +40,14 @@ const db = {
 mock.module("@/lib/db", () => ({ db }));
 const can = mock(async () => true);
 const canEnterWorkspace = mock(async () => true);
-mock.module("@/lib/permissions", () => ({ can, canEnterWorkspace }));
+const currentUserCanEnterWorkspace = mock(async () => true);
+mock.module("@/lib/permissions", () => ({
+  can,
+  canEnterWorkspace,
+  currentUserCanEnterWorkspace,
+}));
 const listIssuesForUser = mock();
+const listProjectsForUser = mock();
 const getIssueForUser = mock();
 mock.module("@/features/api-v1/queries", () => ({
   listIssuesForUser,
@@ -50,7 +56,7 @@ mock.module("@/features/api-v1/queries", () => ({
   listLabelsForUser: mock(),
   listProjectCustomFieldsForUser: mock(),
   listProjectMembersForUser: mock(),
-  listProjectsForUser: mock(),
+  listProjectsForUser,
   listWorkspaceMembersForUser: mock(),
 }));
 const createIssueForUser = mock();
@@ -119,6 +125,7 @@ const { sealSecret } = await import("@/lib/secret-box");
 const { callBridge, getPluginFrame } = await import(
   "@/features/plugins/runtime"
 );
+const { getPluginNav } = await import("@/features/plugins/slots");
 
 const manifest = {
   id: "timeline",
@@ -144,6 +151,7 @@ beforeEach(() => {
   countRequest.mockImplementation(async () => ({ ok: true, info: {} }));
   for (const fn of [
     listIssuesForUser,
+    listProjectsForUser,
     getIssueForUser,
     createIssueForUser,
     updateIssueForUser,
@@ -351,6 +359,110 @@ describe("callBridge (BARY-145)", () => {
       ok: true,
       result: { zoom: 2, title: "Hi" },
     });
+  });
+});
+
+describe("slots (BARY-148)", () => {
+  const wsPlace = { pluginId: "timeline", workspaceId: "ws1", projectId: null };
+
+  it("lists a workspace plugin's issues across the workspace's projects", async () => {
+    listProjectsForUser.mockResolvedValue([{ id: "p1" }, { id: "p2" }]);
+    listIssuesForUser.mockImplementation(
+      async (_u: string, projectId: string) => ({
+        rows:
+          projectId === "p1"
+            ? [{ id: "a", created: "2026-01-01" }]
+            : [{ id: "b", created: "2026-02-01" }],
+        hasMore: false,
+      }),
+    );
+    const res = await callBridge("u1", wsPlace, "issues.list", { take: 1 });
+    expect(res).toEqual({
+      ok: true,
+      result: {
+        issues: [{ id: "b", created: "2026-02-01" }],
+        nextCursor: null,
+      },
+    });
+  });
+
+  it("serves a workspace plugin's view and page, each with its capability", async () => {
+    db.pluginFile.findMany.mockResolvedValue([
+      { name: "main.js", content: new TextEncoder().encode("x") },
+    ]);
+    db.plugin.findFirst.mockResolvedValue({
+      id: "row1",
+      manifest: {
+        ...manifest,
+        levels: ["workspace", "project"],
+        capabilities: ["issues:read", "ui:project-view", "ui:nav-item"],
+        contributes: {
+          ...manifest.contributes,
+          navItems: [{ id: "roadmap", title: "Roadmap" }],
+        },
+      },
+    });
+    db.pluginActivation.findUnique.mockResolvedValue({
+      id: "act1",
+      enabled: true,
+      capabilities: ["issues:read", "ui:project-view"],
+    });
+    expect(
+      await getPluginFrame("u1", wsPlace, {
+        kind: "projectView",
+        id: "timeline",
+      }),
+    ).not.toBeNull();
+    // ui:nav-item wasn't confirmed here.
+    expect(
+      await getPluginFrame("u1", wsPlace, { kind: "page", id: "roadmap" }),
+    ).toBeNull();
+  });
+});
+
+describe("getPluginNav (BARY-148)", () => {
+  it("puts views and pages where the plugin is on, for visible projects", async () => {
+    db.pluginActivation.findMany.mockResolvedValue([
+      {
+        pluginId: "timeline",
+        projectId: null,
+        capabilities: ["ui:project-view"],
+      },
+      {
+        pluginId: "timeline",
+        projectId: "p1",
+        capabilities: ["ui:project-view", "ui:nav-item"],
+      },
+      {
+        pluginId: "timeline",
+        projectId: "hidden",
+        capabilities: ["ui:project-view"],
+      },
+    ]);
+    db.plugin.findMany.mockResolvedValue([
+      {
+        pluginId: "timeline",
+        manifest: {
+          ...manifest,
+          levels: ["workspace", "project"],
+          capabilities: ["issues:read", "ui:project-view", "ui:nav-item"],
+          contributes: {
+            ...manifest.contributes,
+            navItems: [{ id: "roadmap", title: "Roadmap" }],
+          },
+        },
+      },
+    ]);
+    const nav = await getPluginNav("ws-nav", ["p1"]);
+    expect(nav.workspace.map((e) => e.path)).toEqual([
+      "plugin/timeline/view/timeline",
+    ]);
+    expect(nav.projects.p1?.map((e) => e.path)).toEqual([
+      "plugin/timeline/page/roadmap",
+      "plugin/timeline/view/timeline",
+    ]);
+    // A project the person can't see stays out.
+    expect(nav.projects.hidden).toBeUndefined();
   });
 });
 

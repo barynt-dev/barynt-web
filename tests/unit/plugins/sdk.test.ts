@@ -157,4 +157,25 @@ describe("plugin SDK", () => {
       params: { url: "https://api.acme.example/items" },
     });
   });
+
+  it("draws a page only in its own frame, and not as a view", async () => {
+    const drawn: string[] = [];
+    class Pages extends Plugin {
+      onload() {
+        this.registerProjectView({
+          id: "roadmap",
+          render: () => void drawn.push("view"),
+        });
+        this.registerPage({
+          id: "roadmap",
+          render: () => void drawn.push("page"),
+        });
+      }
+    }
+    await loadPlugin(
+      Pages,
+      createTestHost({ context: { slot: { kind: "page", id: "roadmap" } } }),
+    );
+    expect(drawn).toEqual(["page"]);
+  });
 });

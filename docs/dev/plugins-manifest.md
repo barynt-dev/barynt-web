@@ -105,9 +105,19 @@ capability, and each entry an `id` that's unique in its list.
 `icon` is an [Iconify](https://icon-sets.iconify.design) name like
 `lucide:clock`.
 
+### Where they show
+
+| Contribution | Switched on in a project | Switched on in the workspace |
+| --- | --- | --- |
+| `projectViews` | in the sidebar under the project, next to its Dashboard, Board and Issues | in the sidebar's main group, next to the workspace's Dashboard and Board (on a phone, whose main group is the bottom bar: in the "Plugins" section) |
+| `navItems` | in the sidebar under the project, below a "Plugins" heading | in the sidebar's own "Plugins" section |
+
+Each entry carries the plugin's mark, and its page names the plugin under
+the title, so it's always clear what comes from a plugin. `icon` isn't
+shown yet.
+
 > [!NOTE]
-> Today a sandboxed plugin runs in **project views**. Sidebar entries,
-> dashboard widgets, issue panels, badges and actions can be declared
+> Dashboard widgets, issue panels, badges and actions can be declared
 > already; Barynt shows them in a coming release.
 
 ### Settings

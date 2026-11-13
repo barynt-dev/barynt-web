@@ -17,14 +17,16 @@ const el = (tag: string, className?: string | null, text?: string) => {
 
 export default class Timeline extends Plugin {
   async onload() {
-    this.registerProjectView({
-      id: "timeline",
-      render: async (root) => {
-        root.replaceChildren(el("p", "tl-muted", "Loading issues…"));
-        const { issues } = await this.api.issues.list({ take: 100 });
-        this.draw(root, issues);
-      },
-    });
+    const render = async (root: HTMLElement) => {
+      root.replaceChildren(el("p", "tl-muted", "Loading issues…"));
+      // In a project its issues; in a workspace the newest across it.
+      const { issues } = await this.api.issues.list({ take: 100 });
+      this.draw(root, issues);
+    };
+    // The view (next to the project's own, or in the sidebar's main group
+    // for the workspace) and a page of its own under "Plugins".
+    this.registerProjectView({ id: "timeline", render });
+    this.registerPage({ id: "roadmap", render });
   }
 
   draw(root: HTMLElement, issues: Issue[]) {

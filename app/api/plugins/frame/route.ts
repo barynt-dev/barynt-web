@@ -1,14 +1,16 @@
 import { getPluginFrame } from "@/features/plugins/runtime";
+import { isSlotKind } from "@/lib/plugins/slots";
 import { getSession } from "@/lib/session";
 
 const ID = /^[\w-]{1,64}$/;
 
 /**
  * The document a sandboxed plugin's frame loads (BARY-144):
- * `?plugin=<id>&workspace=<id>&project=<id>&view=<viewId>`. Only where the
- * plugin is on for this person and fills that view; its CSP turns the
- * document into a sandbox with an opaque origin and no network
- * (`lib/plugins/frame.ts`). Never cached: it's checked on every load.
+ * `?plugin=<id>&workspace=<id>&project=<id>&slot=<kind>&id=<entry>`. Only
+ * where the plugin is on for this person and fills that slot
+ * (`lib/plugins/slots.ts`); its CSP turns the document into a sandbox with
+ * an opaque origin and no network (`lib/plugins/frame.ts`). Never cached:
+ * it's checked on every load.
  */
 export async function GET(req: Request) {
   const session = await getSession();
@@ -17,17 +19,19 @@ export async function GET(req: Request) {
   const pluginId = url.searchParams.get("plugin") ?? "";
   const workspaceId = url.searchParams.get("workspace") ?? "";
   const projectId = url.searchParams.get("project") || null;
-  const view = url.searchParams.get("view") ?? "";
+  const kind = url.searchParams.get("slot");
+  const id = url.searchParams.get("id") ?? "";
   if (
-    ![pluginId, workspaceId, view].every((v) => ID.test(v)) ||
-    (projectId !== null && !ID.test(projectId))
+    ![pluginId, workspaceId, id].every((v) => ID.test(v)) ||
+    (projectId !== null && !ID.test(projectId)) ||
+    !isSlotKind(kind)
   )
     return new Response(null, { status: 404 });
 
   const frame = await getPluginFrame(
     session.userId,
     { pluginId, workspaceId, projectId },
-    { kind: "projectView", id: view },
+    { kind, id },
   );
   if (!frame) return new Response(null, { status: 404 });
   return new Response(frame.html, {

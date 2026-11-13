@@ -1,7 +1,12 @@
 import { getTranslations } from "next-intl/server";
+import { PluginTile } from "@/features/plugins/components/PluginStore/PluginTile";
+import { getPluginNav } from "@/features/plugins/slots";
 import { systemViewSlug } from "@/features/views/system";
 import { viewPath } from "@/features/views/url";
-import { getCurrentWorkspace } from "@/features/workspaces/queries";
+import {
+  getCurrentWorkspace,
+  getWorkspaceProjects,
+} from "@/features/workspaces/queries";
 import {
   MY_ISSUES_NAV,
   WORKSPACE_BOARD_NAV,
@@ -13,7 +18,8 @@ import TabList, { type TabGroup } from "../components/TabList";
 
 /**
  * The workspace at a glance, at the top of the sidebar: its dashboard, its
- * board across all projects and "My tasks" (V8). The spacing below sets
+ * board across all projects and "My tasks" (V8), then the views of plugins
+ * switched on in the workspace (BARY-148). The spacing below sets
  * them apart from the directories (projects, views) that follow.
  */
 async function NavGroupWorkspaceDashboard({
@@ -57,6 +63,22 @@ async function NavGroupWorkspaceDashboard({
   ];
 
   if (bare) return <TabList tabs={tabs} />;
+
+  // Views of plugins switched on in the workspace, next to its own
+  // (BARY-148) — not in the phone's bottom bar, which has no room.
+  const projects = await getWorkspaceProjects();
+  const plugins = await getPluginNav(
+    workspace.id,
+    projects.map((p) => p.id),
+  );
+  for (const entry of plugins.workspace.filter((e) => e.kind === "projectView"))
+    tabs.push({
+      href: workspacePath(workspace.id, entry.path),
+      label: entry.title,
+      leading: (
+        <PluginTile id={entry.pluginId} name={entry.pluginName} size="sm" />
+      ),
+    });
 
   return (
     <div className={styles.workspaceDashboardGroup}>

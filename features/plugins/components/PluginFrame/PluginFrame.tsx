@@ -58,7 +58,8 @@ export function PluginFrame({
     plugin: pluginId,
     workspace: workspaceId,
     ...(projectId ? { project: projectId } : {}),
-    view: slot.id,
+    slot: slot.kind,
+    id: slot.id,
   })}`;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: one channel per loaded frame; `attempt` makes a new one
