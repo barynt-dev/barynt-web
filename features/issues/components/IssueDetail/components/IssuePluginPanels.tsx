@@ -24,14 +24,18 @@ const storageKey = (p: IssuePluginPanel) =>
 export function IssuePluginPanels({
   issue,
   workspaceId,
+  placement,
 }: {
   issue: IssueDetail;
   workspaceId: string;
+  /** Which of them: the main column's, or the sidebar's (BARY-209). */
+  placement: IssuePluginPanel["placement"];
 }) {
-  if (issue.pluginPanels.length === 0) return null;
+  const panels = issue.pluginPanels.filter((p) => p.placement === placement);
+  if (panels.length === 0) return null;
   return (
     <>
-      {issue.pluginPanels.map((panel) => (
+      {panels.map((panel) => (
         <PluginPanel
           key={`${panel.pluginId}:${panel.panelId}`}
           panel={panel}
@@ -85,7 +89,12 @@ function PluginPanel({
   };
   const bodyId = `plugin-panel-${panel.pluginId}-${panel.panelId}`;
   return (
-    <section ref={section} className={styles.section} data-plugin-panel>
+    <section
+      ref={section}
+      className={styles.section}
+      data-plugin-panel
+      data-placement={panel.placement}
+    >
       <header className={styles.sectionHead}>
         <button
           type="button"

@@ -7,7 +7,9 @@ import {
   button,
   card,
   checkbox,
+  copyField,
   dialog,
+  diffStat,
   emptyState,
   grid,
   heading,
@@ -17,14 +19,17 @@ import {
   labelChip,
   link,
   multiSelect,
+  navList,
   notice,
   onThemeChange,
   progressBar,
   radioGroup,
+  sectionHeader,
   segmentedControl,
   skeleton,
   spinner,
   statusDot,
+  stepList,
   swatchPicker,
   table,
   tabs,
@@ -299,5 +304,83 @@ describe("data and overlays", () => {
     const id = d.el.getAttribute("aria-labelledby") ?? "";
     expect(d.el.querySelector(`#${id}`)?.textContent).toBe("Delete?");
     expect(d.el.querySelector("[aria-label=Close]")).not.toBeNull();
+  });
+});
+
+describe("development pieces (BARY-209)", () => {
+  it("copies a value, opens only real links", async () => {
+    let copied = "";
+    const nav = globalThis.navigator as { clipboard?: unknown };
+    const saved = nav.clipboard;
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      value: {
+        writeText: async (v: string) => {
+          copied = v;
+        },
+      },
+      configurable: true,
+    });
+    const field = copyField({
+      value: "ada/web-7-empty-states",
+      icon: "git-branch",
+      href: "https://gitlab.com/acme/web",
+    });
+    (field.querySelector("button") as HTMLButtonElement).click();
+    await Bun.sleep(0);
+    expect(copied).toBe("ada/web-7-empty-states");
+    expect(field.querySelector("a")?.getAttribute("rel")).toContain("noopener");
+    expect(
+      copyField({ value: "x", href: "javascript:alert(1)" }).querySelector("a"),
+    ).toBeNull();
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      value: saved,
+      configurable: true,
+    });
+  });
+
+  it("lists steps with their state, rows that lead somewhere", () => {
+    const steps = stepList({
+      steps: [
+        { label: "Build", state: "success", meta: "1m 12s" },
+        { label: "Test", state: "danger" },
+      ],
+    });
+    expect(steps.querySelectorAll("li")).toHaveLength(2);
+    expect(steps.querySelector("li")?.getAttribute("aria-label")).toBe(
+      "Build: success",
+    );
+    let opened = 0;
+    const nav = navList({
+      items: [
+        {
+          label: "Commit",
+          count: 1,
+          icon: "git-commit-horizontal",
+          onClick: () => opened++,
+        },
+        { label: "Deployments", href: "https://ci.example.com" },
+        { label: "Nothing" },
+      ],
+    });
+    (nav.querySelector("button") as HTMLButtonElement).click();
+    expect(opened).toBe(1);
+    expect(nav.querySelector("a")?.getAttribute("href")).toBe(
+      "https://ci.example.com/",
+    );
+    expect(
+      (nav.querySelectorAll("button")[1] as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it("heads a card with a state, counts a diff", () => {
+    const head = sectionHeader({
+      title: "Pipeline",
+      icon: "circle-check",
+      status: { text: "Passed", tone: "success" },
+    });
+    expect(
+      (head.querySelector(".bui-section-status") as HTMLElement).dataset.tone,
+    ).toBe("success");
+    expect(diffStat({ added: 9, removed: 4 }).textContent).toBe("+9−4");
   });
 });

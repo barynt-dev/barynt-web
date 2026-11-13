@@ -74,6 +74,12 @@ const icon = z
 
 const entry = z.strictObject({ id: localId, title, icon: icon.optional() });
 
+/** An issue panel: in the issue's main column (default), or a section of
+ *  the sidebar next to its fields (BARY-209). */
+const panelEntry = entry.extend({
+  placement: z.enum(["main", "sidebar"]).optional(),
+});
+
 /** A dashboard widget made of Barynt's own blocks (BARY-203): no code, no
  *  frame — Barynt draws it like a custom widget. */
 const widgetTemplateSchema = pluginTemplateSchema.extend({
@@ -176,7 +182,7 @@ const contributesSchema = z.strictObject({
   dashboardWidgets: z.array(entry).max(5).optional(),
   widgetTemplates: z.array(widgetTemplateSchema).max(10).optional(),
   widgetBlocks: z.array(blockSchema).max(10).optional(),
-  issuePanels: z.array(entry).max(5).optional(),
+  issuePanels: z.array(panelEntry).max(5).optional(),
   issueBadges: z.array(entry).max(5).optional(),
   actions: z.array(entry).max(20).optional(),
   fields: z.array(fieldSchema).max(20).optional(),

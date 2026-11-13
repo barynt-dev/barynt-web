@@ -258,6 +258,8 @@ export function PluginFrame({
         className={styles.frame}
         title={name}
         sandbox="allow-scripts"
+        // Writing only — a copy button (BARY-209); reading stays out.
+        allow="clipboard-write"
         referrerPolicy="no-referrer"
       />
       {state.status === "error" && (

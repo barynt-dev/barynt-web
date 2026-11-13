@@ -292,6 +292,36 @@ this.registerIssuePanel({
 
 Opening another issue opens a new frame, with that issue's `issueId`.
 
+A panel with `"placement": "sidebar"` in the manifest is drawn the same way;
+the sidebar is narrow, so draw for about 300 px. The issue's custom fields
+come with `api.issues.get()` as `customFields`, by field key — a panel can
+build on what a project already keeps there:
+
+```ts
+this.registerIssuePanel({
+  id: "development",
+  render: async (el, { issueId }) => {
+    const issue = await this.api.issues.get(issueId!);
+    const branch = (issue.customFields?.branch as string) ?? `${issue.ref.toLowerCase()}-work`;
+    el.replaceChildren(
+      stack(
+        copyField({ value: branch, icon: "git-branch", href: branchUrl }),
+        card({ compact: true, tone: "warning", children: [
+          sectionHeader({ title: "#410", icon: "git-pull-request", status: { text: "Changes requested", tone: "warning" } }),
+          text({ text: "fix(theme): lighter muted token" }),
+          row(diffStat({ added: 9, removed: 4 }), avatar({ name: "Ada Rahman", size: "sm" })),
+        ] }),
+        card({ compact: true, children: [
+          sectionHeader({ title: "Pipeline", icon: "circle-check", status: { text: "Passed", tone: "success" } }),
+          stepList({ steps: [{ label: "Build", state: "success", meta: "1m 12s" }, { label: "Test", state: "success", meta: "3m 40s" }] }),
+        ] }),
+        navList({ items: [{ icon: "git-commit-horizontal", count: 1, label: "Commit", href: commitsUrl }] }),
+      ),
+    );
+  },
+});
+```
+
 ### `registerWidget()`
 
 ```ts
@@ -543,7 +573,7 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `link({ text, href })` | a link out, in a new tab |
 | `stack(...children)`, `row(...children)` | under each other / next to each other, with room between |
 | `grid({ children, minWidth? })` | as many columns as fit, each at least `minWidth` (`12rem`) |
-| `card({ title?, description?, children?, actions? })` | a framed section |
+| `card({ title?, description?, children?, actions?, tone?, compact? })` | a framed section; `tone` colours its edge, `compact` takes less room (a sidebar) |
 | `divider()` | a line |
 | `icon(name, { size?, label? })` | one of the built-in icons (`IconName`: `check`, `x`, `plus`, `search`, `calendar`, `git-pull-request` … — `ICONS` lists them); no network needed |
 
@@ -562,6 +592,11 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `status()` | a line that says how it went: `set(text, tone?)`, `clear()` |
 | `spinner({ label? })`, `skeleton({ lines? })` | while something loads |
 | `emptyState({ title, text?, icon?, action? })` | where there's nothing yet |
+| `sectionHeader({ title, icon?, meta?, status? })` | a head over a card or section: icon, title, on the right a note or a state in its tone |
+| `copyField({ value, icon?, href?, label? })` | a value to copy — a branch, a hash — with a copy button and, with `href`, one to open it |
+| `stepList({ steps })` | steps with their state (`success`, `running`, `warning`, `danger`, `pending`) and, on the right, a note — a pipeline |
+| `navList({ items })` | rows that lead somewhere: `{ label, icon?, count?, href? \| onClick? }` with a › at the end |
+| `diffStat({ added, removed })` | "+9 −4" |
 
 ### Data and numbers
 

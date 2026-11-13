@@ -12,6 +12,7 @@ import { IssueCustomFields } from "./IssueCustomFields";
 import { IssueLabels } from "./IssueLabels";
 import { IssueMeta } from "./IssueMeta";
 import { IssuePlanning } from "./IssuePlanning";
+import { IssuePluginPanels } from "./IssuePluginPanels";
 import { IssueProperties } from "./IssueProperties";
 
 interface IssueSidebarProps {
@@ -115,6 +116,20 @@ export function IssueSidebar({
               data={data}
               layout="aside"
               onPatch={onPatch}
+            />
+
+            <div className={styles.divider} />
+          </>
+        )}
+
+        {/* Plugins' sections (BARY-209) — "Development" and the like, next
+            to the fields they belong with. */}
+        {issue.pluginPanels.some((p) => p.placement === "sidebar") && (
+          <>
+            <IssuePluginPanels
+              issue={issue}
+              workspaceId={data.workspaceId}
+              placement="sidebar"
             />
 
             <div className={styles.divider} />

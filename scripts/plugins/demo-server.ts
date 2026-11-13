@@ -428,11 +428,17 @@ const DEMOS: Demo[] = [
           { id: "deploy", title: "Deployment" },
         ],
         // Where a merge request's row leads (BARY-208).
-        issuePanels: [{ id: "review", title: "Merge request" }],
+        issuePanels: [
+          { id: "review", title: "Merge request" },
+          // In the issue's sidebar, next to its fields (BARY-209).
+          { id: "development", title: "Development", placement: "sidebar" },
+        ],
       },
     },
     versions: {
-      "1.0.0": { capabilities: ["ui:issue-badge", "ui:issue-panel"] },
+      "1.0.0": {
+        capabilities: ["issues:read", "ui:issue-badge", "ui:issue-panel"],
+      },
     },
     code: "code-review",
   },

@@ -223,6 +223,7 @@ export const getPluginIssuePanels = cache(
         const row = rows.find((r) => r.pluginId === a.pluginId);
         const parsed = row ? validateManifest(row.manifest) : null;
         if (!parsed?.ok) return [];
+        const declared = parsed.manifest.contributes.issuePanels ?? [];
         return slotEntries(parsed.manifest, a.capabilities)
           .filter((e) => e.kind === "issuePanel")
           .map((e) => ({
@@ -230,6 +231,7 @@ export const getPluginIssuePanels = cache(
             pluginName: parsed.manifest.name,
             panelId: e.id,
             title: e.title,
+            placement: declared.find((p) => p.id === e.id)?.placement ?? "main",
           }));
       })
       .sort(
