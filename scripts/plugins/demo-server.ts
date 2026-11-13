@@ -423,10 +423,17 @@ const DEMOS: Demo[] = [
       minBaryntVersion: "0.9.0",
       license: "MIT",
       contributes: {
-        issueBadges: [{ id: "review", title: "Merge request" }],
+        issueBadges: [
+          { id: "review", title: "Merge request" },
+          { id: "deploy", title: "Deployment" },
+        ],
+        // Where a merge request's row leads (BARY-208).
+        issuePanels: [{ id: "review", title: "Merge request" }],
       },
     },
-    versions: { "1.0.0": { capabilities: ["ui:issue-badge"] } },
+    versions: {
+      "1.0.0": { capabilities: ["ui:issue-badge", "ui:issue-panel"] },
+    },
     code: "code-review",
   },
   {

@@ -351,7 +351,11 @@ channel (`badges:request` → `badges`, with a sequence number) and the answer g
 `parseBadges` (`lib/plugins/badges.ts`) before `PluginBadgeChips` draws it. Hidden in
 "Display" as `pb:<plugin>:<badge>` in `hiddenFields`. A badge with `kind: "row"` (BARY-207) is
 made of `parts` (`RowPart`, checked part by part in `parseParts`) and drawn across the card by
-`PluginBadgeRows`; the list shows it as a chip.
+`PluginBadgeRows`; the list shows it as a chip. Since BARY-208 parts nest (`group`, 3 deep, 24 in all,
+one `break` for a second line, the row capped at two lines in CSS); `image` takes only small
+raster data URLs, `link` only `https`. A row's `panel` makes its click call `focusPanelNext`
+(`PluginBadges/panelFocus.ts`) before the card opens the issue; `IssuePluginPanels` takes it,
+opens that panel and scrolls to it.
 
 **Design tokens and the full kit (BARY-206).** `lib/plugins/tokens.ts` is the token catalog:
 each public name (`color.text.subtle`) points at a host variable or holds a fixed value;

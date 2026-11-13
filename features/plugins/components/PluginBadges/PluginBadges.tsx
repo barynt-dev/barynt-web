@@ -15,6 +15,7 @@ import {
   BADGE_BATCH,
   BADGE_ICONS,
   type Badge,
+  type BadgeIcon,
   type BadgeIssue,
   parseBadges,
   pluginBadgeEntry,
@@ -22,6 +23,7 @@ import {
 } from "@/lib/plugins/badges";
 import type { IssueDetail } from "@/types";
 import { PluginFrame } from "../PluginFrame/PluginFrame";
+import { focusPanelNext } from "./panelFocus";
 import styles from "./pluginBadges.module.scss";
 
 // Plugins' badges on a project's board cards and list rows (BARY-151). The
@@ -214,9 +216,22 @@ function useIssueBadges(issueId: string, hidden: string[]) {
       .map((b, i) => ({
         ...b,
         plugin: p.pluginName,
+        pluginId: p.pluginId,
         key: `${p.pluginId}:${b.badge}:${i}`,
       })),
   );
+}
+
+/** A row's first icon, groups opened — what it shows as a chip. */
+function firstIcon(parts: RowPart[]): BadgeIcon | undefined {
+  for (const p of parts) {
+    if (p.type === "icon") return p.icon;
+    if (p.type === "group") {
+      const inner = firstIcon(p.children);
+      if (inner) return inner;
+    }
+  }
+  return undefined;
 }
 
 const STATUS_ICON = {
@@ -252,11 +267,7 @@ export function PluginBadgeChips({
     <span className={styles.chips}>
       {shown.map((b) => {
         // A row as a chip shows its first icon, if it has one.
-        const icon =
-          b.icon ??
-          b.parts?.find(
-            (p): p is Extract<RowPart, { type: "icon" }> => p.type === "icon",
-          )?.icon;
+        const icon = b.icon ?? firstIcon(b.parts ?? []);
         return (
           <span
             key={b.key}
@@ -283,9 +294,10 @@ export function PluginBadgeChips({
 }
 
 /**
- * The rows plugins put across an issue's card (BARY-207), each made of the
- * parts the plugin chose, left to right — an icon, a reference, a state in
- * its tone, a pipeline, a person, a mark at the end. Barynt draws every part.
+ * The rows plugins put across an issue's card (BARY-207, BARY-208), each
+ * built from the parts the plugin chose — building blocks and free layout
+ * alike — on one line, or two after a `break`. Barynt draws every part. A
+ * row with a `panel` opens the issue at that panel of the plugin's.
  */
 export function PluginBadgeRows({
   issueId,
@@ -298,25 +310,76 @@ export function PluginBadgeRows({
   if (rows.length === 0) return null;
   return (
     <div className={styles.rows}>
-      {rows.map((b) => (
-        <div
-          key={b.key}
-          className={styles.row}
-          data-tone={b.tone ?? "neutral"}
-          title={`${b.tooltip ?? b.text} · ${b.plugin}`}
-        >
-          {(b.parts ?? []).map((part, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: parts have no id; their order is what they are
-            <RowPartView key={i} part={part} />
-          ))}
-        </div>
-      ))}
+      {rows.map((b) => {
+        const parts = b.parts ?? [];
+        const cut = parts.findIndex((p) => p.type === "break");
+        const lines =
+          cut < 0 ? [parts] : [parts.slice(0, cut), parts.slice(cut + 1)];
+        const panel = b.panel;
+        return (
+          // biome-ignore lint/a11y/noStaticElementInteractions: the card around it is the control; this only says which panel to show
+          // biome-ignore lint/a11y/useKeyWithClickEvents: see above — the card opens on its own keys
+          <div
+            key={b.key}
+            className={styles.row}
+            data-tone={b.tone ?? "neutral"}
+            data-panel={panel ? "" : undefined}
+            title={`${b.tooltip ?? b.text} · ${b.plugin}`}
+            onClick={
+              panel
+                ? () =>
+                    focusPanelNext({
+                      issueId,
+                      pluginId: b.pluginId,
+                      panelId: panel,
+                    })
+                : undefined
+            }
+          >
+            {lines.map((line, l) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: a row's two lines have no id
+              <div key={l} className={styles.line}>
+                {line.map((part, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: parts have no id; their order is what they are
+                  <RowPartView key={i} part={part} />
+                ))}
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
+const GAP = ["0", "0.25rem", "0.5rem", "0.75rem"];
+const PAD = ["0", "0.125rem 0.375rem", "0.25rem 0.5rem"];
+
 function RowPartView({ part }: { part: RowPart }) {
+  const locale = useLocale();
   switch (part.type) {
+    case "group":
+      return (
+        <span
+          className={styles.group}
+          data-direction={part.direction ?? "row"}
+          data-align={part.align}
+          data-justify={part.justify}
+          data-grow={part.grow || undefined}
+          data-background={part.background}
+          data-border={part.border || undefined}
+          data-radius={part.radius}
+          style={{
+            gap: GAP[part.gap ?? 1],
+            padding: PAD[part.padding ?? 0],
+          }}
+        >
+          {part.children.map((child, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: parts have no id; their order is what they are
+            <RowPartView key={i} part={child} />
+          ))}
+        </span>
+      );
     case "icon":
       return (
         <Icon
@@ -332,16 +395,47 @@ function RowPartView({ part }: { part: RowPart }) {
         <span
           className={styles.partText}
           data-tone={part.tone}
+          data-size={part.size}
           data-mono={part.mono || undefined}
           data-strong={part.strong || undefined}
+          data-italic={part.italic || undefined}
         >
           {part.text}
         </span>
+      );
+    case "dot":
+      return <span className={styles.dot} data-tone={part.tone ?? "neutral"} />;
+    case "image":
+      return (
+        // biome-ignore lint/performance/noImgElement: a plugin's tiny data URL — nothing for next/image to optimize
+        <img
+          className={styles.image}
+          src={part.src}
+          alt={part.alt}
+          width={part.width}
+          height={part.height}
+          data-rounded={part.rounded || undefined}
+        />
       );
     case "chip":
       return (
         <span className={styles.chip} data-tone={part.tone ?? "neutral"}>
           {part.text}
+        </span>
+      );
+    case "label":
+      return (
+        <span
+          className={styles.label}
+          style={
+            {
+              "--label": part.color.startsWith("#")
+                ? part.color
+                : `var(--${part.color})`,
+            } as React.CSSProperties
+          }
+        >
+          {part.name}
         </span>
       );
     case "avatar":
@@ -383,6 +477,64 @@ function RowPartView({ part }: { part: RowPart }) {
           <i style={{ width: `${(part.value / part.max) * 100}%` }} />
         </span>
       );
+    case "sparkline": {
+      const min = Math.min(...part.values);
+      const span = Math.max(...part.values) - min || 1;
+      const step = 48 / (part.values.length - 1);
+      const points = part.values
+        .map(
+          (v, i) =>
+            `${(i * step).toFixed(1)},${(13 - ((v - min) / span) * 12).toFixed(1)}`,
+        )
+        .join(" ");
+      return (
+        <svg
+          className={styles.sparkline}
+          data-tone={part.tone}
+          width={48}
+          height={14}
+          viewBox="0 0 48 14"
+          role="img"
+          aria-label={part.values.join(", ")}
+        >
+          <polyline points={points} fill="none" strokeWidth={1.5} />
+        </svg>
+      );
+    }
+    case "date": {
+      const date = new Date(part.date);
+      const days = Math.round((date.getTime() - Date.now()) / 86_400_000);
+      return (
+        <time
+          className={styles.partText}
+          data-tone="subtle"
+          dateTime={part.date}
+        >
+          {part.format === "short"
+            ? date.toLocaleDateString(locale, {
+                day: "numeric",
+                month: "short",
+              })
+            : new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(
+                days,
+                "day",
+              )}
+        </time>
+      );
+    }
+    case "link":
+      return (
+        <a
+          className={styles.link}
+          href={part.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          // A link inside a card opens the address, not the issue.
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part.text}
+        </a>
+      );
     case "status":
       return (
         <Icon
@@ -395,5 +547,7 @@ function RowPartView({ part }: { part: RowPart }) {
       );
     case "spacer":
       return <span className={styles.spacer} />;
+    case "break":
+      return null;
   }
 }

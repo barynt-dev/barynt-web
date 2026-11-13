@@ -102,26 +102,72 @@ export type StepState =
   | "danger"
   | "pending";
 
-/** What a row across the card is made of, left to right, in the order you
- *  choose — Barynt draws each part. At most 8 parts. */
+/** What a row across the card is made of, in the order you choose — Barynt
+ *  draws each part. Two ways, mixed as you like: **building blocks** for
+ *  the usual things (`steps`, `status`, `progress`, `sparkline`, `date`,
+ *  `label`, `avatar`, `chip`, `link`), and **free layout** — `group`s of
+ *  `text`, `icon`, `dot`, `image` — for anything else. Up to 24 parts,
+ *  groups 3 deep, two lines at most (`break`). */
 export type RowPart =
+  | {
+      type: "group";
+      direction?: "row" | "column";
+      /** Space between children, a step of Barynt's scale (0–3). */
+      gap?: 0 | 1 | 2 | 3;
+      align?: "start" | "center" | "end";
+      justify?: "start" | "between" | "end";
+      /** Takes the room left in its line. */
+      grow?: boolean;
+      padding?: 0 | 1 | 2;
+      background?: BadgeTone | "subtle";
+      border?: boolean;
+      radius?: "sm" | "md" | "pill";
+      children: RowPart[];
+    }
   | { type: "icon"; icon: BadgeIcon; tone?: BadgeTone }
   | {
       type: "text";
       /** Up to 40 characters. */
       text: string;
       tone?: BadgeTone | "subtle";
+      size?: "xs" | "sm" | "base";
       /** In the monospace font — a number, a hash. */
       mono?: boolean;
       strong?: boolean;
+      italic?: boolean;
+    }
+  | { type: "dot"; tone?: BadgeTone }
+  | {
+      type: "image";
+      /** `data:image/png|jpeg|webp;base64,…`, up to 24 kB — draw it on a
+       *  canvas and `toDataURL()`. No SVG, no address. */
+      src: string;
+      alt: string;
+      /** Up to 64 × 32 px. */
+      width: number;
+      height: number;
+      rounded?: boolean;
     }
   | { type: "chip"; text: string; tone?: BadgeTone }
+  | {
+      type: "label";
+      name: string;
+      /** A palette name (`"teal"`) or a `#hex`. */
+      color: string;
+    }
   | { type: "avatar"; name: string }
   | { type: "steps"; steps: StepState[] }
   | { type: "progress"; value: number; max: number }
+  | { type: "sparkline"; values: number[]; tone?: BadgeTone }
+  /** Shown in the person's language: "in 3 days", "13 Nov". */
+  | { type: "date"; date: string; format?: "relative" | "short" }
+  /** `https` only; opens in a new tab, not the issue. */
+  | { type: "link"; text: string; href: string }
   | { type: "status"; status: "success" | "danger" | "warning" | "pending" }
-  /** Pushes what follows to the row's right end. */
-  | { type: "spacer" };
+  /** Pushes what follows to its line's right end. */
+  | { type: "spacer" }
+  /** Starts the row's second line. */
+  | { type: "break" };
 
 /** On a card or row: a small chip (up to 3 per issue, `text` up to 24
  *  characters) — or, `kind: "row"`, a line across the card made of `parts`
@@ -139,6 +185,9 @@ export interface Badge {
   tooltip?: string;
   /** A row's parts, left to right. */
   parts?: RowPart[];
+  /** A row's click opens the issue at this one of your `issuePanels` —
+   *  where you can draw whatever you like. */
+  panel?: string;
 }
 
 /** The object Barynt hands a plugin's default export. */
