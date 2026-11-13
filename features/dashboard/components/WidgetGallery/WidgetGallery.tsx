@@ -71,7 +71,12 @@ type Selection =
   | { mode: "type"; type: WidgetType }
   | { mode: "custom"; id: string }
   | { mode: "plugin"; key: string }
-  | { mode: "build"; editing: CustomWidgetEntry | null };
+  | {
+      mode: "build";
+      editing: CustomWidgetEntry | null;
+      /** The plugin template it started from — where "Cancel" goes back to. */
+      from?: PluginWidgetEntry;
+    };
 
 /** Real data for widgets — fetched once per configuration. */
 function useLiveData(
@@ -257,7 +262,7 @@ export function WidgetGallery({
     setActiveElement(null);
     setName(editing?.name ?? from?.title ?? "");
     setShared(editing?.shared ?? false);
-    setSelection({ mode: "build", editing });
+    setSelection({ mode: "build", editing, from });
   };
 
   const add = (chosen: WidgetSize = size) =>
@@ -625,7 +630,9 @@ export function WidgetGallery({
               onClick={() =>
                 selection.editing
                   ? chooseCustom(selection.editing)
-                  : choose("kpi")
+                  : selection.from
+                    ? choosePlugin(selection.from)
+                    : choose("kpi")
               }
               disabled={saving}
             >
