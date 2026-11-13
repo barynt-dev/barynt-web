@@ -36,8 +36,16 @@ export function PluginBlockBody({
       </div>
     );
   const headless = data.plugin.draw === "barynt";
+  // Like Barynt's own blocks: a list with rows or a frame takes the room
+  // left over; a number, bars, a progress or an empty list only what it
+  // needs.
+  const grows = !headless || (shown?.kind === "list" && shown.items.length > 0);
   return (
-    <div className={styles.pluginBlock} data-draw={data.plugin.draw}>
+    <div
+      className={styles.pluginBlock}
+      data-draw={data.plugin.draw}
+      data-grow={grows || undefined}
+    >
       {headless &&
         (shown ? (
           <BlockDataView data={shown} />

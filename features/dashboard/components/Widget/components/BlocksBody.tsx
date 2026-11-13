@@ -13,14 +13,9 @@ import { NumberBody } from "./NumberBody";
 import { PluginBlockBody } from "./PluginBlockBody";
 import type { BodyProps } from "./shared";
 
-/** Blocks that take the room left over — charts and lists. */
-const GROWS = new Set([
-  "distribution",
-  "flow",
-  "matrix",
-  "issues",
-  "pluginBlock",
-]);
+/** Blocks that take the room left over — charts and lists. A plugin's
+ *  block says itself whether it grows (`PluginBlockBody`, by what it shows). */
+const GROWS = new Set(["distribution", "flow", "matrix", "issues"]);
 
 /**
  * A custom widget's building blocks, top to bottom (BARY-170). Each block
