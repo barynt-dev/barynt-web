@@ -33,6 +33,7 @@ import { credentialScopeKey } from "@/lib/plugins/proxy";
 import { compareSemver } from "@/lib/plugins/semver";
 import { checkSettings } from "@/lib/plugins/settings";
 import { sealSecret } from "@/lib/secret-box";
+import { placeSettings } from "./settings-options";
 
 // The plugin lifecycle (BARY-142). The platform admin (`plugin.manage`)
 // manages sources and installs, updates, rolls back, blocks and removes
@@ -623,7 +624,7 @@ export async function savePluginSettings(
   const parsed = active ? validateManifest(active.manifest) : null;
   if (!parsed?.ok) return { error: "not_installed" };
   const checked = checkSettings(
-    parsed.manifest.contributes.settings ?? [],
+    await placeSettings(scope, parsed.manifest.contributes.settings ?? []),
     input.values,
   );
   if (!checked.ok) return { error: "invalid_setting" };

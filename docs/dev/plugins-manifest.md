@@ -190,34 +190,57 @@ under **Plugins** — and the plugin reads them with
 | Field | Meaning |
 | --- | --- |
 | `key` | Starts with a letter: letters, digits, `_`, up to 40 characters. |
-| `type` | `text`, `number`, `boolean` or `select`. |
+| `type` | One of the types below. |
 | `label` | Up to 60 characters. |
 | `description` | Optional, up to 300 characters, shown under the field. |
-| `default` | Optional: a string, number or boolean. For `select`, an option's `id`. |
-| `options` | For `select` only, and required there: `{ id, label }`, up to 50. |
+| `default` | Optional: a string, number or boolean — for `select` an option's `id`, for `multiselect` a list of them. |
+| `options` | For `select` and `multiselect` only, and required there: `{ id, label }`, up to 50. |
 
-Barynt checks what's saved against these types; text is trimmed and at most
-2000 characters.
+| Type | Barynt draws | The plugin gets |
+| --- | --- | --- |
+| `text` | a text field | a string, trimmed, up to 2000 characters |
+| `textarea` | a multi-line text field | a string, trimmed, up to 10,000 characters |
+| `number` | a number field | a number |
+| `boolean` | a switch | `true` or `false` |
+| `url` | an address field | an `http(s)` address |
+| `select` | a choice of one of `options` | the option's `id` |
+| `multiselect` | a chip per option, any number chosen | a list of option `id`s |
+| `member` | a choice of the place's people — the project's members, or the workspace's | a user id |
+| `label` | a choice of the place's labels — the ones the project shows, or the workspace's own | a label id |
+
+Barynt checks what's saved against these types — a `member` or `label`
+against the people and labels of that place, when it's saved. Something
+left empty isn't stored, so the plugin falls back to its default.
 
 ### Its own settings page
 
 With `"settingsPage": true` in `contributes`, the plugin's page in the
 workspace's or project's settings shows the plugin's own frame instead of
-Barynt's form — for settings that need more than fields: a picker, a check
-against the other service, a preview.
+Barynt's form — for settings that need more than fields.
 
 ```json
 "contributes": {
   "settings": [{ "key": "gitlabProject", "type": "text", "label": "GitLab project" }],
-  "settingsPage": true
+  "settingsPage": "section"
 }
 ```
 
-The values are still the ones in `settings`: the page reads them with
-`loadSettings()` and saves them with `api.settings.set(values)`, and Barynt
-checks them against `settings` as it does its own form. So `settingsPage`
-needs `settings`, and only a `sandbox` plugin has it. Credentials stay on
-Barynt's side of the page, never in the frame.
+Often Barynt's form is enough, and you only want **something below it**: a
+connection check, a preview, a picker that asks your service. Then use
+`"settingsPage": "section"` — Barynt draws the form of `settings` as usual,
+and the plugin's frame below it.
+
+| `settingsPage` | Shows |
+| --- | --- |
+| `true` | the plugin's frame instead of Barynt's form |
+| `"section"` | Barynt's form, and the plugin's frame below it |
+
+Both are drawn with [`registerSettings()`](plugins-sdk.md#registersettings);
+the [UI kit](plugins-sdk.md#the-ui-kit) has the inputs. The values are still
+the ones in `settings`: the frame reads them with `loadSettings()` and saves
+them with `api.settings.set(values)`, and Barynt checks them as it does its
+own form. So `settingsPage` needs `settings`, and only a `sandbox` plugin
+has it. Credentials stay on Barynt's side of the page, never in the frame.
 
 ### Credentials
 
@@ -280,8 +303,9 @@ A plugin can bring custom fields its issues carry:
 - `settingsPage` needs `settings`, and only a `sandbox` plugin has it.
 - A credential's `host` is in `network`, and a `workspace` or `project`
   credential matches one of the plugin's `levels`.
-- Ids are unique within each list; `select` settings and choice fields need
-  options, other types must not have them.
+- Ids are unique within each list; `select` and `multiselect` settings and
+  choice fields need options, other types must not have them; only a
+  `multiselect`'s default is a list.
 - `maxBaryntVersion` isn't lower than `minBaryntVersion`.
 - The release's manifest must have the same `id`, `version`, `kind` and
   `levels` as its [directory entry](plugins-publishing.md#the-directory-entry).

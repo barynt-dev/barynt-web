@@ -36,6 +36,9 @@ const db = {
   },
   pluginSettings: { findUnique: mock(), upsert: mock() },
   pluginCredential: { findUnique: mock() },
+  projectMember: { findMany: mock() },
+  workspaceMember: { findMany: mock() },
+  label: { findMany: mock() },
 };
 mock.module("@/lib/db", () => ({ db }));
 const can = mock(async (_u?: string, _permission?: string) => true);
@@ -499,6 +502,51 @@ describe("widgets and settings pages (BARY-149)", () => {
       action: "plugin.settings.updated",
       meta: { keys: ["zoom"] },
     });
+  });
+
+  it("checks a member or label against the place's (BARY-204)", async () => {
+    withSettings({
+      settings: [
+        { key: "who", type: "member", label: "Who" },
+        { key: "tag", type: "label", label: "Tag" },
+      ],
+    });
+    db.projectMember.findMany.mockResolvedValue([
+      { user: { id: "u1", firstName: "Ada", lastName: "L" } },
+    ]);
+    db.label.findMany.mockResolvedValue([
+      { id: "l1", name: "Bug", color: "#f00" },
+    ]);
+    expect(
+      await callBridge("u1", place, "settings.set", {
+        values: { who: "u1", tag: "l1" },
+      }),
+    ).toEqual({ ok: true, result: null });
+    // The project's people, and the labels it shows.
+    expect(db.projectMember.findMany.mock.calls[0]?.[0]).toMatchObject({
+      where: { projectId: "p1" },
+    });
+    expect(db.label.findMany.mock.calls[0]?.[0]).toMatchObject({
+      where: { hiddenIn: { none: { projectId: "p1" } } },
+    });
+    expect(
+      await callBridge("u1", place, "settings.set", {
+        values: { who: "stranger" },
+      }),
+    ).toEqual({ ok: false, error: "invalid_params" });
+  });
+
+  it("serves its section below the form, not a page (BARY-204)", async () => {
+    db.pluginFile.findMany.mockResolvedValue([
+      { name: "main.js", content: new TextEncoder().encode("x") },
+    ]);
+    withSettings({ settingsPage: "section" });
+    expect(
+      await getPluginFrame("u1", place, { kind: "settings", id: "section" }),
+    ).not.toBeNull();
+    expect(
+      await getPluginFrame("u1", place, { kind: "settings", id: "settings" }),
+    ).toBeNull();
   });
 
   it("refuses someone without plugin.enable, and a value that doesn't fit", async () => {

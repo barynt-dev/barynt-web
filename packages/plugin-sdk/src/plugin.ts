@@ -103,13 +103,16 @@ export abstract class Plugin {
   }
 
   /**
-   * Its own settings page (`contributes.settingsPage: true`), shown on the
-   * plugin's page in the workspace's or project's settings instead of
-   * Barynt's form. Read with `loadSettings()`, save with
+   * Its own settings (`contributes.settingsPage`): with `true` a page shown
+   * instead of Barynt's form, with `"section"` a part below it — a check, a
+   * preview, a picker that asks your service. `context.slot.id` says which
+   * (`"settings"` or `"section"`). Read with `loadSettings()`, save with
    * `api.settings.set(values)`.
    */
   registerSettings(page: Omit<ProjectView, "id">): void {
-    this.#renderSlot("settings", { ...page, id: "settings" });
+    const { id } = this.context.slot;
+    if (id === "settings" || id === "section")
+      this.#renderSlot("settings", { ...page, id });
   }
 
   #renderSlot(kind: Context["slot"]["kind"], view: ProjectView) {

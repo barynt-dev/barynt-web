@@ -159,7 +159,8 @@ const DEMOS: Demo[] = [
             format: "{value}",
           },
         ],
-        settingsPage: true,
+        // Barynt's form for the project, and the plugin's check below it.
+        settingsPage: "section",
       },
     },
     versions: {
@@ -297,7 +298,67 @@ const DEMOS: Demo[] = [
       minBaryntVersion: "0.9.0",
       license: "MIT",
       contributes: {
-        settings: [{ key: "cron", type: "text", label: "Schedule" }],
+        // Every kind of setting Barynt draws (BARY-204).
+        settings: [
+          {
+            key: "title",
+            type: "text",
+            label: "Issue title",
+            description: "{date} becomes the day it's created.",
+            default: "Weekly review {date}",
+          },
+          {
+            key: "body",
+            type: "textarea",
+            label: "Description",
+            description: "What every new issue says.",
+          },
+          {
+            key: "days",
+            type: "multiselect",
+            label: "Days",
+            options: [
+              { id: "mon", label: "Mon" },
+              { id: "tue", label: "Tue" },
+              { id: "wed", label: "Wed" },
+              { id: "thu", label: "Thu" },
+              { id: "fri", label: "Fri" },
+              { id: "sat", label: "Sat" },
+              { id: "sun", label: "Sun" },
+            ],
+            default: ["mon"],
+          },
+          {
+            key: "time",
+            type: "select",
+            label: "Time",
+            options: [
+              { id: "h08", label: "08:00" },
+              { id: "h12", label: "12:00" },
+              { id: "h17", label: "17:00" },
+            ],
+            default: "h08",
+          },
+          {
+            key: "assignee",
+            type: "member",
+            label: "Assign to",
+            description: "Someone in this project.",
+          },
+          { key: "label", type: "label", label: "Label" },
+          {
+            key: "link",
+            type: "url",
+            label: "Agenda",
+            description: "A page every issue links to.",
+          },
+          {
+            key: "skipHolidays",
+            type: "boolean",
+            label: "Skip public holidays",
+            default: true,
+          },
+        ],
       },
     },
     versions: { "0.3.0": { capabilities: [] } },

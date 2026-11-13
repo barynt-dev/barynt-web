@@ -5,6 +5,7 @@
 // was confirmed. Plain DOM, no innerHTML with data — a plugin is a guest.
 
 import { type Issue, Plugin } from "@barynt/plugin-sdk";
+import { kpi, list } from "@barynt/plugin-sdk/ui";
 
 const DAY = 86_400_000;
 
@@ -46,23 +47,18 @@ export default class Timeline extends Plugin {
       .sort(
         (a, b) => new Date(a.created).getTime() - new Date(b.created).getTime(),
       );
+    // The SDK's UI kit (BARY-204): a number and a list in Barynt's look.
     const wrap = el("div", "tl-widget");
-    wrap.append(el("strong", "tl-count", String(open.length)));
-    wrap.append(el("span", "tl-muted", "open, oldest first"));
-    const list = el("ol", "tl-oldest");
-    for (const issue of open.slice(0, 6)) {
-      const days = Math.floor(
-        (Date.now() - new Date(issue.created).getTime()) / DAY,
-      );
-      const item = el("li");
-      item.append(
-        el("span", "tl-ref", issue.ref),
-        el("span", "tl-title", issue.title),
-        el("span", "tl-muted", `${days} d`),
-      );
-      list.append(item);
-    }
-    wrap.append(list);
+    wrap.append(
+      kpi({ value: open.length, label: "open, oldest first" }),
+      list({
+        items: open.slice(0, 6).map((issue) => ({
+          title: `${issue.ref}  ${issue.title}`,
+          meta: `${Math.floor((Date.now() - new Date(issue.created).getTime()) / DAY)} d`,
+        })),
+        empty: "Nothing open.",
+      }),
+    );
     root.replaceChildren(wrap);
   }
 

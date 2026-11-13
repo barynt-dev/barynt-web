@@ -80,3 +80,9 @@ export function slotEntries(
     }));
   });
 }
+
+/** The id of a plugin's settings frame (`kind: "settings"`): `settings` for
+ *  a page of its own (BARY-149), `section` for its part below Barynt's form
+ *  (BARY-204). */
+export const settingsSlotId = (page: true | "section") =>
+  page === "section" ? "section" : "settings";

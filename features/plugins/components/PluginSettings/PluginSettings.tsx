@@ -22,6 +22,11 @@ import type {
 } from "@/features/plugins/queries";
 import { Link } from "@/i18n/navigation";
 import { pluginStorePath } from "@/lib/nav";
+import {
+  SETTING_TEXTAREA_MAX,
+  type SettingValue,
+} from "@/lib/plugins/settings";
+import { settingsSlotId } from "@/lib/plugins/slots";
 import { PluginCredentials } from "../PluginCredentials/PluginCredentials";
 import { PluginFrame } from "../PluginFrame/PluginFrame";
 import { CapabilityCards } from "../PluginStore/capabilities";
@@ -38,12 +43,13 @@ import styles from "./pluginSettings.module.scss";
 // may be stored. In the workspace, switching on and off is the store's
 // release; this page only holds the settings.
 
-type Value = string | number | boolean;
+type Value = SettingValue;
 
 /** What a field shows: the stored value, else the manifest's default. */
 function initial(field: PluginSettingField, stored: unknown): Value {
   const value = stored ?? field.default;
   if (field.type === "boolean") return value === true;
+  if (field.type === "multiselect") return Array.isArray(value) ? value : [];
   if (value === null || value === undefined) return "";
   return value as Value;
 }
@@ -78,6 +84,30 @@ export function PluginSettings({
   const storeHref = pluginStorePath(scope.workspaceId, {
     plugin: plugin.pluginId,
   });
+
+  const ownSettings = view.settingsPage && (
+    <section
+      className={styles.ownSettings}
+      data-part={view.settingsPage}
+      aria-label={text.t("pluginSettings")}
+    >
+      <PluginFrame
+        pluginId={plugin.pluginId}
+        name={plugin.name}
+        context={{
+          slot: {
+            kind: "settings",
+            id: settingsSlotId(
+              view.settingsPage === "section" ? "section" : true,
+            ),
+          },
+          workspaceId: scope.workspaceId,
+          projectId: scope.projectId,
+          locale,
+        }}
+      />
+    </section>
+  );
 
   const set = (key: string, value: Value) => {
     setValues((v) => ({ ...v, [key]: value }));
@@ -233,25 +263,9 @@ export function PluginSettings({
 
         {/* Its own settings page (BARY-149): its frame instead of the
             form — saving still goes through Barynt (`settings.set`). */}
-        {running && view.settingsPage && (
-          <section
-            className={styles.ownSettings}
-            aria-label={text.t("pluginSettings")}
-          >
-            <PluginFrame
-              pluginId={plugin.pluginId}
-              name={plugin.name}
-              context={{
-                slot: { kind: "settings", id: "settings" },
-                workspaceId: scope.workspaceId,
-                projectId: scope.projectId,
-                locale,
-              }}
-            />
-          </section>
-        )}
+        {running && view.settingsPage === "page" && ownSettings}
 
-        {running && !view.settingsPage && view.fields.length > 0 && (
+        {running && view.settingsPage !== "page" && view.fields.length > 0 && (
           <form
             className={styles.form}
             onSubmit={(e) => {
@@ -282,6 +296,9 @@ export function PluginSettings({
             </div>
           </form>
         )}
+        {/* Its part below the form (BARY-204): a check, a preview, a
+            picker that asks its own service. */}
+        {running && view.settingsPage === "section" && ownSettings}
         {running && (
           <PluginCredentials
             pluginId={plugin.pluginId}
@@ -356,7 +373,42 @@ function Field({
         />
       </div>
     );
-  if (field.type === "select")
+  if (field.type === "multiselect") {
+    const chosen = Array.isArray(value) ? value : [];
+    return (
+      <fieldset className={styles.field} disabled={disabled}>
+        <legend className={styles.label}>{field.label}</legend>
+        <div className={styles.choices}>
+          {field.options.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={styles.choice}
+              aria-pressed={chosen.includes(o.id)}
+              onClick={() =>
+                onChange(
+                  chosen.includes(o.id)
+                    ? chosen.filter((id) => id !== o.id)
+                    : [...chosen, o.id],
+                )
+              }
+            >
+              <Icon icon="lucide:check" width={13} aria-hidden />
+              {o.label}
+            </button>
+          ))}
+        </div>
+        {field.description && (
+          <span className={styles.hint}>{field.description}</span>
+        )}
+      </fieldset>
+    );
+  }
+  if (
+    field.type === "select" ||
+    field.type === "member" ||
+    field.type === "label"
+  )
     return (
       <div className={styles.field}>
         <span className={styles.label} id={`${id}-label`}>
@@ -368,7 +420,10 @@ function Field({
           disabled={disabled}
           onChange={onChange}
           items={[
-            ...(field.default === null ? [{ value: "", label: "—" }] : []),
+            // A member or label is always optional: the place's may change.
+            ...(field.default === null || field.type !== "select"
+              ? [{ value: "", label: "—" }]
+              : []),
             ...field.options.map((o) => ({ value: o.id, label: o.label })),
           ]}
         />
@@ -377,9 +432,35 @@ function Field({
         )}
       </div>
     );
+  if (field.type === "textarea")
+    return (
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor={id}>
+          {field.label}
+        </label>
+        <textarea
+          id={id}
+          className={styles.textarea}
+          value={String(value)}
+          rows={4}
+          maxLength={SETTING_TEXTAREA_MAX}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        {field.description && (
+          <span className={styles.hint}>{field.description}</span>
+        )}
+      </div>
+    );
   return (
     <Input
-      variant={field.type === "number" ? "number" : "text"}
+      variant={
+        field.type === "number"
+          ? "number"
+          : field.type === "url"
+            ? "url"
+            : "text"
+      }
       label={field.label}
       hint={field.description ?? undefined}
       value={String(value)}

@@ -404,3 +404,72 @@ describe("widgetTemplates (BARY-203)", () => {
     );
   });
 });
+
+describe("more setting types and a settings section (BARY-204)", () => {
+  const withSettings = (settings: unknown[], more: object = {}) =>
+    errors({
+      ...base,
+      contributes: { ...base.contributes, settings, ...more },
+    });
+
+  it("accepts every type", () => {
+    expect(
+      withSettings([
+        { key: "body", type: "textarea", label: "Body" },
+        { key: "link", type: "url", label: "Link" },
+        {
+          key: "days",
+          type: "multiselect",
+          label: "Days",
+          options: [{ id: "mon", label: "Mon" }],
+          default: ["mon"],
+        },
+        { key: "who", type: "member", label: "Who" },
+        { key: "tag", type: "label", label: "Tag" },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("needs options of its own only for select and multiselect", () => {
+    expect(
+      withSettings([{ key: "days", type: "multiselect", label: "Days" }]),
+    ).toContain(
+      "contributes.settings.0.options: a multiselect setting needs options",
+    );
+    expect(
+      withSettings([
+        {
+          key: "who",
+          type: "member",
+          label: "Who",
+          options: [{ id: "u1", label: "Ada" }],
+        },
+      ]),
+    ).toContain(
+      "contributes.settings.0.options: only select and multiselect settings have options",
+    );
+  });
+
+  it("keeps lists as defaults to multiselects", () => {
+    expect(
+      withSettings([
+        { key: "body", type: "text", label: "Body", default: ["x"] },
+      ]),
+    ).toContain(
+      "contributes.settings.0.default: only a multiselect's default is a list",
+    );
+  });
+
+  it("takes a section below Barynt's form", () => {
+    expect(
+      withSettings([{ key: "zoom", type: "number", label: "Zoom" }], {
+        settingsPage: "section",
+      }),
+    ).toEqual([]);
+    expect(
+      withSettings([{ key: "zoom", type: "number", label: "Zoom" }], {
+        settingsPage: "below",
+      }),
+    ).not.toEqual([]);
+  });
+});

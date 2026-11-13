@@ -68,7 +68,7 @@ The store lists every plugin your platform admin installed, with search, categor
 
 ### Switching on in a project
 
-A released plugin for projects has an entry under **Plugins** in every project's settings, below the other sections. Project admins open it, check what it may do in the project and **Switch on**. Once it runs, the page holds the form the plugin brings (a channel name, what to post, …) and, at the bottom, switching it off again — its settings and data stay until **Delete data**.
+A released plugin for projects has an entry under **Plugins** in every project's settings, below the other sections. Project admins open it, check what it may do in the project and **Switch on**. Once it runs, the page holds the form the plugin brings (a channel name, a person to assign, labels, days of the week, …) and, at the bottom, switching it off again — its settings and data stay until **Delete data**.
 
 ### Where plugins show
 
@@ -79,7 +79,7 @@ A plugin that brings its own views or pages shows them in the sidebar, each with
 
 A plugin's page always names the plugin under its title.
 
-A plugin can also bring **dashboard widgets**: on a dashboard, **Add widget** lists them under **Plugins**, with a live preview. Some are templates made of Barynt's own building blocks: once added, such a widget is the dashboard's own custom widget — it stays when the plugin is switched off, and **Customize** lets you change it before adding. And some plugins draw their **settings page** themselves — the page under **Plugins** in the settings then shows the plugin's own form; what it saves is checked by Barynt like any other setting.
+A plugin can also bring **dashboard widgets**: on a dashboard, **Add widget** lists them under **Plugins**, with a live preview. Some are templates made of Barynt's own building blocks: once added, such a widget is the dashboard's own custom widget — it stays when the plugin is switched off, and **Customize** lets you change it before adding. And some plugins draw their **settings page** themselves — the page under **Plugins** in the settings then shows the plugin's own form; what it saves is checked by Barynt like any other setting. Others add a part below Barynt's form — a connection check, say.
 
 ### A plugin's settings in the workspace
 

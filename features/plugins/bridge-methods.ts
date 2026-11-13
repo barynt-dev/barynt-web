@@ -28,6 +28,7 @@ import {
 import { checkSettings } from "@/lib/plugins/settings";
 import { proxyFetch } from "./proxy";
 import type { RunningPlugin } from "./runtime";
+import { placeSettings } from "./settings-options";
 
 // What each host-bridge method does (BARY-145), once `callBridge` has let
 // the request through: the plugin is on here, the capability confirmed. The
@@ -354,7 +355,7 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
         : null;
     if (!values) return no("invalid_params");
     const checked = checkSettings(
-      plugin.manifest.contributes.settings ?? [],
+      await placeSettings(plugin, plugin.manifest.contributes.settings ?? []),
       values,
     );
     if (!checked.ok) return no("invalid_params");

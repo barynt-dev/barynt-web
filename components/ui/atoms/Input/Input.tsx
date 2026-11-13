@@ -11,7 +11,8 @@ type InputVariant =
   | "date"
   | "number"
   | "time"
-  | "datetime-local";
+  | "datetime-local"
+  | "url";
 type InputSize = "sm" | "md";
 
 /**

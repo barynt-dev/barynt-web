@@ -119,6 +119,7 @@ export type BridgeError =
  *  dark, whichever is on. Read from the host page's `:root`. */
 export const THEME_TOKENS = [
   "--surface",
+  "--surface-container-lowest",
   "--surface-container-low",
   "--surface-container",
   "--surface-container-high",
@@ -130,6 +131,7 @@ export const THEME_TOKENS = [
   "--on-primary",
   "--primary-container",
   "--on-primary-container",
+  "--tertiary",
   "--error",
   "--warning",
   "--radius",
