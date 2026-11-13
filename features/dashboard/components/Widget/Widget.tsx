@@ -17,6 +17,7 @@ import { ChartBody } from "./components/ChartBody";
 import { EmbedBody } from "./components/EmbedBody";
 import { ListBody } from "./components/ListBody";
 import { NumberBody } from "./components/NumberBody";
+import { PluginBlockBody } from "./components/PluginBlockBody";
 import { PluginBody } from "./components/PluginBody";
 import type { BodyProps } from "./components/shared";
 import { TeamBody } from "./components/TeamBody";
@@ -176,6 +177,8 @@ export function Widget({
         <EmbedBody widget={widget} data={data} title={titleOf(widget)} />
       ) : data.type === "plugin" ? (
         <PluginBody data={data} />
+      ) : data.type === "pluginBlock" ? (
+        <PluginBlockBody data={data} config={widget.config.pluginConfig} />
       ) : data.type === "blocks" ? (
         <BlocksBody {...body} data={data} />
       ) : data.type === "kpi" || data.type === "progress" ? (

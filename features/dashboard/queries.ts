@@ -57,7 +57,7 @@ import {
   getStatuses,
 } from "@/features/issues/queries";
 import { getPluginSlotView } from "@/features/plugins/runtime";
-import { getPluginWidgets } from "@/features/plugins/slots";
+import { getPluginBlocks, getPluginWidgets } from "@/features/plugins/slots";
 import { getVisibleViewById } from "@/features/views/queries";
 import { systemViewSlug } from "@/features/views/system";
 import { viewPath } from "@/features/views/url";
@@ -2741,6 +2741,35 @@ async function widgetData(ctx: Ctx, widget: Widget): Promise<WidgetData> {
         projectId: resolved.projectId,
       };
     }
+    case "pluginBlock": {
+      // A plugin's building block (BARY-205): whether it runs here for this
+      // person, and who draws it. The data itself comes from its frame.
+      const pluginId = config.pluginId ?? "";
+      const blockId = config.pluginBlock ?? "";
+      const view = pluginId
+        ? await getPluginSlotView(
+            ctx.userId,
+            {
+              pluginId,
+              workspaceId: resolved.workspaceId,
+              projectId: resolved.projectId,
+            },
+            { kind: "block", id: blockId },
+          )
+        : null;
+      return {
+        type: "pluginBlock",
+        pluginId,
+        blockId,
+        plugin: view && {
+          name: view.pluginName,
+          title: view.title,
+          draw: view.draw ?? "barynt",
+        },
+        workspaceId: resolved.workspaceId,
+        projectId: resolved.projectId,
+      };
+    }
     case "note": {
       // Only this person's own text — never anyone else's.
       const row = await db.dashboardNote.findUnique({
@@ -2809,13 +2838,15 @@ export async function getDashboard(
   const scope: DashboardScope = resolved.canViewAll ? wanted : "mine";
   const layout = await layoutFor(target, resolved, userId, scope);
 
-  const [data, customWidgets, pluginWidgets] = await Promise.all([
+  const place = {
+    workspaceId: resolved.workspaceId,
+    projectId: resolved.projectId,
+  };
+  const [data, customWidgets, pluginWidgets, pluginBlocks] = await Promise.all([
     computeWidgets(target, layout.widgets, range, scope).then((d) => d ?? {}),
     customWidgetsFor(resolved.workspaceId, userId),
-    getPluginWidgets({
-      workspaceId: resolved.workspaceId,
-      projectId: resolved.projectId,
-    }),
+    getPluginWidgets(place),
+    getPluginBlocks(place),
   ]);
 
   return {
@@ -2832,6 +2863,7 @@ export async function getDashboard(
     data,
     customWidgets,
     pluginWidgets,
+    pluginBlocks,
   };
 }
 

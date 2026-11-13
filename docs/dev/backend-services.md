@@ -329,6 +329,13 @@ checked against `options` that `placeSettings` (`features/plugins/settings-optio
 with the place's members and labels — the settings query, `savePluginSettings` and
 `settings.set` all go through it. `settingsPage: "section"` keeps Barynt's form and puts the
 `settings` frame below it with the slot id `section` (`settingsSlotId`, `lib/plugins/slots.ts`).
+**Building blocks (BARY-205).** `contributes.widgetBlocks` is the slot `block`. In a custom
+widget a block of kind `pluginBlock` (`config.pluginId`/`pluginBlock`/`pluginConfig`) draws
+`PluginBlockBody`: with `draw: "barynt"` a headless `PluginFrame` whose plugin calls
+`host.show(data)` — the frame message `blockData`, checked by `parseBlockData`
+(`lib/plugins/blocks.ts`) — and Barynt draws the result (`BlockDataView`); with `"plugin"` the
+frame itself. `widgetData` resolves whether it runs (`getPluginSlotView`, now with `draw`);
+`getPluginBlocks` feeds the builder through `PluginBlocksProvider`.
 The SDK's UI kit is `packages/plugin-sdk/src/ui.ts` (`@barynt/plugin-sdk/ui`), tested on
 happy-dom (`tests/unit/plugins/sdkUi.test.ts`).
 

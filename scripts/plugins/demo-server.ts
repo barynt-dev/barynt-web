@@ -86,6 +86,34 @@ const DEMOS: Demo[] = [
         projectViews: [{ id: "timeline", title: "Timeline" }],
         navItems: [{ id: "roadmap", title: "Roadmap" }],
         dashboardWidgets: [{ id: "oldest-open", title: "Oldest open issues" }],
+        // Building blocks for custom widgets (BARY-205): two Barynt draws
+        // from the plugin's data, one the plugin draws itself.
+        widgetBlocks: [
+          {
+            id: "due-soon",
+            title: "Due soon",
+            description: "Open issues due in the next days.",
+            settings: [
+              {
+                key: "days",
+                type: "number",
+                label: "Days ahead",
+                default: 7,
+              },
+            ],
+          },
+          {
+            id: "by-age",
+            title: "Open by age",
+            description: "How long the open issues have waited.",
+          },
+          {
+            id: "done-ring",
+            title: "Done",
+            description: "The share of issues done, as a ring.",
+            draw: "plugin",
+          },
+        ],
       },
     },
     versions: {

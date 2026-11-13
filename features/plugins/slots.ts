@@ -1,6 +1,9 @@
 import "server-only";
 import { cache } from "react";
-import type { PluginWidgetEntry } from "@/features/dashboard/types";
+import type {
+  PluginBlockEntry,
+  PluginWidgetEntry,
+} from "@/features/dashboard/types";
 import { pluginTemplateWidget } from "@/features/dashboard/widgets";
 import { db } from "@/lib/db";
 import { currentUserCanEnterWorkspace } from "@/lib/permissions";
@@ -124,6 +127,68 @@ export async function getPluginWidgets(place: {
           }))
         : [];
       return [...drawn, ...templates];
+    })
+    .sort(
+      (x, y) =>
+        x.pluginName.localeCompare(y.pluginName) ||
+        x.title.localeCompare(y.title),
+    );
+}
+
+/** The building blocks the plugins switched on in a place bring — what a
+ *  custom widget's builder offers there (BARY-205). Whether one still runs
+ *  is checked again when it's drawn. */
+export async function getPluginBlocks(place: {
+  workspaceId: string;
+  projectId: string | null;
+}): Promise<PluginBlockEntry[]> {
+  const activations = await db.pluginActivation.findMany({
+    where: { scopeKey: activationScopeKey(place), enabled: true },
+    select: { pluginId: true, capabilities: true },
+  });
+  if (activations.length === 0) return [];
+  const rows = await db.plugin.findMany({
+    where: {
+      pluginId: { in: activations.map((a) => a.pluginId) },
+      status: "active",
+    },
+    select: { pluginId: true, manifest: true },
+  });
+  return activations
+    .flatMap((a): PluginBlockEntry[] => {
+      const row = rows.find((r) => r.pluginId === a.pluginId);
+      const parsed = row ? validateManifest(row.manifest) : null;
+      if (!parsed?.ok) return [];
+      const { manifest } = parsed;
+      const shown = new Set(
+        slotEntries(manifest, a.capabilities)
+          .filter((e) => e.kind === "block")
+          .map((e) => e.id),
+      );
+      return (manifest.contributes.widgetBlocks ?? [])
+        .filter((b) => shown.has(b.id))
+        .map((b) => ({
+          pluginId: a.pluginId,
+          pluginName: manifest.name,
+          blockId: b.id,
+          title: b.title,
+          description: b.description ?? null,
+          draw: b.draw ?? "barynt",
+          settings: (b.settings ?? []).map((x) => ({
+            key: x.key,
+            type: x.type,
+            label: x.label,
+            description: x.description ?? null,
+            default:
+              x.default === undefined || Array.isArray(x.default)
+                ? null
+                : x.default,
+            options: (x.options ?? []).map((o) => ({
+              id: o.id,
+              label: o.label,
+            })),
+          })),
+        }));
     })
     .sort(
       (x, y) =>

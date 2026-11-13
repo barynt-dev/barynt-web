@@ -214,6 +214,47 @@ describe("plugin SDK", () => {
     expect(drawn).toEqual(["widget", "settings", "settings"]);
   });
 
+  it("hands a block's data to Barynt, only in its own frame (BARY-205)", async () => {
+    class Blocks extends Plugin {
+      onload() {
+        this.registerBlock({
+          id: "count",
+          data: ({ config }) => ({
+            kind: "kpi",
+            value: Number(config?.base ?? 0) + 1,
+            label: "Count",
+          }),
+        });
+        this.registerBlock({
+          id: "drawn",
+          render: (el) => {
+            el.textContent = "drawn";
+          },
+        });
+      }
+    }
+    const mine = createTestHost({
+      context: { slot: { kind: "block", id: "count" }, config: { base: 41 } },
+    });
+    await loadPlugin(Blocks, mine);
+    expect(mine.shown).toEqual([{ kind: "kpi", value: 42, label: "Count" }]);
+
+    const other = createTestHost({
+      context: { slot: { kind: "widget", id: "count" } },
+    });
+    await loadPlugin(Blocks, other);
+    expect(other.shown).toEqual([]);
+
+    const root = { textContent: "" } as HTMLElement;
+    const drawn = createTestHost({
+      root,
+      context: { slot: { kind: "block", id: "drawn" } },
+    });
+    await loadPlugin(Blocks, drawn);
+    expect(root.textContent).toBe("drawn");
+    expect(drawn.shown).toEqual([]);
+  });
+
   it("saves its settings through the host", async () => {
     class Saver extends Plugin {
       async onload() {

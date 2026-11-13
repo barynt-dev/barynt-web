@@ -5,19 +5,47 @@
 /** Where a plugin's frame runs. */
 export interface Context {
   /** Which of its views or pages this frame is for. */
-  slot: { kind: "projectView" | "page" | "widget" | "settings"; id: string };
+  slot: {
+    kind: "projectView" | "page" | "widget" | "block" | "settings";
+    id: string;
+  };
   workspaceId: string;
   /** `null` for a workspace's plugin. */
   projectId: string | null;
   /** The person's language, e.g. `de`. */
   locale: string;
+  /** A building block's own settings, as the widget's builder set them. */
+  config?: Record<string, string | number | boolean>;
 }
+
+/**
+ * What a building block shows, for Barynt to draw like its own blocks
+ * (`registerBlock`). Texts are cut to 200 characters, lists and bars to 20,
+ * links to `http(s)`, colours to a `#hex` or a `var(--token)`.
+ */
+export type BlockData =
+  | {
+      kind: "kpi";
+      value: string | number;
+      label: string;
+      trend?: { text: string; good?: boolean };
+    }
+  | {
+      kind: "list";
+      items: { title: string; meta?: string; href?: string }[];
+      /** Shown when there are no items. */
+      empty?: string;
+    }
+  | { kind: "bars"; bars: { label: string; value: number; color?: string }[] }
+  | { kind: "progress"; value: number; max?: number; label?: string };
 
 /** The object Barynt hands a plugin's default export. */
 export interface Host {
   call(method: string, params?: unknown): Promise<unknown>;
   readonly context: Context;
   readonly root: HTMLElement;
+  /** Hands a building block's data to Barynt to draw. */
+  show?(data: BlockData): void;
 }
 
 export interface Person {

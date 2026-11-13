@@ -2466,3 +2466,110 @@
     font-size: var(--text-sm);
   }
 }
+
+/* A plugin's building block (BARY-205): Barynt draws its data with the
+   widget's own pieces, or its frame takes the block's place. */
+.pluginBlock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+
+  &[data-draw="plugin"] {
+    min-height: 5rem;
+    margin: 0 -0.25rem;
+  }
+}
+
+.pbTrend {
+  &[data-good="true"] {
+    color: var(--accent);
+  }
+
+  &[data-good="false"] {
+    color: var(--error);
+  }
+}
+
+.pbList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+
+  & > li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    min-width: 0;
+    padding: 0.3125rem 0;
+
+    & + li {
+      border-top: 1px solid var(--rule);
+    }
+
+    & > :first-child {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: inherit;
+    }
+
+    & > a:hover {
+      text-decoration: underline;
+    }
+
+    & > small {
+      flex: none;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+  }
+}
+
+.pbBars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+
+  & > li {
+    display: grid;
+    grid-template-columns: minmax(0, 6.5rem) 1fr auto;
+    align-items: center;
+    gap: 0.625rem;
+
+    & > span:first-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+    }
+
+    & > strong {
+      font-variant-numeric: tabular-nums;
+    }
+  }
+}
+
+.pbTrack {
+  height: 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--track);
+  overflow: hidden;
+
+  & > i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+  }
+}

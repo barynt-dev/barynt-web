@@ -77,7 +77,7 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `events:issue`, `events:comment` | Hear about changes | reserved, not callable yet |
 | `ui:project-view` | Add a project view | `contributes.projectViews` |
 | `ui:nav-item` | Add an entry to the sidebar | `contributes.navItems` |
-| `ui:dashboard-widget` | Add a dashboard widget | `contributes.dashboardWidgets`, `contributes.widgetTemplates` |
+| `ui:dashboard-widget` | Add a dashboard widget | `contributes.dashboardWidgets`, `contributes.widgetTemplates`, `contributes.widgetBlocks` |
 | `ui:issue-panel` | Add a panel to issues | `contributes.issuePanels` |
 | `ui:issue-badge` | Show badges on cards and rows | `contributes.issueBadges` |
 | `ui:action` | Add actions and commands | `contributes.actions` |
@@ -96,6 +96,7 @@ capability, and each entry an `id` that's unique in its list.
 | `navItems` | `{ id, title, icon? }`, up to 5 | `ui:nav-item` | sandbox |
 | `dashboardWidgets` | `{ id, title, icon? }`, up to 5 | `ui:dashboard-widget` | sandbox |
 | `widgetTemplates` | [widget templates](#widget-templates), up to 10 | `ui:dashboard-widget` | all |
+| `widgetBlocks` | [building blocks](#building-blocks), up to 10 | `ui:dashboard-widget` | sandbox |
 | `issuePanels` | `{ id, title, icon? }`, up to 5 | `ui:issue-panel` | sandbox |
 | `issueBadges` | `{ id, title, icon? }`, up to 5 | `ui:issue-badge` | sandbox, declarative |
 | `actions` | `{ id, title, icon? }`, up to 20 | `ui:action` | sandbox |
@@ -126,6 +127,41 @@ so instead of staying empty.
 > [!NOTE]
 > Issue panels, badges and actions can be declared already; Barynt shows
 > them in a coming release.
+
+### Building blocks
+
+A building block is smaller than a widget: people put it into their own
+custom widgets — next to Barynt's blocks (a number, a list …), several in
+one widget if they like. In the builder, **Add block** lists the blocks of
+the plugins switched on there.
+
+```json
+"widgetBlocks": [
+  {
+    "id": "due-soon",
+    "title": "Due soon",
+    "description": "Open issues due in the next days.",
+    "settings": [{ "key": "days", "type": "number", "label": "Days ahead", "default": 7 }]
+  },
+  { "id": "done-ring", "title": "Done", "draw": "plugin" }
+]
+```
+
+| Field | |
+| --- | --- |
+| `id`, `title`, `icon` | Like every entry. |
+| `description` | Optional, up to 200 characters — in the builder. |
+| `draw` | `barynt` (default): you hand over data, Barynt draws it like its own blocks. `plugin`: you draw it in a frame of your own. |
+| `settings` | Up to 10, set per block in the builder: `text`, `number`, `boolean` or `select`, written like [settings](#settings). The plugin gets them in `context.config`. |
+
+With `draw: "barynt"` your code still runs — out of sight — and hands
+over one of four shapes: a number, a list, bars or a progress; see
+[`registerBlock()`](plugins-sdk.md#registerblock). That's the default
+because it looks like the rest of the widget at every size. If the plugin
+is switched off, the block says so; the widget's other blocks stay.
+
+A [widget template](#widget-templates) can bring a plugin's block too:
+`{ "type": "pluginBlock", "config": { "pluginId": "…", "pluginBlock": "due-soon" } }`.
 
 ### Widget templates
 
@@ -300,6 +336,8 @@ A plugin can bring custom fields its issues carry:
 - A `service` plugin has no browser surface; it may only contribute `fields`,
   `settings` and `widgetTemplates`.
 - A widget template's blocks follow the custom widget's rules.
+- `widgetBlocks` need a `sandbox` plugin; their settings are `text`,
+  `number`, `boolean` or `select`, keys unique within a block.
 - `settingsPage` needs `settings`, and only a `sandbox` plugin has it.
 - A credential's `host` is in `network`, and a `workspace` or `project`
   credential matches one of the plugin's `levels`.

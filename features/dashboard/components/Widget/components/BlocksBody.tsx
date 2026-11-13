@@ -10,10 +10,17 @@ import styles from "../widget.module.scss";
 import { ChartBody } from "./ChartBody";
 import { ListBody } from "./ListBody";
 import { NumberBody } from "./NumberBody";
+import { PluginBlockBody } from "./PluginBlockBody";
 import type { BodyProps } from "./shared";
 
 /** Blocks that take the room left over — charts and lists. */
-const GROWS = new Set(["distribution", "flow", "matrix", "issues"]);
+const GROWS = new Set([
+  "distribution",
+  "flow",
+  "matrix",
+  "issues",
+  "pluginBlock",
+]);
 
 /**
  * A custom widget's building blocks, top to bottom (BARY-170). Each block
@@ -56,6 +63,8 @@ export function BlocksBody({
               own.type === "flow" ||
               own.type === "matrix" ? (
               <ChartBody {...body} data={own} />
+            ) : own.type === "pluginBlock" ? (
+              <PluginBlockBody data={own} config={block.config.pluginConfig} />
             ) : null}
           </div>
         );
