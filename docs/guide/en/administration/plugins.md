@@ -74,6 +74,16 @@ A released plugin for projects has an entry under **Plugins** in every project's
 
 A plugin running in the workspace that has settings gets an entry under **Plugins** in the workspace settings, with its form.
 
+### Credentials
+
+A plugin that talks to another service — a Git host, a chat — may need an access token for it. Depending on the plugin you keep it in one of three places:
+
+- **For the whole workspace**: in the workspace settings, on the plugin's page under **Plugins** (workspace managers).
+- **Per project**: in the project's settings, on the plugin's page (project admins).
+- **Your own**: in your personal settings under **Plugins**, when the plugin acts with each person's own account.
+
+Barynt keeps the value encrypted and adds it to the plugin's requests to that service itself — the plugin never sees it, and nobody sees it again once it's saved: the page only says whether one is kept, and since when. **Remove** takes it back; the plugin's requests to that service fail until someone keeps a new one. Keeping or removing a workspace's or project's credential lands in the audit log (which one, never the value).
+
 ## Installing (platform administrators)
 
 Open **Admin → Plugins**. On the left is every plugin: what **needs attention** (an update, a blocked plugin), what's **installed** and what your sources offer **in the directory**, with a search and filters. On the right is the plugin you picked.

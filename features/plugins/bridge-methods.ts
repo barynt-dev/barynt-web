@@ -23,6 +23,7 @@ import {
   type BridgeResponse,
   STORAGE_LIMITS,
 } from "@/lib/plugins/bridge";
+import { proxyFetch } from "./proxy";
 import type { RunningPlugin } from "./runtime";
 
 // What each host-bridge method does (BARY-145), once `callBridge` has let
@@ -309,4 +310,6 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
       ),
     );
   },
+
+  "net.fetch": (userId, plugin, p) => proxyFetch(userId, plugin, p),
 };

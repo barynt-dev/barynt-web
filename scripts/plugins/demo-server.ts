@@ -100,6 +100,64 @@ const DEMOS: Demo[] = [
   },
   {
     entry: {
+      id: "demo-gitlab-mrs",
+      name: "Demo GitLab Merge Requests",
+      author: "Barynt demo",
+      description:
+        "Open merge requests of a GitLab project, next to the issues they mention.",
+      repo: `${ORIGIN}/barynt-demo/gitlab-mrs`,
+      levels: ["project"],
+      kind: "sandbox",
+      categories: ["development"],
+      added: "2026-11-13",
+    },
+    manifest: {
+      minBaryntVersion: "0.9.0",
+      license: "MIT",
+      network: ["gitlab.com"],
+      contributes: {
+        projectViews: [
+          {
+            id: "merge-requests",
+            title: "Merge Requests",
+            icon: "lucide:git-pull-request",
+          },
+        ],
+        settings: [
+          {
+            key: "gitlabProject",
+            type: "text",
+            label: "GitLab project",
+            description: "Path of the project, e.g. acme/web.",
+          },
+        ],
+        credentials: [
+          {
+            key: "token",
+            label: "GitLab access token",
+            description: "A personal token with read_api.",
+            level: "user",
+            host: "gitlab.com",
+            header: "PRIVATE-TOKEN",
+            format: "{value}",
+          },
+        ],
+      },
+    },
+    versions: {
+      "0.1.0": {
+        capabilities: [
+          "issues:read",
+          "comments:write",
+          "storage:own",
+          "ui:project-view",
+        ],
+      },
+    },
+    code: "gitlab-mrs",
+  },
+  {
+    entry: {
       id: "demo-notify",
       name: "Demo Chat Notifications",
       author: "Barynt demo",

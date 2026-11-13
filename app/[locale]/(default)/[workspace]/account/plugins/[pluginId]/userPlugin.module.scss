@@ -1,0 +1,19 @@
+@use "breakpoints" as bp;
+
+/* A plugin's page in the personal settings: its credentials. */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 44rem;
+  padding: 1.25rem 1.5rem 3rem;
+  overflow-y: auto;
+
+  & > * {
+    flex: none;
+  }
+
+  @include bp.phone {
+    padding: 1rem;
+  }
+}

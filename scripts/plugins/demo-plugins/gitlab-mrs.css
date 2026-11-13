@@ -1,0 +1,48 @@
+.mr-head {
+  margin: 1.25rem 1.5rem 0.5rem;
+  font-size: var(--text-base);
+}
+.mr-hint {
+  margin: 1.25rem 1.5rem;
+  color: var(--on-surface-variant);
+}
+.mr-list {
+  margin: 0;
+  padding: 0 1.5rem 2rem;
+  list-style: none;
+}
+.mr-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--outline-variant);
+}
+.mr-title {
+  flex: 1 1 20rem;
+  color: var(--on-surface);
+  font-weight: 600;
+  text-decoration: none;
+}
+.mr-title:hover {
+  color: var(--primary);
+}
+.mr-meta {
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+}
+.mr-button {
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  background: var(--surface-container);
+  color: var(--on-surface);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.mr-button:disabled {
+  color: var(--on-surface-variant);
+  cursor: default;
+}

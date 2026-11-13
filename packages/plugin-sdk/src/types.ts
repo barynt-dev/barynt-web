@@ -142,6 +142,22 @@ export interface Methods {
   "storage.delete": [{ key: string }, null];
   "storage.list": [Record<string, never>, string[]];
   "settings.get": [Record<string, never>, Record<string, Json>];
+  "net.fetch": [
+    {
+      url: string;
+      method?: "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE";
+      headers?: Record<string, string>;
+      body?: string;
+    },
+    {
+      status: number;
+      headers: Record<string, string>;
+      /** The body, when it's text (JSON, XML, text/*). */
+      text?: string;
+      /** The body, base64, when it isn't. */
+      base64?: string;
+    },
+  ];
 }
 
 export type Method = keyof Methods;
@@ -155,5 +171,8 @@ export type ErrorCode =
   | "forbidden"
   | "not_found"
   | "storage_full"
+  | "host_not_allowed"
+  | "credential_missing"
+  | "upstream_failed"
   | "timeout"
   | "too_many_requests";

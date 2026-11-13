@@ -52,16 +52,24 @@ The plugin then gets a `BaryntError` with `code: "forbidden"`.
 
 ## `loadPlugin(PluginClass, host?)`
 
-Creates the plugin on the host, runs `onload()`, and returns
-`{ plugin, host, unload }`. `unload()` runs `onunload()` and the cleanup, so
+Creates the plugin on the host, runs `onload()`, waits until its views have
+rendered ([`whenRendered()`](plugins-sdk.md#whenrendered)) — an error in a
+`render` fails the test — and returns `{ plugin, host, unload }`. `unload()` runs `onunload()` and the cleanup, so
 you can check that intervals stop and listeners go.
 
 ## Rendering
 
-To check what a view draws, give the test a DOM — with Bun, e.g.
-[happy-dom](https://github.com/capricorn86/happy-dom) — and pass
-`root: document.createElement("div")`. Without one, test the logic and keep
-the drawing thin.
+`bun test` has no DOM: a view that calls `document.createElement` throws
+there. Give the test one — e.g.
+[happy-dom](https://github.com/capricorn86/happy-dom)'s global registrator —
+and pass `root: document.createElement("div")`. A small stand-in with just
+what your plugin calls works too; `tests/unit/plugins/demoGitlab.test.ts` in
+the Barynt repository does that, clicks included.
+
+A whole plugin with its tests is in the repository:
+`scripts/plugins/demo-plugins/gitlab-mrs.ts` (merge requests from GitLab, a
+setting, a personal token, `net.fetch`, comments, storage) and
+`timeline.ts`.
 
 ## Trying it in Barynt
 

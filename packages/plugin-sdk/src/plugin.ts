@@ -42,6 +42,7 @@ export abstract class Plugin {
   /** The element the plugin's frame shows. */
   readonly root: HTMLElement;
   readonly #cleanups: Cleanup[] = [];
+  readonly #renders: Promise<unknown>[] = [];
 
   constructor(host: Host) {
     this.api = createApi(host);
@@ -80,10 +81,21 @@ export abstract class Plugin {
   registerProjectView(view: ProjectView): void {
     const { slot } = this.context;
     if (slot.kind !== "projectView" || slot.id !== view.id) return;
-    const done = view.render(this.root, this.context);
-    void Promise.resolve(done).then((cleanup) => {
-      if (typeof cleanup === "function") this.register(cleanup);
-    });
+    const done = Promise.resolve(view.render(this.root, this.context)).then(
+      (cleanup) => {
+        if (typeof cleanup === "function") this.register(cleanup);
+      },
+    );
+    this.#renders.push(done);
+  }
+
+  /**
+   * Resolves once every view registered so far has rendered — and rejects
+   * with the first error one threw. `loadPlugin` in tests waits for it;
+   * in Barynt an error there shows as the plugin's error.
+   */
+  async whenRendered(): Promise<void> {
+    await Promise.all(this.#renders);
   }
 
   /** `setInterval`, cleared when the plugin unloads. */

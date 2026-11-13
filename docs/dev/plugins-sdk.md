@@ -111,6 +111,16 @@ when this frame is for `id`, and never otherwise — so register all your
 views in `onload()` and let the SDK pick. `render` may be `async` and may
 return a function that undoes what it did; it runs on unload.
 
+### `whenRendered()`
+
+```ts
+whenRendered(): Promise<void>;
+```
+
+Resolves once every view registered so far has rendered, and rejects with
+the first error a `render` threw. `loadPlugin` in tests waits for it, so a
+test sees the finished view; you rarely call it yourself.
+
 ### `register()`
 
 ```ts
@@ -175,6 +185,7 @@ method returns a `Promise` and rejects with a [`BaryntError`](#errors).
 | `api.storage.delete(key)` | `storage.delete` |
 | `api.storage.list()` | `storage.list` |
 | `api.settings.get()` | `settings.get` (what `loadSettings()` uses) |
+| `api.net.fetch(url, init?)` | `net.fetch`: a request to one of the manifest's hosts; returns a `NetResponse` with `status`, `ok`, `headers`, `text`, `base64` and `json()` |
 
 ```ts
 const issue = await this.api.issues.create({ title: "Follow up", priority: 2 });
@@ -205,7 +216,7 @@ the plugin's error in Barynt.
 ## Types
 
 The SDK exports the types of everything it hands you: `Issue`, `Comment`,
-`Label`, `Project`, `Member`, `CustomField`, `IssueInput`, `Context`,
+`Label`, `Project`, `Member`, `CustomField`, `IssueInput`, `NetResponse`, `Context`,
 `Json`, `ErrorCode`, and `Methods` — each Host API method's params and
 result.
 

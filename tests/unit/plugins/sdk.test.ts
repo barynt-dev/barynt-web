@@ -132,4 +132,29 @@ describe("plugin SDK", () => {
     );
     expect(plugin.zoom).toBe(3);
   });
+
+  it("fetches through Barynt and reads the answer", async () => {
+    class Remote extends Plugin {
+      items: unknown;
+      async onload() {
+        const res = await this.api.net.fetch("https://api.acme.example/items");
+        this.items = res.ok ? res.json() : null;
+      }
+    }
+    const host = createTestHost({
+      handlers: {
+        "net.fetch": () => ({
+          status: 200,
+          headers: { "content-type": "application/json" },
+          text: "[1,2]",
+        }),
+      },
+    });
+    const { plugin } = await loadPlugin(Remote, host);
+    expect(plugin.items).toEqual([1, 2]);
+    expect(host.calls[0]).toEqual({
+      method: "net.fetch",
+      params: { url: "https://api.acme.example/items" },
+    });
+  });
 });

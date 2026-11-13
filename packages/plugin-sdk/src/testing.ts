@@ -53,13 +53,15 @@ export function createTestHost(
   };
 }
 
-/** Starts a plugin on a test host: creates it, runs `onload()`, and hands
- *  back the plugin, the host and a way to unload it. */
+/** Starts a plugin on a test host: creates it, runs `onload()`, waits for
+ *  its views to render (`whenRendered`) — so a view's error fails the test —
+ *  and hands back the plugin, the host and a way to unload it. */
 export async function loadPlugin<P extends Plugin>(
   PluginClass: new (host: Host) => P,
   host: TestHost = createTestHost(),
 ) {
   const plugin = new PluginClass(host);
   await plugin.onload();
+  await plugin.whenRendered();
   return { plugin, host, unload: () => plugin.onunload() };
 }

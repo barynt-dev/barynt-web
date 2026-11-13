@@ -11,7 +11,7 @@ import {
 import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
-import { PLATFORM, requirePermission } from "@/lib/permissions";
+import { currentUserId, PLATFORM, requirePermission } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
 import { isDevUrl } from "@/lib/plugins/dev";
 import type { PreviewFileName } from "@/lib/plugins/directory";
@@ -29,8 +29,10 @@ import {
   unblockTarget,
 } from "@/lib/plugins/lifecycle";
 import { validateManifest } from "@/lib/plugins/manifest";
+import { credentialScopeKey } from "@/lib/plugins/proxy";
 import { compareSemver } from "@/lib/plugins/semver";
 import { checkSettings } from "@/lib/plugins/settings";
+import { sealSecret } from "@/lib/secret-box";
 
 // The plugin lifecycle (BARY-142). The platform admin (`plugin.manage`)
 // manages sources and installs, updates, rolls back, blocks and removes
@@ -662,6 +664,10 @@ export async function deletePluginData(
     where: { pluginId: input.pluginId, scopeKey },
   });
   if (count === 0) return { error: "not_activated" };
+  // Its credentials here go with its data (BARY-147).
+  await db.pluginCredential.deleteMany({
+    where: { pluginId: input.pluginId, scopeKey },
+  });
   await recordAudit({
     action: "plugin.data.deleted",
     actorId,
@@ -672,6 +678,132 @@ export async function deletePluginData(
     },
     ...auditScope(scope),
   });
+  done();
+  return { ok: true };
+}
+
+// ─── Credentials (BARY-147) ─────────────────────────────────────────────────
+
+/** A secret's longest value — an access token is far shorter. */
+const CREDENTIAL_MAX = 4000;
+
+interface CredentialInput {
+  pluginId: string;
+  key: string;
+  workspaceId: string;
+  projectId?: string | null;
+}
+
+/**
+ * Who may change a credential, and where it's kept: a workspace's needs
+ * `plugin.enable` in the workspace, a project's in the project; a person's
+ * own (`user`) only them. The credential must be one the plugin's active
+ * version declares.
+ */
+async function credentialTarget(input: CredentialInput) {
+  const row = await db.plugin.findFirst({
+    where: { pluginId: input.pluginId, status: "active" },
+    select: { manifest: true },
+  });
+  const parsed = row ? validateManifest(row.manifest) : null;
+  if (!parsed?.ok) return { error: "not_installed" } as const;
+  const credential = (parsed.manifest.contributes.credentials ?? []).find(
+    (c) => c.key === input.key,
+  );
+  if (!credential) return { error: "not_found" } as const;
+
+  if (credential.level === "user") {
+    const actorId = await currentUserId();
+    if (!actorId) return { error: "not_found" } as const;
+    return {
+      actorId,
+      scopeKey: `us:${actorId}`,
+      scope: null,
+      label: parsed.manifest.name,
+    } as const;
+  }
+  const scope = await resolveScope({
+    pluginId: input.pluginId,
+    workspaceId: input.workspaceId,
+    projectId: credential.level === "project" ? input.projectId : null,
+  });
+  if (!scope || (credential.level === "project" && !scope.projectId))
+    return { error: "not_found" } as const;
+  const actorId = await requirePermission(
+    "plugin.enable",
+    permissionCtx(scope),
+  );
+  const scopeKey = credentialScopeKey(credential.level, scope, actorId);
+  if (!scopeKey) return { error: "not_found" } as const;
+  return { actorId, scopeKey, scope, label: parsed.manifest.name } as const;
+}
+
+/**
+ * Keeps a credential a plugin declares — sealed, never shown again. Barynt
+ * adds it to the plugin's requests to its host; the plugin never sees it.
+ * A workspace's or project's credential lands in the audit log (which one,
+ * never the value).
+ */
+export async function savePluginCredential(
+  input: CredentialInput & { value: string },
+): Promise<PluginResult> {
+  const value = typeof input.value === "string" ? input.value.trim() : "";
+  if (!value || value.length > CREDENTIAL_MAX)
+    return { error: "invalid_setting" };
+  const target = await credentialTarget(input);
+  if ("error" in target) return { error: target.error ?? "not_found" };
+  const valueCipher = sealSecret(value, "plugin-credential");
+  await db.pluginCredential.upsert({
+    where: {
+      pluginId_scopeKey_key: {
+        pluginId: input.pluginId,
+        scopeKey: target.scopeKey,
+        key: input.key,
+      },
+    },
+    create: {
+      pluginId: input.pluginId,
+      scopeKey: target.scopeKey,
+      key: input.key,
+      valueCipher,
+      updatedById: target.actorId,
+    },
+    update: { valueCipher, updatedById: target.actorId },
+  });
+  if (target.scope)
+    await recordAudit({
+      action: "plugin.credential.set",
+      actorId: target.actorId,
+      target: { type: "plugin", id: input.pluginId, label: target.label },
+      ...auditScope(target.scope),
+      meta: { key: input.key },
+    });
+  done();
+  return { ok: true };
+}
+
+/** Removes a credential; the plugin's requests to its host fail with
+ *  `credential_missing` until someone keeps one again. */
+export async function removePluginCredential(
+  input: CredentialInput,
+): Promise<PluginResult> {
+  const target = await credentialTarget(input);
+  if ("error" in target) return { error: target.error ?? "not_found" };
+  await db.pluginCredential.deleteMany({
+    where: {
+      pluginId: input.pluginId,
+      scopeKey: target.scopeKey,
+      key: input.key,
+    },
+  });
+  if (target.scope)
+    await recordAudit({
+      action: "plugin.credential.removed",
+      actorId: target.actorId,
+      target: { type: "plugin", id: input.pluginId, label: target.label },
+      ...auditScope(target.scope),
+      meta: { key: input.key },
+    });
   done();
   return { ok: true };
 }

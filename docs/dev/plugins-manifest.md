@@ -55,7 +55,7 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `kind` | yes | `declarative`, `sandbox` or `service`, see [Building plugins](plugins.md#the-three-kinds). |
 | `levels` | yes | Where it can be switched on: `workspace`, `project`, or both. |
 | `capabilities` | yes | What it asks for, from the list below. Ask for as little as you need — people read this list before they say yes. |
-| `network` | yes | Host names it may call through Barynt, e.g. `api.acme.example`: no scheme, port or wildcard, at most 10. `[]` for none. |
+| `network` | yes | Host names it may call through Barynt with [`net.fetch`](plugins-host-api.md#netfetch), e.g. `api.acme.example`: no scheme, port or wildcard, at most 10. `[]` for none. People see them before they switch the plugin on. |
 | `contributes` | no | What it adds, see below. |
 | `previews` | no | Up to 6 screenshots for the store, see [Publishing](plugins-publishing.md#screenshots). |
 
@@ -100,6 +100,7 @@ capability, and each entry an `id` that's unique in its list.
 | `actions` | `{ id, title, icon? }`, up to 20 | `ui:action` | sandbox |
 | `fields` | custom fields, up to 20 | `fields:write` | all |
 | `settings` | settings, up to 30 | — | all |
+| `credentials` | credentials, up to 10 | a host in `network` | sandbox |
 
 `icon` is an [Iconify](https://icon-sets.iconify.design) name like
 `lucide:clock`.
@@ -131,6 +132,43 @@ under **Plugins** — and the plugin reads them with
 Barynt checks what's saved against these types; text is trimmed and at most
 2000 characters.
 
+### Credentials
+
+A credential is a secret the plugin needs for one of its hosts — an access
+token for a Git host, an API key. People keep it in Barynt; Barynt adds it
+to the plugin's requests to that host itself. **The plugin never sees it.**
+
+```json
+"network": ["gitlab.acme.example"],
+"contributes": {
+  "credentials": [
+    {
+      "key": "token",
+      "label": "Personal access token",
+      "description": "With read_api scope.",
+      "level": "user",
+      "host": "gitlab.acme.example",
+      "header": "PRIVATE-TOKEN",
+      "format": "{value}"
+    }
+  ]
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `key` | Starts with a letter: letters, digits, `_`, up to 40 characters. |
+| `label` | Up to 60 characters, shown above the field. |
+| `description` | Optional, up to 300 characters. |
+| `level` | Who keeps it, and for whom it counts: `workspace` (a workspace manager, once for the workspace — the plugin needs the `workspace` level), `project` (a project admin, per project — needs `project`), or `user` (each person their own, in their personal settings). |
+| `host` | The host it's sent to. Must be in `network`. |
+| `header` | The header it goes in. `Authorization` by default; not `Cookie`, `Host`, `Content-Length` or `Transfer-Encoding`. |
+| `format` | How the value is written into the header, with `{value}` where it goes. `Bearer {value}` by default. |
+
+Every request to `host` gets the header. If a credential the host needs
+isn't kept, the request is refused with `credential_missing` — tell the
+person where to keep it (see [Host API](plugins-host-api.md#netfetch)).
+
 ### Custom fields
 
 A plugin can bring custom fields its issues carry:
@@ -151,6 +189,8 @@ A plugin can bring custom fields its issues carry:
   `fields`, `settings` and `issueBadges`.
 - A `service` plugin has no browser surface; it may only contribute `fields`
   and `settings`.
+- A credential's `host` is in `network`, and a `workspace` or `project`
+  credential matches one of the plugin's `levels`.
 - Ids are unique within each list; `select` settings and choice fields need
   options, other types must not have them.
 - `maxBaryntVersion` isn't lower than `minBaryntVersion`.
