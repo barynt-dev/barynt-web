@@ -23,12 +23,19 @@ export const SLOTS = {
     capability: "ui:nav-item",
     path: "page",
   },
+  /** A widget on a dashboard — the workspace's, a project's, a view's
+   *  (BARY-149). Not a page of its own: no `path`. */
+  widget: {
+    contributes: "dashboardWidgets",
+    capability: "ui:dashboard-widget",
+    path: null,
+  },
 } as const satisfies Record<
   string,
   {
     contributes: keyof PluginManifest["contributes"];
     capability: Capability;
-    path: string;
+    path: string | null;
   }
 >;
 
@@ -37,10 +44,11 @@ export type SlotKind = keyof typeof SLOTS;
 export const isSlotKind = (kind: unknown): kind is SlotKind =>
   typeof kind === "string" && Object.hasOwn(SLOTS, kind);
 
-/** A slot kind by the path segment it's addressed with (`view`, `page`). */
+/** A slot kind by the path segment it's addressed with (`view`, `page`);
+ *  a widget has none — it's only ever on a dashboard. */
 export function slotKindOfPath(path: string): SlotKind | null {
   for (const [kind, slot] of Object.entries(SLOTS))
-    if (slot.path === path) return kind as SlotKind;
+    if (slot.path !== null && slot.path === path) return kind as SlotKind;
   return null;
 }
 

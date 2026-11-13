@@ -308,6 +308,15 @@ views and pages under the project (`NavGroups/Projects`). They open
 `…/plugin/<id>/<view|page>/<entry>` (workspace and project routes, `PluginSlotPage`), and the
 frame route checks the slot again (`slotEntry` in `runtime.ts`).
 
+**Widgets and settings pages (BARY-149).** A `widget` slot (`dashboardWidgets`,
+`ui:dashboard-widget`) has no page of its own: a dashboard widget of kind `plugin`
+(`features/dashboard/widgets.ts`, `config.pluginId`/`pluginWidget`) draws `PluginFrame` in
+its body; `widgetData` resolves whether it still runs there (`getPluginSlotView`), and the
+gallery lists the place's plugin widgets (`getPluginWidgets`). `contributes.settingsPage`
+puts the plugin's `settings` slot frame on its settings page instead of the form; it saves
+through `settings.set`, which checks `plugin.enable` and `checkSettings` like
+`savePluginSettings`.
+
 **The host proxy (BARY-147).** `net.fetch` sends a sandboxed plugin's request to one of the
 manifest's `network` hosts (`features/plugins/proxy.ts`, rules in `lib/plugins/proxy.ts`):
 https only, the host resolved and refused when any address is private (unless it's in

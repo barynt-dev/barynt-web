@@ -261,6 +261,7 @@ export function Dashboard({
             sheet={isPhone}
             workspaceId={newView.workspaceId}
             customWidgets={view.customWidgets}
+            pluginWidgets={view.pluginWidgets}
             load={(list) =>
               loadWidgetData(target, list, view.range, view.scope)
             }

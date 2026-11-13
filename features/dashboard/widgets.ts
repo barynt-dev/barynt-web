@@ -60,6 +60,9 @@ export const WIDGET_TYPES = [
   // A custom widget made of building blocks (BARY-170) — only the builder
   // makes these; the gallery doesn't list the kind itself.
   "blocks",
+  // A sandboxed plugin's widget (BARY-149) — the gallery lists each one the
+  // plugins switched on here bring, not the kind itself.
+  "plugin",
 ] as const;
 export type WidgetType = (typeof WIDGET_TYPES)[number];
 
@@ -353,6 +356,10 @@ export interface WidgetConfig {
   fit?: EmbedFit;
   /** Embed, website: reload every so many minutes; unset: never. */
   refresh?: EmbedRefresh;
+  /** A plugin's widget (`plugin` kind, BARY-149): which plugin, and which
+   *  of its `contributes.dashboardWidgets`. */
+  pluginId?: string;
+  pluginWidget?: string;
   /** A custom widget's building blocks, top to bottom (`blocks` kind). */
   blocks?: WidgetBlock[];
   /** Burnup: done against everything, or what's left counting down. */
@@ -1128,6 +1135,17 @@ export const WIDGETS: Record<WidgetType, WidgetDef> = {
     hidden: true,
     config: {},
   },
+  plugin: {
+    type: "plugin",
+    icon: "lucide:puzzle",
+    sizes: ["S", "M", "L", "T", "XL"],
+    size: "L",
+    accent: "gray",
+    issues: false,
+    group: "other",
+    hidden: true,
+    config: {},
+  },
   note: {
     type: "note",
     icon: "lucide:sticky-note",
@@ -1513,6 +1531,14 @@ const baseConfigShape = z.object({
     .optional()
     .transform((list) => list as ShortcutChoice[] | undefined),
   embedKind: z.enum(EMBED_KINDS).optional(),
+  pluginId: z
+    .string()
+    .regex(/^[a-z][a-z0-9-]{1,38}[a-z0-9]$/)
+    .optional(),
+  pluginWidget: z
+    .string()
+    .regex(/^[a-z][a-z0-9-]{0,39}$/)
+    .optional(),
   url: z
     .string()
     .max(2000)

@@ -318,6 +318,17 @@ export type WidgetData =
       type: "note";
       /** This person's own pages — nobody else's. */
       pages: NotePage[];
+    }
+  | {
+      /** A plugin's widget (BARY-149): drawn by its own frame. */
+      type: "plugin";
+      pluginId: string;
+      widgetId: string;
+      /** `null` while it doesn't run here (switched off, removed, not
+       *  confirmed) — the widget says so instead of a frame. */
+      plugin: { name: string; title: string } | null;
+      workspaceId: string;
+      projectId: string | null;
     };
 
 /** Widget id → its data. */
@@ -340,6 +351,13 @@ export interface DashboardLayoutInfo {
 export interface DashboardView {
   /** The viewer's custom widgets and the shared ones of others. */
   customWidgets: CustomWidgetEntry[];
+  /** Widgets the plugins switched on here bring (BARY-149). */
+  pluginWidgets: {
+    pluginId: string;
+    pluginName: string;
+    widgetId: string;
+    title: string;
+  }[];
   target: DashboardTarget;
   range: RangeKey;
   unit: BucketUnit;

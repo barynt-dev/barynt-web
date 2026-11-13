@@ -12,6 +12,7 @@ the plugin's code and nothing of Barynt's.
 | **The network** | `fetch`, `XMLHttpRequest`, WebSockets and `<img src="https://…">` are blocked. Barynt's data comes through the [host API](plugins-host-api.md); your own servers through [`net.fetch`](plugins-host-api.md#netfetch), for the hosts in your manifest. |
 | **Other code** | No scripts from anywhere: your `main.js` is all that runs. No `<script src>`, no CDN. Bundle what you need. |
 | **The page around it** | The frame can't reach Barynt's page, navigate it or open pop-ups. |
+| **Forms** | A `<form>` doesn't submit — not even to a `submit` listener. Handle the button's `click` (and Enter in a field) yourself. |
 
 What's left is plain DOM, CSS, timers, `requestAnimationFrame`, canvas, SVG,
 and images from `data:` or `blob:` URLs.

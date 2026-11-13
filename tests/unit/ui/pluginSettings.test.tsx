@@ -12,6 +12,7 @@ mock.module("next-intl", () => {
   const t = Object.assign((key: string) => key, { has: () => false });
   return {
     useTranslations: () => t,
+    useLocale: () => "en",
     useFormatter: () => ({ dateTime: () => "date" }),
   };
 });
@@ -67,6 +68,7 @@ const view = (over: Partial<PluginSettingsView> = {}): PluginSettingsView => ({
   state: "active",
   views: [],
   credentials: [],
+  settingsPage: false,
   ...over,
 });
 

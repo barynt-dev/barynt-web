@@ -14,11 +14,17 @@ const parsed = validateManifest({
   license: "MIT",
   kind: "sandbox",
   levels: ["workspace", "project"],
-  capabilities: ["issues:read", "ui:project-view", "ui:nav-item"],
+  capabilities: [
+    "issues:read",
+    "ui:project-view",
+    "ui:nav-item",
+    "ui:dashboard-widget",
+  ],
   network: [],
   contributes: {
     projectViews: [{ id: "timeline", title: "Timeline", icon: "lucide:clock" }],
     navItems: [{ id: "roadmap", title: "Roadmap" }],
+    dashboardWidgets: [{ id: "oldest", title: "Oldest open" }],
   },
 });
 if (!parsed.ok) throw new Error("fixture");
@@ -35,6 +41,12 @@ describe("slotEntries", () => {
       },
       { kind: "page", id: "roadmap", title: "Roadmap", icon: null },
     ]);
+  });
+
+  it("offers its dashboard widgets with ui:dashboard-widget", () => {
+    expect(
+      slotEntries(manifest, ["ui:dashboard-widget"]).map((e) => [e.kind, e.id]),
+    ).toEqual([["widget", "oldest"]]);
   });
 
   it("leaves out a slot whose capability wasn't confirmed here", () => {
@@ -54,5 +66,8 @@ describe("slotEntries", () => {
     expect(slotKindOfPath("view")).toBe("projectView");
     expect(slotKindOfPath("page")).toBe("page");
     expect(slotKindOfPath("settings")).toBeNull();
+    // A widget is only ever on a dashboard, never a page of its own.
+    expect(slotKindOfPath("widget")).toBeNull();
+    expect(slotKindOfPath("null")).toBeNull();
   });
 });

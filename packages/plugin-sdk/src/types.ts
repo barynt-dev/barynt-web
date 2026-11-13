@@ -5,7 +5,7 @@
 /** Where a plugin's frame runs. */
 export interface Context {
   /** Which of its views or pages this frame is for. */
-  slot: { kind: "projectView" | "page"; id: string };
+  slot: { kind: "projectView" | "page" | "widget" | "settings"; id: string };
   workspaceId: string;
   /** `null` for a workspace's plugin. */
   projectId: string | null;
@@ -143,6 +143,7 @@ export interface Methods {
   "storage.delete": [{ key: string }, null];
   "storage.list": [Record<string, never>, string[]];
   "settings.get": [Record<string, never>, Record<string, Json>];
+  "settings.set": [{ values: Record<string, Json> }, null];
   "net.fetch": [
     {
       url: string;

@@ -2292,7 +2292,14 @@
     "flowBy_category": "Phasen",
     "flowBy_status": "Status",
     "showDone": "Erledigte zeigen",
-    "stays": "{count, plural, one {# Aufenthalt} other {# Aufenthalte}}"
+    "stays": "{count, plural, one {# Aufenthalt} other {# Aufenthalte}}",
+    "type_plugin": "Plugin",
+    "desc_plugin": "Ein Widget aus einem Plugin.",
+    "group_plugins": "Plugins",
+    "pluginOff": "„{name}“ läuft hier nicht mehr.",
+    "pluginOffHint": "Das Plugin ist ausgeschaltet oder entfernt. Entferne das Widget oder schalte das Plugin wieder ein.",
+    "pluginFrom": "Aus {name}",
+    "pluginPreview": "Vorschau mit echten Daten, so wie das Plugin es zeichnet."
   },
   "customFields": {
     "title": "Custom Felder",

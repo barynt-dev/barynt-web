@@ -1,5 +1,10 @@
 import { getPluginFrame } from "@/features/plugins/runtime";
 import { isSlotKind } from "@/lib/plugins/slots";
+
+/** A slot from the list, or the plugin's own settings page (BARY-149). */
+const isFrameSlot = (kind: string | null) =>
+  kind === "settings" || isSlotKind(kind);
+
 import { getSession } from "@/lib/session";
 
 const ID = /^[\w-]{1,64}$/;
@@ -24,14 +29,14 @@ export async function GET(req: Request) {
   if (
     ![pluginId, workspaceId, id].every((v) => ID.test(v)) ||
     (projectId !== null && !ID.test(projectId)) ||
-    !isSlotKind(kind)
+    !isFrameSlot(kind)
   )
     return new Response(null, { status: 404 });
 
   const frame = await getPluginFrame(
     session.userId,
     { pluginId, workspaceId, projectId },
-    { kind, id },
+    { kind: kind as "settings", id },
   );
   if (!frame) return new Response(null, { status: 404 });
   return new Response(frame.html, {

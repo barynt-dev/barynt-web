@@ -103,6 +103,15 @@
   }
 }
 
+/* A plugin's own settings page: its frame, at a height a form needs. */
+.ownSettings {
+  display: flex;
+  min-height: 22rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
 .form {
   display: flex;
   flex-direction: column;

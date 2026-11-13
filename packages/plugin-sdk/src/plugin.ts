@@ -92,6 +92,26 @@ export abstract class Plugin {
     this.#renderSlot("page", page);
   }
 
+  /**
+   * A dashboard widget from the manifest's `contributes.dashboardWidgets`.
+   * Its frame fills the widget below Barynt's header, in whatever size it
+   * was added — watch `el`'s size (a `ResizeObserver`) to show more when
+   * there's room.
+   */
+  registerWidget(widget: ProjectView): void {
+    this.#renderSlot("widget", widget);
+  }
+
+  /**
+   * Its own settings page (`contributes.settingsPage: true`), shown on the
+   * plugin's page in the workspace's or project's settings instead of
+   * Barynt's form. Read with `loadSettings()`, save with
+   * `api.settings.set(values)`.
+   */
+  registerSettings(page: Omit<ProjectView, "id">): void {
+    this.#renderSlot("settings", { ...page, id: "settings" });
+  }
+
   #renderSlot(kind: Context["slot"]["kind"], view: ProjectView) {
     const { slot } = this.context;
     if (slot.kind !== kind || slot.id !== view.id) return;
