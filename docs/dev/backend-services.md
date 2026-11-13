@@ -298,6 +298,16 @@ host, its typed API (`METHODS` — `tests/unit/plugins/sdk.test.ts` keeps it equ
 `BRIDGE_METHODS`) and a test host. The app resolves it through `tsconfig.json`'s `paths`;
 `bun run --cwd packages/plugin-sdk build` writes `dist/` with types. For plugin authors: [Building plugins](plugins.md).
 
+**Slots (BARY-148).** `lib/plugins/slots.ts` is the fixed list of places a sandboxed plugin
+fills — today `projectView` (`contributes.projectViews`, `ui:project-view`) and `page`
+(`navItems`, `ui:nav-item`) — with the manifest list, the capability and the address
+segment of each. `features/plugins/slots.ts#getPluginNav` reads the enabled activations of
+the workspace once per request and gives the sidebar its entries: a workspace's views in the
+main group (`NavGroups/WorkspaceDashboard`), its pages in `NavGroups/Plugins`, a project's
+views and pages under the project (`NavGroups/Projects`). They open
+`…/plugin/<id>/<view|page>/<entry>` (workspace and project routes, `PluginSlotPage`), and the
+frame route checks the slot again (`slotEntry` in `runtime.ts`).
+
 **The host proxy (BARY-147).** `net.fetch` sends a sandboxed plugin's request to one of the
 manifest's `network` hosts (`features/plugins/proxy.ts`, rules in `lib/plugins/proxy.ts`):
 https only, the host resolved and refused when any address is private (unless it's in

@@ -5,7 +5,8 @@ import type { Context, Host, Json } from "./types";
 export type Cleanup = () => void;
 
 export interface ProjectView {
-  /** As in the manifest's `contributes.projectViews`. */
+  /** As in the manifest's `contributes.projectViews` (or `navItems`, for
+   *  `registerPage`). */
   id: string;
   /** Draws the view into `el`. May return what undoes it. */
   render(
@@ -79,8 +80,21 @@ export abstract class Plugin {
    * for it, and never otherwise.
    */
   registerProjectView(view: ProjectView): void {
+    this.#renderSlot("projectView", view);
+  }
+
+  /**
+   * A page from the manifest's `contributes.navItems` — opened from its
+   * entry in the sidebar's "Plugins" section. Drawn right away when this
+   * frame is for it, never otherwise.
+   */
+  registerPage(page: ProjectView): void {
+    this.#renderSlot("page", page);
+  }
+
+  #renderSlot(kind: Context["slot"]["kind"], view: ProjectView) {
     const { slot } = this.context;
-    if (slot.kind !== "projectView" || slot.id !== view.id) return;
+    if (slot.kind !== kind || slot.id !== view.id) return;
     const done = Promise.resolve(view.render(this.root, this.context)).then(
       (cleanup) => {
         if (typeof cleanup === "function") this.register(cleanup);

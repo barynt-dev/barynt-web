@@ -83,7 +83,7 @@ Where this instance runs:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `slot` | `{ kind: "projectView"; id: string }` | The place it fills: which of its views. |
+| `slot` | `{ kind: "projectView" \| "page"; id: string }` | The place it fills: which of its views or pages. |
 | `workspaceId` | `string` | The workspace. |
 | `projectId` | `string \| null` | The project, or `null` for a workspace's plugin. |
 | `locale` | `string` | The person's language, e.g. `de` or `en`. |
@@ -120,6 +120,16 @@ whenRendered(): Promise<void>;
 Resolves once every view registered so far has rendered, and rejects with
 the first error a `render` threw. `loadPlugin` in tests waits for it, so a
 test sees the finished view; you rarely call it yourself.
+
+### `registerPage()`
+
+```ts
+registerPage(page: { id: string; render(el, context) }): void;
+```
+
+The same for a page from `contributes.navItems`, opened from its entry in
+the sidebar's "Plugins" section. A view and a page may share an `id`; each
+frame is for one of them.
 
 ### `register()`
 

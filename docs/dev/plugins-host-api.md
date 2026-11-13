@@ -46,6 +46,10 @@ Needs `issues:read`. `api.issues.list(params?)`
 
 Returns `{ issues: Issue[], nextCursor: string | null }`, newest first.
 
+A **workspace's** plugin without `projectId` gets the newest across the
+workspace's projects the person can see — one page of up to `take`, with
+`nextCursor` always `null`. Name a `projectId` to page through one.
+
 ```ts
 let cursor: string | undefined;
 do {

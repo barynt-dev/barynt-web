@@ -1,5 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { getMyPreferences } from "@/features/account/queries";
+import { PluginTile } from "@/features/plugins/components/PluginStore/PluginTile";
+import { getPluginNav } from "@/features/plugins/slots";
 import { NewProjectButton } from "@/features/projects/components/NewProjectButton/NewProjectButton";
 import { viewIconOf } from "@/features/views/icons";
 import { getFavoriteProjects, getNavViews } from "@/features/views/queries";
@@ -54,9 +56,13 @@ export default async function NavGroupProjects() {
   // Each project has its own role — the visibility of "Settings"
   // (`role.manage`/`label.create`/`project.update`) depends on the project
   // role, not the workspace role above it.
-  const projectAccess = await Promise.all(
-    projects.map((p) => getAccess({ projectId: p.id })),
-  );
+  const [projectAccess, plugins] = await Promise.all([
+    Promise.all(projects.map((p) => getAccess({ projectId: p.id }))),
+    getPluginNav(
+      workspace.id,
+      projects.map((p) => p.id),
+    ),
+  ]);
 
   // The project row carries `/*` and is thus marked active as long as
   // you're anywhere within the project — the pattern is evaluated in
@@ -66,6 +72,18 @@ export default async function NavGroupProjects() {
     const pAccess = projectAccess[i];
     const views = navViews.filter((v) => v.projectId === p.id);
     const pinned = views.filter((v) => v.pinned);
+    // Plugins switched on in the project (BARY-148): their views among the
+    // project's own, their pages under a "Plugins" heading.
+    const pluginEntries = plugins.projects[p.id] ?? [];
+    const pluginRow = (entry: (typeof pluginEntries)[number]) => ({
+      href: projectPath(workspace.id, p.slug, entry.path),
+      label: entry.title,
+      leading: (
+        <PluginTile id={entry.pluginId} name={entry.pluginName} size="sm" />
+      ),
+    });
+    const pluginViews = pluginEntries.filter((e) => e.kind === "projectView");
+    const pluginPages = pluginEntries.filter((e) => e.kind === "page");
     return {
       // Where a click on its name leads (the person's choice). Every one of
       // these is also an entry in the group below.
@@ -112,6 +130,17 @@ export default async function NavGroupProjects() {
             ...(entry.section === "" ? { hideOnPhone: true } : {}),
           };
         }),
+        ...pluginViews.map(pluginRow),
+        ...(pluginPages.length
+          ? [
+              {
+                href: `${projPath}#plugins`,
+                label: t("nav.plugins"),
+                heading: true,
+              },
+              ...pluginPages.map(pluginRow),
+            ]
+          : []),
         // The views pinned to this project (V7), under a heading of their
         // own; a hover button unpins.
         ...(pinned.length

@@ -15,6 +15,7 @@ import {
 } from "@/lib/plugins/bridge";
 import { buildFrameDocument, frameCsp } from "@/lib/plugins/frame";
 import { type PluginManifest, validateManifest } from "@/lib/plugins/manifest";
+import { slotEntries } from "@/lib/plugins/slots";
 import { HANDLERS } from "./bridge-methods";
 
 // Running a sandboxed plugin (BARY-144): which plugin may run where for
@@ -97,18 +98,14 @@ export async function findRunningPlugin(
   };
 }
 
-/** Whether the plugin fills this slot here: the slot in its manifest and
- *  its capability confirmed. */
-function fillsSlot(plugin: RunningPlugin, slot: FrameContext["slot"]): boolean {
-  if (slot.kind === "projectView")
-    return (
-      plugin.projectId !== null &&
-      plugin.capabilities.includes("ui:project-view") &&
-      (plugin.manifest.contributes.projectViews ?? []).some(
-        (v) => v.id === slot.id,
-      )
-    );
-  return false;
+/** What the plugin fills in this slot here: the entry from its manifest,
+ *  with its capability confirmed (`lib/plugins/slots.ts`). */
+function slotEntry(plugin: RunningPlugin, slot: FrameContext["slot"]) {
+  return (
+    slotEntries(plugin.manifest, plugin.capabilities).find(
+      (e) => e.kind === slot.kind && e.id === slot.id,
+    ) ?? null
+  );
 }
 
 /** The frame document of a sandboxed plugin in a slot, with its CSP —
@@ -120,7 +117,7 @@ export async function getPluginFrame(
 ): Promise<{ html: string; csp: string } | null> {
   const plugin = await findRunningPlugin(userId, place);
   if (!plugin || plugin.manifest.kind !== "sandbox") return null;
-  if (!fillsSlot(plugin, slot)) return null;
+  if (!slotEntry(plugin, slot)) return null;
   const files = await db.pluginFile.findMany({
     where: {
       pluginRowId: plugin.rowId,
@@ -200,19 +197,17 @@ export async function callBridge(
   return result;
 }
 
-/** A project view a plugin contributes, for its page in the project — the
- *  plugin's and the view's names. `null` where it doesn't run for the
- *  logged-in person. */
-export async function getProjectPluginView(
+/** A slot a plugin fills, for its page — the plugin's name and the
+ *  entry's title. `null` where it doesn't run for this person. */
+export async function getPluginSlotView(
   userId: string,
-  place: PluginPlace & { projectId: string },
-  viewId: string,
+  place: PluginPlace,
+  slot: FrameContext["slot"],
 ): Promise<{ pluginName: string; title: string } | null> {
   const plugin = await findRunningPlugin(userId, place);
-  if (!plugin || plugin.manifest.kind !== "sandbox") return null;
-  if (!fillsSlot(plugin, { kind: "projectView", id: viewId })) return null;
-  const view = plugin.manifest.contributes.projectViews?.find(
-    (v) => v.id === viewId,
-  );
-  return view ? { pluginName: plugin.manifest.name, title: view.title } : null;
+  if (!plugin) return null;
+  const entry = slotEntry(plugin, slot);
+  return entry
+    ? { pluginName: plugin.manifest.name, title: entry.title }
+    : null;
 }

@@ -114,12 +114,35 @@ const jsonSize = (value: unknown) =>
 
 export const HANDLERS: Record<BridgeMethod, Handler> = {
   async "issues.list"(userId, plugin, p) {
-    const projectId = await projectOf(plugin, p);
-    if (refused(projectId)) return projectId;
     const take = Math.min(
       Math.max(Number.isInteger(p.take) ? (p.take as number) : 50, 1),
       100,
     );
+    // A workspace's plugin without a project: the newest across the
+    // workspace's projects the person can see (BARY-148) — one page, no
+    // cursor.
+    if (!plugin.projectId && str(p.projectId) === undefined) {
+      const projects = await listProjectsForUser(userId, plugin.workspaceId);
+      const pages = await Promise.all(
+        projects.map((project) =>
+          listIssuesForUser(userId, project.id, {
+            q: str(p.q),
+            status: str(p.status),
+            take,
+          }),
+        ),
+      );
+      const issues = pages
+        .flatMap((page) => page?.rows ?? [])
+        .sort(
+          (a, b) =>
+            new Date(b.created).getTime() - new Date(a.created).getTime(),
+        )
+        .slice(0, take);
+      return ok({ issues, nextCursor: null });
+    }
+    const projectId = await projectOf(plugin, p);
+    if (refused(projectId)) return projectId;
     const page = await listIssuesForUser(userId, projectId, {
       q: str(p.q),
       status: str(p.status),

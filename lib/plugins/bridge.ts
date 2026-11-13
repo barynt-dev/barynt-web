@@ -64,9 +64,10 @@ export const STORAGE_LIMITS = {
 export const isBridgeMethod = (method: unknown): method is BridgeMethod =>
   typeof method === "string" && Object.hasOwn(BRIDGE_METHODS, method);
 
-/** Where a plugin's frame runs: the slot it fills and the place it's in. */
+/** Where a plugin's frame runs: the slot it fills (`lib/plugins/slots.ts`)
+ *  and the place it's in. */
 export interface FrameContext {
-  slot: { kind: "projectView"; id: string };
+  slot: { kind: "projectView" | "page"; id: string };
   workspaceId: string;
   projectId: string | null;
   locale: string;

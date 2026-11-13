@@ -82,13 +82,23 @@ const DEMOS: Demo[] = [
       minBaryntVersion: "0.9.0",
       license: "MIT",
       authorUrl: "https://example.com",
-      contributes: { projectViews: [{ id: "timeline", title: "Timeline" }] },
+      contributes: {
+        projectViews: [{ id: "timeline", title: "Timeline" }],
+        navItems: [{ id: "roadmap", title: "Roadmap" }],
+      },
     },
     versions: {
-      "1.0.0": { capabilities: ["issues:read", "ui:project-view"] },
+      "1.0.0": {
+        capabilities: ["issues:read", "ui:project-view", "ui:nav-item"],
+      },
       // The update asks for one more: workspaces have to confirm again.
       "1.1.0": {
-        capabilities: ["issues:read", "issues:write", "ui:project-view"],
+        capabilities: [
+          "issues:read",
+          "issues:write",
+          "ui:project-view",
+          "ui:nav-item",
+        ],
       },
     },
     code: "timeline",

@@ -70,6 +70,15 @@ Der Store zeigt alle Plugins, die deine Plattform-Admins installiert haben, mit 
 
 Ein freigeschaltetes Plugin für Projekte hat in den Einstellungen jedes Projekts einen Eintrag unter **Plugins**, unterhalb der anderen Bereiche. Projekt-Admins öffnen ihn, prüfen, was es im Projekt darf, und klicken **Einschalten**. Läuft es, enthält die Seite das Formular, das das Plugin mitbringt (ein Kanalname, was gepostet wird, …), und unten das Ausschalten – Einstellungen und Daten bleiben, bis du **Daten löschen** wählst.
 
+### Wo Plugins erscheinen
+
+Ein Plugin mit eigenen Ansichten oder Seiten zeigt sie in der Seitenleiste, jeweils mit dem Zeichen des Plugins:
+
+- **Im Projekt eingeschaltet**: unter dem Projekt, neben Dashboard, Board und Aufgaben; Seiten unter der Überschrift **Plugins**.
+- **Im Workspace eingeschaltet**: Ansichten oben in der Seitenleiste, neben Dashboard und Board des Workspaces; Seiten in einem eigenen Abschnitt **Plugins**.
+
+Die Seite eines Plugins nennt unter dem Titel immer den Namen des Plugins.
+
 ### Einstellungen eines Plugins im Workspace
 
 Ein Plugin, das im Workspace läuft und Einstellungen hat, bekommt in den Workspace-Einstellungen einen Eintrag unter **Plugins** mit seinem Formular.

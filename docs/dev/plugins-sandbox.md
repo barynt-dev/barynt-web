@@ -20,6 +20,15 @@ and images from `data:` or `blob:` URLs.
 > Never put data into `innerHTML`. Titles, comments and names are text
 > people typed; use `textContent` or build the elements.
 
+## Where it shows
+
+A plugin's views and pages appear in the sidebar — under the project it's
+switched on in, or in the workspace's main group and "Plugins" section;
+see [Manifest → Where they show](plugins-manifest.md#where-they-show).
+Each opens a page with the plugin's frame under a header naming the
+plugin. Slots are a fixed list (`lib/plugins/slots.ts`); a plugin can't put
+anything anywhere else.
+
 ## How it starts
 
 1. Barynt loads the frame with your `main.js` and `styles.css` inside it.

@@ -2,6 +2,7 @@ import styles from "../../sidebar.module.scss";
 import NavGroupAdmin from "./Admin";
 import NavGroupFavorites from "./Favorites";
 import NavGroupGlobal from "./Global";
+import NavGroupPlugins from "./Plugins";
 import NavGroupProjects from "./Projects";
 import NavGroupViews from "./Views";
 import NavGroupWorkspaceDashboard from "./WorkspaceDashboard";
@@ -24,6 +25,7 @@ function NavGroup({ isAdminRoute = true }: NavGroupProps) {
           <NavGroupFavorites />
           <NavGroupProjects />
           <NavGroupViews />
+          <NavGroupPlugins />
         </>
       )}
       {isAdminRoute && <NavGroupAdmin />}

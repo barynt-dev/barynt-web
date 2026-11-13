@@ -27,7 +27,7 @@ export default async function ProjectPluginSettingsPage({
     <PluginSettings
       view={view}
       scope={scope}
-      viewsHref={projectPath(workspace, projectSlug, `plugin/${pluginId}`)}
+      viewsHref={projectPath(workspace, projectSlug, `plugin/${pluginId}/view`)}
     />
   );
 }

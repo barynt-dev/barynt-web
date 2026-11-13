@@ -4,7 +4,8 @@
 
 /** Where a plugin's frame runs. */
 export interface Context {
-  slot: { kind: "projectView"; id: string };
+  /** Which of its views or pages this frame is for. */
+  slot: { kind: "projectView" | "page"; id: string };
   workspaceId: string;
   /** `null` for a workspace's plugin. */
   projectId: string | null;
