@@ -336,6 +336,13 @@ widget a block of kind `pluginBlock` (`config.pluginId`/`pluginBlock`/`pluginCon
 (`lib/plugins/blocks.ts`) — and Barynt draws the result (`BlockDataView`); with `"plugin"` the
 frame itself. `widgetData` resolves whether it runs (`getPluginSlotView`, now with `draw`);
 `getPluginBlocks` feeds the builder through `PluginBlocksProvider`.
+**Issue panels (BARY-150).** The slot `issuePanel` (`contributes.issuePanels`,
+`ui:issue-panel`) comes with the issue: `getIssueById`/`getIssueByRef` add `pluginPanels`
+(`getPluginIssuePanels`, the project's activations, cached per request). `IssuePluginPanels`
+draws each in the stacked body, the dialog and the page; an open one is a `PluginFrame` with
+`issueId` in its context and `autoHeight` — the frame runtime measures `#root` and sends
+`resize`, which the host clamps (48–640 px).
+
 **Design tokens and the full kit (BARY-206).** `lib/plugins/tokens.ts` is the token catalog:
 each public name (`color.text.subtle`) points at a host variable or holds a fixed value;
 `tokenCss()` writes the `--barynt-*` variables into every frame and `HOST_TOKENS` (=

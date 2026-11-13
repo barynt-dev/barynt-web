@@ -108,3 +108,20 @@ describe("parseBlockData", () => {
     ).toBeNull();
   });
 });
+
+describe("a panel's height (BARY-150)", () => {
+  it("is a number the host can clamp, nothing else", () => {
+    expect(parseFrameMessage({ type: "resize", height: 212.5 })).toEqual({
+      type: "resize",
+      height: 212.5,
+    });
+    expect(parseFrameMessage({ type: "resize", height: 1e9 })).toEqual({
+      type: "resize",
+      height: 100_000,
+    });
+    expect(parseFrameMessage({ type: "resize", height: "300px" })).toBeNull();
+    expect(
+      parseFrameMessage({ type: "resize", height: Number.NaN }),
+    ).toBeNull();
+  });
+});

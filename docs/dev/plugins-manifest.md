@@ -114,6 +114,7 @@ capability, and each entry an `id` that's unique in its list.
 | `projectViews` | in the sidebar under the project, next to its Dashboard, Board and Issues | in the sidebar's main group, next to the workspace's Dashboard and Board (on a phone, whose main group is the bottom bar: in the "Plugins" section) |
 | `navItems` | in the sidebar under the project, below a "Plugins" heading | in the sidebar's own "Plugins" section |
 | `dashboardWidgets`, `widgetTemplates` | in the project's dashboard's widget gallery, under "Plugins" | in the workspace's (and its views') dashboard gallery, under "Plugins" |
+| `issuePanels` | in every issue of the project — side panel, dialog, page, phone sheet — below the attachments | — (a workspace plugin has no issue panels) |
 
 Each entry carries the plugin's mark, and its page names the plugin under
 the title, so it's always clear what comes from a plugin. `icon` isn't
@@ -124,9 +125,15 @@ in the gallery, in the sizes S, M, L, T and XL. Its frame fills the widget
 below Barynt's header. If the plugin is switched off later, the widget says
 so instead of staying empty.
 
+An issue panel is a section of its own in the issue, after the attachments,
+headed by the panel's title and the plugin's name. People can fold it; only
+an open panel has a frame, and it stays folded for them. The frame grows to
+its content's height (up to 640 px, then it scrolls), so draw what you need
+and no more. See [`registerIssuePanel()`](plugins-sdk.md#registerissuepanel).
+
 > [!NOTE]
-> Issue panels, badges and actions can be declared already; Barynt shows
-> them in a coming release.
+> Badges and actions can be declared already; Barynt shows them in a coming
+> release.
 
 ### Building blocks
 

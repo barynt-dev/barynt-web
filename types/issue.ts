@@ -214,4 +214,14 @@ export interface IssueDetail extends Issue {
    *  first — the same `AuditLog` rows the workspace/project activity log
    *  reads, filtered to this one issue (`listAudit({ targetId })`). */
   activity: AuditEntry[];
+  /** The panels plugins switched on in its project show in it (BARY-150). */
+  pluginPanels: IssuePluginPanel[];
+}
+
+/** A plugin's panel in an issue's detail — a frame of its own per panel. */
+export interface IssuePluginPanel {
+  pluginId: string;
+  pluginName: string;
+  panelId: string;
+  title: string;
 }

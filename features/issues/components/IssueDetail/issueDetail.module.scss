@@ -491,6 +491,58 @@
   color: var(--on-surface);
 }
 
+/* A plugin's panel (BARY-150): its head folds it — the plugin's mark, the
+   panel's title, which plugin it is; the frame below grows to fit. */
+.pluginPanelToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--tertiary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+.pluginPanelFrom {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--on-surface-variant);
+}
+
+.pluginPanelChevron {
+  flex: none;
+  color: var(--on-surface-variant);
+  transition: transform 0.15s;
+
+  [aria-expanded="false"] > & {
+    transform: rotate(-90deg);
+  }
+}
+
+.pluginPanelBody {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+
+  /* `display: flex` would otherwise keep a folded panel's empty frame. */
+  &[hidden] {
+    display: none;
+  }
+}
+
 /* ---------- Attribute bar ---------- */
 
 /* Type, status, priority, and assignee side by side rather than stacked:

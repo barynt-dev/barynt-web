@@ -30,6 +30,13 @@ export const SLOTS = {
     capability: "ui:dashboard-widget",
     path: null,
   },
+  /** A panel in an issue's detail — side panel, dialog, page, phone sheet
+   *  (BARY-150). Not a page of its own. */
+  issuePanel: {
+    contributes: "issuePanels",
+    capability: "ui:issue-panel",
+    path: null,
+  },
   /** A building block in a custom widget (BARY-205) — drawn there, either
    *  by Barynt from the plugin's data or in a frame of the plugin's. */
   block: {

@@ -77,9 +77,17 @@ export const isBridgeMethod = (method: unknown): method is BridgeMethod =>
  *  and the place it's in. */
 export interface FrameContext {
   slot: {
-    kind: "projectView" | "page" | "widget" | "block" | "settings";
+    kind:
+      | "projectView"
+      | "page"
+      | "widget"
+      | "block"
+      | "issuePanel"
+      | "settings";
     id: string;
   };
+  /** The issue an issue panel is about (BARY-150). */
+  issueId?: string;
   workspaceId: string;
   projectId: string | null;
   locale: string;
@@ -94,7 +102,10 @@ export type FrameMessage =
   | { type: "ready" }
   | { type: "error"; message: string }
   /** A building block's data, for Barynt to draw (BARY-205). */
-  | { type: "blockData"; data: BlockData };
+  | { type: "blockData"; data: BlockData }
+  /** How tall its content is, in CSS pixels — a panel grows to fit
+   *  (BARY-150). */
+  | { type: "resize"; height: number };
 
 /** Host → frame. */
 export type HostMessage =
@@ -138,6 +149,10 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
   if (!data || typeof data !== "object") return null;
   const m = data as Record<string, unknown>;
   if (m.type === "ready") return { type: "ready" };
+  if (m.type === "resize")
+    return typeof m.height === "number" && Number.isFinite(m.height)
+      ? { type: "resize", height: Math.max(0, Math.min(m.height, 100_000)) }
+      : null;
   if (m.type === "blockData") {
     const data = parseBlockData(m.data);
     return data ? { type: "blockData", data } : null;

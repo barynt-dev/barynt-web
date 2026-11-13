@@ -214,6 +214,32 @@ describe("plugin SDK", () => {
     expect(drawn).toEqual(["widget", "settings", "settings"]);
   });
 
+  it("draws an issue panel for its issue (BARY-150)", async () => {
+    const seen: (string | undefined)[] = [];
+    class Panel extends Plugin {
+      onload() {
+        this.registerIssuePanel({
+          id: "schedule",
+          render: (_el, { issueId }) => void seen.push(issueId),
+        });
+      }
+    }
+    await loadPlugin(
+      Panel,
+      createTestHost({
+        context: {
+          slot: { kind: "issuePanel", id: "schedule" },
+          issueId: "i7",
+        },
+      }),
+    );
+    await loadPlugin(
+      Panel,
+      createTestHost({ context: { slot: { kind: "widget", id: "schedule" } } }),
+    );
+    expect(seen).toEqual(["i7"]);
+  });
+
   it("hands a block's data to Barynt, only in its own frame (BARY-205)", async () => {
     class Blocks extends Plugin {
       onload() {

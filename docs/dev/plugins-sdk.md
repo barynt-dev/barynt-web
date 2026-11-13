@@ -131,6 +131,29 @@ The same for a page from `contributes.navItems`, opened from its entry in
 the sidebar's "Plugins" section. A view and a page may share an `id`; each
 frame is for one of them.
 
+### `registerIssuePanel()`
+
+```ts
+registerIssuePanel(panel: { id: string; render(el, context) }): void;
+```
+
+A panel in an issue's detail, from `contributes.issuePanels` — in the side
+panel, the dialog, the full page and the phone sheet. `context.issueId` is
+the issue; read it with `api.issues.get()`. The frame grows to your
+content's height on its own, so there's nothing to size.
+
+```ts
+this.registerIssuePanel({
+  id: "schedule",
+  render: async (el, { issueId }) => {
+    const issue = await this.api.issues.get(issueId!);
+    el.replaceChildren(keyValue({ items: [{ label: "Created", value: issue.created }] }));
+  },
+});
+```
+
+Opening another issue opens a new frame, with that issue's `issueId`.
+
 ### `registerWidget()`
 
 ```ts

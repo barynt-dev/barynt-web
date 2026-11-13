@@ -86,6 +86,11 @@ const DEMOS: Demo[] = [
         projectViews: [{ id: "timeline", title: "Timeline" }],
         navItems: [{ id: "roadmap", title: "Roadmap" }],
         dashboardWidgets: [{ id: "oldest-open", title: "Oldest open issues" }],
+        // In every issue: how long it's been open, how far to its due date
+        // (BARY-150).
+        issuePanels: [
+          { id: "schedule", title: "Schedule", icon: "lucide:calendar-clock" },
+        ],
         // Building blocks for custom widgets (BARY-205): two Barynt draws
         // from the plugin's data, one the plugin draws itself.
         widgetBlocks: [
@@ -123,6 +128,7 @@ const DEMOS: Demo[] = [
           "ui:project-view",
           "ui:nav-item",
           "ui:dashboard-widget",
+          "ui:issue-panel",
         ],
       },
       // The update asks for one more: workspaces have to confirm again.
@@ -133,6 +139,7 @@ const DEMOS: Demo[] = [
           "ui:project-view",
           "ui:nav-item",
           "ui:dashboard-widget",
+          "ui:issue-panel",
         ],
       },
     },
