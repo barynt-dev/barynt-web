@@ -11,6 +11,8 @@ import { searchIssuesForPalette } from "@/features/issues/actions";
 import { StatusIcon } from "@/features/issues/components/IssueIcons/IssueIcons";
 import { issuePath } from "@/features/issues/issue-links";
 import { getRecentIssueIdentifiers } from "@/features/issues/recent-issues";
+import { listIssuePluginActions } from "@/features/plugins/actions";
+import { usePluginAction } from "@/features/plugins/components/PluginActions/usePluginAction";
 import { listSwitchableViews } from "@/features/views/actions";
 import { viewIconOf } from "@/features/views/icons";
 import type { ViewEntry } from "@/features/views/queries";
@@ -225,6 +227,44 @@ export function CommandPalette({
     ),
   ];
 
+  // With an issue open (its page, or `?issue=`): the plugins' actions for
+  // it, as commands (BARY-152).
+  const runAction = usePluginAction();
+  const [pluginCommands, setPluginCommands] = useState<CommandEntry[]>([]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: asked again each time it opens, for the issue open then
+  useEffect(() => {
+    if (!open) return;
+    const ref =
+      pathname.match(/\/issue\/([^/?#]+)/)?.[1] ??
+      new URLSearchParams(window.location.search).get("issue");
+    if (!ref) {
+      setPluginCommands([]);
+      return;
+    }
+    let live = true;
+    listIssuePluginActions({ issue: ref, workspaceId }).then((found) => {
+      if (!live) return;
+      setPluginCommands(
+        (found?.actions ?? [])
+          .filter((a) => a.where.includes("commandPalette"))
+          .map((a) => ({
+            id: `plugin-${a.pluginId}-${a.actionId}`,
+            label: () => `${a.title} · ${a.pluginName}`,
+            icon: a.icon,
+            run: () =>
+              void runAction(a, {
+                issueId: found?.issueId ?? null,
+                workspaceId: found?.workspaceId ?? workspaceId,
+                projectId: found?.projectId ?? "",
+              }),
+          })),
+      );
+    });
+    return () => {
+      live = false;
+    };
+  }, [open, pathname, workspaceId]);
+
   useEffect(() => {
     if (open) {
       setQ("");
@@ -266,7 +306,7 @@ export function CommandPalette({
 
   const lq = q.toLowerCase();
 
-  const commandHits = COMMAND_ENTRIES.filter((c) =>
+  const commandHits = [...COMMAND_ENTRIES, ...pluginCommands].filter((c) =>
     c.label(t).toLowerCase().includes(lq),
   );
   const navHits = NAV_ENTRIES.filter((e) =>

@@ -133,6 +133,7 @@ const { callBridge, getPluginFrame, getPluginSlotView } = await import(
 const { parseWidgets } = await import("@/features/dashboard/widgets");
 const {
   getPluginBadgeProviders,
+  getPluginIssueActions,
   getPluginBlocks,
   getPluginIssuePanels,
   getPluginNav,
@@ -986,6 +987,75 @@ describe("badges (BARY-151)", () => {
     });
     expect(
       await getPluginFrame("u1", place, { kind: "badges", id: "badges" }),
+    ).toBeNull();
+  });
+});
+
+describe("actions (BARY-152)", () => {
+  const withActions = {
+    ...manifest,
+    capabilities: [...manifest.capabilities, "ui:action"],
+    contributes: {
+      ...manifest.contributes,
+      actions: [
+        { id: "rerun", title: "Re-run", icon: "lucide:rocket" },
+        {
+          id: "close",
+          title: "Close",
+          icon: "mdi:close",
+          where: ["issueMenu"],
+          confirm: "Sure?",
+          danger: true,
+        },
+      ],
+    },
+  };
+
+  it("offers a project's actions with ui:action confirmed", async () => {
+    db.pluginActivation.findMany.mockResolvedValue([
+      { pluginId: "timeline", capabilities: ["ui:action"] },
+    ]);
+    db.plugin.findMany.mockResolvedValue([
+      { pluginId: "timeline", manifest: withActions },
+    ]);
+    const list = await getPluginIssueActions({
+      workspaceId: "ws1",
+      projectId: "p-actions",
+    });
+    expect(list.map((a) => [a.actionId, a.icon, a.where, a.confirm])).toEqual([
+      ["close", "lucide:puzzle", ["issueMenu"], "Sure?"],
+      [
+        "rerun",
+        "lucide:rocket",
+        ["issueMenu", "cardMenu", "commandPalette"],
+        null,
+      ],
+    ]);
+  });
+
+  it("serves the actions frame only with the capability", async () => {
+    db.pluginFile.findMany.mockResolvedValue([
+      { name: "main.js", content: new TextEncoder().encode("x") },
+    ]);
+    db.plugin.findFirst.mockResolvedValue({
+      id: "row1",
+      manifest: withActions,
+    });
+    db.pluginActivation.findUnique.mockResolvedValue({
+      id: "act1",
+      enabled: true,
+      capabilities: ["ui:action"],
+    });
+    expect(
+      await getPluginFrame("u1", place, { kind: "actions", id: "actions" }),
+    ).not.toBeNull();
+    db.pluginActivation.findUnique.mockResolvedValue({
+      id: "act1",
+      enabled: true,
+      capabilities: [],
+    });
+    expect(
+      await getPluginFrame("u1", place, { kind: "actions", id: "actions" }),
     ).toBeNull();
   });
 });

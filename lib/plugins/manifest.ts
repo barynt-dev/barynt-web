@@ -74,6 +74,18 @@ const icon = z
 
 const entry = z.strictObject({ id: localId, title, icon: icon.optional() });
 
+/** An action (BARY-152): where it shows — every place by default — and,
+ *  for one that can't be undone, the question Barynt asks first. */
+const actionEntry = entry.extend({
+  where: z
+    .array(z.enum(["issueMenu", "cardMenu", "commandPalette"]))
+    .min(1)
+    .max(3)
+    .optional(),
+  confirm: z.string().trim().min(1).max(120).optional(),
+  danger: z.boolean().optional(),
+});
+
 /** An issue panel: in the issue's main column (default), or a section of
  *  the sidebar next to its fields (BARY-209). */
 const panelEntry = entry.extend({
@@ -184,7 +196,7 @@ const contributesSchema = z.strictObject({
   widgetBlocks: z.array(blockSchema).max(10).optional(),
   issuePanels: z.array(panelEntry).max(5).optional(),
   issueBadges: z.array(entry).max(5).optional(),
-  actions: z.array(entry).max(20).optional(),
+  actions: z.array(actionEntry).max(20).optional(),
   fields: z.array(fieldSchema).max(20).optional(),
   settings: z.array(settingSchema).max(30).optional(),
   credentials: z.array(credentialSchema).max(10).optional(),

@@ -413,6 +413,12 @@ export function IssueDetailView({
                     }
                   : undefined
               }
+              plugins={{
+                actions: issue.pluginActions,
+                issueId: issue.id,
+                workspaceId: data.workspaceId,
+                projectId: issue.project,
+              }}
             />
           </>
         }

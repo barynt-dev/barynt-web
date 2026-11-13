@@ -2,7 +2,7 @@
 
 import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/ui/atoms/Avatar/Avatar";
 import { Input } from "@/components/ui/atoms/Input/Input";
 import { SheetHeader } from "@/components/ui/layout/Modal/components/SheetHeader";
@@ -10,6 +10,8 @@ import { Modal, ModalBody } from "@/components/ui/layout/Modal/Modal";
 import { GroupIcon } from "@/features/issues/components/GroupIcon/GroupIcon";
 import type { GroupDef } from "@/features/issues/group";
 import { useIssuePatch } from "@/features/issues/useIssuePatch";
+import { listIssuePluginActions } from "@/features/plugins/actions";
+import { usePluginAction } from "@/features/plugins/components/PluginActions/usePluginAction";
 import { fullName } from "@/lib/utils/string";
 import { PHONE_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
 import { useSwipeToClose } from "@/lib/utils/useSwipeToClose";
@@ -54,6 +56,23 @@ export function CardQuickActions({
   const { patch } = useIssuePatch(issue.id);
   const [view, setView] = useState<"main" | "assignee">("main");
   const [query, setQuery] = useState("");
+  // Plugins' actions for it (BARY-152), asked for once the sheet is open.
+  const [plugins, setPlugins] = useState<Awaited<
+    ReturnType<typeof listIssuePluginActions>
+  > | null>(null);
+  useEffect(() => {
+    let live = true;
+    listIssuePluginActions({ issue: issue.id }).then((found) => {
+      if (live) setPlugins(found);
+    });
+    return () => {
+      live = false;
+    };
+  }, [issue.id]);
+  const runAction = usePluginAction();
+  const pluginActions = (plugins?.actions ?? []).filter((a) =>
+    a.where.includes("cardMenu"),
+  );
   // A phone has no tabs to speak of: "open in new tab" is for a tablet.
   const isPhone = useMediaQuery(PHONE_QUERY);
 
@@ -113,6 +132,26 @@ export function CardQuickActions({
                 onClick={() => setView("assignee")}
                 chevron
               />
+            )}
+
+            {plugins && pluginActions.length > 0 && (
+              <>
+                <p className={styles.section}>{t("plugins.actionsTitle")}</p>
+                {pluginActions.map((action) => (
+                  <Row
+                    key={`${action.pluginId}:${action.actionId}`}
+                    icon={action.icon}
+                    label={action.title}
+                    onClick={act(() =>
+                      runAction(action, {
+                        issueId: plugins.issueId,
+                        workspaceId: plugins.workspaceId,
+                        projectId: plugins.projectId,
+                      }),
+                    )}
+                  />
+                ))}
+              </>
             )}
 
             {issue.access.canEdit && moveTargets && onMoveTo && (

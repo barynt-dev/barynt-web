@@ -63,6 +63,9 @@ export function PluginFrame({
   autoHeight,
   badgeRequest,
   onBadges,
+  actionRequest,
+  onActionDone,
+  onError,
 }: {
   pluginId: string;
   /** The plugin's name — the frame's title, and in its error. */
@@ -81,6 +84,16 @@ export function PluginFrame({
   badgeRequest?: { seq: number; issues: BadgeIssue[] } | null;
   /** Its answer, unchecked — the caller knows what it asked. */
   onBadges?: (seq: number, badges: unknown) => void;
+  /** One of its actions to run, once it's ready (BARY-152). */
+  actionRequest?: {
+    seq: number;
+    actionId: string;
+    issueId: string | null;
+  } | null;
+  /** How it went: its answer (unchecked), or the error. */
+  onActionDone?: (seq: number, ok: boolean, result: unknown) => void;
+  /** It threw, or didn't start in time — besides showing so. */
+  onError?: (message: string) => void;
 }) {
   const t = useTranslations("plugins");
   const frame = useRef<HTMLIFrameElement>(null);
@@ -88,8 +101,8 @@ export function PluginFrame({
   const [height, setHeight] = useState<number | null>(null);
   // The latest callbacks: the channel lives as long as the frame, the
   // callbacks change with every render of the caller.
-  const callbacks = useRef({ onBlockData, onBadges });
-  callbacks.current = { onBlockData, onBadges };
+  const callbacks = useRef({ onBlockData, onBadges, onActionDone, onError });
+  callbacks.current = { onBlockData, onBadges, onActionDone, onError };
   // Sends to the frame's channel — set while one is open.
   const send = useRef<((message: HostMessage) => void) | null>(null);
   // A new frame on "Load again".
@@ -178,10 +191,17 @@ export function PluginFrame({
         } else if (message.type === "error") {
           window.clearTimeout(readyTimer);
           setState({ status: "error", message: message.message });
+          callbacks.current.onError?.(message.message);
         } else if (message.type === "blockData") {
           callbacks.current.onBlockData?.(message.data);
         } else if (message.type === "resize") {
           setHeight(message.height);
+        } else if (message.type === "actionDone") {
+          callbacks.current.onActionDone?.(
+            message.seq,
+            message.ok,
+            message.result,
+          );
         } else if (message.type === "badges") {
           callbacks.current.onBadges?.(message.seq, message.badges);
         } else {
@@ -227,6 +247,12 @@ export function PluginFrame({
       send.current = null;
     };
   }, [attempt, src]);
+
+  // An action to run, once it listens (BARY-152).
+  useEffect(() => {
+    if (state.status === "ready" && actionRequest)
+      send.current?.({ type: "action:run", ...actionRequest });
+  }, [state.status, actionRequest]);
 
   // The issues to put badges on, once it listens — and again when they
   // change (BARY-151).

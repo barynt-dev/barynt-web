@@ -131,6 +131,38 @@ The same for a page from `contributes.navItems`, opened from its entry in
 the sidebar's "Plugins" section. A view and a page may share an `id`; each
 frame is for one of them.
 
+### `registerAction()`
+
+```ts
+registerAction(action: { id: string; run(context: { issueId }): ActionResult | void }): void;
+```
+
+An action from `contributes.actions`. When someone picks it, Barynt starts
+a hidden frame of your plugin, runs `run` for the issue (`issueId`) and
+shows what you return; the frame goes away again. It has 20 seconds.
+
+```ts
+this.registerAction({
+  id: "comment-state",
+  run: async ({ issueId }) => {
+    const issue = await this.api.issues.get(issueId!);
+    await this.api.comments.create(issue.id, `**Pipeline:** ${state(issue)}`);
+    return { message: "Comment posted", tone: "success", refresh: true };
+  },
+});
+```
+
+| `ActionResult` | |
+| --- | --- |
+| `message` | a toast, up to 120 characters; without one Barynt says the action ran |
+| `tone` | `neutral`, `primary`, `info`, `success`, `warning`, `danger` |
+| `refresh` | load the page's data again — you changed something |
+| `openPanel` | open this one of your `issuePanels` in the issue |
+
+What `run` throws shows as the plugin's error in a toast. In tests,
+`createTestHost({ context: { slot: { kind: "actions", id: "actions" } } })`
+and `host.runAction(id, { issueId })` run it as a menu would.
+
 ### `registerBadges()`
 
 ```ts

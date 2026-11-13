@@ -343,6 +343,14 @@ draws each in the stacked body, the dialog and the page; an open one is a `Plugi
 `issueId` in its context and `autoHeight` — the frame runtime measures `#root` and sends
 `resize`, which the host clamps (48–640 px).
 
+**Actions (BARY-152).** `contributes.actions` (`ui:action`) come with the issue
+(`pluginActions`, `getPluginIssueActions`) for its "…" menu; a card's quick actions and the
+palette (with an issue open) ask `listIssuePluginActions`. Picking one goes through
+`usePluginAction` (the manifest's `confirm` first) into `startPluginAction`; `PluginActionRunner`
+in the app shell runs it in a hidden `PluginFrame` (slot `actions`): `action:run` → `actionDone`
+over the frame's channel, checked by `parseActionResult` (`lib/plugins/plugin-actions.ts`),
+then a toast, `router.refresh()` or the panel (`barynt:focus-panel`). 20 s at most.
+
 **Sidebar panels (BARY-209).** `issuePanels[].placement` (`main` default, `sidebar`) comes
 along in `pluginPanels`; `IssuePluginPanels placement=…` draws the main ones after the
 attachments and the sidebar ones in `IssueSidebar` after the custom fields (in the stacked

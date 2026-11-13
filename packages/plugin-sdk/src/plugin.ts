@@ -1,5 +1,6 @@
 import { type Api, createApi } from "./api";
 import type {
+  ActionResult,
   Badge,
   BadgeIssue,
   BlockData,
@@ -71,10 +72,18 @@ export abstract class Plugin {
 
   readonly #show: Host["show"];
   readonly #serveBadges: Host["serveBadges"];
+  readonly #serveActions: Host["serveActions"];
+  readonly #actions = new Map<
+    string,
+    (context: {
+      issueId: string | null;
+    }) => ActionResult | undefined | Promise<ActionResult | undefined>
+  >();
 
   constructor(host: Host) {
     this.#show = host.show;
     this.#serveBadges = host.serveBadges;
+    this.#serveActions = host.serveActions;
     this.api = createApi(host);
     this.context = host.context;
     this.root = host.root;
@@ -129,6 +138,29 @@ export abstract class Plugin {
    */
   registerIssuePanel(panel: ProjectView): void {
     this.#renderSlot("issuePanel", panel);
+  }
+
+  /**
+   * An action from the manifest's `contributes.actions` — in an issue's
+   * "…" menu, a card's quick actions and the command palette (as the
+   * manifest's `where` says). Barynt runs it in a hidden frame when someone
+   * picks it, for that issue (`issueId`); what you return shows as a toast.
+   * Do the work through `this.api` — it's checked like everything else.
+   */
+  registerAction(action: {
+    id: string;
+    run(context: {
+      issueId: string | null;
+    }): ActionResult | undefined | Promise<ActionResult | undefined>;
+  }): void {
+    if (this.context.slot.kind !== "actions") return;
+    if (this.#actions.size === 0)
+      this.#serveActions?.((id, context) => {
+        const run = this.#actions.get(id);
+        if (!run) throw new Error(`No action "${id}"`);
+        return run(context);
+      });
+    this.#actions.set(action.id, (context) => action.run(context));
   }
 
   /**

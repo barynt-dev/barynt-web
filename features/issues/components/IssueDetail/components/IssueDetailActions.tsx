@@ -10,8 +10,10 @@ import {
   issuePath,
   useIssueOpen,
 } from "@/features/issues/issue-links";
+import { usePluginAction } from "@/features/plugins/components/PluginActions/usePluginAction";
 import { Link } from "@/i18n/navigation";
 import { useModal } from "@/lib/context";
+import type { PluginActionEntry } from "@/lib/plugins/plugin-actions";
 import type { User } from "@/types";
 import styles from "../issueDetail.module.scss";
 import { ShareIssueModal } from "./ShareIssueModal";
@@ -76,6 +78,13 @@ interface IssueActionsMenuProps {
    * then doesn't exist at all.
    */
   share?: ShareOptions;
+  /** Plugins' actions for this issue (BARY-152), after Barynt's own. */
+  plugins?: {
+    actions: PluginActionEntry[];
+    issueId: string;
+    workspaceId: string;
+    projectId: string;
+  };
 }
 
 /**
@@ -93,11 +102,16 @@ export function IssueActionsMenu({
   onDelete,
   canDelete,
   share,
+  plugins,
 }: IssueActionsMenuProps) {
   const t = useTranslations();
   const { openModal } = useModal();
+  const runAction = usePluginAction();
+  const pluginActions = (plugins?.actions ?? []).filter((a) =>
+    a.where.includes("issueMenu"),
+  );
 
-  if (!canDelete && !share) return null;
+  if (!canDelete && !share && pluginActions.length === 0) return null;
 
   const items = [
     ...(share
@@ -118,6 +132,12 @@ export function IssueActionsMenu({
           },
         ]
       : []),
+    ...pluginActions.map((a) => ({
+      value: `plugin:${a.pluginId}:${a.actionId}`,
+      label: a.title,
+      hint: a.pluginName,
+      icon: <Icon icon={a.icon} width={15} />,
+    })),
   ];
 
   const openShare = () => {
@@ -155,6 +175,17 @@ export function IssueActionsMenu({
             close();
             if (value === "share") openShare();
             else if (value === "delete") onDelete();
+            else if (plugins) {
+              const action = pluginActions.find(
+                (a) => `plugin:${a.pluginId}:${a.actionId}` === value,
+              );
+              if (action)
+                void runAction(action, {
+                  issueId: plugins.issueId,
+                  workspaceId: plugins.workspaceId,
+                  projectId: plugins.projectId,
+                });
+            }
           }}
           onClose={close}
         />

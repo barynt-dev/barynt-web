@@ -13,6 +13,7 @@ export interface Context {
       | "block"
       | "issuePanel"
       | "badges"
+      | "actions"
       | "settings";
     id: string;
   };
@@ -190,6 +191,17 @@ export interface Badge {
   panel?: string;
 }
 
+/** What an action answers — all of it optional. */
+export interface ActionResult {
+  /** Shown as a toast, up to 120 characters. */
+  message?: string;
+  tone?: BadgeTone;
+  /** Load the page's data again — the action changed something. */
+  refresh?: boolean;
+  /** Open this one of your issue panels in the issue. */
+  openPanel?: string;
+}
+
 /** The object Barynt hands a plugin's default export. */
 export interface Host {
   call(method: string, params?: unknown): Promise<unknown>;
@@ -197,6 +209,13 @@ export interface Host {
   readonly root: HTMLElement;
   /** Hands a building block's data to Barynt to draw. */
   show?(data: BlockData): void;
+  /** What runs its actions. */
+  serveActions?(
+    handler: (
+      actionId: string,
+      context: { issueId: string | null },
+    ) => ActionResult | undefined | Promise<ActionResult | undefined>,
+  ): void;
   /** What answers a board's batches of issues with badges. */
   serveBadges?(
     handler: (

@@ -99,7 +99,7 @@ capability, and each entry an `id` that's unique in its list.
 | `widgetBlocks` | [building blocks](#building-blocks), up to 10 | `ui:dashboard-widget` | sandbox |
 | `issuePanels` | `{ id, title, icon? }`, up to 5 | `ui:issue-panel` | sandbox |
 | `issueBadges` | `{ id, title, icon? }`, up to 5 | `ui:issue-badge` | sandbox, declarative |
-| `actions` | `{ id, title, icon? }`, up to 20 | `ui:action` | sandbox |
+| `actions` | `{ id, title, icon?, where?, confirm?, danger? }`, up to 20 — see [Actions](#actions) | `ui:action` | sandbox |
 | `fields` | custom fields, up to 20 | `fields:write` | all |
 | `settings` | settings, up to 30 | — | all |
 | `credentials` | credentials, up to 10 | a host in `network` | sandbox |
@@ -155,8 +155,31 @@ icons only from a fixed set. Each entry in `issueBadges` is one switch in
 [`registerBadges()`](plugins-sdk.md#registerbadges). Only a `sandbox`
 plugin fills badges for now.
 
-> [!NOTE]
-> Actions can be declared already; Barynt shows them in a coming release.
+### Actions
+
+An action is an entry people pick for an issue: in its **"…" menu**, in a
+**card's quick actions** (a long press on a phone or tablet) and in the
+**command palette** while an issue is open. Barynt runs it in the plugin's
+hidden frame and shows what it answers as a toast.
+
+```json
+"actions": [
+  { "id": "rerun", "title": "Re-run pipeline", "icon": "lucide:rocket" },
+  { "id": "close-mr", "title": "Close merge request", "icon": "lucide:circle-x",
+    "where": ["issueMenu"], "confirm": "It's closed in GitLab; the issue stays.", "danger": true }
+]
+```
+
+| Field | |
+| --- | --- |
+| `where` | `issueMenu`, `cardMenu`, `commandPalette` — every place by default |
+| `confirm` | up to 120 characters: Barynt asks this first, and runs the action only on yes |
+| `danger` | the question's button is red |
+| `icon` | one of the badge icons (`lucide:rocket`, `lucide:git-pull-request` …); any other shows the puzzle |
+
+What the action does, it does through the [host API](plugins-host-api.md)
+— with the capabilities that were confirmed, and in the audit log like
+everything a plugin does. See [`registerAction()`](plugins-sdk.md#registeraction).
 
 ### Building blocks
 

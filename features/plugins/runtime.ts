@@ -118,6 +118,20 @@ function slotEntry(plugin: RunningPlugin, slot: FrameContext["slot"]) {
           icon: null,
         }
       : null;
+  // Its actions (BARY-152): one frame, out of sight, while one runs — with
+  // `ui:action` confirmed and at least one action declared.
+  if (slot.kind === "actions")
+    return plugin.manifest.kind === "sandbox" &&
+      slot.id === "actions" &&
+      (plugin.manifest.contributes.actions ?? []).length > 0 &&
+      plugin.capabilities.includes("ui:action")
+      ? {
+          kind: slot.kind,
+          id: slot.id,
+          title: plugin.manifest.name,
+          icon: null,
+        }
+      : null;
   if (slot.kind === "settings")
     return plugin.manifest.kind === "sandbox" &&
       plugin.manifest.contributes.settingsPage &&

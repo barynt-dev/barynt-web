@@ -85,6 +85,7 @@ export interface FrameContext {
       | "block"
       | "issuePanel"
       | "badges"
+      | "actions"
       | "settings";
     id: string;
   };
@@ -110,7 +111,9 @@ export type FrameMessage =
   | { type: "resize"; height: number }
   /** Its answer to a batch of issues: chips by issue id, checked by the
    *  host (`parseBadges`, BARY-151). */
-  | { type: "badges"; seq: number; badges: unknown };
+  | { type: "badges"; seq: number; badges: unknown }
+  /** How an action went (BARY-152): its answer, or the error it threw. */
+  | { type: "actionDone"; seq: number; ok: boolean; result: unknown };
 
 /** Host → frame. */
 export type HostMessage =
@@ -118,7 +121,14 @@ export type HostMessage =
   | { type: "result"; id: number; ok: false; error: string }
   | { type: "theme"; theme: Record<string, string> }
   /** A batch of issues to put badges on (BARY-151). */
-  | { type: "badges:request"; seq: number; issues: BadgeIssue[] };
+  | { type: "badges:request"; seq: number; issues: BadgeIssue[] }
+  /** Run one of its actions, for an issue (BARY-152). */
+  | {
+      type: "action:run";
+      seq: number;
+      actionId: string;
+      issueId: string | null;
+    };
 
 /** The first message, posted to the frame's window with the channel's port. */
 export interface InitMessage {
@@ -156,6 +166,16 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
   if (!data || typeof data !== "object") return null;
   const m = data as Record<string, unknown>;
   if (m.type === "ready") return { type: "ready" };
+  if (m.type === "actionDone")
+    return Number.isSafeInteger(m.seq)
+      ? {
+          type: "actionDone",
+          seq: m.seq as number,
+          ok: m.ok === true,
+          result:
+            m.ok === true ? m.result : String(m.result ?? "").slice(0, 300),
+        }
+      : null;
   if (m.type === "badges")
     return Number.isSafeInteger(m.seq)
       ? { type: "badges", seq: m.seq as number, badges: m.badges }
