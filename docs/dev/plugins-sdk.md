@@ -111,6 +111,16 @@ when this frame is for `id`, and never otherwise — so register all your
 views in `onload()` and let the SDK pick. `render` may be `async` and may
 return a function that undoes what it did; it runs on unload.
 
+### `whenRendered()`
+
+```ts
+whenRendered(): Promise<void>;
+```
+
+Resolves once every view registered so far has rendered, and rejects with
+the first error a `render` threw. `loadPlugin` in tests waits for it, so a
+test sees the finished view; you rarely call it yourself.
+
 ### `register()`
 
 ```ts
