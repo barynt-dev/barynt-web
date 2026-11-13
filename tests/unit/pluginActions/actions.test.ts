@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+} from "bun:test";
 
 // The plugin lifecycle's server actions (BARY-142), with the database, the
 // permission check, the audit log and the directory client mocked away. Own
@@ -40,6 +48,16 @@ mock.module("@/lib/db", () => ({
     ),
   },
 }));
+
+// `sealSecret` needs an AUTH_SECRET; CI has none, a local .env might have
+// one. A fixed one for this file, the one before restored after.
+const savedSecret = process.env.AUTH_SECRET;
+beforeAll(() => {
+  process.env.AUTH_SECRET = "test-secret-with-at-least-32-characters!";
+});
+afterAll(() => {
+  process.env.AUTH_SECRET = savedSecret;
+});
 
 class PermissionError extends Error {}
 mock.module("@/lib/permissions", () => ({

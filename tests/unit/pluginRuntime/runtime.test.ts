@@ -1,8 +1,26 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+} from "bun:test";
 
 // The server side of a sandboxed plugin (BARY-144): where it runs, and what
 // a request over the host bridge may do. Database, permissions and the API
 // queries mocked away. Own process: it replaces `@/lib/permissions`.
+
+// `sealSecret` needs an AUTH_SECRET; CI has none, a local .env might have
+// one. A fixed one for this file, the one before restored after.
+const savedSecret = process.env.AUTH_SECRET;
+beforeAll(() => {
+  process.env.AUTH_SECRET = "test-secret-with-at-least-32-characters!";
+});
+afterAll(() => {
+  process.env.AUTH_SECRET = savedSecret;
+});
 
 const db = {
   project: { findUnique: mock() },
