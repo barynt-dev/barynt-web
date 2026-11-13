@@ -22,6 +22,7 @@ import type {
 } from "@/features/plugins/queries";
 import { Link } from "@/i18n/navigation";
 import { pluginStorePath } from "@/lib/nav";
+import { PluginCredentials } from "../PluginCredentials/PluginCredentials";
 import { CapabilityCards } from "../PluginStore/capabilities";
 import { PluginTile } from "../PluginStore/PluginTile";
 import shared from "../plugins.module.scss";
@@ -259,9 +260,18 @@ export function PluginSettings({
             </div>
           </form>
         )}
-        {running && view.fields.length === 0 && (
-          <p className={styles.empty}>{text.t("noSettings")}</p>
+        {running && (
+          <PluginCredentials
+            pluginId={plugin.pluginId}
+            credentials={view.credentials}
+            scope={scope}
+          />
         )}
+        {running &&
+          view.fields.length === 0 &&
+          view.credentials.length === 0 && (
+            <p className={styles.empty}>{text.t("noSettings")}</p>
+          )}
 
         {running && inProject && (
           <section className={styles.danger} aria-labelledby="plugin-off">

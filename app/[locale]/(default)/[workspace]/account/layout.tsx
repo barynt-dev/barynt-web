@@ -96,6 +96,8 @@ export default async function AccountLayout({
     projectAccess,
   });
 
+  const nav = await accountNav(t, workspace);
+
   return (
     <div className={styles.shell}>
       <SettingsSearchProvider
@@ -119,7 +121,12 @@ export default async function AccountLayout({
           <SettingsNav
             subject={t("nav.account")}
             title={t("nav.settings")}
-            items={accountNav(t, workspace).items}
+            items={nav.items}
+            groups={
+              nav.plugins.length > 0
+                ? [{ title: t("nav.plugins"), items: nav.plugins }]
+                : undefined
+            }
           />
           <div className={styles.panel} data-settings-panel>
             {children}

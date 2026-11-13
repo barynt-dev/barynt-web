@@ -30,6 +30,7 @@ mock.module("@/lib/db", () => ({
       findUnique: mock(),
     },
     pluginSettings: { upsert: mock() },
+    pluginCredential: { upsert: mock(), deleteMany: mock() },
     pluginGrant: { findUnique: mock(), upsert: mock(), deleteMany: mock() },
     project: { findUnique: mock() },
     $transaction: mock(async (arg: unknown) =>
@@ -44,6 +45,7 @@ class PermissionError extends Error {}
 mock.module("@/lib/permissions", () => ({
   PLATFORM: { scope: "platform" },
   requirePermission: mock(async () => "admin-1"),
+  currentUserId: mock(async () => "person-1"),
   PermissionError,
 }));
 mock.module("@/lib/audit", () => ({ recordAudit: mock(async () => {}) }));
@@ -62,7 +64,9 @@ import {
   deactivatePlugin,
   installPlugin,
   previewRelease,
+  removePluginCredential,
   rollbackPlugin,
+  savePluginCredential,
   savePluginSettings,
   setPluginBlocked,
   setPluginGrant,
@@ -80,6 +84,7 @@ const source = db.pluginSource as unknown as Record<string, M>;
 const activation = db.pluginActivation as unknown as Record<string, M>;
 const settingsRow = db.pluginSettings as unknown as Record<string, M>;
 const grant = db.pluginGrant as unknown as Record<string, M>;
+const credential = db.pluginCredential as unknown as Record<string, M>;
 const project = db.project.findUnique as unknown as M;
 const perm = requirePermission as unknown as M;
 const audit = recordAudit as unknown as M;
@@ -117,6 +122,7 @@ beforeEach(() => {
     activation,
     grant,
     settingsRow,
+    credential,
     tx.plugin,
   ])
     for (const fn of Object.values(group)) (fn as M).mockReset();
@@ -556,6 +562,95 @@ describe("settings (BARY-201)", () => {
       }),
     ).toEqual({ error: "not_activated" });
     expect(settingsRow.upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("credentials (BARY-147)", () => {
+  const withCredentials = {
+    ...manifest,
+    network: ["gitlab.example.com"],
+    contributes: {
+      ...manifest.contributes,
+      credentials: [
+        {
+          key: "token",
+          label: "Token",
+          level: "user",
+          host: "gitlab.example.com",
+        },
+        {
+          key: "shared",
+          label: "Shared",
+          level: "project",
+          host: "gitlab.example.com",
+        },
+      ],
+    },
+  };
+  const ids = { pluginId: "gantt-timeline", workspaceId: "ws-1" };
+
+  it("keeps a person's own credential sealed, without asking for a permission", async () => {
+    plugin.findFirst.mockResolvedValue({ manifest: withCredentials });
+    const result = await savePluginCredential({
+      ...ids,
+      key: "token",
+      value: "  glpat-1  ",
+    });
+    expect(result).toEqual({ ok: true });
+    const upsert = credential.upsert.mock.calls[0]?.[0] as {
+      where: { pluginId_scopeKey_key: { scopeKey: string } };
+      create: { valueCipher: string };
+    };
+    expect(upsert.where.pluginId_scopeKey_key.scopeKey).toBe("us:person-1");
+    // Sealed, never the plain value.
+    expect(upsert.create.valueCipher).not.toContain("glpat-1");
+    expect(perm).not.toHaveBeenCalled();
+    expect(audit).not.toHaveBeenCalled();
+  });
+
+  it("keeps a project's credential for plugin.enable in the project, and logs which", async () => {
+    plugin.findFirst.mockResolvedValue({ manifest: withCredentials });
+    project.mockResolvedValue({ workspaceId: "ws-1" });
+    await savePluginCredential({
+      ...ids,
+      projectId: "p-1",
+      key: "shared",
+      value: "x",
+    });
+    expect(perm.mock.calls[0]).toEqual(["plugin.enable", { projectId: "p-1" }]);
+    expect(credential.upsert.mock.calls[0]?.[0]).toMatchObject({
+      create: { scopeKey: "pr:p-1" },
+    });
+    expect(audit.mock.calls[0]?.[0]).toMatchObject({
+      action: "plugin.credential.set",
+      meta: { key: "shared" },
+    });
+    expect(JSON.stringify(audit.mock.calls[0]?.[0])).not.toContain('"x"');
+  });
+
+  it("refuses a credential the plugin doesn't declare, or an empty value", async () => {
+    plugin.findFirst.mockResolvedValue({ manifest: withCredentials });
+    expect(
+      await savePluginCredential({ ...ids, key: "other", value: "x" }),
+    ).toEqual({ error: "not_found" });
+    expect(
+      await savePluginCredential({ ...ids, key: "token", value: "   " }),
+    ).toEqual({ error: "invalid_setting" });
+    expect(credential.upsert).not.toHaveBeenCalled();
+  });
+
+  it("removes one", async () => {
+    plugin.findFirst.mockResolvedValue({ manifest: withCredentials });
+    expect(await removePluginCredential({ ...ids, key: "token" })).toEqual({
+      ok: true,
+    });
+    expect(credential.deleteMany.mock.calls[0]?.[0]).toEqual({
+      where: {
+        pluginId: "gantt-timeline",
+        scopeKey: "us:person-1",
+        key: "token",
+      },
+    });
   });
 });
 

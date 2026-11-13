@@ -298,6 +298,20 @@ host, its typed API (`METHODS` — `tests/unit/plugins/sdk.test.ts` keeps it equ
 `BRIDGE_METHODS`) and a test host. The app resolves it through `tsconfig.json`'s `paths`;
 `bun run --cwd packages/plugin-sdk build` writes `dist/` with types. For plugin authors: [Building plugins](plugins.md).
 
+**The host proxy (BARY-147).** `net.fetch` sends a sandboxed plugin's request to one of the
+manifest's `network` hosts (`features/plugins/proxy.ts`, rules in `lib/plugins/proxy.ts`):
+https only, the host resolved and refused when any address is private (unless it's in
+`PLUGIN_INTERNAL_HOSTS`), and then `node:https` with a `lookup` that returns exactly the
+checked address — so DNS rebinding can't redirect it. No redirects are followed, the
+request and response headers are allow-listed, 10 s and 2 MB. Credentials
+(`contributes.credentials`) are kept in `PluginCredential`, sealed with `sealSecret`
+(purpose `plugin-credential`), keyed by `scopeKey` `ws:`, `pr:` or `us:<userId>` per their
+`level`; the proxy opens and adds them for the request's host and refuses with
+`credential_missing` without one. They're kept and removed with `savePluginCredential` /
+`removePluginCredential` (a person's own without a permission, a workspace's or project's
+with `plugin.enable` there and an audit entry), and deleting a plugin's data in a place
+deletes its credentials there too.
+
 ## Smaller pieces
 
 | Piece | File | What it does |

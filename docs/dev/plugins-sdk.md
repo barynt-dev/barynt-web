@@ -175,6 +175,7 @@ method returns a `Promise` and rejects with a [`BaryntError`](#errors).
 | `api.storage.delete(key)` | `storage.delete` |
 | `api.storage.list()` | `storage.list` |
 | `api.settings.get()` | `settings.get` (what `loadSettings()` uses) |
+| `api.net.fetch(url, init?)` | `net.fetch`: a request to one of the manifest's hosts; returns a `NetResponse` with `status`, `ok`, `headers`, `text`, `base64` and `json()` |
 
 ```ts
 const issue = await this.api.issues.create({ title: "Follow up", priority: 2 });
@@ -205,7 +206,7 @@ the plugin's error in Barynt.
 ## Types
 
 The SDK exports the types of everything it hands you: `Issue`, `Comment`,
-`Label`, `Project`, `Member`, `CustomField`, `IssueInput`, `Context`,
+`Label`, `Project`, `Member`, `CustomField`, `IssueInput`, `NetResponse`, `Context`,
 `Json`, `ErrorCode`, and `Methods` — each Host API method's params and
 result.
 

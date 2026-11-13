@@ -238,3 +238,69 @@ describe("semver", () => {
     expect(() => compareSemver("x", "1.0.0")).toThrow();
   });
 });
+
+describe("credentials (BARY-147)", () => {
+  const withCredential = (credential: Record<string, unknown>, extra = {}) => ({
+    ...base,
+    network: ["gitlab.example.com"],
+    ...extra,
+    contributes: {
+      ...base.contributes,
+      credentials: [
+        {
+          key: "token",
+          label: "Access token",
+          level: "user",
+          host: "gitlab.example.com",
+          ...credential,
+        },
+      ],
+    },
+  });
+
+  it("accepts one for a host in network, with Bearer as the default", () => {
+    const r = validateManifest(withCredential({}));
+    expect(r.ok).toBe(true);
+    if (r.ok)
+      expect(r.manifest.contributes.credentials?.[0]).toMatchObject({
+        header: "Authorization",
+        format: "Bearer {value}",
+      });
+  });
+
+  it("needs its host in network", () => {
+    expect(errors(withCredential({ host: "other.example.com" }))).toContain(
+      "contributes.credentials.0.host: the host must be in network",
+    );
+  });
+
+  it("keeps a workspace's or project's credential to the plugin's levels", () => {
+    expect(errors(withCredential({ level: "workspace" }))).toContain(
+      "contributes.credentials.0.level: the plugin has no workspace level",
+    );
+    expect(errors(withCredential({ level: "project" }))).toEqual([]);
+  });
+
+  it("needs {value} in its format, and no header Barynt sets itself", () => {
+    expect(errors(withCredential({ format: "Bearer token" })).join()).toContain(
+      "{value}",
+    );
+    expect(errors(withCredential({ header: "Cookie" }))).toContain(
+      "contributes.credentials.0.header: Barynt sets this header itself",
+    );
+  });
+
+  it("is for code only: a service has its own server", () => {
+    expect(
+      errors({
+        ...withCredential({}),
+        kind: "service",
+        contributes: {
+          credentials: withCredential({}).contributes.credentials,
+        },
+      }),
+    ).toContain(
+      "contributes.credentials: a service plugin cannot contribute credentials",
+    );
+  });
+});

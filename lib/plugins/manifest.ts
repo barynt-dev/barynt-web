@@ -105,6 +105,33 @@ const settingSchema = z.strictObject({
   options: z.array(optionSchema).max(50).optional(),
 });
 
+/** Where a credential is kept: once for the workspace, once per project,
+ *  or each person their own (BARY-147). */
+export const CREDENTIAL_LEVELS = ["workspace", "project", "user"] as const;
+export type CredentialLevel = (typeof CREDENTIAL_LEVELS)[number];
+
+/**
+ * A secret the plugin needs for one of its hosts — an access token, say.
+ * Barynt keeps it sealed and adds it to requests to `host` itself, as the
+ * `header` with `{value}` in `format` replaced; the plugin never sees it.
+ */
+const credentialSchema = z.strictObject({
+  key: z.string().regex(/^[a-z][a-zA-Z0-9_]{0,39}$/),
+  label: title,
+  description: z.string().max(300).optional(),
+  level: z.enum(CREDENTIAL_LEVELS),
+  host: z.string().regex(HOST_RE, "expected a host name"),
+  header: z
+    .string()
+    .regex(/^[A-Za-z][A-Za-z0-9-]{0,63}$/, "expected a header name")
+    .default("Authorization"),
+  format: z
+    .string()
+    .max(100)
+    .refine((f) => f.includes("{value}"), 'must contain "{value}"')
+    .default("Bearer {value}"),
+});
+
 const contributesSchema = z.strictObject({
   navItems: z.array(entry).max(5).optional(),
   projectViews: z.array(entry).max(5).optional(),
@@ -114,13 +141,14 @@ const contributesSchema = z.strictObject({
   actions: z.array(entry).max(20).optional(),
   fields: z.array(fieldSchema).max(20).optional(),
   settings: z.array(settingSchema).max(30).optional(),
+  credentials: z.array(credentialSchema).max(10).optional(),
 });
 
 type Contributes = z.infer<typeof contributesSchema>;
 
 /** Which capability each contribution needs. */
 const CONTRIBUTION_CAPABILITY: Record<
-  Exclude<keyof Contributes, "settings">,
+  Exclude<keyof Contributes, "settings" | "credentials">,
   Capability
 > = {
   navItems: "ui:nav-item",
@@ -137,6 +165,7 @@ const KIND_CONTRIBUTIONS: Record<PluginKind, readonly (keyof Contributes)[]> = {
   declarative: ["fields", "settings", "issueBadges"],
   service: ["fields", "settings"],
   sandbox: [
+    "credentials",
     "navItems",
     "projectViews",
     "dashboardWidgets",
@@ -231,7 +260,7 @@ export const manifestSchema = z
           `a ${m.kind} plugin cannot contribute ${key}`,
         );
 
-      if (key !== "settings") {
+      if (key !== "settings" && key !== "credentials") {
         const needed = CONTRIBUTION_CAPABILITY[key];
         if (!m.capabilities.includes(needed))
           add(["contributes", key], `needs the capability ${needed}`);
@@ -243,6 +272,24 @@ export const manifestSchema = z
       if (new Set(ids).size !== ids.length)
         add(["contributes", key], "ids must be unique");
     }
+
+    (m.contributes.credentials ?? []).forEach((c, i) => {
+      if (!m.network.includes(c.host))
+        add(
+          ["contributes", "credentials", i, "host"],
+          "the host must be in network",
+        );
+      if (c.level !== "user" && !m.levels.includes(c.level))
+        add(
+          ["contributes", "credentials", i, "level"],
+          `the plugin has no ${c.level} level`,
+        );
+      if (/^(cookie|host|content-length|transfer-encoding)$/i.test(c.header))
+        add(
+          ["contributes", "credentials", i, "header"],
+          "Barynt sets this header itself",
+        );
+    });
 
     const fields = m.contributes.fields ?? [];
     fields.forEach((f, i) => {

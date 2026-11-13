@@ -17,6 +17,7 @@ const db = {
     findMany: mock(),
   },
   pluginSettings: { findUnique: mock() },
+  pluginCredential: { findUnique: mock() },
 };
 mock.module("@/lib/db", () => ({ db }));
 const can = mock(async () => true);
@@ -46,6 +47,56 @@ const countRequest = mock(async () => ({ ok: true, info: {} }));
 mock.module("@/lib/api/rateLimit", () => ({ countRequest }));
 const recordAudit = mock(async (_input: unknown) => {});
 mock.module("@/lib/audit", () => ({ recordAudit }));
+
+// The proxy's outside world (BARY-147): DNS answers and an HTTPS request
+// that records what it was asked and answers from `upstream`.
+const dnsLookup = mock(async () => [{ address: "93.184.216.34", family: 4 }]);
+mock.module("node:dns/promises", () => ({ lookup: dnsLookup }));
+const sent: {
+  url: string;
+  options: Record<string, unknown>;
+  body: string;
+  pinned?: string;
+}[] = [];
+let upstream = {
+  status: 200,
+  headers: { "content-type": "application/json" } as Record<string, string>,
+  body: '{"ok":1}',
+};
+mock.module("node:https", () => {
+  const request = (
+    url: URL,
+    options: Record<string, unknown>,
+    onResponse: (res: unknown) => void,
+  ) => {
+    const record = { url: String(url), options, body: "" };
+    sent.push(record);
+    const lookup = options.lookup as (
+      h: string,
+      o: object,
+      cb: (e: null, a: string) => void,
+    ) => void;
+    lookup("ignored", {}, (_e, address) => {
+      (record as { pinned?: string }).pinned = address;
+    });
+    const { EventEmitter } = require("node:events");
+    const req = new EventEmitter();
+    req.write = (chunk: string) => {
+      record.body += chunk;
+    };
+    req.end = () => {
+      const res = new EventEmitter();
+      res.statusCode = upstream.status;
+      res.headers = upstream.headers;
+      onResponse(res);
+      res.emit("data", Buffer.from(upstream.body));
+      res.emit("end");
+    };
+    return req;
+  };
+  return { default: { request }, request };
+});
+const { sealSecret } = await import("@/lib/secret-box");
 
 const { callBridge, getPluginFrame } = await import(
   "@/features/plugins/runtime"
@@ -281,6 +332,120 @@ describe("callBridge (BARY-145)", () => {
     expect(await callBridge("u1", place, "settings.get", {})).toEqual({
       ok: true,
       result: { zoom: 2, title: "Hi" },
+    });
+  });
+});
+
+describe("net.fetch (BARY-147)", () => {
+  const withNetwork = (credentials: unknown[] = []) =>
+    db.plugin.findFirst.mockResolvedValue({
+      id: "row1",
+      manifest: {
+        ...manifest,
+        network: ["api.acme.example"],
+        contributes: { ...manifest.contributes, credentials },
+      },
+    });
+
+  beforeEach(() => {
+    sent.length = 0;
+    dnsLookup.mockImplementation(async () => [
+      { address: "93.184.216.34", family: 4 },
+    ]);
+    upstream = {
+      status: 200,
+      headers: { "content-type": "application/json" },
+      body: '{"ok":1}',
+    };
+  });
+
+  it("calls a host from network, at the address it checked", async () => {
+    withNetwork();
+    const res = await callBridge("u1", place, "net.fetch", {
+      url: "https://api.acme.example/items",
+      method: "POST",
+      body: '{"a":1}',
+    });
+    expect(res).toEqual({
+      ok: true,
+      result: {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        text: '{"ok":1}',
+      },
+    });
+    expect(sent[0]?.url).toBe("https://api.acme.example/items");
+    expect(sent[0]?.pinned).toBe("93.184.216.34");
+    expect(sent[0]?.body).toBe('{"a":1}');
+  });
+
+  it("refuses a host that isn't in network, or answers privately", async () => {
+    withNetwork();
+    expect(
+      await callBridge("u1", place, "net.fetch", {
+        url: "https://evil.example/",
+      }),
+    ).toEqual({ ok: false, error: "host_not_allowed" });
+    dnsLookup.mockImplementation(async () => [
+      { address: "93.184.216.34", family: 4 },
+      { address: "10.0.0.5", family: 4 },
+    ]);
+    expect(
+      await callBridge("u1", place, "net.fetch", {
+        url: "https://api.acme.example/",
+      }),
+    ).toEqual({ ok: false, error: "host_not_allowed" });
+    expect(sent).toHaveLength(0);
+  });
+
+  it("adds a kept credential itself, and refuses without one", async () => {
+    withNetwork([
+      {
+        key: "token",
+        label: "Token",
+        level: "user",
+        host: "api.acme.example",
+        header: "PRIVATE-TOKEN",
+        format: "{value}",
+      },
+    ]);
+    db.pluginCredential.findUnique.mockResolvedValue(null);
+    expect(
+      await callBridge("u1", place, "net.fetch", {
+        url: "https://api.acme.example/",
+      }),
+    ).toEqual({ ok: false, error: "credential_missing" });
+
+    db.pluginCredential.findUnique.mockResolvedValue({
+      valueCipher: sealSecret("glpat-secret", "plugin-credential"),
+    });
+    await callBridge("u1", place, "net.fetch", {
+      url: "https://api.acme.example/",
+      headers: { "PRIVATE-TOKEN": "from the plugin" },
+    });
+    const headers = sent[0]?.options.headers as Record<string, string>;
+    expect(headers["private-token"]).toBe("glpat-secret");
+    // Looked up as this person's own.
+    expect(db.pluginCredential.findUnique.mock.calls.at(-1)?.[0]).toMatchObject(
+      {
+        where: { pluginId_scopeKey_key: { scopeKey: "us:u1", key: "token" } },
+      },
+    );
+  });
+
+  it("hands back a body that isn't text as base64", async () => {
+    withNetwork();
+    upstream = {
+      status: 200,
+      headers: { "content-type": "image/png" },
+      body: "png",
+    };
+    const res = await callBridge("u1", place, "net.fetch", {
+      url: "https://api.acme.example/logo.png",
+    });
+    expect(res).toMatchObject({
+      ok: true,
+      result: { base64: Buffer.from("png").toString("base64") },
     });
   });
 });

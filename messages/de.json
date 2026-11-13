@@ -1538,7 +1538,9 @@
       "pluginSettingsUpdated": "Plugin-Einstellungen geändert",
       "pluginGranted": "Plugin für Projekte freigegeben",
       "pluginGrantRevoked": "Plugin-Freigabe für Projekte zurückgenommen",
-      "pluginActed": "Plugin hat im Namen der Person etwas geändert"
+      "pluginActed": "Plugin hat im Namen der Person etwas geändert",
+      "pluginCredentialSet": "Plugin-Zugangsdaten hinterlegt",
+      "pluginCredentialRemoved": "Plugin-Zugangsdaten entfernt"
     }
   },
   "dashboard": {
@@ -2783,6 +2785,16 @@
     "frameTimeout": "„{name}“ antwortet nicht",
     "frameReload": "Neu laden",
     "projectViews": "Ansichten",
-    "openView": "Öffnen"
+    "openView": "Öffnen",
+    "credentials": "Zugangsdaten",
+    "credentialsHint": "Barynt hängt sie selbst an die Anfragen des Plugins an seinen Dienst. Das Plugin sieht sie nie, und hier werden sie nach dem Speichern nicht mehr angezeigt.",
+    "credentialsHintOwn": "Deine eigenen Zugangsdaten für dieses Plugin. Barynt hängt sie an Anfragen an, die das Plugin in deinem Namen stellt. Das Plugin sieht sie nie, und hier werden sie nach dem Speichern nicht mehr angezeigt.",
+    "credentialKept": "Hinterlegt am {date}",
+    "credentialMissing": "Nicht hinterlegt",
+    "credentialFor": "Für {host}",
+    "credentialEnter": "Wert eingeben",
+    "credentialReplace": "Neuen Wert eingeben, um ihn zu ersetzen",
+    "credentialRemove": "Entfernen",
+    "userPluginsTitle": "Plugins"
   }
 }

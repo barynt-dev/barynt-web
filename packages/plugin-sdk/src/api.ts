@@ -25,7 +25,21 @@ export const METHODS = [
   "storage.delete",
   "storage.list",
   "settings.get",
+  "net.fetch",
 ] as const satisfies readonly Method[];
+
+/** What `api.net.fetch` gives back: the status, the headers Barynt passes
+ *  on, and the body as text (or base64 for anything that isn't text). */
+export interface NetResponse {
+  status: number;
+  /** `status` from 200 to 299. */
+  ok: boolean;
+  headers: Record<string, string>;
+  text: string;
+  base64: string | null;
+  /** The text body, parsed. */
+  json<T = unknown>(): T;
+}
 
 /** One method, typed: its params in, its result out, a refusal as a
  *  `BaryntError`. */
@@ -87,6 +101,28 @@ export function createApi(host: Host) {
       list: () => call("storage.list", {}),
     },
     settings: { get: () => call("settings.get", {}) },
+    net: {
+      /**
+       * A request to one of the hosts in the manifest's `network`, sent by
+       * Barynt. It adds the credentials the manifest declares for that host
+       * itself; redirects come back as they are.
+       */
+      async fetch(
+        url: string,
+        init: Omit<Methods["net.fetch"][0], "url"> = {},
+      ): Promise<NetResponse> {
+        const res = await call("net.fetch", { ...init, url });
+        const text = res.text ?? "";
+        return {
+          status: res.status,
+          ok: res.status >= 200 && res.status < 300,
+          headers: res.headers,
+          text,
+          base64: res.base64 ?? null,
+          json: <T>() => JSON.parse(text) as T,
+        };
+      },
+    },
   };
 }
 
