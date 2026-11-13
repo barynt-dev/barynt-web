@@ -47,6 +47,13 @@ const PEOPLE = [
   "Linus Torvalds",
 ];
 
+/** A row with its ends apart — the pipeline's number left, "Logs" right. */
+function apart(...children: HTMLElement[]): HTMLElement {
+  const node = row(...children);
+  node.style.justifyContent = "space-between";
+  return node;
+}
+
 /** A stable number from a reference, so a card shows the same every time. */
 const seed = (ref: string) =>
   [...ref].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7);
@@ -220,7 +227,7 @@ export default class CodeReview extends Plugin {
               },
             ],
           }),
-          row(
+          apart(
             text({
               text: `#${2200 + (n % 90)} · 5m 50s`,
               mono: true,
