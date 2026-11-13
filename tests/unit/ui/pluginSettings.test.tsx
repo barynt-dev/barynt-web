@@ -66,6 +66,7 @@ const view = (over: Partial<PluginSettingsView> = {}): PluginSettingsView => ({
   values: {},
   state: "active",
   views: [],
+  credentials: [],
   ...over,
 });
 

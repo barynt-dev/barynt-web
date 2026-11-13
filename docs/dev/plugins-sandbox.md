@@ -9,7 +9,7 @@ the plugin's code and nothing of Barynt's.
 | | |
 | --- | --- |
 | **Barynt's session** | The frame has its own, empty origin: no cookies, no `localStorage`, no `sessionStorage`, no IndexedDB. Reading `document.cookie` throws. |
-| **The network** | `fetch`, `XMLHttpRequest`, WebSockets and `<img src="https://…">` are blocked. Everything goes through the [host API](plugins-host-api.md). |
+| **The network** | `fetch`, `XMLHttpRequest`, WebSockets and `<img src="https://…">` are blocked. Barynt's data comes through the [host API](plugins-host-api.md); your own servers through [`net.fetch`](plugins-host-api.md#netfetch), for the hosts in your manifest. |
 | **Other code** | No scripts from anywhere: your `main.js` is all that runs. No `<script src>`, no CDN. Bundle what you need. |
 | **The page around it** | The frame can't reach Barynt's page, navigate it or open pop-ups. |
 

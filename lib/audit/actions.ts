@@ -115,6 +115,8 @@ export const AUDIT_ACTIONS = {
   "plugin.data.deleted": "Plugin data deleted",
   "plugin.settings.updated": "Plugin settings changed",
   "plugin.acted": "Plugin changed something in someone's name",
+  "plugin.credential.set": "Plugin credential kept",
+  "plugin.credential.removed": "Plugin credential removed",
   "plugin.granted": "Plugin released for projects",
   "plugin.grant.revoked": "Plugin release for projects withdrawn",
 } as const;

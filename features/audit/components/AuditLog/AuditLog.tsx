@@ -321,6 +321,14 @@ export const AUDIT_ACTION_META = {
     icon: "lucide:puzzle",
     message: "pluginActed",
   },
+  "plugin.credential.set": {
+    icon: "lucide:key-round",
+    message: "pluginCredentialSet",
+  },
+  "plugin.credential.removed": {
+    icon: "lucide:key-round",
+    message: "pluginCredentialRemoved",
+  },
   "plugin.granted": {
     icon: "lucide:badge-check",
     message: "pluginGranted",

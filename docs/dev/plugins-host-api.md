@@ -125,6 +125,64 @@ Over a limit, `set` is refused with `storage_full`.
 capability: the plugin's own [settings](plugins-manifest.md#settings) in this
 place, each with its saved value or its default.
 
+## Network
+
+### `net.fetch`
+
+No capability — the host must be in the manifest's `network`, which people
+saw before they switched the plugin on. `api.net.fetch(url, init?)`
+
+Barynt sends the request for the plugin:
+
+- `url` must be `https`, on a host from `network` exactly: no other host, no
+  port, no user or password in the address.
+- Barynt resolves the host and refuses private and local addresses — unless
+  the operator let the host through (`PLUGIN_INTERNAL_HOSTS`, for a company's
+  own Git server; a port is allowed there). It connects to exactly the
+  address it checked, so a DNS answer that changes in between can't send the
+  request elsewhere.
+- It adds the [credentials](plugins-manifest.md#credentials) the manifest
+  declares for that host. If one isn't kept, the request is refused with
+  `credential_missing`.
+- Redirects aren't followed: you get the `3xx` and its `location`, and may
+  ask again — for a host you're allowed.
+
+| `init` | Type | Meaning |
+| --- | --- | --- |
+| `method` | `"GET"`, `"HEAD"`, `"POST"`, `"PUT"`, `"PATCH"`, `"DELETE"` | `GET` by default. |
+| `headers` | `Record<string, string>` | Only `Accept`, `Accept-Language`, `Content-Type`, `If-Match`, `If-None-Match`, `If-Modified-Since` and `X-…` headers go along; the rest are dropped. |
+| `body` | `string` | Text, up to 1 MB. Not for `GET` or `HEAD`. Send JSON as `JSON.stringify(…)` with a `Content-Type`. |
+
+The answer:
+
+| Field | Meaning |
+| --- | --- |
+| `status` | The HTTP status — also `4xx` and `5xx`; they're answers, not errors. |
+| `ok` | `status` from 200 to 299. |
+| `headers` | `Content-Type`, `ETag`, `Last-Modified`, `Location`, `Link`, `Retry-After`, `X-Total-Count`, `X-Request-Id` and `X-RateLimit-*` — nothing else (no cookies). |
+| `text` | The body, when it's text: JSON, XML, `text/*`. |
+| `base64` | The body as base64 when it isn't text; `null` otherwise. |
+| `json()` | `text`, parsed. |
+
+```ts
+import { BaryntError } from "@barynt/plugin-sdk";
+
+try {
+  const res = await this.api.net.fetch(
+    "https://gitlab.acme.example/api/v4/merge_requests?state=opened",
+  );
+  if (!res.ok) throw new Error(`GitLab answered ${res.status}`);
+  const mergeRequests = res.json<{ iid: number; title: string }[]>();
+} catch (error) {
+  if (error instanceof BaryntError && error.code === "credential_missing")
+    showHint("Keep your GitLab token in your personal settings → Plugins.");
+  else throw error;
+}
+```
+
+Limits: 10 seconds per request, 2 MB per answer, and it counts against
+the plugin's budget like every other call.
+
 ## Errors
 
 | Code | Means |
@@ -136,12 +194,14 @@ place, each with its saved value or its default.
 | `forbidden` | Outside the plugin's place, or the person may not do it. |
 | `not_found` | It doesn't exist, or the person can't see it. |
 | `storage_full` | Over a [storage](#storage) limit. |
-| `timeout` | No answer within 15 seconds. |
+| `host_not_allowed` | `net.fetch` to a host or address that isn't allowed. |
+| `credential_missing` | `net.fetch` to a host whose credential isn't kept. |
+| `upstream_failed` | The host couldn't be reached, or its answer was over 2 MB. |
+| `timeout` | No answer within 15 seconds (`net.fetch`: from the host within 10). |
 | `too_many_requests` | Over the budget: 300 calls per person and minute, or 20 open at once. |
 
 ## Coming next
 
-Calls to your own servers through Barynt (`network` in the manifest), with
-credentials Barynt keeps; events (`events:issue`, `events:comment`); and
-notifications (`notify:send`). The capabilities exist already; the calls
-come in the next releases.
+Events (`events:issue`, `events:comment`) and notifications
+(`notify:send`). The capabilities exist already; the calls come in the next
+releases.

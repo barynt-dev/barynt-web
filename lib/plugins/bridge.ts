@@ -33,6 +33,9 @@ export const BRIDGE_METHODS = {
   "storage.delete": "storage:own",
   "storage.list": "storage:own",
   "settings.get": null,
+  // A host from the manifest's `network`, through Barynt (BARY-147) — the
+  // hosts were confirmed with the plugin, no capability on top.
+  "net.fetch": null,
 } as const satisfies Record<string, Capability | null>;
 
 export type BridgeMethod = keyof typeof BRIDGE_METHODS;
@@ -102,6 +105,9 @@ export type BridgeError =
   | "forbidden"
   | "not_found"
   | "storage_full"
+  | "host_not_allowed"
+  | "credential_missing"
+  | "upstream_failed"
   | "timeout"
   | "too_many_requests";
 
