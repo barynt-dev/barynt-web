@@ -530,6 +530,23 @@
   }
 }
 
+/* A plugin's section in the sidebar (BARY-209): headed like the other
+   sidebar sections — a quiet title, the plugin's name on the right — and
+   without a box: its frame sits on the sidebar like the fields do. */
+[data-placement="sidebar"] {
+  .pluginPanelToggle h3 {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--on-surface-variant);
+  }
+
+  .pluginPanelBody {
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+}
+
 .pluginPanelBody {
   display: flex;
   flex-direction: column;

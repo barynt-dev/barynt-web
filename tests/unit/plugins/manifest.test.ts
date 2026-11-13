@@ -532,3 +532,19 @@ describe("widgetBlocks (BARY-205)", () => {
     );
   });
 });
+
+describe("issue panels in the sidebar (BARY-209)", () => {
+  it("takes main or sidebar, nothing else", () => {
+    const panels = (placement: unknown) =>
+      errors({
+        ...base,
+        capabilities: ["ui:issue-panel"],
+        contributes: {
+          issuePanels: [{ id: "dev", title: "Development", placement }],
+        },
+      });
+    expect(panels("sidebar")).toEqual([]);
+    expect(panels("main")).toEqual([]);
+    expect(panels("footer")).not.toEqual([]);
+  });
+});

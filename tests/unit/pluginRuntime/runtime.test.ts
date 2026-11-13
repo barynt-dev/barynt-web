@@ -893,6 +893,7 @@ describe("issue panels (BARY-150)", () => {
         pluginName: "Timeline",
         panelId: "schedule",
         title: "Schedule",
+        placement: "main",
       },
     ]);
     expect(db.pluginActivation.findMany.mock.calls.at(-1)?.[0]).toMatchObject({

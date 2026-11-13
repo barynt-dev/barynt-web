@@ -245,7 +245,11 @@ export function IssueDetailPageView({
                 onRefresh={onRefresh}
               />
             )}
-            <IssuePluginPanels issue={issue} workspaceId={data.workspaceId} />
+            <IssuePluginPanels
+              issue={issue}
+              workspaceId={data.workspaceId}
+              placement="main"
+            />
             <IssueComments
               issueId={issue.id}
               workspaceId={data.workspaceId}

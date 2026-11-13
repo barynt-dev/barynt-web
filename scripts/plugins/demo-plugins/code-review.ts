@@ -9,17 +9,27 @@
 import {
   type Badge,
   type BadgeIssue,
+  type Issue,
   Plugin,
   type RowPart,
 } from "@barynt/plugin-sdk";
 import {
+  avatar,
   badge,
   button,
   card,
+  copyField,
+  diffStat,
   keyValue,
+  link,
+  navList,
   progressBar,
   row,
+  sectionHeader,
   stack,
+  stepList,
+  text,
+  toast,
   user,
 } from "@barynt/plugin-sdk/ui";
 
@@ -36,6 +46,13 @@ const PEOPLE = [
   "Alan Turing",
   "Linus Torvalds",
 ];
+
+/** A row with its ends apart — the pipeline's number left, "Logs" right. */
+function apart(...children: HTMLElement[]): HTMLElement {
+  const node = row(...children);
+  node.style.justifyContent = "space-between";
+  return node;
+}
 
 /** A stable number from a reference, so a card shows the same every time. */
 const seed = (ref: string) =>
@@ -145,6 +162,109 @@ function rowsFor(issue: BadgeIssue): Badge[] {
 }
 
 export default class CodeReview extends Plugin {
+  /** The "Development" section: built from the UI kit, the branch taken
+   *  from a "Branch" custom field when the project has one. */
+  development(issue: Issue): HTMLElement {
+    const n = seed(issue.id);
+    const state = STATES[n % STATES.length];
+    const slug = issue.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 32);
+    const field = issue.customFields?.branch;
+    const branch =
+      typeof field === "string" && field
+        ? field
+        : `${(issue.assignee?.name ?? "dev").split(" ")[0].toLowerCase()}/${issue.ref.toLowerCase()}-${slug}`;
+    const failed = state.tone === "danger";
+    const box = stack(
+      copyField({
+        value: branch,
+        icon: "git-branch",
+        href: "https://gitlab.com/acme/web/-/tree/main",
+        label: "Copy branch",
+      }),
+      card({
+        compact: true,
+        tone: state.tone,
+        children: [
+          sectionHeader({
+            title: `#${400 + (n % 90)}`,
+            icon: "git-pull-request",
+            status: { text: state.text, tone: state.tone },
+          }),
+          text({ text: `fix: ${issue.title}`, size: "base" }),
+          row(
+            diffStat({ added: 9 + (n % 40), removed: 4 + (n % 9) }),
+            text({ text: "1d ago", tone: "subtle", inline: true }),
+            avatar({ name: issue.assignee?.name ?? "Ada Rahman", size: "sm" }),
+          ),
+        ],
+      }),
+      card({
+        compact: true,
+        children: [
+          sectionHeader({
+            title: "Pipeline",
+            icon: failed ? "circle-x" : "circle-check",
+            status: failed
+              ? { text: "Failed", tone: "danger" }
+              : { text: "Passed", tone: "success" },
+          }),
+          stepList({
+            steps: [
+              { label: "Build", state: "success", meta: "1m 12s" },
+              {
+                label: "Test",
+                state: failed ? "danger" : "success",
+                meta: "3m 40s",
+              },
+              {
+                label: "Deploy",
+                state: failed ? "pending" : "success",
+                meta: failed ? "–" : "58s",
+              },
+            ],
+          }),
+          apart(
+            text({
+              text: `#${2200 + (n % 90)} · 5m 50s`,
+              mono: true,
+              tone: "subtle",
+              inline: true,
+            }),
+            link({ text: "Logs", href: "https://ci.example.com/pipelines" }),
+          ),
+        ],
+      }),
+      navList({
+        items: [
+          {
+            icon: "git-commit-horizontal",
+            count: 1,
+            label: "Commit",
+            onClick: () => toast("feat: lighter muted token"),
+          },
+          {
+            icon: "git-pull-request",
+            count: 1,
+            label: "Merge request",
+            href: "https://gitlab.com/acme/web/-/merge_requests",
+          },
+          {
+            icon: "rocket",
+            count: 1,
+            label: "Deployments",
+            href: "https://ci.example.com/deployments",
+          },
+        ],
+      }),
+    );
+    box.style.gap = "0.625rem";
+    return box;
+  }
+
   onload() {
     this.registerBadges({
       provide: (issues) =>
@@ -155,6 +275,17 @@ export default class CodeReview extends Plugin {
           }),
         ),
     });
+    // A section in the issue's sidebar (BARY-209), next to its fields:
+    // the branch, the merge request, the pipeline, where it all went.
+    this.registerIssuePanel({
+      id: "development",
+      render: async (el, { issueId }) => {
+        if (!issueId) return;
+        const issue = await this.api.issues.get(issueId);
+        el.replaceChildren(this.development(issue));
+      },
+    });
+
     // Where a row's click leads: the plugin's own panel in the issue —
     // drawn freely, here with the UI kit.
     this.registerIssuePanel({

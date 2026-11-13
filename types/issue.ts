@@ -224,4 +224,6 @@ export interface IssuePluginPanel {
   pluginName: string;
   panelId: string;
   title: string;
+  /** In the main column, or a section of the sidebar (BARY-209). */
+  placement: "main" | "sidebar";
 }

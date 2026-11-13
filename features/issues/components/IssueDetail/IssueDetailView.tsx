@@ -480,6 +480,7 @@ export function IssueDetailView({
                 <IssuePluginPanels
                   issue={issue}
                   workspaceId={data.workspaceId}
+                  placement="main"
                 />
                 <IssueComments
                   issueId={issue.id}

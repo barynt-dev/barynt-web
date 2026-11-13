@@ -245,6 +245,9 @@ export interface Issue {
   closedAt: string | null;
   dueDate: string | null;
   storyPoints: number | null;
+  /** Its custom fields' values, by field key — a field without a value has
+   *  no entry; a choice comes as `{ id, label }`. */
+  customFields?: Record<string, unknown>;
 }
 
 export interface Comment {

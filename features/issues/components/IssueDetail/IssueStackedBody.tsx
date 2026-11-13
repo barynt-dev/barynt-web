@@ -162,7 +162,15 @@ export function IssueStackedBody({
             )}
             <IssueMeta issue={issue} data={data} layout="column" />
           </PropertiesGroup>
-        ) : (
+        ) : null}
+        {isPhone && (
+          <IssuePluginPanels
+            issue={issue}
+            workspaceId={data.workspaceId}
+            placement="sidebar"
+          />
+        )}
+        {!isPhone && (
           <IssueProperties
             issue={issue}
             data={data}
@@ -191,7 +199,11 @@ export function IssueStackedBody({
             onRefresh={onRefresh}
           />
         )}
-        <IssuePluginPanels issue={issue} workspaceId={data.workspaceId} />
+        <IssuePluginPanels
+          issue={issue}
+          workspaceId={data.workspaceId}
+          placement="main"
+        />
         {!isPhone && (
           <>
             <IssuePlanning
@@ -209,6 +221,11 @@ export function IssueStackedBody({
               />
             )}
             <IssueMeta issue={issue} data={data} layout="column" />
+            <IssuePluginPanels
+              issue={issue}
+              workspaceId={data.workspaceId}
+              placement="sidebar"
+            />
           </>
         )}
         <IssueComments

@@ -125,15 +125,22 @@ export function divider(): HTMLHRElement {
   return el("hr", "bui-divider");
 }
 
-/** A section with a frame: title, description, content, actions on top. */
+/** A section with a frame: title, description, content, actions on top.
+ *  `tone` colours its edge ("Changes requested"); `compact` takes less room
+ *  — a sidebar's width. */
 export function card(options: {
   title?: string;
   description?: string;
   children?: Child[];
   actions?: Child[];
+  tone?: Tone;
+  compact?: boolean;
 }): HTMLElement {
   styled();
   const node = el("section", "bui-card");
+  if (options.tone && options.tone !== "neutral")
+    node.dataset.tone = options.tone;
+  if (options.compact) node.dataset.compact = "";
   if (options.title || options.actions) {
     const head = el("div", "bui-card-head");
     const titles = el("div");
@@ -555,5 +562,191 @@ export function progressRing(options: {
     options.label ? `${options.label}: ${percent}` : percent,
   );
   node.append(svg, textBox);
+  return node;
+}
+
+// ─── Development, deployments, links (BARY-209) ──────────────────────────────
+
+const STEP_ICON = {
+  success: "circle-check",
+  danger: "circle-x",
+  warning: "triangle-alert",
+  running: "loader-circle",
+  pending: "circle-dashed",
+} as const satisfies Record<string, IconName>;
+export type StepState = keyof typeof STEP_ICON;
+
+/** A head over a section or a card: an icon, a title, and on the right a
+ *  note or a state in its tone — "Pipeline · Passed". */
+export function sectionHeader(options: {
+  title: string;
+  icon?: IconName;
+  meta?: string;
+  status?: { text: string; tone?: Tone };
+}): HTMLElement {
+  styled();
+  const node = el(
+    "div",
+    "bui-section-head",
+    options.icon && icon(options.icon, { size: 16 }),
+    el("span", "bui-section-title", options.title),
+  );
+  if (options.status) {
+    const s = el("span", "bui-section-status", options.status.text);
+    s.dataset.tone = options.status.tone ?? "neutral";
+    node.append(s);
+  } else if (options.meta)
+    node.append(el("span", "bui-section-meta", options.meta));
+  return node;
+}
+
+/** A value to copy — a branch, a hash, a command — with a copy button and,
+ *  with `href`, one to open it. */
+export function copyField(options: {
+  value: string;
+  icon?: IconName;
+  href?: string;
+  /** What the buttons say to screen readers: "Copy branch". */
+  label?: string;
+}): HTMLElement {
+  styled();
+  const node = el(
+    "div",
+    "bui-copy",
+    options.icon && icon(options.icon, { size: 15 }),
+    el("span", "bui-copy-value", options.value),
+  );
+  const copy = el("button", "bui-copy-button", icon("copy", { size: 15 }));
+  copy.type = "button";
+  copy.setAttribute("aria-label", options.label ?? `Copy ${options.value}`);
+  copy.dataset.buiTip = "Copy";
+  copy.addEventListener("click", async () => {
+    let done = false;
+    try {
+      await navigator.clipboard.writeText(options.value);
+      done = true;
+    } catch {
+      // Without clipboard access: select it in a field and copy that.
+      const area = el("textarea");
+      area.value = options.value;
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.append(area);
+      area.select();
+      done = document.execCommand("copy");
+      area.remove();
+    }
+    if (!done) return;
+    copy.replaceChildren(icon("check", { size: 15 }));
+    copy.dataset.buiTip = "Copied";
+    setTimeout(() => {
+      copy.replaceChildren(icon("copy", { size: 15 }));
+      copy.dataset.buiTip = "Copy";
+    }, 1500);
+  });
+  node.append(copy);
+  const href = options.href ? safeHref(options.href) : null;
+  if (href) {
+    const open = el(
+      "a",
+      "bui-copy-button",
+      icon("external-link", { size: 15 }),
+    );
+    open.href = href;
+    open.target = "_blank";
+    open.rel = "noopener noreferrer";
+    open.setAttribute("aria-label", "Open");
+    open.dataset.buiTip = "Open";
+    node.append(open);
+  }
+  return node;
+}
+
+/** Steps of a pipeline, a checklist, a rollout — each with its state and,
+ *  on the right, how long it took. */
+export function stepList(options: {
+  steps: { label: string; state: StepState; meta?: string }[];
+}): HTMLElement {
+  styled();
+  const node = el("ul", "bui-steps");
+  for (const step of options.steps) {
+    const mark = el(
+      "span",
+      "bui-step-mark",
+      icon(STEP_ICON[step.state], { size: 15 }),
+    );
+    mark.dataset.state = step.state;
+    const item = el(
+      "li",
+      "bui-step",
+      mark,
+      el("span", "bui-step-label", step.label),
+      step.meta && el("span", "bui-step-meta", step.meta),
+    );
+    item.setAttribute("aria-label", `${step.label}: ${step.state}`);
+    node.append(item);
+  }
+  return node;
+}
+
+/** Rows that lead somewhere — "1 Commit ›" — a link out, or your own
+ *  `onClick` (open a dialog, show a list). */
+export function navList(options: {
+  items: {
+    label: string;
+    icon?: IconName;
+    count?: number;
+    href?: string;
+    onClick?: () => void;
+  }[];
+}): HTMLElement {
+  styled();
+  const node = el("ul", "bui-nav");
+  for (const item of options.items) {
+    const href = item.href ? safeHref(item.href) : null;
+    const inner = [
+      item.icon && icon(item.icon, { size: 16 }),
+      item.count !== undefined &&
+        el("span", "bui-nav-count", String(item.count)),
+      el("span", "bui-nav-label", item.label),
+      icon("chevron-right", { size: 16 }),
+    ];
+    let control: HTMLElement;
+    if (href) {
+      const a = el("a", "bui-nav-item", ...inner);
+      a.href = href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      control = a;
+    } else {
+      const b = el("button", "bui-nav-item", ...inner);
+      b.type = "button";
+      if (item.onClick) {
+        const onClick = item.onClick;
+        b.addEventListener("click", () => onClick());
+      } else b.disabled = true;
+      control = b;
+    }
+    node.append(el("li", undefined, control));
+  }
+  return node;
+}
+
+/** Lines added and removed: "+9 −4". */
+export function diffStat(options: {
+  added: number;
+  removed: number;
+}): HTMLElement {
+  styled();
+  const node = el(
+    "span",
+    "bui-diff",
+    el("span", "bui-diff-added", `+${options.added}`),
+    el("span", "bui-diff-removed", `−${options.removed}`),
+  );
+  node.setAttribute(
+    "aria-label",
+    `${options.added} lines added, ${options.removed} removed`,
+  );
   return node;
 }

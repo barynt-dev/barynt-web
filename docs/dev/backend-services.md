@@ -343,6 +343,12 @@ draws each in the stacked body, the dialog and the page; an open one is a `Plugi
 `issueId` in its context and `autoHeight` — the frame runtime measures `#root` and sends
 `resize`, which the host clamps (48–640 px).
 
+**Sidebar panels (BARY-209).** `issuePanels[].placement` (`main` default, `sidebar`) comes
+along in `pluginPanels`; `IssuePluginPanels placement=…` draws the main ones after the
+attachments and the sidebar ones in `IssueSidebar` after the custom fields (in the stacked
+body after the meta, on a phone after the properties group). The frame may write to the
+clipboard (`allow="clipboard-write"`) for the kit's `copyField`.
+
 **Badges (BARY-151).** The project layout wraps its views in `ProjectPluginBadges`
 (`getPluginBadgeProviders`: the project's activations with `ui:issue-badge`, for someone with
 `project.view`). Board and list report their issues (`usePluginBadgeIssues`); per plugin one

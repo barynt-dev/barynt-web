@@ -114,7 +114,7 @@ capability, and each entry an `id` that's unique in its list.
 | `projectViews` | in the sidebar under the project, next to its Dashboard, Board and Issues | in the sidebar's main group, next to the workspace's Dashboard and Board (on a phone, whose main group is the bottom bar: in the "Plugins" section) |
 | `navItems` | in the sidebar under the project, below a "Plugins" heading | in the sidebar's own "Plugins" section |
 | `dashboardWidgets`, `widgetTemplates` | in the project's dashboard's widget gallery, under "Plugins" | in the workspace's (and its views') dashboard gallery, under "Plugins" |
-| `issuePanels` | in every issue of the project — side panel, dialog, page, phone sheet — below the attachments | — (a workspace plugin has no issue panels) |
+| `issuePanels` | in every issue of the project — side panel, dialog, page, phone sheet — below the attachments; with `"placement": "sidebar"` a section of the issue's sidebar, next to its fields | — (a workspace plugin has no issue panels) |
 | `issueBadges` | on the project's board cards and list rows (the list's "Fields" column); each can be hidden in **Display** | — |
 
 Each entry carries the plugin's mark, and its page names the plugin under
@@ -131,6 +131,18 @@ headed by the panel's title and the plugin's name. People can fold it; only
 an open panel has a frame, and it stays folded for them. The frame grows to
 its content's height (up to 640 px, then it scrolls), so draw what you need
 and no more. See [`registerIssuePanel()`](plugins-sdk.md#registerissuepanel).
+
+An issue panel can also live in the **sidebar**, next to the issue's
+properties, labels and custom fields — "Development" with a branch, a merge
+request and a pipeline, say:
+
+```json
+"issuePanels": [{ "id": "development", "title": "Development", "placement": "sidebar" }]
+```
+
+There it's headed like the sidebar's own sections (the title, the plugin's
+name on the right) and has no box of its own. Where an issue has no sidebar
+— the side panel, a phone — it sits with the properties.
 
 A badge is a small chip on a card or row — "in 3d", "MR open" — or a row
 across the card that you put together from parts (a merge request's number,
