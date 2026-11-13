@@ -61,6 +61,13 @@ export default class GitLabMergeRequests extends Plugin {
             line.set(`GitLab doesn't know “${gitlabProject}”.`, "error");
             return;
           }
+          if (res.status === 401) {
+            line.set(
+              "GitLab didn't take your token — check it in your personal settings → Plugins.",
+              "error",
+            );
+            return;
+          }
           if (!res.ok) {
             line.set(`GitLab answered ${res.status}.`, "error");
             return;
