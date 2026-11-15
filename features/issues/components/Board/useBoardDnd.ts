@@ -30,6 +30,11 @@ import type { Issue } from "@/types";
  * With swimlanes (`laneKey`, BARY-173) a drop target is a cell — a column
  * within a lane — and dropping sets both values: the column's and the
  * lane's. Without lanes, `laneId` is left out everywhere.
+ *
+ * Two ways in: on a desktop `Board` drags with pointer events
+ * (`pointerDrag.ts`) and calls `begin`/`overCell`/`overCard`/`dropOn`
+ * directly; a touch tablet keeps the browser's native drag and drop, whose
+ * handlers below wrap the same calls.
  */
 export function useBoardDnd<T extends Issue>(
   issues: T[],
@@ -85,20 +90,65 @@ export function useBoardDnd<T extends Issue>(
     setDragOverCard(null);
   };
 
-  const onDragStart = (issue: T) => (e: React.DragEvent) => {
+  const begin = (issue: T) => {
     dragIssueRef.current = issue;
     setDragging(issue.id);
+  };
+
+  const onDragStart = (issue: T) => (e: React.DragEvent) => {
+    begin(issue);
     e.dataTransfer.effectAllowed = "move";
   };
 
-  const onCardDragOver = (cardId: string) => (e: React.DragEvent) => {
-    e.preventDefault();
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const above = e.clientY < rect.top + rect.height / 2;
+  /** Over a card: the drop goes above or below it, by which half. */
+  const overCard = (cardId: string, rect: DOMRect, clientY: number) => {
+    const above = clientY < rect.top + rect.height / 2;
     dragOverCardRef.current = cardId;
     insertAboveRef.current = above;
     setDragOverCard(cardId);
     setInsertAbove(above);
+  };
+
+  const onCardDragOver = (cardId: string) => (e: React.DragEvent) => {
+    e.preventDefault();
+    overCard(
+      cardId,
+      (e.currentTarget as HTMLElement).getBoundingClientRect(),
+      e.clientY,
+    );
+  };
+
+  /** Over a column (or a lane's cell) — the one highlighted as the target. */
+  const overCell = (groupId: string, laneId?: string) =>
+    setOverCol(cellKey(groupId, laneId));
+
+  /** Off every column: nothing is the target any more. */
+  const leaveCells = () => {
+    setOverCol(null);
+    setDragOverCard(null);
+    dragOverCardRef.current = null;
+  };
+
+  /** Lets go over a column (or cell): the card lands there. */
+  const dropOn = (groupId: string, laneId?: string) => {
+    const issue = dragIssueRef.current;
+    if (!issue) {
+      clearDragState();
+      return;
+    }
+
+    // Let go over its own spot (picked up and released, or brought back):
+    // the card stays where it is. `dropRank` leaves the dragged card out
+    // of its column, so it would read this as "over no card" and move it
+    // to the end — no drop indicator shows here either.
+    if (dragOverCardRef.current === issue.id) {
+      clearDragState();
+      return;
+    }
+
+    const rank = dropRank(groupId, laneId, issue.id);
+    clearDragState();
+    commitMove(issue, groupId, rank, laneId);
   };
 
   // Rank the dropped issue between its new neighbors (or at the column edge)
@@ -209,23 +259,14 @@ export function useBoardDnd<T extends Issue>(
     isOver: overCol === cellKey(groupId, laneId),
     onDragOver: (e: React.DragEvent) => {
       e.preventDefault();
-      setOverCol(cellKey(groupId, laneId));
+      overCell(groupId, laneId);
     },
     onDragLeave: (e: React.DragEvent) => {
-      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-        setOverCol(null);
-        setDragOverCard(null);
-        dragOverCardRef.current = null;
-      }
+      if (!e.currentTarget.contains(e.relatedTarget as Node)) leaveCells();
     },
     onDrop: (e: React.DragEvent) => {
       e.preventDefault();
-      const issue = dragIssueRef.current;
-      if (!issue) return;
-
-      const rank = dropRank(groupId, laneId, issue.id);
-      clearDragState();
-      commitMove(issue, groupId, rank, laneId);
+      if (dragIssueRef.current) dropOn(groupId, laneId);
     },
   });
 
@@ -237,6 +278,11 @@ export function useBoardDnd<T extends Issue>(
     onDragStart,
     onDragEnd: clearDragState,
     onCardDragOver,
+    begin,
+    overCard,
+    overCell,
+    leaveCells,
+    dropOn,
     columnHandlers,
     moveIssue,
   };
