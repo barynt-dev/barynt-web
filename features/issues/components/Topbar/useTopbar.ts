@@ -200,6 +200,25 @@ export function useTopbar({
 
   useEffect(() => () => clearTimeout(searchTimer.current), []);
 
+  // The search is part of a saved view, so some navigations bring their own
+  // text: discarding a view's changes, opening another view. Those set the
+  // box anew — a fresh `key` remounts it with `value` — while typing never
+  // does (see above).
+  const [searchSeed, setSearchSeed] = useState({ key: 0, value: urlQuery });
+  function resetSearch(value: string) {
+    clearTimeout(searchTimer.current);
+    typedQuery.current = value;
+    setSearchSeed((seed) => ({ key: seed.key + 1, value }));
+  }
+  // Another page — another view, board ↔ list: the box shows what it brings.
+  const seededPath = useRef(pathname);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `resetSearch` only touches refs and a setter
+  useEffect(() => {
+    if (seededPath.current === pathname) return;
+    seededPath.current = pathname;
+    if (urlQuery !== typedQuery.current) resetSearch(urlQuery);
+  }, [pathname, urlQuery]);
+
   // Conditions only — the search box clears itself through its own button,
   // so it must not make the filter row's "clear" appear.
   const filterCount = conditionCount(tree);
@@ -318,13 +337,14 @@ export function useTopbar({
     pushParams((p) => (key ? p.set("lanes", key) : p.delete("lanes")));
   }
 
-  /** Back to a fresh board or list: no filter, no grouping, order or lanes
-   *  of its own in the address — the search stays. */
+  /** Back to a fresh board or list: no filter, no search, no grouping,
+   *  order or lanes of its own in the address. */
   function clearViewState() {
+    resetSearch("");
     pushParams((p) => {
       for (const key of [...p.keys()])
         if (
-          (key !== "q" && isFilterParam(key)) ||
+          isFilterParam(key) ||
           (VIEW_SETTING_KEYS as readonly string[]).includes(key)
         )
           p.delete(key);
@@ -397,7 +417,9 @@ export function useTopbar({
     negated,
     tree,
     filterCount,
-    searchValue: urlQuery,
+    searchValue: searchSeed.value,
+    searchKey: searchSeed.key,
+    resetSearch,
     sortKey,
     groupKey,
     laneKey,

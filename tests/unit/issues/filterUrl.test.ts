@@ -300,3 +300,62 @@ describe("parentheses (BARY-166)", () => {
     expect(parseIssueFilter(tree)).toEqual(tree);
   });
 });
+
+describe("a piece of text in the title, description or a comment", () => {
+  it("reads `field.has` as typed — commas stay, the ends are trimmed", () => {
+    expect(
+      parseFilterParams(
+        new URLSearchParams(
+          "title.has=%20checkout,%20cart%20&description.has=refund&comment.has=",
+        ),
+      ),
+    ).toEqual({
+      op: "and",
+      rules: [
+        { field: "title", is: "contains", value: "checkout, cart" },
+        { field: "description", is: "contains", value: "refund" },
+      ],
+    });
+  });
+
+  it("keeps the text through slugs and back, untouched", () => {
+    expect(roundTrip("comment.has=mara&assignee=mara")).toBe(
+      "comment.has=mara&assignee=mara",
+    );
+  });
+
+  it("survives the characters an `or` expression uses", () => {
+    const tree: IssueFilter = {
+      op: "and",
+      rules: [
+        {
+          op: "or",
+          rules: [
+            { field: "title", is: "contains", value: "a;b~(c)|d: 100%" },
+            { field: "comment", is: "contains", value: "it's done!" },
+          ],
+        },
+      ],
+    };
+    const params = new URLSearchParams(filterToParams(tree));
+    expect(params.get("or")).not.toMatch(/[()~]/);
+    expect(parseFilterParams(params)).toEqual(tree);
+  });
+
+  it("is a filter parameter, and the schema takes it", () => {
+    expect(isFilterParam("title.has")).toBe(true);
+    expect(isFilterParam("comment.has")).toBe(true);
+    expect(isFilterParam("title")).toBe(false);
+    const tree = {
+      op: "and",
+      rules: [{ field: "description", is: "contains", value: "x" }],
+    };
+    expect(parseIssueFilter(tree)).toEqual(tree as IssueFilter);
+    expect(
+      parseIssueFilter({
+        op: "and",
+        rules: [{ field: "title", is: "any", value: ["x"] }],
+      }),
+    ).toBeNull();
+  });
+});
