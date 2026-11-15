@@ -111,11 +111,26 @@ describe("sameViewState", () => {
     ).toBe(true);
   });
 
-  it("ignores the search and the open issue panel", () => {
+  it("ignores the open issue panel", () => {
     expect(
       sameViewState(
-        new URLSearchParams("status=todo,done&layout=board&q=login&issue=x"),
+        new URLSearchParams("status=todo,done&layout=board&issue=x"),
         stored,
+      ),
+    ).toBe(true);
+  });
+
+  it("sees the search: it's part of a view", () => {
+    expect(
+      sameViewState(
+        new URLSearchParams("status=todo,done&layout=board&q=login"),
+        stored,
+      ),
+    ).toBe(false);
+    expect(
+      sameViewState(
+        new URLSearchParams("status=todo,done&layout=board&q=login"),
+        new URLSearchParams("status=done,todo&layout=board&q=%20login%20"),
       ),
     ).toBe(true);
   });
@@ -149,7 +164,7 @@ describe("pickViewState / layoutFromParam", () => {
   it("keeps only view state", () => {
     expect(
       pickViewState({ status: "todo", q: "x", issue: "i1", layout: "list" }),
-    ).toEqual({ status: "todo", layout: "list" });
+    ).toEqual({ status: "todo", q: "x", layout: "list" });
   });
 
   it("falls back to the board for anything unknown", () => {
@@ -270,14 +285,14 @@ describe("the full filter form in a view (BARY-166)", () => {
     });
   });
 
-  it("compares the full form regardless of order, search excluded", () => {
+  it("compares the full form regardless of order", () => {
     const stored = new URLSearchParams(
       "layout=board&status.not=done,canceled&or=label:bug;priority:high",
     );
     expect(
       sameViewState(
         new URLSearchParams(
-          "layout=board&or=priority:high;label:bug&status.not=canceled,done&q=x",
+          "layout=board&or=priority:high;label:bug&status.not=canceled,done",
         ),
         stored,
       ),
@@ -299,7 +314,12 @@ describe("the full filter form in a view (BARY-166)", () => {
         issue: "x",
         layout: "list",
       }),
-    ).toEqual({ "status.not": "done", or: "label:bug", layout: "list" });
+    ).toEqual({
+      "status.not": "done",
+      or: "label:bug",
+      q: "login",
+      layout: "list",
+    });
   });
 });
 

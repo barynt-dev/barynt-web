@@ -263,6 +263,20 @@ async function ruleWhere(
       return ids.length ? { parentId: { in: ids } } : null;
     }
 
+    // A piece of text, anywhere in the field, whatever its case. The plain
+    // text columns, not the documents: `contains` doesn't work on `Json`
+    // (`descriptionText`/`bodyText` are kept in step on every write).
+    case "title":
+    case "description":
+    case "comment": {
+      const piece = typeof value === "string" ? value.trim() : "";
+      if (!piece) return null;
+      const match = { contains: piece, mode: "insensitive" as const };
+      if (field === "title") return { title: match };
+      if (field === "description") return { descriptionText: match };
+      return { comments: { some: { bodyText: match } } };
+    }
+
     case "text": {
       const q = typeof value === "string" ? value.trim() : "";
       if (!q) return null;

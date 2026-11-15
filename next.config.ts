@@ -12,15 +12,19 @@ const nextConfig: NextConfig = {
   // Dev only: Next blocks its client chunks (and HMR) for any origin other
   // than localhost. Opened from an emulator/phone via the LAN IP, React then
   // never hydrates — inputs render but state never updates, so a button that
-  // is `disabled` until an email is typed stays disabled forever.
-  allowedDevOrigins: ["192.168.0.*"],
-  // GitHub Codespaces' port forwarding rewrites the `Origin` header to
-  // `localhost:<port>` but sets `X-Forwarded-Host` to the public
-  // `*.app.github.dev` host — Next's Server Actions CSRF check sees the
-  // mismatch and aborts every action ("Invalid Server Actions request").
-  // Only inside a Codespace (`CODESPACES=true`), so production keeps the
-  // strict same-origin check.
-  ...(process.env.CODESPACES === "true" && {
+  // is `disabled` until an email is typed stays disabled forever. Every
+  // private range a home or office LAN hands out (a Fritz!Box is
+  // 192.168.178.x, not 192.168.0.x), plus mDNS names.
+  allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*", "*.local"],
+  // GitHub Codespaces' port forwarding — and VS Code's own (dev tunnels,
+  // `*.devtunnels.ms`) — rewrites the `Origin` header to `localhost:<port>`
+  // but sets `X-Forwarded-Host` to the public host, so Next's Server Actions
+  // CSRF check sees the mismatch and aborts every action ("Invalid Server
+  // Actions request"), the sign-in form's included. Only inside a Codespace
+  // (`CODESPACES=true`) or under `next dev`, so production keeps the strict
+  // same-origin check.
+  ...((process.env.CODESPACES === "true" ||
+    process.env.NODE_ENV === "development") && {
     experimental: {
       serverActions: { allowedOrigins: ["localhost:3000"] },
     },

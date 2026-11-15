@@ -136,6 +136,11 @@ deletions, break-glass access, issue changes.
 `notify()` (`lib/notify/index.ts`) writes the in-app inbox row and, if the person wants
 it, an email. Like the audit log it is called from several domains and **swallows errors**:
 a stumbling notification must never block an assignment, a comment or a role change.
+Nor does a slow one: the inbox row and the mail are written **after the response**
+(`afterResponse` in `lib/background.ts`, built on Next's `after()`), so the action that
+triggered them answers as soon as its own change is done. The same goes for the
+invitation, removal and share mails in `lib/mail/index.ts`. Outside a request (tests,
+seed, scripts) the work runs right away, and awaiting `notify()` waits for it.
 
 - **Events:** `assigned`, `mentioned`, `comment`, `commentReply`, `status`, `invite`, `role`,
   `issueShared`. Nobody is notified about their own action.

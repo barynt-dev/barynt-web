@@ -65,6 +65,9 @@ interface BoardCardProps {
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
   onDragOver?: (e: React.DragEvent) => void;
+  /** With a mouse the board drags by pointer events (`pointerDrag.ts`);
+   *  the native `onDrag*` above only serve a touch tablet. */
+  onDragPointerDown?: (e: React.PointerEvent<HTMLElement>) => void;
   /** The ordinary click: panel over the board. */
   onOpen?: () => void;
   /**
@@ -97,6 +100,7 @@ export function BoardCard({
   onDragStart,
   onDragEnd,
   onDragOver,
+  onDragPointerDown,
   onOpen,
   onOpenInNewTab,
   moveTargets,
@@ -115,6 +119,10 @@ export function BoardCard({
   // No dragging on a phone: it would fight with scrolling, and "Move to…" in
   // the long-press sheet replaces it. A tablet drags again.
   const isPhone = useMediaQuery(PHONE_QUERY);
+  // A finger drags natively (a tablet); a mouse or trackpad by pointer
+  // events, which leave the wheel and two-finger scrolling working while a
+  // card is held — a native drag swallows them.
+  const coarse = useMediaQuery("(pointer: coarse)");
 
   // The server only catches up after the write. Until then the card shows
   // what was just typed — otherwise the old title would briefly flash back
@@ -190,7 +198,16 @@ export function BoardCard({
       { placement: "bottom", label: t("issues.quickActions") },
     );
   const longPress = useLongPress(openQuickActions);
-  const longPressProps = compact ? longPress : {};
+  // Its `onPointerDown` is chained with the drag's below, not spread over it.
+  const {
+    onPointerDown: longPressDown,
+    ...longPressProps
+  }: Partial<typeof longPress> = compact ? longPress : {};
+  // Not while editing: a drag would otherwise steal mouse text selection
+  // from the field. Not without issue.update.any/.own either — dragging
+  // changes the status (`moveIssue`/`reorderIssue`), which the server
+  // rejects without those permissions.
+  const canDrag = !isEditing && issue.access.canEdit && !isPhone;
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: card contains block-level content; a <button> would be invalid HTML
@@ -207,14 +224,15 @@ export function BoardCard({
       // into view — a plain attribute instead of a ref map, since the board
       // already has one container ref to search from.
       data-issue-id={issue.id}
-      // Not while editing: a draggable ancestor would otherwise steal mouse
-      // text selection from the field. Not without issue.update.any/.own
-      // either — dragging changes the status (`moveIssue`/`reorderIssue`),
-      // which the server rejects without those permissions.
-      draggable={!isEditing && issue.access.canEdit && !isPhone}
+      // Natively only for a finger — see `coarse`; when not, see `canDrag`.
+      draggable={canDrag && coarse}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragOver={onDragOver}
+      onPointerDown={(e) => {
+        longPressDown?.(e);
+        if (canDrag) onDragPointerDown?.(e);
+      }}
       onMouseDown={() => {
         wasEditing.current = isEditing;
       }}

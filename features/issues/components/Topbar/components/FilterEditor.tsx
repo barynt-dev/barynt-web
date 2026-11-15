@@ -2,7 +2,7 @@
 
 import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/ui/atoms/Avatar/Avatar";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import { InlinePicker } from "@/components/ui/atoms/InlinePicker/InlinePicker";
@@ -197,6 +197,7 @@ export function FilterEditor({
   /** A sensible value for `field` with `is` — what a new row starts with. */
   const defaultValue = (field: FilterField, is: FilterOp) => {
     if (needsNoValue(is)) return undefined;
+    if (is === "contains") return "";
     if (isList(is)) return [] as (string | number)[];
     if (is === "within") return relativeFor(field)[0];
     if (is === "before" || is === "after") return todayIso();
@@ -575,6 +576,13 @@ function ConditionCard({
         onChange={(v) => onChange(make(rule.field, rule.is, v))}
       />
     );
+  } else if (rule.is === "contains") {
+    value = (
+      <TextValue
+        value={String(rule.value ?? "")}
+        onChange={(text) => onChange(make(rule.field, rule.is, text))}
+      />
+    );
   } else if (rule.is === "before" || rule.is === "after") {
     value = (
       <input
@@ -620,5 +628,62 @@ function ConditionCard({
       </div>
       {value && <div className={styles.values}>{value}</div>}
     </div>
+  );
+}
+
+/** How long typing rests before the text filters (like the search box). */
+const TEXT_DEBOUNCE_MS = 400;
+
+/**
+ * The text of a "contains" condition. Holds what's typed itself and hands
+ * it on once typing rests (or on Enter / leaving the field) — every change
+ * is a new address and a new query, so not on every keystroke.
+ */
+function TextValue({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (text: string) => void;
+}) {
+  const t = useTranslations();
+  const [text, setText] = useState(value);
+  const input = useRef<HTMLInputElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  // A new value from outside — the chip's cross, "clear all" — shows, but
+  // never over what someone is typing right now.
+  useEffect(() => {
+    if (document.activeElement !== input.current) setText(value);
+  }, [value]);
+
+  const commit = (next: string) => {
+    clearTimeout(timer.current);
+    if (next !== value) onChange(next);
+  };
+
+  return (
+    <input
+      ref={input}
+      type="text"
+      className={styles.text}
+      aria-label={t("filters.textValue")}
+      placeholder={t("filters.textPlaceholder")}
+      value={text}
+      maxLength={500}
+      // Opened by "+ condition" with this field: straight to typing.
+      // biome-ignore lint/a11y/noAutofocus: the field was just picked for this
+      autoFocus={value === ""}
+      onChange={(e) => {
+        const next = e.target.value;
+        setText(next);
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => commit(next), TEXT_DEBOUNCE_MS);
+      }}
+      onBlur={() => commit(text)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commit(text);
+      }}
+    />
   );
 }

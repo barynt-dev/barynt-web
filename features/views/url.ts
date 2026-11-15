@@ -22,8 +22,9 @@ import type { SavedView, ViewDisplay, ViewLayout } from "./schema";
  * and "unsaved" simply means the URL no longer matches that address
  * (`sameViewState`). Discarding is navigating back to it.
  *
- * The search box is not part of a view: typing into it neither marks the view
- * unsaved nor gets stored.
+ * The search box is part of it like any filter: what's typed there marks the
+ * view unsaved, gets stored with it (`q`, the filter's `text` rule) and is
+ * back in the box when the view opens.
  *
  * The display settings are part of it too (BARY-165): hidden and reordered
  * columns, hidden card fields, empty groups, sub-issues — as `hide`, `order`,
@@ -123,9 +124,9 @@ const read = (source: ParamSource, key: string) =>
 const keysOf = (source: ParamSource) =>
   source instanceof URLSearchParams ? [...source.keys()] : Object.keys(source);
 
-/** A view's filter parameter — everything the filter reads except the
- *  search, which isn't part of a view. */
-const isViewFilterKey = (key: string) => key !== "q" && isFilterParam(key);
+/** A view's filter parameter — everything the filter reads, the search
+ *  (`q`) included. */
+const isViewFilterKey = isFilterParam;
 
 /** One settings parameter in comparable form: defaults ironed out. */
 function normalized(source: ParamSource, key: string): string {
