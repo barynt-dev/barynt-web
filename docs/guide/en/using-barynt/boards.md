@@ -14,7 +14,8 @@ Barynt has two basic layouts for issues. They show the same data, so use whichev
 Each **column** is a status: _Backlog_, _Todo_, _In Progress_, _In Review_ and _Done_. Every issue is a card. What a card shows: its project (on the workspace board), type, title, labels, number, priority, assignee's picture, when it last changed and how many comments it has.
 
 - **Drag a card** to another column and its status changes for everybody, at once.
-- **Drag a card up or down** inside a column to rank it. The order you set is the order everyone sees (the default _manual_ ordering).
+- **Drag a card up or down** inside a column to rank it. The order you set is the order everyone sees (the default _manual_ ordering). Hold the card near the top or bottom of a column and the column scrolls; near the left or right of the board, the columns scroll sideways. The mouse wheel, or two fingers on a trackpad, scroll the column under the card, too. `Esc` puts the card back.
+- **Make a column wider or narrower** by dragging the right edge of its header, for instance to see more of each title. Double-click the edge to go back to the default width. The widths are remembered on this device.
 - **Click a card** to open it, or move with the arrow keys and press `Enter`.
 - The **+** at the top of a column creates an issue in that status.
 - **Canceled** issues are not shown as a column, but you can bring them back with _Shown groups_ (see below).
@@ -38,7 +39,7 @@ The **Display** button on the right opens a small menu. Your choices are remembe
 | --- | --- |
 | **Board / List** | Switches the layout. |
 | **Columns / Grouping** | Group by _Status_ (the default), _Priority_, _Type_, _Assignee_ or _Story points_. On the workspace board you can also group by _Project_. |
-| **Swimlanes** | A second grouping as horizontal rows, for instance columns by status and one lane per person. |
+| **Swimlanes** | A second grouping as horizontal rows, for instance columns by status and one lane per person. A tall lane scrolls on its own, and its title stays in view while you scroll. |
 | **Ordering** | _Default_ (your manual ranking), or sort by priority, type, status, story points, due date, time estimate, last update, creation date, title or assignee, ascending or descending. |
 | **Shown groups** | Hide columns you do not need, such as Backlog, and re-order the others. |
 | **Hide empty groups** | Collapses columns without issues. |

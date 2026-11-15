@@ -14,7 +14,8 @@ Barynt hat zwei Grundlayouts für Aufgaben. Sie zeigen dieselben Daten, nimm als
 Jede **Spalte** ist ein Status: _Rückstand_, _Offen_, _In Bearbeitung_, _In Überprüfung_ und _Erledigt_. Jede Aufgabe ist eine Karte. Die Karte zeigt: ihr Projekt (auf dem Workspace-Board), Typ, Titel, Labels, Nummer, Priorität, das Bild der zuständigen Person, wann sie zuletzt geändert wurde und wie viele Kommentare sie hat.
 
 - **Ziehe eine Karte** in eine andere Spalte, und ihr Status ändert sich sofort für alle.
-- **Ziehe eine Karte nach oben oder unten** innerhalb einer Spalte, um sie zu ordnen. Die Reihenfolge, die du festlegst, sehen alle (die voreingestellte _manuelle_ Sortierung).
+- **Ziehe eine Karte nach oben oder unten** innerhalb einer Spalte, um sie zu ordnen. Die Reihenfolge, die du festlegst, sehen alle (die voreingestellte _manuelle_ Sortierung). Hältst du die Karte nah am oberen oder unteren Rand einer Spalte, scrollt die Spalte mit; am linken oder rechten Rand des Boards scrollen die Spalten zur Seite. Auch das Mausrad oder zwei Finger auf dem Trackpad scrollen die Spalte unter der Karte. `Esc` legt die Karte zurück.
+- **Mach eine Spalte breiter oder schmaler**, indem du den rechten Rand ihres Kopfes ziehst, etwa um mehr vom Titel zu sehen. Ein Doppelklick auf den Rand setzt die Breite zurück. Die Breiten werden auf diesem Gerät gemerkt.
 - **Klicke eine Karte an**, um sie zu öffnen, oder bewege dich mit den Pfeiltasten und drücke `Enter`.
 - Das **+** am Kopf einer Spalte legt eine Aufgabe in diesem Status an.
 - **Abgebrochene** Aufgaben erscheinen nicht als Spalte, lassen sich aber über _Angezeigte Gruppen_ zurückholen (siehe unten).
@@ -38,7 +39,7 @@ Die Schaltfläche **Anzeige** rechts öffnet ein kleines Menü. Deine Einstellun
 | --- | --- |
 | **Board / Liste** | Wechselt das Layout. |
 | **Spalten / Gruppierung** | Nach _Status_ (voreingestellt), _Priorität_, _Typ_, _Zuständig_ oder _Story Points_ gruppieren. Auf dem Workspace-Board auch nach _Projekt_. |
-| **Bahnen** (Swimlanes) | Eine zweite Gruppierung als horizontale Reihen, etwa Spalten nach Status und eine Reihe pro Person. |
+| **Bahnen** (Swimlanes) | Eine zweite Gruppierung als horizontale Reihen, etwa Spalten nach Status und eine Reihe pro Person. Eine hohe Bahn scrollt für sich, und ihr Titel bleibt beim Scrollen sichtbar. |
 | **Sortierung** | _Standard_ (deine manuelle Ordnung) oder sortiert nach Priorität, Typ, Status, Story Points, Fälligkeit, Zeitschätzung, letzter Änderung, Erstellung, Titel oder Zuständigkeit, auf- oder absteigend. |
 | **Angezeigte Gruppen** | Spalten ausblenden, die du nicht brauchst, etwa Rückstand, und die übrigen umsortieren. |
 | **Leere Gruppen automatisch ausblenden** | Klappt Spalten ohne Aufgaben zu. |

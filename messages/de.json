@@ -789,6 +789,7 @@
     "boardColumns": "Board-Spalten",
     "toCreate": "zum Erstellen",
     "moveColumn": "Spalte „{group}“ verschieben",
+    "resizeColumn": "Breite der Spalte „{group}“ ändern (Doppelklick setzt zurück)",
     "table": {
       "col_priority": "Priorität",
       "col_identifier": "ID",

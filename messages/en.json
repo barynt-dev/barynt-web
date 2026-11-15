@@ -789,6 +789,7 @@
     "boardColumns": "Board columns",
     "toCreate": "to create",
     "moveColumn": "Move column “{group}”",
+    "resizeColumn": "Resize column “{group}” (double-click resets)",
     "table": {
       "col_priority": "Priority",
       "col_identifier": "ID",
