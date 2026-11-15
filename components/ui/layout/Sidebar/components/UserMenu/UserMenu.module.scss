@@ -8,6 +8,10 @@
 }
 
 .wrapper {
+  /* Where the bell sits, and how big it is — the name keeps clear of both. */
+  --bell-inset: 1rem;
+  --bell-size: 2rem;
+
   position: relative;
   flex: none;
   width: 100%;
@@ -18,9 +22,12 @@
   }
 }
 
-/* Keep space free on the right so the name doesn't sit under the bell button */
-.trigger {
-  padding-right: 2.75rem;
+/* Keep space free on the right so the name doesn't sit under the bell
+   button: the bell's inset and width, and a gap before it, so a long name
+   ends in "…" ahead of the bell. Under `.wrapper`, so the button's own size
+   padding (`.md`) can't win over it whatever order the styles load in. */
+.wrapper .trigger {
+  padding-right: calc(var(--bell-inset) + var(--bell-size) + 0.5rem);
 
   /* Rail: just the avatar; the bell moves below it (`.bellSlot`). */
   /* The avatar stays round; the button around it is a square. */
@@ -48,7 +55,7 @@
 .bellSlot {
   position: absolute;
   top: 50%;
-  right: 1rem;
+  right: var(--bell-inset);
   transform: translateY(-50%);
   display: flex;
 
