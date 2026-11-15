@@ -46,6 +46,10 @@ export const EDITOR_FIELDS: FilterField[] = [
   "created",
   "updated",
   "parent",
+  // A piece of text, each in its own place (the search box looks everywhere).
+  "title",
+  "description",
+  "comment",
 ];
 
 /** The operators the editor offers per field — a curated subset of what the
@@ -63,6 +67,9 @@ export const EDITOR_OPS: Partial<Record<FilterField, FilterOp[]>> = {
   created: ["within", "before", "after"],
   updated: ["within", "before", "after"],
   parent: ["empty", "notEmpty"],
+  title: ["contains"],
+  description: ["contains"],
+  comment: ["contains"],
 };
 
 export const RELATIVE_OPTIONS: RelativeDate[] = [
@@ -122,6 +129,12 @@ export function useFilterLabels(lookups: FilterLabelLookups) {
         return t("fields.updated");
       case "parent":
         return t("filters.fieldParent");
+      case "title":
+        return t("filters.fieldTitle");
+      case "description":
+        return t("filters.fieldDescription");
+      case "comment":
+        return t("filters.fieldComment");
       default:
         return f;
     }
@@ -153,6 +166,8 @@ export function useFilterLabels(lookups: FilterLabelLookups) {
         return t("filters.opAfter");
       case "within":
         return t("filters.opWithin");
+      case "contains":
+        return t("filters.opContains");
       default:
         return o;
     }
@@ -211,6 +226,9 @@ export function useFilterLabels(lookups: FilterLabelLookups) {
     if (r.field === "parent") return op(r.field, r.is);
     const head = `${field(r.field)} ${op(r.field, r.is)}`;
     if (r.value === undefined) return head;
+    // Typed text in quotes: "Title contains “checkout”".
+    if (r.is === "contains")
+      return `${head} ${t("filters.quoted", { text: String(r.value) })}`;
     const values = Array.isArray(r.value) ? r.value : [r.value];
     return `${head} ${values.map((v) => value(r.field, v)).join(", ")}`;
   };

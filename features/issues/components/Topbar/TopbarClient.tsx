@@ -135,6 +135,8 @@ export function TopbarClient({
     tree,
     filterCount,
     searchValue,
+    searchKey,
+    resetSearch,
     sortKey,
     groupKey,
     laneKey,
@@ -222,7 +224,11 @@ export function TopbarClient({
       displayParams(display).size > 0);
   // The plain board/list is "unsaved" too once it differs from a fresh one:
   // filters or display — there's no view to save into, only a new one.
-  const dirty = activeView ? viewDirty : filterCount > 0 || plainChanged;
+  // The search counts too: it's saved with a view like any filter.
+  const searching = (searchParams.get("q") ?? "").trim() !== "";
+  const dirty = activeView
+    ? viewDirty
+    : filterCount > 0 || searching || plainChanged;
   // Discarding there resets the person's own display settings as well.
   const discardPlain = async () => {
     await Promise.all([
@@ -330,7 +336,11 @@ export function TopbarClient({
             <div className={styles.trailing}>
               {/* Not on a tablet or phone (CSS). */}
               <div className={styles.searchSlot}>
-                <IssueSearch initialValue={searchValue} onChange={search} />
+                <IssueSearch
+                  key={searchKey}
+                  initialValue={searchValue}
+                  onChange={search}
+                />
               </div>
             </div>
           )}
@@ -343,7 +353,11 @@ export function TopbarClient({
           <div className={styles.trailing}>
             {/* Not on a tablet or phone (CSS). */}
             <div className={styles.searchSlot}>
-              <IssueSearch initialValue={searchValue} onChange={search} />
+              <IssueSearch
+                key={searchKey}
+                initialValue={searchValue}
+                onChange={search}
+              />
             </div>
             {/* Not on a phone (CSS). */}
             <div className={styles.viewSwitch}>
@@ -404,6 +418,13 @@ export function TopbarClient({
                 layout={view}
                 currentParams={currentParams}
                 onDiscardPlain={discardPlain}
+                // The view's own search goes back into the box.
+                onDiscard={() =>
+                  resetSearch(
+                    new URLSearchParams(activeView?.canonical ?? "").get("q") ??
+                      "",
+                  )
+                }
               />
             )}
             <ViewSettings

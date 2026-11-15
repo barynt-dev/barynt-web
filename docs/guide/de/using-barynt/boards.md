@@ -58,11 +58,12 @@ Klicke über dem Board auf **Filter**. Die Schnellfilter sind _Status_, _Typ_, _
 Für alles Genauere öffne die **erweiterten Filtereinstellungen**. Dort baust du Bedingungen selbst:
 
 - Zu den Feldern gehören Status, Typ, Priorität, Zuständigkeit, Ersteller, Labels, Fälligkeitsdatum, Story Points und ob es eine Unteraufgabe ist.
-- Zu den Vergleichen gehören _ist_, _ist nicht_, _ist leer_, _mindestens_, _höchstens_, _vor_, _nach_ und _innerhalb_.
+- **Titel**, **Beschreibung** und **Kommentar** finden ein Stück Text genau an dieser Stelle: _Titel enthält „checkout“_, oder jede Aufgabe, in deren Kommentaren „Erstattung“ vorkommt. Groß- und Kleinschreibung spielen keine Rolle.
+- Zu den Vergleichen gehören _ist_, _ist nicht_, _ist leer_, _mindestens_, _höchstens_, _vor_, _nach_, _innerhalb_ und _enthält_.
 - Spezielle Werte sparen Tipparbeit: **Ich** steht für die Person, die gerade schaut, und Daten können relativ sein, etwa _überfällig_, _heute_, _nächste 7 Tage_ oder _letzte 30 Tage_.
 - Bedingungen lassen sich mit **UND** oder **ODER** verknüpfen und in Kästen gruppieren.
 
-Um eine Aufgabe nach Name oder Nummer zu finden, nutze das Feld **Nach Titel oder ID filtern…** neben den Tabs. Für eine Suche über alles drücke `⌘K`, siehe [Suche und Tastenkombinationen](shortcuts.md).
+Um eine Aufgabe nach Name oder Nummer zu finden, nutze das Feld **Nach Titel oder ID filtern…** neben den Tabs. Was du dort eingibst, zählt auch als Filter: Speichere es mit **Als neue View**, und die View öffnet sich mit derselben Suche. Für eine Suche über alles drücke `⌘K`, siehe [Suche und Tastenkombinationen](shortcuts.md).
 
 ## Workspace-weites Board und Liste
 

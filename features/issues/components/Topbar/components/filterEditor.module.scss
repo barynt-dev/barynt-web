@@ -239,7 +239,9 @@
   }
 }
 
-.date {
+/* The day of a before/after, the text of a "contains" — the same field. */
+.date,
+.text {
   min-height: 1.75rem;
   padding: 0 0.5rem;
   border: 1px solid var(--primary);
@@ -252,6 +254,16 @@
   &:focus-visible {
     outline: 2px solid var(--tertiary);
     outline-offset: 1px;
+  }
+}
+
+/* Room for a few words; it takes the whole line of the condition. */
+.text {
+  flex: 1;
+  min-width: 12rem;
+
+  &::placeholder {
+    color: var(--outline);
   }
 }
 
@@ -341,7 +353,8 @@
 
   .chip,
   .addValue,
-  .date {
+  .date,
+  .text {
     min-height: 2.25rem;
   }
 

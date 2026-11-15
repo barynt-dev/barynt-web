@@ -5,7 +5,7 @@ sidebar:
   order: 6
 ---
 
-A **view** is a saved way of looking at issues. It remembers the filter, the grouping, the order and the layout, so "all open bugs, grouped by assignee" is one click away instead of five.
+A **view** is a saved way of looking at issues. It remembers the filter (the search box included), the grouping, the order and the layout, so "all open bugs, grouped by assignee" is one click away instead of five.
 
 ![The views of a workspace](../../assets/en/views-gallery.webp)
 

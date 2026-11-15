@@ -208,6 +208,27 @@ const FIELD_INFO: Record<FilterField, { what: DocText; values: DocText }> = {
     },
     values: { en: "Any text.", de: "Beliebiger Text." },
   },
+  title: {
+    what: {
+      en: "A piece of text in the title, exactly as written (case doesn't matter).",
+      de: "Ein Stück Text im Titel, genau so geschrieben (Groß- und Kleinschreibung egal).",
+    },
+    values: { en: "Any text.", de: "Beliebiger Text." },
+  },
+  description: {
+    what: {
+      en: "A piece of text in the description, exactly as written (case doesn't matter).",
+      de: "Ein Stück Text in der Beschreibung, genau so geschrieben (Groß- und Kleinschreibung egal).",
+    },
+    values: { en: "Any text.", de: "Beliebiger Text." },
+  },
+  comment: {
+    what: {
+      en: "A piece of text in at least one of its comments, exactly as written (case doesn't matter).",
+      de: "Ein Stück Text in mindestens einem seiner Kommentare, genau so geschrieben (Groß- und Kleinschreibung egal).",
+    },
+    values: { en: "Any text.", de: "Beliebiger Text." },
+  },
 };
 
 export interface FilterDocField {

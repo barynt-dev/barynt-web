@@ -375,7 +375,7 @@ describe("setViewUserState", () => {
 });
 
 describe("saveViewState", () => {
-  it("stores what the address shows, without the search", async () => {
+  it("stores what the address shows, the search included", async () => {
     rows = [viewRow()];
     const result = await saveViewState("v1", {
       status: "todo",
@@ -390,6 +390,7 @@ describe("saveViewState", () => {
       group: "assignee",
       sort: "dueDate",
       layout: "list",
+      q: "login",
     });
     expect(
       (db.savedView.update.mock.calls.at(-1)?.[0] as { data: object })?.data,

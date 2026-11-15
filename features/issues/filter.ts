@@ -65,7 +65,7 @@ type ValueKind =
   | "number" // estimate (hours)
   | "categories" // status categories
   | "date" // due, created, updated
-  | "text"; // full-text search
+  | "text"; // full-text search, or a piece of text in one field
 
 interface FieldDef {
   kind: ValueKind;
@@ -100,6 +100,11 @@ export const FILTER_FIELDS = {
   updated: { kind: "date", ops: ["before", "after", "within"] },
   parent: { kind: "ids", ops: ["any", "empty", "notEmpty"] },
   text: { kind: "text", ops: ["contains"] },
+  // A piece of text in one place, as typed — not the search's word matching:
+  // "the title contains 'checkout'", "a comment mentions 'refund'".
+  title: { kind: "text", ops: ["contains"] },
+  description: { kind: "text", ops: ["contains"] },
+  comment: { kind: "text", ops: ["contains"] },
 } as const satisfies Record<string, FieldDef>;
 
 export type FilterField = keyof typeof FILTER_FIELDS;

@@ -58,11 +58,12 @@ Click **Filter** above the board. The quick filters are _Status_, _Type_, _Prior
 For anything more precise, open **Advanced filter settings**. There you build conditions yourself:
 
 - Fields include status, type, priority, assignee, creator, labels, due date, story points and whether it is a sub-issue.
-- Comparisons include _is_, _is not_, _is empty_, _at least_, _at most_, _before_, _after_ and _within_.
+- **Title**, **Description** and **Comment** find a piece of text in that one place: _Title contains “checkout”_, or every issue where some comment mentions “refund”. Upper and lower case don't matter.
+- Comparisons include _is_, _is not_, _is empty_, _at least_, _at most_, _before_, _after_, _within_ and _contains_.
 - Special values save typing: **Me** stands for whoever is looking, and dates can be relative, like _overdue_, _today_, _next 7 days_ or _last 30 days_.
 - Conditions can be combined with **AND** or **OR**, and grouped into boxes.
 
-To find an issue by name or number, use the **Filter by title or ID** box next to the tabs. For a search across everything, press `⌘K`, see [Search and keyboard shortcuts](shortcuts.md).
+To find an issue by name or number, use the **Filter by title or ID** box next to the tabs. What you type there counts as a filter too: save it with **Save as new view**, and the view opens with the same search. For a search across everything, press `⌘K`, see [Search and keyboard shortcuts](shortcuts.md).
 
 ## Workspace-wide board and list
 
