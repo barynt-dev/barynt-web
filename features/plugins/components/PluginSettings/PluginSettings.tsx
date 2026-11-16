@@ -203,6 +203,7 @@ export function PluginSettings({
             {!running && <p className={styles.about}>{plugin.description}</p>}
             <CapabilityCards
               capabilities={plugin.capabilities}
+              service={plugin.service}
               network={plugin.network}
             />
             <label className={shared.confirm}>

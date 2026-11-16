@@ -496,6 +496,7 @@ function Detail({
           </header>
           <CapabilityCards
             capabilities={plugin.capabilities}
+            service={plugin.service}
             network={plugin.network}
           />
         </div>

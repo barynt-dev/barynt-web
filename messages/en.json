@@ -2711,6 +2711,8 @@
     "networkTitle": "Network",
     "noNetwork": "Calls no other servers.",
     "networkNote": "Other hosts are blocked.",
+    "serviceTitle": "Its own server",
+    "serviceNote": "Barynt sends the events it subscribed to there, signed, and only what the capabilities above allow.",
     "capsConfirmedIn": "{count, plural, =0 {Not confirmed anywhere yet.} one {Confirmed in # activation.} other {Confirmed in # activations.}}",
     "whereItsOn": "Where it’s on",
     "versionState": {

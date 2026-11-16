@@ -615,6 +615,12 @@ describe("deliverEvent() to plugins' servers (BARY-212)", () => {
       },
     });
 
+    // The queue and its log never keep the secret in the clear.
+    expect(deliveries[0].payload).not.toContain(SERVICE_SECRET);
+    expect(JSON.parse(deliveries[0].payload as string).data.secret).toBe(
+      "[sealed]",
+    );
+
     // Switched off: the goodbye still goes out, without the secret.
     activations[0].enabled = false;
     await sendLifecycle("act-1", "app.uninstalled");

@@ -238,15 +238,20 @@ export async function ensureServiceSecret(
   return true;
 }
 
+/** What stands in for the secret in the stored copy of `app.installed`. */
+export const SEALED = "[sealed]";
+
 /**
- * A lifecycle message for a plugin's server, as delivered: `app.installed`
- * carries the secret every later message is signed with — the server keeps
- * it per installation — and where Barynt is.
+ * A lifecycle message for a plugin's server: `app.installed` carries the
+ * secret every later message is signed with — the server keeps it per
+ * installation — and where Barynt is. `stored` is what the delivery row and
+ * its log keep, with the secret left out; `sent` is built again for every
+ * attempt, so the secret never sits in the queue in the clear.
  */
 export async function lifecyclePayload(
   activationId: string,
   event: LifecycleEvent,
-): Promise<{ workspaceId: string; payload: string } | null> {
+): Promise<{ workspaceId: string; stored: string; sent: string } | null> {
   const activation = await db.pluginActivation.findUnique({
     where: { id: activationId },
     select: {
@@ -259,9 +264,8 @@ export async function lifecyclePayload(
   if (!activation?.serviceSecret) return null;
   const secret = openSecret(activation.serviceSecret, SECRET_PURPOSE);
   if (!secret) return null;
-  return {
-    workspaceId: activation.workspaceId,
-    payload: JSON.stringify({
+  const message = (shown: string) =>
+    JSON.stringify({
       event,
       timestamp: Date.now(),
       workspaceId: activation.workspaceId,
@@ -270,8 +274,12 @@ export async function lifecyclePayload(
         installationId: activationId,
         pluginId: activation.pluginId,
         baryntUrl: appUrl("/"),
-        ...(event === "app.installed" && { secret }),
+        ...(event === "app.installed" && { secret: shown }),
       },
-    }),
+    });
+  return {
+    workspaceId: activation.workspaceId,
+    stored: message(SEALED),
+    sent: message(secret),
   };
 }

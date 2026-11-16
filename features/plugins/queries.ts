@@ -43,6 +43,8 @@ export interface PluginSummary {
   levels: string[];
   capabilities: string[];
   network: string[];
+  /** Its own server and what it hears about (BARY-212). */
+  service?: { url: string; events: string[] } | null;
   /** Screenshots, served from the installed version (BARY-199). */
   previews: { title: string; src: string }[];
 }
@@ -68,6 +70,7 @@ function summaryOf(
     levels: m.levels ?? [],
     capabilities: m.capabilities ?? [],
     network: m.network ?? [],
+    service: m.service ?? null,
     previews: rowId
       ? (m.previews ?? []).map(({ file, title }) => ({
           title,

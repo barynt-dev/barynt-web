@@ -418,7 +418,8 @@ secret:
 1. When it's switched on, Barynt sends **`app.installed`** with
    `data: { installationId, pluginId, baryntUrl, secret }`. Keep the secret
    per `installationId`; every later message is signed with it. Switched on
-   again later, the same message comes again with the same secret.
+   again later, the same message comes again with the same secret. Barynt
+   keeps the secret sealed; the delivery log shows `[sealed]` in its place.
 2. Then the events it subscribed to, as they happen.
 3. When it's switched off, **`app.uninstalled`** with
    `data: { installationId, pluginId, baryntUrl }` — no secret.

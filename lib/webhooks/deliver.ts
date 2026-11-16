@@ -108,7 +108,7 @@ export async function sendLifecycle(
     const id = await queue({
       workspaceId: message.workspaceId,
       event,
-      payload: message.payload,
+      payload: message.stored,
       activationId,
     });
     await attemptDelivery(id);
@@ -217,6 +217,14 @@ export async function attemptDelivery(id: string): Promise<void> {
       return;
     }
 
+    // `app.installed` is kept without its secret; the body that goes out
+    // is made again with it, for each attempt (BARY-212).
+    const body =
+      row.event === "app.installed" && row.activationId
+        ? (await lifecyclePayload(row.activationId, "app.installed"))?.sent
+        : row.payload;
+    if (!body) return;
+
     const timestamp = Date.now().toString();
     const attempt = row.attempts + 1;
     const result = await pinnedPost({
@@ -227,14 +235,10 @@ export async function attemptDelivery(id: string): Promise<void> {
         "x-barynt-event": row.event,
         "x-barynt-delivery": id,
         "x-barynt-attempt": String(attempt),
-        "x-barynt-signature": signPayload(
-          target.secret,
-          timestamp,
-          row.payload,
-        ),
+        "x-barynt-signature": signPayload(target.secret, timestamp, body),
         "x-barynt-timestamp": timestamp,
       },
-      body: row.payload,
+      body,
       timeoutMs: DELIVERY_TIMEOUT_MS,
       keepBytes: RESPONSE_KEEP_BYTES,
       internalHosts: target.internalHosts,

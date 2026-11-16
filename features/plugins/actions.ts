@@ -954,6 +954,8 @@ export interface ReleasePreview {
   levels: string[];
   capabilities: string[];
   network: string[];
+  /** Its own server and what it hears about (BARY-212). */
+  service: { url: string; events: string[] } | null;
   minBaryntVersion: string;
   hash: string;
   /** Size of the code, in bytes. */
@@ -995,6 +997,7 @@ export async function previewRelease(input: {
       levels: m.levels,
       capabilities: m.capabilities,
       network: m.network,
+      service: m.service ?? null,
       minBaryntVersion: m.minBaryntVersion,
       hash: release.hash,
       codeSize: release.files["main.js"]?.byteLength ?? 0,

@@ -2711,6 +2711,8 @@
     "networkTitle": "Netzwerk",
     "noNetwork": "Ruft keine anderen Server auf.",
     "networkNote": "Andere Hosts sind gesperrt.",
+    "serviceTitle": "Eigener Server",
+    "serviceNote": "Dorthin schickt Barynt die abonnierten Ereignisse, signiert und nur so viel, wie die Fähigkeiten oben erlauben.",
     "capsConfirmedIn": "{count, plural, =0 {Noch nirgends bestätigt.} one {In # Aktivierung bestätigt.} other {In # Aktivierungen bestätigt.}}",
     "whereItsOn": "Wo es aktiv ist",
     "versionState": {

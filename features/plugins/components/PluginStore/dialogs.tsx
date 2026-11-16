@@ -477,6 +477,7 @@ export function InstallDialog({
           <CapabilityCards
             capabilities={preview.capabilities}
             network={preview.network}
+            service={preview.service}
           />
           <label className={styles.confirm}>
             <input
