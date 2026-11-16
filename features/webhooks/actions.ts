@@ -4,7 +4,9 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/permissions";
+import { redeliver } from "@/lib/webhooks/deliver";
 import { isWebhookEvent, type WebhookEvent } from "@/lib/webhooks/events";
+import type { WebhookDelivery } from "./types";
 
 // `createWebhook` is wired to a form and returns `{error}` for validation
 // (bad URL, no events) — same convention as `inviteWorkspaceMember`.
@@ -62,8 +64,73 @@ export async function setWebhookEnabled(
     workspaceId: webhook.workspaceId,
   });
 
-  await db.webhook.update({ where: { id }, data: { enabled } });
+  // Turned on again by hand: the day of failures starts over.
+  await db.webhook.update({
+    where: { id },
+    data: enabled
+      ? { enabled, autoDisabledAt: null, failingSince: null }
+      : { enabled },
+  });
   revalidatePath("/", "layout");
+}
+
+/** How many deliveries the log shows. */
+const LOG_SIZE = 50;
+
+const DELIVERY_SELECT = {
+  id: true,
+  event: true,
+  status: true,
+  attempts: true,
+  createdAt: true,
+  updatedAt: true,
+  nextAttemptAt: true,
+  lastStatus: true,
+  lastError: true,
+  lastResponse: true,
+  lastDurationMs: true,
+  payload: true,
+} as const;
+
+/** A webhook's latest deliveries, newest first (BARY-211). */
+export async function listWebhookDeliveries(
+  webhookId: string,
+): Promise<WebhookDelivery[]> {
+  const webhook = await db.webhook.findUnique({
+    where: { id: webhookId },
+    select: { workspaceId: true },
+  });
+  if (!webhook) return [];
+  await requirePermission("webhook.manage", {
+    workspaceId: webhook.workspaceId,
+  });
+  return db.eventDelivery.findMany({
+    where: { webhookId },
+    orderBy: { createdAt: "desc" },
+    take: LOG_SIZE,
+    select: DELIVERY_SELECT,
+  });
+}
+
+/** Sends one delivery again, now — the log's "Send again". The receiver
+ *  gets the same body under the same delivery id. */
+export async function resendWebhookDelivery(
+  deliveryId: string,
+): Promise<WebhookDelivery | null> {
+  const delivery = await db.eventDelivery.findUnique({
+    where: { id: deliveryId },
+    select: { workspaceId: true },
+  });
+  if (!delivery) return null;
+  await requirePermission("webhook.manage", {
+    workspaceId: delivery.workspaceId,
+  });
+  await redeliver(deliveryId);
+  revalidatePath("/", "layout");
+  return db.eventDelivery.findUnique({
+    where: { id: deliveryId },
+    select: DELIVERY_SELECT,
+  });
 }
 
 export async function deleteWebhook(id: string): Promise<void> {

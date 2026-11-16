@@ -335,9 +335,9 @@ model OAuthRefreshToken {
 }
 
 /// Ein Webhook-Endpunkt eines Workspace — schickt eine signierte HTTP-POST-
-/// Anfrage bei bestimmten Ereignissen (`lib/webhooks/events.ts`), ausgelöst
-/// aus `features/issues/actions.ts` und `features/api-v1/mutations.ts`
-/// (`lib/webhooks/deliver.ts#fireWebhookEvent`). Anders als bei `ApiKey`:
+/// Anfrage bei bestimmten Ereignissen (`lib/webhooks/events.ts`), angekündigt
+/// über `lib/webhooks/emit.ts#emitEvent` und zugestellt über `EventDelivery`
+/// (`lib/webhooks/deliver.ts`). Anders als bei `ApiKey`:
 /// gehört dem Workspace, nicht einer einzelnen Person — Integrationen wie
 /// Slack- oder CI-Benachrichtigungen sind workspaceweite Konfiguration, kein
 /// persönliches Zugriffstoken.
@@ -356,20 +356,71 @@ model Webhook {
   createdById String
   createdAt   DateTime @default(now())
 
-  /// Ergebnis des letzten Zustellversuchs — ein Feld statt einer eigenen
-  /// Log-Tabelle, weil es (noch) keinen Retry gibt: nur der letzte Versuch
-  /// ist überhaupt relevant. `lastDeliveryStatus` ist der HTTP-Status bei
-  /// einer erhaltenen Antwort, `lastDeliveryError` der Fehlertext, wenn gar
-  /// keine Antwort zustande kam (Timeout, DNS, Verbindung abgelehnt) —
-  /// gesetzt wird immer nur genau eines von beiden.
+  /// Ergebnis des letzten Zustellversuchs, für die Liste — die einzelnen
+  /// Versuche stehen in `EventDelivery`. `lastDeliveryStatus` ist der
+  /// HTTP-Status bei einer erhaltenen Antwort, `lastDeliveryError` der
+  /// Fehlertext, wenn gar keine Antwort zustande kam (Timeout, DNS,
+  /// Verbindung abgelehnt, gesperrte Adresse) — gesetzt wird immer nur genau
+  /// eines von beiden.
   lastDeliveryAt     DateTime?
   lastDeliveryStatus Int?
   lastDeliveryError  String?
+  /// Seit wann jeder Versuch scheitert — `null`, sobald einer gelingt. Nach
+  /// 24 Stunden schaltet Barynt den Webhook ab (BARY-211).
+  failingSince       DateTime?
+  /// Wann Barynt ihn wegen Dauerfehlern abgeschaltet hat (`enabled` ist dann
+  /// false). Wieder einschalten setzt das zurück.
+  autoDisabledAt     DateTime?
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdBy User      @relation("WebhookCreatedBy", fields: [createdById], references: [id])
+  workspace  Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy  User            @relation("WebhookCreatedBy", fields: [createdById], references: [id])
+  deliveries EventDelivery[]
 
   @@index([workspaceId])
+}
+
+/// Eine Zustellung eines Ereignisses an einen Empfänger (BARY-211) — zugleich
+/// Warteschlange und Protokoll. Sie entsteht beim Ereignis, wird sofort
+/// versucht und, wenn das scheitert, vom Worker (`lib/webhooks/worker.ts`)
+/// wiederholt: Zeilen mit `PENDING` und fälligem `nextAttemptAt`, geholt mit
+/// `FOR UPDATE SKIP LOCKED`, damit mehrere Instanzen nichts doppelt senden.
+/// Nach 7 Tagen gelöscht.
+model EventDelivery {
+  id             String              @id @default(cuid())
+  workspaceId    String
+  webhookId      String
+  event          String
+  /// Der Body, genau wie gesendet und signiert — beim Wiederholen gleich.
+  payload        String
+  status         EventDeliveryStatus @default(PENDING)
+  /// Bisherige Versuche.
+  attempts       Int                 @default(0)
+  /// Wann der nächste Versuch fällig ist; `null`, wenn keiner mehr kommt.
+  nextAttemptAt  DateTime?
+  /// Solange ein Versuch läuft — ein anderer Prozess fasst sie bis dahin
+  /// nicht an.
+  lockedUntil    DateTime?
+  /// Antwort des letzten Versuchs: HTTP-Status oder Fehlertext, dazu der
+  /// Anfang des Bodys (höchstens 2 KB) und die Dauer.
+  lastStatus     Int?
+  lastError      String?
+  lastResponse   String?
+  lastDurationMs Int?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([webhookId, createdAt])
+  @@index([createdAt])
+}
+
+enum EventDeliveryStatus {
+  PENDING
+  SUCCEEDED
+  /// Aufgegeben: keine Wiederholung mehr (Dauerfehler oder 4xx).
+  FAILED
 }
 
 /// Was einer Person gehört und keinem Workspace: wie die Oberfläche aussieht und

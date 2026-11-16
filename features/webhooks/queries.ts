@@ -26,6 +26,7 @@ export const getWorkspaceWebhooks = cache(
         lastDeliveryAt: true,
         lastDeliveryStatus: true,
         lastDeliveryError: true,
+        autoDisabledAt: true,
       },
     });
 

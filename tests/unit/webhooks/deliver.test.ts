@@ -2,46 +2,136 @@ import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { createHmac } from "node:crypto";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
+//
+// `EventDelivery` as a small table in memory, so the real flow runs:
+// queue, attempt, schedule, give up. The network is `pinnedPost`.
+
+type Row = Record<string, unknown> & { id: string };
+let deliveries: Row[] = [];
+let hook: Row;
 
 const mockWebhookFindMany = mock();
-const mockWebhookUpdate = mock();
 const mockWebhookCount = mock();
+const mockWebhookUpdate = mock(
+  async ({ data }: { data: Record<string, unknown> }) => {
+    Object.assign(hook, data);
+    return hook;
+  },
+);
+const mockWebhookUpdateMany = mock(
+  async ({
+    where,
+    data,
+  }: {
+    where: { enabled?: boolean };
+    data: Record<string, unknown>;
+  }) => {
+    if (where.enabled !== undefined && hook.enabled !== where.enabled)
+      return { count: 0 };
+    Object.assign(hook, data);
+    return { count: 1 };
+  },
+);
 const mockUserFindUnique = mock();
+const mockPinnedPost = mock();
+const mockAuditCreate = mock(async () => ({}));
+
+const find = (id: string) => deliveries.find((d) => d.id === id);
 
 mock.module("@/lib/db", () => ({
   db: {
     webhook: {
       findMany: mockWebhookFindMany,
-      update: mockWebhookUpdate,
       count: mockWebhookCount,
+      update: mockWebhookUpdate,
+      updateMany: mockWebhookUpdateMany,
+      findUnique: async () => hook,
+      findFirst: async () => hook,
+    },
+    eventDelivery: {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        const row = {
+          id: `d-${deliveries.length + 1}`,
+          status: "PENDING",
+          attempts: 0,
+          ...data,
+        };
+        deliveries.push(row);
+        return { id: row.id };
+      },
+      findUnique: async ({ where }: { where: { id: string } }) => {
+        const row = find(where.id);
+        return row ? { ...row, webhook: hook } : null;
+      },
+      update: async ({
+        where,
+        data,
+      }: {
+        where: { id: string };
+        data: Record<string, unknown>;
+      }) => Object.assign(find(where.id) as Row, data),
+      updateMany: async ({ where }: { where: { id: string } }) => {
+        const row = find(where.id);
+        const free =
+          row?.status === "PENDING" &&
+          (!row.lockedUntil || (row.lockedUntil as Date) < new Date());
+        if (!row || !free) return { count: 0 };
+        row.lockedUntil = new Date(Date.now() + 30_000);
+        return { count: 1 };
+      },
     },
     user: { findUnique: mockUserFindUnique },
+    workspace: { findUnique: async () => ({ name: "Acme" }) },
+    auditLog: { create: mockAuditCreate },
+    mailTemplate: { findUnique: async () => null },
   },
 }));
 
-import { deliverWebhookEvent, signPayload } from "@/lib/webhooks/deliver";
+mock.module("@/lib/net/pinned-fetch", () => ({ pinnedPost: mockPinnedPost }));
+
+import {
+  attemptDelivery,
+  claimDelivery,
+  deliverWebhookEvent,
+  redeliver,
+  signPayload,
+} from "@/lib/webhooks/deliver";
 import {
   buildEnvelope,
   dispatchEvent,
   hasEventListeners,
 } from "@/lib/webhooks/emit";
+import { DISABLE_AFTER_MS } from "@/lib/webhooks/retry";
 import { runAsPlugin } from "@/lib/webhooks/source";
 
-const HOOK = { id: "wh-1", url: "https://example.com/hook", secret: "shh" };
 const ENVELOPE = { event: "issue.created", data: { id: "i-1" } };
 
 function reset() {
+  deliveries = [];
+  hook = {
+    id: "wh-1",
+    url: "https://example.com/hook",
+    secret: "shh",
+    enabled: true,
+    failingSince: null,
+    workspaceId: "ws-1",
+    createdById: "u-1",
+  };
   mockWebhookFindMany.mockReset();
-  mockWebhookUpdate.mockReset();
   mockWebhookCount.mockReset();
+  mockWebhookUpdate.mockClear();
+  mockWebhookUpdateMany.mockClear();
   mockUserFindUnique.mockReset();
-  mockWebhookFindMany.mockResolvedValue([HOOK]);
-  mockWebhookUpdate.mockResolvedValue({});
+  mockPinnedPost.mockReset();
+  mockAuditCreate.mockClear();
+  mockWebhookFindMany.mockResolvedValue([{ id: "wh-1" }]);
   mockUserFindUnique.mockResolvedValue({
     id: "u-1",
     firstName: "Ada",
     lastName: "Rahman",
+    email: "ada@acme.dev",
   });
+  mockPinnedPost.mockResolvedValue({ status: 204, body: "", durationMs: 12 });
 }
 
 describe("signPayload()", () => {
@@ -60,20 +150,14 @@ describe("signPayload()", () => {
   });
 });
 
-describe("deliverWebhookEvent()", () => {
+describe("deliverWebhookEvent() (BARY-211)", () => {
   beforeEach(reset);
 
   it("does nothing when no webhook is subscribed to the event", async () => {
     mockWebhookFindMany.mockResolvedValue([]);
-    const originalFetch = global.fetch;
-    global.fetch = mock(() => {
-      throw new Error("should not be called");
-    }) as unknown as typeof fetch;
-
     await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
-
-    global.fetch = originalFetch;
-    expect(mockWebhookUpdate).not.toHaveBeenCalled();
+    expect(deliveries).toHaveLength(0);
+    expect(mockPinnedPost).not.toHaveBeenCalled();
   });
 
   it("looks up only enabled webhooks subscribed to this event", async () => {
@@ -85,61 +169,180 @@ describe("deliverWebhookEvent()", () => {
         enabled: true,
         events: { has: "comment.created" },
       },
-      select: { id: true, url: true, secret: true },
+      select: { id: true },
     });
   });
 
-  it("POSTs a signed payload and records the status on success", async () => {
-    const originalFetch = global.fetch;
-    const fetchMock = mock(async (url: string, init: RequestInit) => {
-      expect(url).toBe(HOOK.url);
-      const body = init.body as string;
-      const headers = init.headers as Record<string, string>;
-      const timestamp = headers["x-barynt-timestamp"];
-      const expectedSig = createHmac("sha256", HOOK.secret)
-        .update(`${timestamp}.${body}`)
-        .digest("hex");
-      expect(headers["x-barynt-signature"]).toBe(expectedSig);
-      expect(headers["x-barynt-event"]).toBe("issue.created");
-      const parsed = JSON.parse(body);
-      expect(parsed.event).toBe("issue.created");
-      expect(parsed.data).toEqual({ id: "i-1" });
-      return new Response(null, { status: 200 });
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
-
+  it("queues the delivery, sends it signed at once and logs the answer", async () => {
     await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
 
-    global.fetch = originalFetch;
-    expect(mockWebhookUpdate).toHaveBeenCalledWith({
-      where: { id: "wh-1" },
-      data: {
-        lastDeliveryAt: expect.any(Date),
-        lastDeliveryStatus: 200,
-        lastDeliveryError: null,
-      },
+    const [call] = mockPinnedPost.mock.calls[0] as [
+      { url: string; body: string; headers: Record<string, string> },
+    ];
+    expect(call.url).toBe("https://example.com/hook");
+    expect(JSON.parse(call.body)).toEqual(ENVELOPE);
+    const h = call.headers;
+    expect(h["x-barynt-signature"]).toBe(
+      createHmac("sha256", "shh")
+        .update(`${h["x-barynt-timestamp"]}.${call.body}`)
+        .digest("hex"),
+    );
+    expect(h["x-barynt-event"]).toBe("issue.created");
+    expect(h["x-barynt-delivery"]).toBe("d-1");
+    expect(h["x-barynt-attempt"]).toBe("1");
+
+    expect(deliveries[0]).toMatchObject({
+      status: "SUCCEEDED",
+      attempts: 1,
+      nextAttemptAt: null,
+      lockedUntil: null,
+      lastStatus: 204,
+      lastError: null,
+      lastDurationMs: 12,
+    });
+    expect(hook).toMatchObject({
+      lastDeliveryStatus: 204,
+      lastDeliveryError: null,
+      failingSince: null,
     });
   });
 
-  it("records the error and never throws when the request fails", async () => {
-    const originalFetch = global.fetch;
-    global.fetch = mock(() => {
-      throw new Error("ECONNREFUSED");
-    }) as unknown as typeof fetch;
+  it("schedules a retry after a server error and keeps the webhook on", async () => {
+    mockPinnedPost.mockResolvedValue({
+      status: 503,
+      body: "down for maintenance",
+      durationMs: 40,
+    });
+    const before = Date.now();
+    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
 
+    const row = deliveries[0];
+    expect(row.status).toBe("PENDING");
+    expect(row.attempts).toBe(1);
+    expect(row.lastResponse).toBe("down for maintenance");
+    const due = (row.nextAttemptAt as Date).getTime() - before;
+    expect(due).toBeGreaterThanOrEqual(60_000);
+    expect(due).toBeLessThan(65_000);
+    expect(hook.failingSince).toBeInstanceOf(Date);
+    expect(hook.enabled).toBe(true);
+  });
+
+  it("gives up at once on a 4xx and on a blocked address", async () => {
+    mockPinnedPost.mockResolvedValue({ status: 404, body: "", durationMs: 5 });
+    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    expect(deliveries[0]).toMatchObject({ status: "FAILED", attempts: 1 });
+
+    mockPinnedPost.mockResolvedValue({
+      error: "blocked",
+      message: "The address is on a private network",
+      durationMs: 1,
+    });
+    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    expect(deliveries[1]).toMatchObject({
+      status: "FAILED",
+      lastStatus: null,
+      lastError: "The address is on a private network",
+    });
+    expect(hook.lastDeliveryError).toBe("The address is on a private network");
+  });
+
+  it("gives up after the sixth attempt", async () => {
+    mockPinnedPost.mockResolvedValue({
+      error: "timeout",
+      message: "No answer within 10 s",
+      durationMs: 10_000,
+    });
+    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    for (let i = 2; i <= 6; i++) {
+      deliveries[0].lockedUntil = null;
+      expect(await claimDelivery("d-1")).toBe(true);
+      await attemptDelivery("d-1");
+    }
+    expect(deliveries[0]).toMatchObject({
+      status: "FAILED",
+      attempts: 6,
+      nextAttemptAt: null,
+    });
+    // Nothing more to take.
+    expect(await claimDelivery("d-1")).toBe(false);
+  });
+
+  it("leaves a held delivery to whoever holds it", async () => {
+    mockPinnedPost.mockResolvedValue({ status: 500, body: "", durationMs: 3 });
+    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    deliveries[0].lockedUntil = new Date(Date.now() + 10_000);
+    expect(await claimDelivery("d-1")).toBe(false);
+  });
+
+  it("stops sending to a webhook that was turned off meanwhile", async () => {
+    mockPinnedPost.mockResolvedValue({ status: 500, body: "", durationMs: 3 });
+    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    hook.enabled = false;
+    deliveries[0].lockedUntil = null;
+    await claimDelivery("d-1");
+    await attemptDelivery("d-1");
+    expect(mockPinnedPost).toHaveBeenCalledTimes(1);
+    expect(deliveries[0]).toMatchObject({
+      status: "FAILED",
+      lastError: "The webhook is turned off",
+    });
+  });
+
+  it("turns the webhook off after a day of failures and logs it once", async () => {
+    hook.failingSince = new Date(Date.now() - DISABLE_AFTER_MS - 1000);
+    mockPinnedPost.mockResolvedValue({ status: 502, body: "", durationMs: 3 });
+
+    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    expect(hook.enabled).toBe(false);
+    expect(hook.autoDisabledAt).toBeInstanceOf(Date);
+    expect(mockAuditCreate).toHaveBeenCalledTimes(1);
+    const [{ data }] = mockAuditCreate.mock.calls[0] as unknown as [
+      { data: Record<string, unknown> },
+    ];
+    expect(data).toMatchObject({
+      action: "webhook.disabled",
+      actorId: null,
+      targetType: "webhook",
+      targetId: "wh-1",
+    });
+
+    // Only the process that actually flipped it tells anyone.
+    expect(mockWebhookUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "wh-1", enabled: true } }),
+    );
+  });
+
+  it("starts the day of failures over after a success", async () => {
+    hook.failingSince = new Date(Date.now() - 60 * 60_000);
+    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    expect(hook.failingSince).toBeNull();
+  });
+
+  it("sends a delivery again on request, same body and id", async () => {
+    mockPinnedPost.mockResolvedValue({ status: 410, body: "", durationMs: 3 });
+    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    expect(deliveries[0].status).toBe("FAILED");
+
+    mockPinnedPost.mockResolvedValue({
+      status: 200,
+      body: "ok",
+      durationMs: 3,
+    });
+    await redeliver("d-1");
+    expect(deliveries[0]).toMatchObject({ status: "SUCCEEDED", attempts: 2 });
+    const [first, second] = mockPinnedPost.mock.calls.map(
+      (c) => (c as [{ body: string; headers: Record<string, string> }])[0],
+    );
+    expect(second.body).toBe(first.body);
+    expect(second.headers["x-barynt-delivery"]).toBe("d-1");
+    expect(second.headers["x-barynt-attempt"]).toBe("2");
+  });
+
+  it("never throws, whatever the network does", async () => {
+    mockPinnedPost.mockRejectedValue(new Error("boom"));
     await expect(
       deliverWebhookEvent("ws-1", "issue.created", ENVELOPE),
     ).resolves.toBeUndefined();
-
-    global.fetch = originalFetch;
-    expect(mockWebhookUpdate).toHaveBeenCalledWith({
-      where: { id: "wh-1" },
-      data: {
-        lastDeliveryAt: expect.any(Date),
-        lastDeliveryStatus: null,
-        lastDeliveryError: "ECONNREFUSED",
-      },
-    });
   });
 });
 
@@ -192,13 +395,6 @@ describe("the envelope (BARY-210)", () => {
   });
 
   it("delivers the envelope as the body", async () => {
-    const originalFetch = global.fetch;
-    let body: Record<string, unknown> = {};
-    global.fetch = mock(async (_url: string, init: RequestInit) => {
-      body = JSON.parse(init.body as string);
-      return new Response(null, { status: 204 });
-    }) as unknown as typeof fetch;
-
     await dispatchEvent(
       "member.added",
       { id: "u-2" },
@@ -207,9 +403,8 @@ describe("the envelope (BARY-210)", () => {
         actorId: "u-1",
       },
     );
-
-    global.fetch = originalFetch;
-    expect(body).toMatchObject({
+    const [call] = mockPinnedPost.mock.calls[0] as [{ body: string }];
+    expect(JSON.parse(call.body)).toMatchObject({
       event: "member.added",
       workspaceId: "ws-1",
       projectId: null,
