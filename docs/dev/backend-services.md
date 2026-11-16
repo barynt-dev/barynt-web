@@ -153,10 +153,20 @@ a stumbling notification must never block an assignment, a comment or a role cha
 `emitEvent(event, data, ctx)` (`lib/webhooks/emit.ts`) is called without `await` after the
 change succeeded. It wraps `data` in the envelope
 `{ event, timestamp, workspaceId, projectId, actor, via, data, changes? }` and hands it to
-`deliverWebhookEvent` (`lib/webhooks/deliver.ts`), which finds the enabled webhooks of the
+`deliverEvent` (`lib/webhooks/deliver.ts`), which finds the enabled webhooks of the
 workspace that subscribed to the event and sends each a signed `POST`: header
 `X-Barynt-Signature` = hex HMAC-SHA256 over `<timestamp>.<body>` with the webhook's secret,
 `X-Barynt-Timestamp` and `X-Barynt-Event`.
+
+Plugins with their own server are delivery targets too (BARY-212): `pluginTargetsFor`
+(`lib/webhooks/plugin-targets.ts`) picks the switched-on activations whose active manifest
+subscribes to the event (`service.events`) and whose confirmed capabilities cover it, keeps a
+project's plugin to its project and a workspace's out of private ones, skips the plugin the change
+came through (`via`), and trims the body to what it may read (`eventForPlugin`,
+`lib/plugins/service.ts`). Each activation signs with its own sealed secret (`serviceSecret`),
+handed over in `app.installed` when it's switched on (`sendLifecycle`); `app.uninstalled` follows
+when it's switched off. A server failing for a day is paused (`servicePausedAt`, audit
+`plugin.service.paused`), not the plugin; `resumePluginService` sends again.
 
 Every delivery is a row in `EventDelivery` first — the queue and the log in one — and is tried
 at once (`attemptDelivery`). Each attempt goes through `pinnedPost` (`lib/net/pinned-fetch.ts`):

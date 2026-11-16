@@ -9,6 +9,8 @@ import {
   sealSourceToken,
 } from "@/features/plugins/directory";
 import { getPluginIssueActions } from "@/features/plugins/slots";
+import { DELIVERY_SELECT } from "@/features/webhooks/deliveries";
+import type { WebhookDelivery } from "@/features/webhooks/types";
 import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
@@ -40,6 +42,8 @@ import { credentialScopeKey } from "@/lib/plugins/proxy";
 import { compareSemver } from "@/lib/plugins/semver";
 import { checkSettings } from "@/lib/plugins/settings";
 import { sealSecret } from "@/lib/secret-box";
+import { sendLifecycle } from "@/lib/webhooks/deliver";
+import { ensureServiceSecret } from "@/lib/webhooks/plugin-targets";
 import { placeSettings } from "./settings-options";
 
 // The plugin lifecycle (BARY-142). The platform admin (`plugin.manage`)
@@ -540,7 +544,7 @@ export async function activatePlugin(
     return { error: "capabilities_not_confirmed" };
 
   const scopeKey = activationScopeKey(scope);
-  await db.pluginActivation.upsert({
+  const activation = await db.pluginActivation.upsert({
     where: { pluginId_scopeKey: { pluginId: manifest.id, scopeKey } },
     create: {
       pluginId: manifest.id,
@@ -556,7 +560,13 @@ export async function activatePlugin(
       activatedById: actorId,
       activatedAt: new Date(),
     },
+    select: { id: true },
   });
+  // A plugin with its own server hears that it's on — and gets the secret
+  // its messages are signed with (BARY-212). In the background: a slow
+  // server doesn't hold up switching it on.
+  if (manifest.service && (await ensureServiceSecret(activation.id, manifest)))
+    void sendLifecycle(activation.id, "app.installed");
   await recordAudit({
     action: "plugin.activated",
     actorId,
@@ -584,6 +594,11 @@ export async function deactivatePlugin(
     data: { enabled: false },
   });
   if (count === 0) return { error: "not_activated" };
+  const off = await db.pluginActivation.findUnique({
+    where: { pluginId_scopeKey: { pluginId: input.pluginId, scopeKey } },
+    select: { id: true, serviceSecret: true },
+  });
+  if (off?.serviceSecret) void sendLifecycle(off.id, "app.uninstalled");
   await recordAudit({
     action: "plugin.deactivated",
     actorId,
@@ -1039,4 +1054,61 @@ export async function listIssuePluginActions(input: {
     ...place,
     actions: await getPluginIssueActions(place),
   };
+}
+
+// ─── Its server (BARY-212) ───────────────────────────────────────────────────
+
+/** The activation, after checking whoever asks may manage it. */
+async function manageableActivation(activationId: string) {
+  const activation = await db.pluginActivation.findUnique({
+    where: { id: activationId },
+    select: { id: true, pluginId: true, workspaceId: true, projectId: true },
+  });
+  if (!activation) return null;
+  const actorId = await requirePermission(
+    "plugin.enable",
+    activation.projectId
+      ? { projectId: activation.projectId }
+      : { workspaceId: activation.workspaceId },
+  );
+  return { ...activation, actorId };
+}
+
+/** The latest deliveries to a plugin's server, newest first. */
+export async function listPluginDeliveries(
+  activationId: string,
+): Promise<WebhookDelivery[]> {
+  if (!(await manageableActivation(activationId))) return [];
+  return db.eventDelivery.findMany({
+    where: { activationId },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: DELIVERY_SELECT,
+  });
+}
+
+/** Sends to a paused plugin's server again — what was given up on while
+ *  it was paused isn't sent later. */
+export async function resumePluginService(
+  activationId: string,
+): Promise<PluginResult> {
+  const activation = await manageableActivation(activationId);
+  if (!activation) return { error: "not_activated" };
+  await db.pluginActivation.update({
+    where: { id: activationId },
+    data: { servicePausedAt: null, serviceFailingSince: null },
+  });
+  await recordAudit({
+    action: "plugin.service.resumed",
+    actorId: activation.actorId,
+    target: {
+      type: "plugin",
+      id: activation.pluginId,
+      label: await pluginLabel(activation.pluginId),
+    },
+    workspaceId: activation.workspaceId,
+    projectId: activation.projectId,
+  });
+  done();
+  return { ok: true };
 }

@@ -4,6 +4,7 @@ import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { sendWebhookDisabledEmail } from "@/lib/mail";
 import { pinnedPost } from "@/lib/net/pinned-fetch";
+import type { LifecycleEvent } from "@/lib/plugins/service";
 import type { WebhookEvent } from "@/lib/webhooks/events";
 import {
   type AttemptOutcome,
@@ -15,8 +16,14 @@ import {
   succeeded,
   webhookInternalHosts,
 } from "@/lib/webhooks/retry";
+import {
+  lifecyclePayload,
+  pluginTarget,
+  pluginTargetsFor,
+  recordOnActivation,
+} from "./plugin-targets";
 
-// Delivering events to webhooks (BARY-211). Every delivery is a row in
+// Delivering events to webhooks (BARY-211) and plugins' servers (BARY-212). Every delivery is a row in
 // `EventDelivery` first — the queue and the log in one — and then tried at
 // once. One that fails is tried again by the worker (`./worker.ts`) on the
 // schedule in `./retry.ts`; a webhook that has failed for a day is turned
@@ -28,38 +35,86 @@ const LOCK_MS = DELIVERY_TIMEOUT_MS + 20_000;
 
 /**
  * Queues an event's envelope (`lib/webhooks/emit.ts`) for every enabled
- * webhook of a workspace that's subscribed to it, and tries each at once.
+ * webhook of the workspace subscribed to it and every switched-on plugin's
+ * server that hears about it (BARY-212), and tries each at once.
  */
-export async function deliverWebhookEvent(
-  workspaceId: string,
-  event: WebhookEvent,
-  envelope: object,
-): Promise<void> {
-  const hooks = await db.webhook.findMany({
-    where: { workspaceId, enabled: true, events: { has: event } },
-    select: { id: true },
-  });
-  if (hooks.length === 0) return;
+export async function deliverEvent(envelope: {
+  event: WebhookEvent;
+  workspaceId: string;
+  projectId: string | null;
+  via: { plugin: { id: string } } | null;
+  data: unknown;
+}): Promise<void> {
+  const { event, workspaceId } = envelope;
+  const [hooks, plugins] = await Promise.all([
+    db.webhook.findMany({
+      where: { workspaceId, enabled: true, events: { has: event } },
+      select: { id: true },
+    }),
+    pluginTargetsFor(envelope),
+  ]);
+  if (hooks.length === 0 && plugins.length === 0) return;
 
   const payload = JSON.stringify(envelope);
-  const now = new Date();
-  const rows = await Promise.all(
-    hooks.map((hook) =>
-      db.eventDelivery.create({
-        data: {
-          workspaceId,
-          webhookId: hook.id,
-          event,
-          payload,
-          nextAttemptAt: now,
-          // Held for the attempt below, so the worker leaves it alone.
-          lockedUntil: new Date(now.getTime() + LOCK_MS),
-        },
-        select: { id: true },
+  const ids = await Promise.all([
+    ...hooks.map((hook) =>
+      queue({ workspaceId, event, payload, webhookId: hook.id }),
+    ),
+    ...plugins.map((target) =>
+      queue({
+        workspaceId,
+        event,
+        payload: target.payload,
+        activationId: target.activationId,
       }),
     ),
-  );
-  await Promise.all(rows.map((row) => attemptDelivery(row.id)));
+  ]);
+  await Promise.all(ids.map(attemptDelivery));
+}
+
+/** One row, held for the attempt that follows right away. */
+async function queue(data: {
+  workspaceId: string;
+  event: string;
+  payload: string;
+  webhookId?: string;
+  activationId?: string;
+}): Promise<string> {
+  const now = new Date();
+  const row = await db.eventDelivery.create({
+    data: {
+      ...data,
+      nextAttemptAt: now,
+      // Held for the attempt below, so the worker leaves it alone.
+      lockedUntil: new Date(now.getTime() + LOCK_MS),
+    },
+    select: { id: true },
+  });
+  return row.id;
+}
+
+/**
+ * Tells a plugin's server it was switched on (with the secret every later
+ * message is signed with) or off (BARY-212). Queued and retried like any
+ * delivery. Never throws.
+ */
+export async function sendLifecycle(
+  activationId: string,
+  event: LifecycleEvent,
+): Promise<void> {
+  try {
+    const message = await lifecyclePayload(activationId, event);
+    if (!message) return;
+    const id = await queue({
+      workspaceId: message.workspaceId,
+      event,
+      payload: message.payload,
+      activationId,
+    });
+    await attemptDelivery(id);
+  } catch (error) {
+    console.error("[webhooks] lifecycle message failed:", error);
+  }
 }
 
 /** Hex, no `sha256=` prefix — same convention as Linear's `Linear-Signature`
@@ -109,7 +164,7 @@ export async function claimDueDeliveries(limit = 20): Promise<string[]> {
 }
 
 /**
- * One attempt of a delivery its caller holds (`deliverWebhookEvent`,
+ * One attempt of a delivery its caller holds (`deliverEvent`,
  * `claimDelivery`, `claimDueDeliveries`). Records the outcome on the row
  * and on the webhook. Never throws.
  */
@@ -122,6 +177,7 @@ export async function attemptDelivery(id: string): Promise<void> {
         payload: true,
         attempts: true,
         status: true,
+        activationId: true,
         webhook: {
           select: {
             id: true,
@@ -134,17 +190,28 @@ export async function attemptDelivery(id: string): Promise<void> {
       },
     });
     if (!row || row.status !== "PENDING") return;
-    const hook = row.webhook;
 
-    // Turned off in the meantime: nothing more goes out.
-    if (!hook.enabled) {
+    const target = row.webhook
+      ? row.webhook.enabled
+        ? {
+            url: row.webhook.url,
+            secret: row.webhook.secret,
+            internalHosts: webhookInternalHosts(),
+          }
+        : { closed: "The webhook is turned off" }
+      : row.activationId
+        ? await pluginTarget(row.activationId, row.event)
+        : { closed: "The delivery has no target" };
+
+    // Nowhere to send it any more: nothing more goes out.
+    if ("closed" in target) {
       await db.eventDelivery.update({
         where: { id },
         data: {
           status: "FAILED",
           nextAttemptAt: null,
           lockedUntil: null,
-          lastError: "The webhook is turned off",
+          lastError: target.closed,
         },
       });
       return;
@@ -153,20 +220,24 @@ export async function attemptDelivery(id: string): Promise<void> {
     const timestamp = Date.now().toString();
     const attempt = row.attempts + 1;
     const result = await pinnedPost({
-      url: hook.url,
+      url: target.url,
       headers: {
         "content-type": "application/json",
         "user-agent": "Barynt-Webhooks",
         "x-barynt-event": row.event,
         "x-barynt-delivery": id,
         "x-barynt-attempt": String(attempt),
-        "x-barynt-signature": signPayload(hook.secret, timestamp, row.payload),
+        "x-barynt-signature": signPayload(
+          target.secret,
+          timestamp,
+          row.payload,
+        ),
         "x-barynt-timestamp": timestamp,
       },
       body: row.payload,
       timeoutMs: DELIVERY_TIMEOUT_MS,
       keepBytes: RESPONSE_KEEP_BYTES,
-      internalHosts: webhookInternalHosts(),
+      internalHosts: target.internalHosts,
     });
 
     const now = new Date();
@@ -190,7 +261,14 @@ export async function attemptDelivery(id: string): Promise<void> {
         lastDurationMs: result.durationMs,
       },
     });
-    await recordOnWebhook(hook, outcome, now);
+    if (row.webhook) await recordOnWebhook(row.webhook, outcome, now);
+    else if (row.activationId && "failingSince" in target)
+      await recordOnActivation(
+        row.activationId,
+        target.failingSince,
+        outcome,
+        now,
+      );
   } catch (error) {
     console.error("[webhooks] delivery failed:", error);
   }

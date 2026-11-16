@@ -158,6 +158,12 @@ Taking the release back switches the plugin off in the workspace and every one o
 
 A switched-on plugin that has settings gets an entry under **Plugins** in the workspace's or project's settings, below the other sections. Its page holds the form the plugin brings (a channel name, what to post, …) and, at the bottom, switching it off there.
 
+### A plugin's server
+
+Some plugins also run on a server of their maker — to post to a chat, start a build or keep another tool in step. The store lists what such a plugin hears about (for example "Hear about issue changes"), and you confirm it like any other capability. Once it's switched on, Barynt sends the plugin's server those events, signed, and tries again when it's down — the same as a [webhook](../integrations/webhooks.md). It only hears about what its confirmed capabilities allow, never about a private project unless it was switched on there, and never about its own changes.
+
+The plugin's settings show a **Server** card: the address, the events, how the last delivery went, and **Deliveries** with the log of the last seven days. When every delivery has failed for a day, Barynt **pauses** them — the plugin stays on, the pause lands in the activity log, and **Send again** resumes. Events from the pause aren't sent later.
+
 ## Building your own
 
 To write a plugin yourself, see [Building plugins](../../../dev/plugins.md) in the developer docs.

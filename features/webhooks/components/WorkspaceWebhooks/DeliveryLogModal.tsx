@@ -8,16 +8,14 @@ import { Button } from "@/components/ui/atoms/Button/Button";
 import { ModalHeader } from "@/components/ui/layout/Modal/components/ModalHeader";
 import { SheetHeader } from "@/components/ui/layout/Modal/components/SheetHeader";
 import { Modal, ModalBody } from "@/components/ui/layout/Modal/Modal";
-import {
-  listWebhookDeliveries,
-  resendWebhookDelivery,
-} from "@/features/webhooks/actions";
+import { resendWebhookDelivery } from "@/features/webhooks/actions";
 import type { WebhookDelivery } from "@/features/webhooks/types";
 import { useSwipeToClose } from "@/lib/utils/useSwipeToClose";
 import styles from "./deliveryLog.module.scss";
 
 interface DeliveryLogModalProps {
-  webhookId: string;
+  /** Loads the log — a webhook's or a plugin server's. */
+  load: () => Promise<WebhookDelivery[]>;
   url: string;
   close: () => void;
   /** A bottom sheet (phone) instead of a dialog. */
@@ -34,12 +32,13 @@ function pretty(text: string): string {
 }
 
 /**
- * A webhook's latest deliveries (BARY-211): what went out, what came back,
+ * The latest deliveries to a webhook (BARY-211) or a plugin's server
+ * (BARY-212): what went out, what came back,
  * whether Barynt will try again — and a way to send one again. Loaded when
  * the window opens; the log lives in `EventDelivery`.
  */
 export function DeliveryLogModal({
-  webhookId,
+  load,
   url,
   close,
   sheet,
@@ -52,15 +51,18 @@ export function DeliveryLogModal({
   const bodyRef = useRef<HTMLDivElement>(null);
   const swipe = useSwipeToClose(close, bodyRef);
 
+  // Loaded once, when the window opens — the caller's `load` is a fresh
+  // function on every render of the modal.
+  const loadOnce = useRef(load);
   useEffect(() => {
     let live = true;
-    listWebhookDeliveries(webhookId).then((rows) => {
+    loadOnce.current().then((rows) => {
       if (live) setDeliveries(rows);
     });
     return () => {
       live = false;
     };
-  }, [webhookId]);
+  }, []);
 
   const resend = (id: string) =>
     startTransition(async () => {

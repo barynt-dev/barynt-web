@@ -2,8 +2,9 @@ import "server-only";
 import { db } from "@/lib/db";
 import { fullName } from "@/lib/utils/string";
 import type { IssueChanges } from "./changes";
-import { deliverWebhookEvent } from "./deliver";
+import { deliverEvent } from "./deliver";
 import type { WebhookEvent } from "./events";
+import { hasPluginListeners } from "./plugin-targets";
 import { currentPlugin, type EventPlugin } from "./source";
 
 // The one way Barynt announces that something happened (BARY-210). Every
@@ -53,8 +54,7 @@ export async function dispatchEvent(
   ctx: EventContext,
   extra?: { changes?: IssueChanges },
 ): Promise<void> {
-  const envelope = await buildEnvelope(event, data, ctx, extra);
-  await deliverWebhookEvent(ctx.workspaceId, event, envelope);
+  await deliverEvent(await buildEnvelope(event, data, ctx, extra));
 }
 
 export async function buildEnvelope(
@@ -82,11 +82,12 @@ export async function buildEnvelope(
   };
 }
 
-/** Whether anything in the workspace listens at all — so a caller can skip
- *  the work of a snapshot nobody would get. */
+/** Whether anything in the workspace listens at all — a webhook or a
+ *  plugin's server — so a caller can skip the work of a snapshot nobody
+ *  would get. */
 export async function hasEventListeners(workspaceId: string): Promise<boolean> {
   const hooks = await db.webhook.count({
     where: { workspaceId, enabled: true },
   });
-  return hooks > 0;
+  return hooks > 0 || hasPluginListeners(workspaceId);
 }

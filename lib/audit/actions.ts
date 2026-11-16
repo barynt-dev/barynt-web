@@ -119,6 +119,10 @@ export const AUDIT_ACTIONS = {
   "plugin.credential.removed": "Plugin credential removed",
   "plugin.granted": "Plugin released for projects",
   "plugin.grant.revoked": "Plugin release for projects withdrawn",
+  // BARY-212: Barynt pausing deliveries to a plugin's server after a day of
+  // failures, and someone sending them on again.
+  "plugin.service.paused": "Deliveries to a plugin's server paused",
+  "plugin.service.resumed": "Deliveries to a plugin's server resumed",
 
   // ── Webhooks (BARY-211) ───────────────────────────────────────────────────
   //
