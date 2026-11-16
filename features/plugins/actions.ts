@@ -43,7 +43,10 @@ import { compareSemver } from "@/lib/plugins/semver";
 import { checkSettings } from "@/lib/plugins/settings";
 import { sealSecret } from "@/lib/secret-box";
 import { sendLifecycle } from "@/lib/webhooks/deliver";
-import { ensureServiceSecret } from "@/lib/webhooks/plugin-targets";
+import {
+  ensureServiceIdentity,
+  revokeAppTokens,
+} from "@/lib/webhooks/plugin-targets";
 import { placeSettings } from "./settings-options";
 
 // The plugin lifecycle (BARY-142). The platform admin (`plugin.manage`)
@@ -563,9 +566,12 @@ export async function activatePlugin(
     select: { id: true },
   });
   // A plugin with its own server hears that it's on — and gets the secret
-  // its messages are signed with (BARY-212). In the background: a slow
+  // its messages are signed with (BARY-212) and its bot's token (BARY-213). In the background: a slow
   // server doesn't hold up switching it on.
-  if (manifest.service && (await ensureServiceSecret(activation.id, manifest)))
+  if (
+    manifest.service &&
+    (await ensureServiceIdentity(activation.id, manifest))
+  )
     void sendLifecycle(activation.id, "app.installed");
   await recordAudit({
     action: "plugin.activated",
@@ -598,7 +604,11 @@ export async function deactivatePlugin(
     where: { pluginId_scopeKey: { pluginId: input.pluginId, scopeKey } },
     select: { id: true, serviceSecret: true },
   });
-  if (off?.serviceSecret) void sendLifecycle(off.id, "app.uninstalled");
+  if (off?.serviceSecret) {
+    // Its bot stops at once; the server hears it's off.
+    await revokeAppTokens(off.id);
+    void sendLifecycle(off.id, "app.uninstalled");
+  }
   await recordAudit({
     action: "plugin.deactivated",
     actorId,

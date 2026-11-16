@@ -1,8 +1,12 @@
 import { notFound } from "next/navigation";
+import { getWorkspaceApps } from "@/features/plugins/queries";
 import { loadMoreWorkspaceMembers } from "@/features/workspaces/actions";
+import { MembersTabs } from "@/features/workspaces/components/MembersTabs/MembersTabs";
+import { WorkspaceApps } from "@/features/workspaces/components/WorkspaceApps/WorkspaceApps";
 import { WorkspaceMembers } from "@/features/workspaces/components/WorkspaceMembers/WorkspaceMembers";
 import { getWorkspaceMembersView } from "@/features/workspaces/queries";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
+import { projectSettingsPath, workspaceSettingsPath } from "@/lib/nav";
 
 export const dynamic = "force-dynamic";
 
@@ -15,20 +19,49 @@ export const dynamic = "force-dynamic";
  */
 export default async function WorkspaceSettingsMembersPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspace: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { workspace } = await params;
+  const { tab } = await searchParams;
   setCurrentWorkspaceId(workspace);
 
-  const view = await getWorkspaceMembersView();
+  const [view, apps] = await Promise.all([
+    getWorkspaceMembersView(),
+    getWorkspaceApps(workspace),
+  ]);
   if (!view) notFound();
+
+  // The bots of its plugins, apart from the people (BARY-213).
+  const current = tab === "apps" && apps?.length ? "apps" : "people";
+  const tabs = (
+    <MembersTabs
+      base={`/${workspace}/settings/members`}
+      current={current}
+      apps={apps?.length ?? 0}
+    />
+  );
+  if (current === "apps" && apps)
+    return (
+      <WorkspaceApps
+        apps={apps}
+        tabs={tabs}
+        settingsHref={(pluginId, projectSlug) =>
+          projectSlug
+            ? projectSettingsPath(workspace, projectSlug, `plugins/${pluginId}`)
+            : workspaceSettingsPath(workspace, `plugins/${pluginId}`)
+        }
+      />
+    );
 
   return (
     <WorkspaceMembers
       {...view}
       workspaceId={workspace}
       loadMore={loadMoreWorkspaceMembers.bind(null, workspace)}
+      tabs={tabs}
     />
   );
 }

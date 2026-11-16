@@ -71,6 +71,17 @@ describe("resolveApiUser()", () => {
     expect(mockFindUnique).not.toHaveBeenCalled();
   });
 
+  it("takes a plugin's app token too (BARY-213)", async () => {
+    const app = "bpa_plugin-token";
+    mockFindUnique.mockResolvedValue({ ...ACTIVE_KEY, userId: "bot-1" });
+    const result = await resolveApiUser(request(`Bearer ${app}`));
+    expect(result?.userId).toBe("bot-1");
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { tokenHash: createHash("sha256").update(app).digest("hex") },
+      select: expect.anything(),
+    });
+  });
+
   it("rejects an unknown hash", async () => {
     mockFindUnique.mockResolvedValue(null);
     expect(await resolveApiUser(request(`Bearer ${TOKEN}`))).toBeNull();

@@ -35,6 +35,8 @@ interface Props extends WorkspaceMembersView {
   loadMore: (
     cursor: string,
   ) => Promise<{ items: WorkspaceMemberRow[]; nextCursor: string | null }>;
+  /** People | Apps, under the heading (BARY-213). */
+  tabs?: React.ReactNode;
 }
 
 /**
@@ -54,6 +56,7 @@ export function WorkspaceMembers({
   workspaceId,
   nextCursor,
   loadMore,
+  tabs,
 }: Props) {
   const t = useTranslations();
   const router = useRouter();
@@ -267,6 +270,7 @@ export function WorkspaceMembers({
         description={t("workspaceMembers.subtitle")}
         actions={inviteButton}
       />
+      {tabs}
 
       <div className={styles.content}>
         {error && (
