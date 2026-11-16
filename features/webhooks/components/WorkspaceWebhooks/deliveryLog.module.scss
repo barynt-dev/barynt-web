@@ -84,12 +84,37 @@
     transform: rotate(180deg);
   }
 
+  /* Two lines on a phone: what and its answer, then its state and time. */
   @include bp.phone {
     grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "dot event result chevron"
+      ". state time time";
+    gap: 0.25rem 0.625rem;
 
-    .state,
+    .dot {
+      grid-area: dot;
+    }
+
+    .event {
+      grid-area: event;
+    }
+
+    .result {
+      grid-area: result;
+    }
+
+    .chevron {
+      grid-area: chevron;
+    }
+
+    .state {
+      grid-area: state;
+    }
+
     .time {
-      grid-column: 2 / -1;
+      grid-area: time;
+      justify-self: end;
     }
   }
 }
@@ -133,6 +158,10 @@
   gap: 0.5rem;
   padding: 0.25rem 0.875rem 0.875rem 2.125rem;
   background: var(--surface-container-low);
+
+  @include bp.phone {
+    padding-left: 0.875rem;
+  }
 }
 
 .facts {
