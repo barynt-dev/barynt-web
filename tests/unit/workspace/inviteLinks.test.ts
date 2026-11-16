@@ -16,12 +16,16 @@ const mockInviteLinkUpdate = mock();
 const mockTransaction = mock();
 
 // The tx client for `joinViaInviteLink` — `redeemInviteLink` writes to this.
-const mockTxProjectMemberUpsert = mock();
+const mockTxProjectMemberFindUnique = mock();
+const mockTxProjectMemberCreate = mock();
 const mockTxWorkspaceMemberFindUnique = mock();
 const mockTxWorkspaceMemberCreate = mock();
 
 const mockTx = {
-  projectMember: { upsert: mockTxProjectMemberUpsert },
+  projectMember: {
+    findUnique: mockTxProjectMemberFindUnique,
+    create: mockTxProjectMemberCreate,
+  },
   workspaceMember: {
     findUnique: mockTxWorkspaceMemberFindUnique,
     create: mockTxWorkspaceMemberCreate,
@@ -100,7 +104,8 @@ function reset() {
     mockInviteLinkFindUnique,
     mockInviteLinkUpdate,
     mockTransaction,
-    mockTxProjectMemberUpsert,
+    mockTxProjectMemberFindUnique,
+    mockTxProjectMemberCreate,
     mockTxWorkspaceMemberFindUnique,
     mockTxWorkspaceMemberCreate,
     mockEnrollInWorkspaceProjects,
@@ -319,5 +324,32 @@ describe("joinViaInviteLink()", () => {
 
     expect(result).toEqual({ ok: true, workspaceId: WS });
     expect(mockTxWorkspaceMemberCreate).not.toHaveBeenCalled();
+  });
+
+  it("joins a project link's project once, with the link's role", async () => {
+    mockInviteLinkFindUnique.mockResolvedValue({
+      ...validLink,
+      projectId: "p-1",
+      roleId: "r-dev",
+      project: { name: "Web" },
+      role: { key: "developer", name: "Developer" },
+    });
+    mockTxWorkspaceMemberFindUnique.mockResolvedValue({ userId: ACTOR });
+
+    await joinViaInviteLink(TOKEN);
+    expect(mockTxProjectMemberCreate).toHaveBeenCalledWith({
+      data: {
+        projectId: "p-1",
+        userId: ACTOR,
+        roleId: "r-dev",
+        origin: "manual",
+      },
+    });
+
+    // Already in the project: nothing is written a second time.
+    mockTxProjectMemberCreate.mockReset();
+    mockTxProjectMemberFindUnique.mockResolvedValue({ userId: ACTOR });
+    await joinViaInviteLink(TOKEN);
+    expect(mockTxProjectMemberCreate).not.toHaveBeenCalled();
   });
 });

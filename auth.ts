@@ -22,6 +22,7 @@ import { generateHandle, pickUserColor } from "@/lib/user-defaults";
 import { isFirstAccount, provisionNewUser } from "@/lib/user-provisioning";
 import { splitName } from "@/lib/utils/string";
 import { simpleWebAuthn } from "@/lib/webauthn/server";
+import { emitMemberEvent } from "@/lib/webhooks/resources";
 
 // PrismaAdapter with a createUser override: OAuth/mail users only supply
 // name/email/image, but `handle` and `color` are NOT NULL. The full name
@@ -101,7 +102,12 @@ function createAdapter(): Adapter {
         },
       });
       if (email) {
-        await provisionNewUser(db, { userId: user.id, email });
+        const joined = await provisionNewUser(db, { userId: user.id, email });
+        if (joined)
+          emitMemberEvent("member.added", joined, {
+            workspaceId: joined.workspaceId,
+            actorId: null,
+          });
       }
       return user as AdapterUser;
     },

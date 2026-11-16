@@ -18,6 +18,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   API_DOC_GROUPS,
+  API_DOC_WEBHOOK_ENVELOPE,
   API_DOC_WEBHOOK_EVENTS,
   type ApiDocEndpoint,
   type ApiDocGroupId,
@@ -409,14 +410,15 @@ function webhookEventsPage(lang: Lang): Generated {
     intro: "",
   };
   const intro = de
-    ? "Jede Nachricht ist ein `POST` mit JSON-Body `{ event, timestamp, data }` und signiert, siehe [Webhooks](../integrations/webhooks.md). Hier steht, was in `data` steckt."
-    : "Every message is a `POST` with the JSON body `{ event, timestamp, data }`, signed as described in [Webhooks](../integrations/webhooks.md). This page shows what is in `data`.";
+    ? "Jede Nachricht ist ein signierter `POST` mit JSON-Body, siehe [Webhooks](../integrations/webhooks.md). Alle haben dieselbe Hülle:"
+    : "Every message is a signed `POST` with a JSON body, as described in [Webhooks](../integrations/webhooks.md). All of them share one envelope:";
+  const envelope = `| ${de ? "Feld" : "Field"} | ${TEXT[lang].description} |\n| --- | --- |\n${API_DOC_WEBHOOK_ENVELOPE.map((r) => `| \`${r.name}\` | ${cell(doc(r.desc, lang))} |`).join("\n")}`;
   const body = API_DOC_WEBHOOK_EVENTS.map(
     (e) => `## \`${e.event}\`\n\n${doc(e.desc, lang)}\n\n${fence(e.payload)}`,
   ).join("\n\n");
   return {
     path: `${lang}/api-reference/webhook-events.md`,
-    text: `${frontMatter(page, lang)}${intro}\n\n${body}\n`,
+    text: `${frontMatter(page, lang)}${intro}\n\n${envelope}\n\n${body}\n`,
   };
 }
 

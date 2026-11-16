@@ -1374,6 +1374,7 @@
     "guidePagingFields": "Nur bestimmte Felder",
     "docsWebhookDesc": "Keine Anfrage, die du stellst — ein ausgehender Push. Registriert unter Einstellungen → Webhooks, gesendet als signiertes HTTP-POST, sobald ein abonniertes Ereignis eintritt.",
     "docsSignature": "Signatur",
+    "docsEnvelope": "Hülle",
     "docsPayloadExample": "Beispiel-Payload",
     "docsScopeLabel": "Benötigt Scope",
     "docsPathParams": "Pfad-Parameter",
@@ -1434,13 +1435,52 @@
     "urlLabel": "Endpunkt-URL",
     "urlPlaceholder": "https://example.com/webhooks/barynt",
     "eventsLabel": "Ereignisse",
-    "eventIssueCreated": "Issue erstellt",
-    "eventIssueUpdated": "Issue geändert",
-    "eventIssueDeleted": "Issue gelöscht",
-    "eventCommentCreated": "Kommentar erstellt",
-    "eventViewCreated": "View angelegt",
-    "eventViewUpdated": "View geändert",
-    "eventViewDeleted": "View gelöscht",
+    "groups": {
+      "issue": "Issues",
+      "comment": "Kommentare",
+      "label": "Labels",
+      "project": "Projekte",
+      "member": "Mitglieder",
+      "view": "Ansichten"
+    },
+    "groupAll": "Alle {group}",
+    "events": {
+      "issue": {
+        "created": "Issue erstellt",
+        "updated": "Issue geändert (alles)",
+        "status_changed": "Status geändert",
+        "assigned": "Zuweisung geändert",
+        "fields_changed": "Eigenes Feld geändert",
+        "deleted": "Issue gelöscht"
+      },
+      "comment": {
+        "created": "Kommentar erstellt",
+        "updated": "Kommentar bearbeitet",
+        "deleted": "Kommentar gelöscht"
+      },
+      "label": {
+        "created": "Label erstellt",
+        "updated": "Label geändert",
+        "deleted": "Label gelöscht"
+      },
+      "project": {
+        "created": "Projekt erstellt",
+        "updated": "Projekt geändert",
+        "archived": "Projekt archiviert",
+        "unarchived": "Projekt wiederhergestellt",
+        "deleted": "Projekt gelöscht"
+      },
+      "member": {
+        "added": "Mitglied hinzugefügt",
+        "removed": "Mitglied entfernt",
+        "role_changed": "Rolle geändert"
+      },
+      "view": {
+        "created": "View erstellt",
+        "updated": "View aktualisiert",
+        "deleted": "View gelöscht"
+      }
+    },
     "create": "Webhook erstellen",
     "createdTitle": "Jetzt kopieren",
     "createdDesc": "Damit prüfst du den X-Barynt-Signature-Header bei jeder Zustellung — danach ist er nicht mehr einsehbar.",

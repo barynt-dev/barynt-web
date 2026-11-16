@@ -30,6 +30,9 @@ export function finishPluginAction(key: number): void {
   emit();
 }
 
+/** The server's snapshot — one array, so React sees the same value twice. */
+const NO_JOBS: ActionJob[] = [];
+
 export const actionJobs = {
   subscribe(listener: () => void) {
     listeners.add(listener);
@@ -37,5 +40,5 @@ export const actionJobs = {
   },
   get: () => jobs,
   /** None on the server. */
-  server: (): ActionJob[] => [],
+  server: () => NO_JOBS,
 };

@@ -146,63 +146,58 @@ export async function redeemInviteLink(
   link: ResolvedInviteLink,
   userId: string,
   defaultWorkspaceRoleId: string,
-): Promise<void> {
-  if (link.projectId) {
-    await db.projectMember.upsert({
-      where: { projectId_userId: { projectId: link.projectId, userId } },
-      update: {},
-      create: {
-        projectId: link.projectId,
-        userId,
-        roleId: link.roleId,
-        origin: "manual",
-      },
+): Promise<InviteLinkJoins> {
+  const joins: InviteLinkJoins = [];
+  const joinWorkspace = async (roleId: string) => {
+    const existing = await db.workspaceMember.findUnique({
+      where: { workspaceId_userId: { workspaceId: link.workspaceId, userId } },
+      select: { userId: true },
     });
-
-    // As with the email invite: a guest stays excluded, any other role
-    // comes with full workspace membership (and thus access to the public
-    // projects, not just this one).
-    if (link.roleKey !== PROJECT_GUEST_ROLE_KEY) {
-      const existing = await db.workspaceMember.findUnique({
-        where: {
-          workspaceId_userId: { workspaceId: link.workspaceId, userId },
-        },
-        select: { userId: true },
-      });
-      if (!existing) {
-        await db.workspaceMember.create({
-          data: {
-            workspaceId: link.workspaceId,
-            userId,
-            roleId: defaultWorkspaceRoleId,
-            pending: false,
-          },
-        });
-        await enrollInWorkspaceProjects(db, {
-          workspaceId: link.workspaceId,
-          userId,
-        });
-      }
-    }
-    return;
-  }
-
-  const existing = await db.workspaceMember.findUnique({
-    where: { workspaceId_userId: { workspaceId: link.workspaceId, userId } },
-    select: { userId: true },
-  });
-  if (!existing) {
+    if (existing) return;
     await db.workspaceMember.create({
-      data: {
-        workspaceId: link.workspaceId,
-        userId,
-        roleId: link.roleId,
-        pending: false,
-      },
+      data: { workspaceId: link.workspaceId, userId, roleId, pending: false },
     });
     await enrollInWorkspaceProjects(db, {
       workspaceId: link.workspaceId,
       userId,
     });
+    joins.push({ userId, roleId, projectId: null });
+  };
+
+  if (link.projectId) {
+    const already = await db.projectMember.findUnique({
+      where: { projectId_userId: { projectId: link.projectId, userId } },
+      select: { userId: true },
+    });
+    if (!already) {
+      await db.projectMember.create({
+        data: {
+          projectId: link.projectId,
+          userId,
+          roleId: link.roleId,
+          origin: "manual",
+        },
+      });
+      joins.push({ userId, roleId: link.roleId, projectId: link.projectId });
+    }
+
+    // As with the email invite: a guest stays excluded, any other role
+    // comes with full workspace membership (and thus access to the public
+    // projects, not just this one).
+    if (link.roleKey !== PROJECT_GUEST_ROLE_KEY)
+      await joinWorkspace(defaultWorkspaceRoleId);
+    return joins;
   }
+
+  await joinWorkspace(link.roleId);
+  return joins;
 }
+
+/** The memberships a redeemed link created — for the caller to announce
+ *  (`member.added`) once its transaction is through. */
+export type InviteLinkJoins = {
+  userId: string;
+  roleId: string;
+  /** `null` for the workspace. */
+  projectId: string | null;
+}[];

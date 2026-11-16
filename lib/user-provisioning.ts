@@ -23,16 +23,26 @@ type Db = Prisma.TransactionClient;
 export async function joinWorkspaceAsMember(
   db: Db,
   data: { workspaceId: string; userId: string },
-): Promise<void> {
+): Promise<WorkspaceJoin> {
+  const roleId = systemRoleId("WORKSPACE", DEFAULT_WORKSPACE_ROLE_KEY);
   await db.workspaceMember.create({
     data: {
       workspaceId: data.workspaceId,
       userId: data.userId,
-      roleId: systemRoleId("WORKSPACE", DEFAULT_WORKSPACE_ROLE_KEY),
+      roleId,
       pending: false,
     },
   });
   await enrollInWorkspaceProjects(db, data);
+  return { ...data, roleId };
+}
+
+/** Who joined where, with which role — for the caller to announce
+ *  (`member.added`) once its transaction is through. */
+export interface WorkspaceJoin {
+  workspaceId: string;
+  userId: string;
+  roleId: string;
 }
 
 /**
@@ -62,16 +72,16 @@ export async function isFirstAccount(db: Db): Promise<boolean> {
 export async function provisionNewUser(
   db: Db,
   data: { userId: string; email: string },
-): Promise<void> {
+): Promise<WorkspaceJoin | null> {
   const domain = data.email.split("@")[1] ?? "";
 
   const claim = await db.workspaceDomain.findUnique({
     where: { domain },
     select: { workspaceId: true },
   });
-  if (!claim) return;
+  if (!claim) return null;
 
-  await joinWorkspaceAsMember(db, {
+  return joinWorkspaceAsMember(db, {
     workspaceId: claim.workspaceId,
     userId: data.userId,
   });
