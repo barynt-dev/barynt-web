@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import {
-  getCommentUnchecked,
-  getIssueUnchecked,
-} from "@/features/api-v1/queries";
+  emitCommentEvent,
+  emitIssueCreated,
+  trackIssue,
+} from "@/features/api-v1/events";
+import { getCommentUnchecked } from "@/features/api-v1/queries";
 import {
   resolveFieldValues,
   writeIssueFieldValues,
@@ -64,7 +66,8 @@ import {
 } from "@/lib/storage";
 import { uid } from "@/lib/utils/id";
 import { isValidEmail } from "@/lib/utils/parse-emails";
-import { fireWebhookEvent } from "@/lib/webhooks/deliver";
+import { emitEvent } from "@/lib/webhooks/emit";
+import { emitLabelEvent } from "@/lib/webhooks/resources";
 import type {
   EstimateUnit,
   IssueAttachment,
@@ -270,6 +273,7 @@ export async function moveIssue(id: string, status: string) {
       ownerIds: [issue.reporterId, issue.assigneeId],
     },
   ]);
+  const tracker = await trackIssue(id, issue.project.workspaceId);
   await db.issue.update({
     where: { id },
     data: { status, ...(await closedPatch(issue, status)) },
@@ -278,6 +282,11 @@ export async function moveIssue(id: string, status: string) {
   if (status !== issue.status) {
     await recordStatusChangeAudit(id, issue, actorId, issue.status, status);
   }
+  tracker?.emit({
+    workspaceId: issue.project.workspaceId,
+    projectId: issue.projectId,
+    actorId,
+  });
   await revalidate({
     workspaceId: issue.project.workspaceId,
     projectId: issue.projectId,
@@ -298,6 +307,11 @@ export async function reorderIssue(id: string, status: string, rank: number) {
       ownerIds: [issue.reporterId, issue.assigneeId],
     },
   ]);
+  // Only a new column is news — a new place in the same one isn't.
+  const tracker =
+    status !== issue.status
+      ? await trackIssue(id, issue.project.workspaceId)
+      : null;
   await db.issue.update({
     where: { id },
     data: { status, rank, ...(await closedPatch(issue, status)) },
@@ -306,6 +320,11 @@ export async function reorderIssue(id: string, status: string, rank: number) {
   if (status !== issue.status) {
     await recordStatusChangeAudit(id, issue, actorId, issue.status, status);
   }
+  tracker?.emit({
+    workspaceId: issue.project.workspaceId,
+    projectId: issue.projectId,
+    actorId,
+  });
   await revalidate({
     workspaceId: issue.project.workspaceId,
     projectId: issue.projectId,
@@ -328,6 +347,7 @@ export async function updateIssue(id: string, patch: IssuePatch) {
   if (patch.assignee !== undefined) {
     await requirePermission("issue.assign", ctx);
   }
+  const tracker = await trackIssue(id, issue.project.workspaceId);
 
   // Custom field values go first: a value that doesn't fit throws before
   // anything else of this patch is written.
@@ -584,9 +604,11 @@ export async function updateIssue(id: string, patch: IssuePatch) {
     );
   }
 
-  const updated = await getIssueUnchecked(id);
-  if (updated)
-    fireWebhookEvent(issue.project.workspaceId, "issue.updated", updated);
+  tracker?.emit({
+    workspaceId: issue.project.workspaceId,
+    projectId: issue.projectId,
+    actorId,
+  });
 
   await revalidate({
     workspaceId: issue.project.workspaceId,
@@ -881,8 +903,11 @@ export async function createIssue(data: {
     data.title,
   );
 
-  const created = await getIssueUnchecked(id);
-  if (created) fireWebhookEvent(workspaceId, "issue.created", created);
+  emitIssueCreated(id, {
+    workspaceId,
+    projectId: data.projectId,
+    actorId: userId,
+  });
 
   await revalidate({ workspaceId, projectId: data.projectId, issueId: id });
   return { id };
@@ -938,6 +963,7 @@ export async function createLabel(data: {
     workspaceId,
     projectId: data.projectId ?? null,
   });
+  emitLabelEvent("label.created", label, { workspaceId, actorId });
 
   await revalidate({ workspaceId, projectId: data.projectId ?? undefined });
   return {
@@ -968,7 +994,14 @@ type LabelResult = { ok: true } | { error: string };
 async function labelScope(labelId: string) {
   const label = await db.label.findUnique({
     where: { id: labelId },
-    select: { id: true, name: true, workspaceId: true, projectId: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      color: true,
+      workspaceId: true,
+      projectId: true,
+    },
   });
   if (!label) return null;
 
@@ -1000,12 +1033,16 @@ export async function updateLabel(
   const name = data.name?.trim();
   if (name !== undefined && !name) return { error: "Name is required." };
 
-  await db.label.update({
+  const updated = await db.label.update({
     where: { id: labelId },
     data: {
       ...(name !== undefined ? { name } : {}),
       ...(data.color !== undefined ? { color: data.color } : {}),
     },
+  });
+  emitLabelEvent("label.updated", updated, {
+    workspaceId: scoped.label.workspaceId,
+    actorId: await currentUserId(),
   });
   await revalidate({
     workspaceId: scoped.label.workspaceId,
@@ -1047,12 +1084,17 @@ export async function deleteLabel(labelId: string): Promise<LabelResult> {
     db.label.delete({ where: { id: labelId } }),
   ]);
 
+  const actorId = await currentUserId();
   await recordAudit({
     action: "label.deleted",
-    actorId: await currentUserId(),
+    actorId,
     target: { type: "label", id: labelId, label: scoped.label.name },
     workspaceId: scoped.label.workspaceId,
     projectId: scoped.label.projectId,
+  });
+  emitLabelEvent("label.deleted", scoped.label, {
+    workspaceId: scoped.label.workspaceId,
+    actorId,
   });
 
   await revalidate({
@@ -1140,12 +1182,20 @@ export async function deleteIssue(id: string) {
   // Minimal payload, not the full `ApiIssue` shape the other events use —
   // the issue no longer exists to re-fetch, this is a snapshot from just
   // before the delete.
-  fireWebhookEvent(issue.project.workspaceId, "issue.deleted", {
-    id,
-    ref: `${issue.project.prefix}-${issue.key}`,
-    projectId: issue.projectId,
-    title: issue.title,
-  });
+  emitEvent(
+    "issue.deleted",
+    {
+      id,
+      ref: `${issue.project.prefix}-${issue.key}`,
+      projectId: issue.projectId,
+      title: issue.title,
+    },
+    {
+      workspaceId: issue.project.workspaceId,
+      projectId: issue.projectId,
+      actorId,
+    },
+  );
 
   // No `issueId` here — the issue is gone, so a subscriber's card just needs
   // to disappear on the next board refresh, not a targeted single-issue update.
@@ -1349,11 +1399,11 @@ export async function addComment(
 
   const commentForWebhook = await getCommentUnchecked(comment.id);
   if (commentForWebhook) {
-    fireWebhookEvent(
-      issue.project.workspaceId,
-      "comment.created",
-      commentForWebhook,
-    );
+    emitEvent("comment.created", commentForWebhook, {
+      workspaceId: issue.project.workspaceId,
+      projectId: issue.projectId,
+      actorId: userId,
+    });
   }
 
   const text = toPreview(body);
@@ -1459,6 +1509,15 @@ export async function deleteComment(commentId: string) {
     actorId,
     toPreview(comment.body),
   );
+  emitEvent(
+    "comment.deleted",
+    { id: commentId, issueId: comment.issueId },
+    {
+      workspaceId: comment.issue.project.workspaceId,
+      projectId: comment.issue.projectId,
+      actorId,
+    },
+  );
   await revalidate({
     workspaceId: comment.issue.project.workspaceId,
     projectId: comment.issue.projectId,
@@ -1479,7 +1538,7 @@ export async function updateComment(commentId: string, body: PMDoc) {
   });
   if (!comment) throw new PermissionError("comment.update.any");
   const ctx = { projectId: comment.issue.projectId };
-  await requirePermissionOr([
+  const actorId = await requirePermissionOr([
     { permission: "comment.update.any", ctx },
     {
       permission: "comment.update.own",
@@ -1494,6 +1553,11 @@ export async function updateComment(commentId: string, body: PMDoc) {
       bodyText: toPlainText(body),
       updated: new Date(),
     },
+  });
+  emitCommentEvent("comment.updated", commentId, {
+    workspaceId: comment.issue.project.workspaceId,
+    projectId: comment.issue.projectId,
+    actorId,
   });
   await revalidate({
     workspaceId: comment.issue.project.workspaceId,
@@ -1633,7 +1697,13 @@ export async function setIssueParent(
     issue.parentId ? issueContext(issue.parentId) : Promise.resolve(null),
   ]);
 
+  const tracker = await trackIssue(id, issue.project.workspaceId);
   await db.issue.update({ where: { id }, data: { parentId } });
+  tracker?.emit({
+    workspaceId: issue.project.workspaceId,
+    projectId: issue.projectId,
+    actorId,
+  });
   await revalidate({
     workspaceId: issue.project.workspaceId,
     projectId: issue.projectId,

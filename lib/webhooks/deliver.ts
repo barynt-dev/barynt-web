@@ -4,31 +4,18 @@ import { db } from "@/lib/db";
 import type { WebhookEvent } from "@/lib/webhooks/events";
 
 /**
- * Fires a webhook event at every enabled webhook of a workspace that's
- * subscribed to it. Fire-and-forget from the caller's point of view — call
- * this without `await`, same as the `lastUsedAt` touch in
- * `lib/api-auth.ts`. Never throws.
+ * Sends an event's envelope (`lib/webhooks/emit.ts`) to every enabled
+ * webhook of a workspace that's subscribed to it. Never throws.
  *
  * Single delivery attempt, no retry: that would need a durable queue,
  * which this app doesn't have. The outcome (status or error) lands on the
  * webhook row (`lastDeliveryAt/-Status/-Error`) for the settings UI to
  * show — a conscious simplification, not an oversight.
  */
-export function fireWebhookEvent(
-  workspaceId: string,
-  event: WebhookEvent,
-  data: unknown,
-): void {
-  deliverWebhookEvent(workspaceId, event, data).catch(() => {});
-}
-
-/** The awaited version of `fireWebhookEvent` — same thing, but returns the
- *  promise instead of swallowing it. Real call sites want the fire-and-
- *  forget wrapper above; this one exists so tests can await completion. */
 export async function deliverWebhookEvent(
   workspaceId: string,
   event: WebhookEvent,
-  data: unknown,
+  envelope: object,
 ): Promise<void> {
   const hooks = await db.webhook.findMany({
     where: { workspaceId, enabled: true, events: { has: event } },
@@ -36,9 +23,9 @@ export async function deliverWebhookEvent(
   });
   if (hooks.length === 0) return;
 
-  const payload = JSON.stringify({ event, timestamp: Date.now(), data });
+  const payload = JSON.stringify(envelope);
 
-  await Promise.all(hooks.map((hook) => deliverOne(hook, payload)));
+  await Promise.all(hooks.map((hook) => deliverOne(hook, event, payload)));
 }
 
 /** Hex, no `sha256=` prefix — same convention as Linear's `Linear-Signature`
@@ -57,6 +44,7 @@ export function signPayload(
 
 async function deliverOne(
   hook: { id: string; url: string; secret: string },
+  event: WebhookEvent,
   payload: string,
 ): Promise<void> {
   const timestamp = Date.now().toString();
@@ -67,6 +55,7 @@ async function deliverOne(
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "x-barynt-event": event,
         "x-barynt-signature": signature,
         "x-barynt-timestamp": timestamp,
       },

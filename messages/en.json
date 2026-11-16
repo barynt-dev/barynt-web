@@ -1374,6 +1374,7 @@
     "guidePagingFields": "Only some fields",
     "docsWebhookDesc": "Not a request you make — an outbound push. Registered under Settings → Webhooks, sent as a signed HTTP POST whenever a subscribed event happens.",
     "docsSignature": "Signature",
+    "docsEnvelope": "Envelope",
     "docsPayloadExample": "Example payload",
     "docsScopeLabel": "Requires scope",
     "docsPathParams": "Path parameters",
@@ -1434,13 +1435,52 @@
     "urlLabel": "Endpoint URL",
     "urlPlaceholder": "https://example.com/webhooks/barynt",
     "eventsLabel": "Events",
-    "eventIssueCreated": "Issue created",
-    "eventIssueUpdated": "Issue updated",
-    "eventIssueDeleted": "Issue deleted",
-    "eventCommentCreated": "Comment created",
-    "eventViewCreated": "View created",
-    "eventViewUpdated": "View updated",
-    "eventViewDeleted": "View deleted",
+    "groups": {
+      "issue": "Issues",
+      "comment": "Comments",
+      "label": "Labels",
+      "project": "Projects",
+      "member": "Members",
+      "view": "Views"
+    },
+    "groupAll": "All {group}",
+    "events": {
+      "issue": {
+        "created": "Issue created",
+        "updated": "Issue changed (anything)",
+        "status_changed": "Status changed",
+        "assigned": "Assignee changed",
+        "fields_changed": "Custom field changed",
+        "deleted": "Issue deleted"
+      },
+      "comment": {
+        "created": "Comment created",
+        "updated": "Comment edited",
+        "deleted": "Comment deleted"
+      },
+      "label": {
+        "created": "Label created",
+        "updated": "Label changed",
+        "deleted": "Label deleted"
+      },
+      "project": {
+        "created": "Project created",
+        "updated": "Project changed",
+        "archived": "Project archived",
+        "unarchived": "Project restored",
+        "deleted": "Project deleted"
+      },
+      "member": {
+        "added": "Member added",
+        "removed": "Member removed",
+        "role_changed": "Role changed"
+      },
+      "view": {
+        "created": "View created",
+        "updated": "View updated",
+        "deleted": "View deleted"
+      }
+    },
     "create": "Create webhook",
     "createdTitle": "Copy your webhook secret now",
     "createdDesc": "Use it to verify the X-Barynt-Signature header on every delivery — this is the only time it's shown.",

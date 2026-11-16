@@ -24,7 +24,7 @@ import {
 import type { WebhooksView } from "@/features/webhooks/types";
 import { useModal } from "@/lib/context";
 import { PHONE_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
-import type { WebhookEvent } from "@/lib/webhooks/events";
+import { WEBHOOK_EVENTS, type WebhookEvent } from "@/lib/webhooks/events";
 import { type NewWebhookInput, NewWebhookModal } from "./NewWebhookModal";
 import styles from "./workspaceWebhooks.module.scss";
 
@@ -56,15 +56,9 @@ export function WorkspaceWebhooks({ workspaceId, webhooks }: Props) {
   const isPhone = useMediaQuery(PHONE_QUERY);
   const [createdSecret, setCreatedSecret] = useState<string | null>(null);
 
-  const eventLabel: Record<WebhookEvent, string> = {
-    "issue.created": t("webhooks.eventIssueCreated"),
-    "issue.updated": t("webhooks.eventIssueUpdated"),
-    "issue.deleted": t("webhooks.eventIssueDeleted"),
-    "comment.created": t("webhooks.eventCommentCreated"),
-    "view.created": t("webhooks.eventViewCreated"),
-    "view.updated": t("webhooks.eventViewUpdated"),
-    "view.deleted": t("webhooks.eventViewDeleted"),
-  };
+  const eventLabel = Object.fromEntries(
+    WEBHOOK_EVENTS.map((event) => [event, t(`webhooks.events.${event}`)]),
+  ) as Record<WebhookEvent, string>;
 
   const run = (action: () => Promise<unknown>, failure: string) =>
     startTransition(async () => {

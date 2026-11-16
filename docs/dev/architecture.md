@@ -84,7 +84,7 @@ All changes made by the UI are **Server Functions** (`"use server"` in
    [Permissions](permissions.md)). No permission, no work.
 2. Validate input, write to the database, usually in a transaction.
 3. Side effects: `recordAudit(...)` (audit log), `notify(...)` (inbox and mail),
-   `fireWebhookEvent(...)` (webhooks), `recordProjectChange(...)` (so other
+   `emitEvent(...)` (webhooks and, later, plugins), `recordProjectChange(...)` (so other
    open tabs notice).
 4. `revalidatePath(...)` so the page re-renders with fresh data.
 

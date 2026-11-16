@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { canCreateWorkspace, getSystemSettings } from "@/lib/system-settings";
 import { joinWorkspaceAsMember } from "@/lib/user-provisioning";
+import { emitMemberEvent } from "@/lib/webhooks/resources";
 
 export default async function LocaleRootPage({
   params,
@@ -59,9 +60,13 @@ export default async function LocaleRootPage({
       select: { id: true, suspended: true },
     });
     if (defaultWorkspace && !defaultWorkspace.suspended) {
-      await joinWorkspaceAsMember(db, {
+      const joined = await joinWorkspaceAsMember(db, {
         workspaceId: defaultWorkspace.id,
         userId: session.userId,
+      });
+      emitMemberEvent("member.added", joined, {
+        workspaceId: joined.workspaceId,
+        actorId: session.userId,
       });
       redirect(`/${locale}/${defaultWorkspace.id}`);
     }

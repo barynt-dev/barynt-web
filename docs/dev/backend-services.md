@@ -150,11 +150,13 @@ a stumbling notification must never block an assignment, a comment or a role cha
 
 ## Webhooks
 
-`fireWebhookEvent(workspaceId, event, data)` (`lib/webhooks/deliver.ts`) is called without
-`await` after the change succeeded. It finds the enabled webhooks of the workspace that
-subscribed to the event and sends each a signed `POST`:
-`{ event, timestamp, data }`, header `X-Barynt-Signature` = hex HMAC-SHA256 over
-`<timestamp>.<body>` with the webhook's secret, and `X-Barynt-Timestamp`.
+`emitEvent(event, data, ctx)` (`lib/webhooks/emit.ts`) is called without `await` after the
+change succeeded. It wraps `data` in the envelope
+`{ event, timestamp, workspaceId, projectId, actor, via, data, changes? }` and hands it to
+`deliverWebhookEvent` (`lib/webhooks/deliver.ts`), which finds the enabled webhooks of the
+workspace that subscribed to the event and sends each a signed `POST`: header
+`X-Barynt-Signature` = hex HMAC-SHA256 over `<timestamp>.<body>` with the webhook's secret,
+`X-Barynt-Timestamp` and `X-Barynt-Event`.
 
 It is **one attempt with a ten-second timeout, no retries**. A retry needs a durable queue,
 which the app does not have, so the outcome (status or error) is stored on the webhook row
