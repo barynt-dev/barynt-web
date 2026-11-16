@@ -2184,6 +2184,20 @@ export const API_DOC_WEBHOOK_SIGNATURE = {
       },
     },
     {
+      name: "X-Barynt-Delivery",
+      desc: {
+        en: "The delivery's id — the same on every attempt of one message, so a receiver can skip one it has already handled.",
+        de: "Die Id der Zustellung — bei jedem Versuch derselben Nachricht gleich, damit ein Empfänger eine schon verarbeitete überspringen kann.",
+      },
+    },
+    {
+      name: "X-Barynt-Attempt",
+      desc: {
+        en: "Which attempt this is, from 1. Barynt retries after 1 min, 5 min, 30 min, 2 h and 6 h when there's no 2xx (not after a 4xx other than 408, 409, 429).",
+        de: "Der wievielte Versuch das ist, ab 1. Barynt wiederholt nach 1 min, 5 min, 30 min, 2 h und 6 h, wenn kein 2xx kommt (nicht nach einem 4xx außer 408, 409, 429).",
+      },
+    },
+    {
       name: "X-Barynt-Timestamp",
       desc: {
         en: "Unix milliseconds — include it in the signed string to reject replayed deliveries.",

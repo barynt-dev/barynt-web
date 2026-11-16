@@ -1492,7 +1492,24 @@
     "deleteDesc": "This endpoint stops receiving events immediately. This cannot be undone.",
     "deleteFailed": "Could not delete this webhook.",
     "toggleFailed": "Could not update this webhook.",
-    "empty": "No webhooks yet."
+    "empty": "No webhooks yet.",
+    "autoDisabled": "Turned off by Barynt on {date}: every delivery failed for a day. Turn it on again once the receiver works.",
+    "log": {
+      "title": "Deliveries",
+      "loading": "Loading…",
+      "empty": "Nothing delivered yet. The log keeps 7 days.",
+      "delivered": "Delivered",
+      "sending": "Sending",
+      "retryAt": "Retry at {time}",
+      "gaveUp": "Given up",
+      "attempts": "Attempts",
+      "duration": "Duration",
+      "id": "Delivery id",
+      "error": "Error",
+      "response": "Response",
+      "payload": "Payload",
+      "resend": "Send again"
+    }
   },
   "audit": {
     "desc": "Who signed in, who granted whom rights, who deleted something — and every emergency access.",
@@ -1581,7 +1598,8 @@
       "pluginGrantRevoked": "Plugin release for projects withdrawn",
       "pluginActed": "Plugin changed something in their name",
       "pluginCredentialSet": "Plugin credential kept",
-      "pluginCredentialRemoved": "Plugin credential removed"
+      "pluginCredentialRemoved": "Plugin credential removed",
+      "webhookDisabled": "Webhook turned off after a day of failed deliveries"
     }
   },
   "dashboard": {

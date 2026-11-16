@@ -117,6 +117,21 @@
   }
 }
 
+/* Barynt turned it off after a day of failed deliveries. */
+.autoOff {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 0.375rem;
+  font-size: var(--text-sm);
+  color: var(--error);
+}
+
+.rowActions {
+  display: flex;
+  gap: 0.125rem;
+}
+
 .eventBadges {
   display: flex;
   flex-wrap: wrap;

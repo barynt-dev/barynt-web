@@ -1,10 +1,13 @@
 import "server-only";
+import { appUrl } from "@/lib/app-url";
 import { db } from "@/lib/db";
 import { getMailTemplateOverride } from "@/lib/mail/overrides";
 import { isMailConfigured, sendMail } from "@/lib/mail/send";
 import { invitationEmail } from "@/lib/mail/templates/invitation";
 import { issueShareEmail } from "@/lib/mail/templates/issueShare";
 import { memberRemovedEmail } from "@/lib/mail/templates/memberRemoved";
+import { webhookDisabledEmail } from "@/lib/mail/templates/webhookDisabled";
+import { workspaceSettingsPath } from "@/lib/nav";
 
 export { isMailConfigured, sendMail } from "@/lib/mail/send";
 export type { EmailVerificationInput } from "@/lib/mail/templates/emailVerification";
@@ -25,6 +28,8 @@ export { notificationEmail } from "@/lib/mail/templates/notification";
 export type { PasswordResetEmailInput } from "@/lib/mail/templates/passwordReset";
 export { passwordResetEmail } from "@/lib/mail/templates/passwordReset";
 export type { MailContent } from "@/lib/mail/templates/types";
+export type { WebhookDisabledEmailInput } from "@/lib/mail/templates/webhookDisabled";
+export { webhookDisabledEmail } from "@/lib/mail/templates/webhookDisabled";
 export type {
   WeeklyDigestEmailInput,
   WeeklyDigestHighlight,
@@ -214,5 +219,52 @@ export async function sendIssueShareLinkEmail(
     await sendMail({ to: input.to, subject, html, text });
   } catch (error) {
     console.error("[mail] Shared link not sent:", error);
+  }
+}
+
+/** Tells whoever created a webhook that Barynt turned it off after a day of
+ *  failed deliveries (BARY-211). No preference toggle — like the removal
+ *  notice, it's about something they set up, not a notification. */
+export async function sendWebhookDisabledEmail(input: {
+  userId: string;
+  workspaceId: string;
+  url: string;
+  failingSince: Date;
+}): Promise<void> {
+  try {
+    const [user, workspace, hook, override] = await Promise.all([
+      db.user.findUnique({
+        where: { id: input.userId },
+        select: { email: true },
+      }),
+      db.workspace.findUnique({
+        where: { id: input.workspaceId },
+        select: { name: true },
+      }),
+      db.webhook.findFirst({
+        where: { workspaceId: input.workspaceId, url: input.url },
+        select: { lastDeliveryStatus: true, lastDeliveryError: true },
+      }),
+      getMailTemplateOverride("webhookDisabled"),
+    ]);
+    if (!user?.email || !workspace) return;
+    const { subject, html, text } = webhookDisabledEmail(
+      {
+        to: user.email,
+        workspaceName: workspace.name,
+        url: input.url,
+        failingSince: input.failingSince,
+        lastResult: hook?.lastDeliveryStatus
+          ? `HTTP ${hook.lastDeliveryStatus}`
+          : (hook?.lastDeliveryError ?? "—"),
+        settingsUrl: appUrl(
+          workspaceSettingsPath(input.workspaceId, "webhooks"),
+        ),
+      },
+      override,
+    );
+    await sendMail({ to: user.email, subject, html, text });
+  } catch (error) {
+    console.error("[mail] Webhook notice not sent:", error);
   }
 }

@@ -150,25 +150,31 @@ app.listen(3000);
 
 ## Zustellung: was du erwarten kannst
 
-- **Nur ein Versuch.** Barynt sendet jede Nachricht einmal, wartet **zehn Sekunden** auf eine Antwort und versucht es **nicht erneut**. Jede Antwort gilt als zugestellt, egal mit welchem Status; Barynt merkt sich nur den Status. Ist dein Empfänger nicht erreichbar oder zu langsam, verpasst er diese Nachricht. Empfänger sollten schnell mit einem `2xx` antworten und Langsames danach erledigen.
-- **Das letzte Ergebnis steht in der Liste** des Webhooks: der HTTP-Status des letzten Versuchs oder der Fehler (etwa ein Timeout oder eine abgelehnte Verbindung). Nur der letzte Versuch wird behalten, es gibt keinen Verlauf.
-- **Keine Reihenfolge garantiert.** Zwei schnelle Änderungen können in beliebiger Reihenfolge ankommen. Nimm die Zeit in den Daten (bei einem Issue `updated`), um zu sehen, welche neuer ist, und behandle `timestamp` als Sendezeit.
-- **Höchstens einmal, nicht genau einmal.** Eine Nachricht wird nicht doppelt gesendet, aber eine kann verloren gehen. Gleiche, was nicht verpasst werden darf, ab und zu über die [REST-API](api.md) ab (zum Beispiel einmal pro Nacht).
-- **Dein Server muss erreichbar sein** vom Barynt-Server aus. Ein Empfänger auf deinem Laptop ist es nicht, außer du nutzt zum Testen ein Tunnel-Werkzeug wie ngrok. Läuft Barynt in deinem Firmennetz, muss auch der Empfänger dort liegen oder von dort erreichbar sein.
+- **Antworte innerhalb von zehn Sekunden mit einem `2xx`.** Das gilt als zugestellt. Erledige Langsames danach.
+- **Barynt versucht es erneut**, wenn keine Antwort kommt, bei einem Timeout, einem `5xx` oder bei `408`, `409` oder `429`: nach 1 Minute, 5 Minuten, 30 Minuten, 2 Stunden und 6 Stunden, sechs Versuche über etwa neun Stunden. Jedes andere `4xx` heißt „nein“ und wird nicht wiederholt, eine Weiterleitung auch nicht, denn Barynt folgt ihr nicht.
+- **Eine Wiederholung erkennen:** Jeder Versuch derselben Nachricht hat dieselbe `X-Barynt-Delivery`-ID und denselben Body; `X-Barynt-Attempt` zählt hoch. Eine Nachricht kann doppelt ankommen (etwa wenn dein Empfänger sie verarbeitet, aber zu spät geantwortet hat), also überspringe eine ID, die du schon verarbeitet hast.
+- **Nach einem Tag mit Fehlern wird der Webhook abgeschaltet.** Ist 24 Stunden lang jede Zustellung gescheitert, schaltet Barynt den Webhook aus, trägt das in die Aktivität ein und schreibt der Person, die ihn angelegt hat, eine E-Mail. Die Liste zeigt das an. Schalte ihn wieder ein, sobald der Empfänger funktioniert; Ereignisse aus der Zeit, in der er aus war, werden nicht nachgeschickt.
+- **Das Protokoll** (Uhr-Symbol neben einem Webhook) zeigt die Zustellungen der letzten sieben Tage: Ereignis, Zeit, Zustand (zugestellt, neuer Versuch um …, aufgegeben), die Antwort oder den Fehler, die Dauer und was gesendet wurde. **Erneut senden** schickt eine noch einmal, mit derselben ID.
+- **Keine Reihenfolge garantiert.** Zwei schnelle Änderungen können in beliebiger Reihenfolge ankommen, und eine Wiederholung kommt nach neueren Nachrichten. Nimm die Zeit in den Daten (bei einem Issue `updated`), um zu sehen, welche neuer ist, und behandle `timestamp` als Sendezeit.
+- **Was nicht verpasst werden darf**, gleiche ab und zu über die [REST-API](api.md) ab (zum Beispiel einmal pro Nacht): Ein Webhook, der aus war, oder eine aufgegebene Nachricht wird nicht nachgeschickt.
+- **Dein Server muss erreichbar sein** vom Barynt-Server aus, unter einer **öffentlichen** Adresse. Ein Empfänger auf deinem Laptop ist es nicht, außer du nutzt zum Testen ein Tunnel-Werkzeug wie ngrok.
+- **Keine privaten Adressen.** Barynt sendet nicht an `localhost`, an Adressen aus seinem eigenen Netz (`10.…`, `192.168.…`, `172.16–31.…`) und nicht an Metadaten-Adressen von Cloud-Anbietern, und es verbindet sich mit genau der Adresse, die es geprüft hat. So greift kein Webhook in das Netz, in dem Barynt läuft. Liegt dein Empfänger wirklich intern (ein n8n im Firmennetz), trägt die Administration ihn in `WEBHOOK_INTERNAL_HOSTS` ein, siehe [Konfiguration](../getting-started/config.md).
 
 ## Ausprobieren
 
 1. Besorge dir eine temporäre Empfangsadresse bei einem Dienst wie webhook.site, oder starte das Express-Beispiel oben hinter einem Tunnel.
 2. Lege einen Webhook für diese Adresse mit allen Ereignissen an.
 3. Lege in Barynt ein Issue an oder ändere eines. Die Nachricht kommt innerhalb einer Sekunde an.
-4. Schau in der Liste auf die **letzte Zustellung**: `200` oder `204` heißt, sie ist angekommen.
+4. Schau in der Liste auf die **letzte Zustellung**: `200` oder `204` heißt, sie ist angekommen. Das Protokoll (Uhr-Symbol) zeigt die Nachricht selbst und die Antwort.
 
 ## Wenn nichts ankommt
 
 | Was du siehst | Wahrscheinliche Ursache |
 | --- | --- |
 | „Noch nie zugestellt“ | Es ist noch nichts passiert, worauf der Webhook hört, er ist ausgeschaltet, oder er gehört zu einem anderen Workspace. |
-| Ein Fehler wie `fetch failed` oder `The operation was aborted` | Der Empfänger war nicht erreichbar oder brauchte länger als zehn Sekunden. Prüfe Adresse, Firewall und TLS-Zertifikate. |
+| Ein Fehler wie `ECONNREFUSED` oder `No answer within 10 s` | Der Empfänger war nicht erreichbar oder brauchte länger als zehn Sekunden. Prüfe Adresse, Firewall und TLS-Zertifikate. Barynt versucht es von selbst erneut. |
+| `The address is on a private network` | Die Adresse zeigt in ein privates Netz oder auf `localhost`. Nimm eine öffentliche Adresse oder lass sie von der Administration freigeben (`WEBHOOK_INTERNAL_HOSTS`). |
+| „Von Barynt abgeschaltet“ | Einen Tag lang ist jede Zustellung gescheitert. Repariere den Empfänger und schalte den Webhook wieder ein. |
 | Ein Status `4xx`/`5xx` | Der Empfänger wurde erreicht, hat die Nachricht aber abgelehnt. Schau in sein Protokoll: Meist ist es die Signaturprüfung, weil der Body vor dem Prüfen verändert wurde. |
 | Signaturen passen nie | Der Body wurde geparst und neu serialisiert, bevor geprüft wurde, das falsche Secret wurde benutzt, oder der Timestamp fehlt im signierten Text. |
 

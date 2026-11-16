@@ -1492,7 +1492,24 @@
     "deleteDesc": "Dieser Endpunkt erhält sofort keine Ereignisse mehr. Das lässt sich nicht rückgängig machen.",
     "deleteFailed": "Dieser Webhook konnte nicht gelöscht werden.",
     "toggleFailed": "Dieser Webhook konnte nicht aktualisiert werden.",
-    "empty": "Noch keine Webhooks."
+    "empty": "Noch keine Webhooks.",
+    "autoDisabled": "Von Barynt am {date} abgeschaltet: einen Tag lang ist jede Zustellung gescheitert. Schalte ihn wieder ein, sobald der Empfänger funktioniert.",
+    "log": {
+      "title": "Zustellungen",
+      "loading": "Wird geladen…",
+      "empty": "Noch nichts zugestellt. Das Protokoll reicht 7 Tage zurück.",
+      "delivered": "Zugestellt",
+      "sending": "Wird gesendet",
+      "retryAt": "Neuer Versuch um {time}",
+      "gaveUp": "Aufgegeben",
+      "attempts": "Versuche",
+      "duration": "Dauer",
+      "id": "Zustellungs-ID",
+      "error": "Fehler",
+      "response": "Antwort",
+      "payload": "Inhalt",
+      "resend": "Erneut senden"
+    }
   },
   "audit": {
     "desc": "Wer war da, wer hat wem Rechte gegeben, wer hat etwas gelöscht — und jeder Notfall-Zugriff.",
@@ -1581,7 +1598,8 @@
       "pluginGrantRevoked": "Plugin-Freigabe für Projekte zurückgenommen",
       "pluginActed": "Plugin hat im Namen der Person etwas geändert",
       "pluginCredentialSet": "Plugin-Zugangsdaten hinterlegt",
-      "pluginCredentialRemoved": "Plugin-Zugangsdaten entfernt"
+      "pluginCredentialRemoved": "Plugin-Zugangsdaten entfernt",
+      "webhookDisabled": "Webhook nach einem Tag fehlgeschlagener Zustellungen abgeschaltet"
     }
   },
   "dashboard": {

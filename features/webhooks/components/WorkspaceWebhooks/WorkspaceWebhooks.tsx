@@ -25,6 +25,7 @@ import type { WebhooksView } from "@/features/webhooks/types";
 import { useModal } from "@/lib/context";
 import { PHONE_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
 import { WEBHOOK_EVENTS, type WebhookEvent } from "@/lib/webhooks/events";
+import { DeliveryLogModal } from "./DeliveryLogModal";
 import { type NewWebhookInput, NewWebhookModal } from "./NewWebhookModal";
 import styles from "./workspaceWebhooks.module.scss";
 
@@ -97,6 +98,22 @@ export function WorkspaceWebhooks({ workspaceId, webhooks }: Props) {
       },
     );
 
+  const openLog = (id: string, hookUrl: string) =>
+    openModal(
+      ({ close }) => (
+        <DeliveryLogModal
+          webhookId={id}
+          url={hookUrl}
+          close={close}
+          sheet={isPhone}
+        />
+      ),
+      {
+        ...(isPhone ? { placement: "bottom" as const } : {}),
+        label: t("webhooks.log.title"),
+      },
+    );
+
   const remove = async (id: string, hookUrl: string) => {
     const ok = await confirm({
       title: t("webhooks.deleteTitle", { url: hookUrl }),
@@ -116,20 +133,33 @@ export function WorkspaceWebhooks({ workspaceId, webhooks }: Props) {
       width: "170px",
     },
     { id: "enabled", header: t("webhooks.colEnabled"), width: "70px" },
-    { id: "actions", header: "", width: "40px" },
+    { id: "actions", header: "", width: "80px" },
   ];
 
   const rows: SettingsRow[] = webhooks.map((hook) => ({
     id: hook.id,
     label: hook.url,
     desc: (
-      <span className={styles.eventBadges}>
-        {hook.events.map((event) => (
-          <Badge key={event} size="sm" mono={false}>
-            {eventLabel[event]}
-          </Badge>
-        ))}
-      </span>
+      <>
+        {hook.autoDisabledAt && !hook.enabled && (
+          <span className={styles.autoOff}>
+            <Icon icon="lucide:webhook-off" width={14} />
+            {t("webhooks.autoDisabled", {
+              date: format.dateTime(hook.autoDisabledAt, {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }),
+            })}
+          </span>
+        )}
+        <span className={styles.eventBadges}>
+          {hook.events.map((event) => (
+            <Badge key={event} size="sm" mono={false}>
+              {eventLabel[event]}
+            </Badge>
+          ))}
+        </span>
+      </>
     ),
     cells: {
       lastDelivery: hook.lastDeliveryAt ? (
@@ -168,14 +198,24 @@ export function WorkspaceWebhooks({ workspaceId, webhooks }: Props) {
         />
       ),
       actions: (
-        <Button
-          variant="text"
-          size="sm"
-          icon={<Icon icon="lucide:trash-2" width={14} />}
-          aria-label={t("actions.delete")}
-          disabled={isPending}
-          onClick={() => remove(hook.id, hook.url)}
-        />
+        <span className={styles.rowActions}>
+          <Button
+            variant="text"
+            size="sm"
+            icon={<Icon icon="lucide:history" width={14} />}
+            aria-label={t("webhooks.log.title")}
+            title={t("webhooks.log.title")}
+            onClick={() => openLog(hook.id, hook.url)}
+          />
+          <Button
+            variant="text"
+            size="sm"
+            icon={<Icon icon="lucide:trash-2" width={14} />}
+            aria-label={t("actions.delete")}
+            disabled={isPending}
+            onClick={() => remove(hook.id, hook.url)}
+          />
+        </span>
       ),
     },
   }));

@@ -16,6 +16,7 @@ import { notificationEmail } from "@/lib/mail/templates/notification";
 import type { TemplateOverride } from "@/lib/mail/templates/override";
 import { passwordResetEmail } from "@/lib/mail/templates/passwordReset";
 import type { MailContent } from "@/lib/mail/templates/types";
+import { webhookDisabledEmail } from "@/lib/mail/templates/webhookDisabled";
 import { weeklyDigestEmail } from "@/lib/mail/templates/weeklyDigest";
 import { welcomeEmail } from "@/lib/mail/templates/welcome";
 
@@ -29,6 +30,18 @@ export function renderMailPreview(
   override?: TemplateOverride,
 ): MailContent {
   switch (key) {
+    case "webhookDisabled":
+      return webhookDisabledEmail(
+        {
+          to: SAMPLE_TO,
+          workspaceName: "Acme",
+          url: "https://hooks.example.com/barynt",
+          failingSince: new Date(Date.now() - 26 * 60 * 60 * 1000),
+          lastResult: "HTTP 503",
+          settingsUrl: "https://issues.example.com/acme/settings/webhooks",
+        },
+        override,
+      );
     case "invitation":
       return invitationEmail(
         {

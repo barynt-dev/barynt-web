@@ -24,6 +24,7 @@ export const MAIL_TEMPLATE_KEYS = [
   "weeklyDigest",
   "issueUpdate",
   "issueShare",
+  "webhookDisabled",
 ] as const;
 
 export type MailTemplateKey = (typeof MAIL_TEMPLATE_KEYS)[number];
@@ -243,6 +244,16 @@ export const MAIL_TEMPLATE_CATALOG: Record<MailTemplateKey, MailTemplateMeta> =
         ISSUE_ID,
         ISSUE_TITLE,
         { key: "text", description: "Personal message (optional)" },
+      ],
+    },
+    webhookDisabled: {
+      key: "webhookDisabled",
+      label: "Webhook turned off",
+      group: "Account & access",
+      wired: true,
+      placeholders: [
+        WORKSPACE,
+        { key: "url", description: "The webhook's address" },
       ],
     },
   };

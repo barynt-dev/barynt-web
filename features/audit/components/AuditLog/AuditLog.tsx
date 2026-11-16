@@ -337,6 +337,11 @@ export const AUDIT_ACTION_META = {
     icon: "lucide:badge-x",
     message: "pluginGrantRevoked",
   },
+  "webhook.disabled": {
+    icon: "lucide:webhook-off",
+    message: "webhookDisabled",
+    loud: true,
+  },
 } as const satisfies Record<
   AuditAction,
   { icon: string; message: string; loud?: boolean }
