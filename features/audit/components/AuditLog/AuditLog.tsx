@@ -337,6 +337,15 @@ export const AUDIT_ACTION_META = {
     icon: "lucide:badge-x",
     message: "pluginGrantRevoked",
   },
+  "plugin.service.paused": {
+    icon: "lucide:circle-pause",
+    message: "pluginServicePaused",
+    loud: true,
+  },
+  "plugin.service.resumed": {
+    icon: "lucide:circle-play",
+    message: "pluginServiceResumed",
+  },
   "webhook.disabled": {
     icon: "lucide:webhook-off",
     message: "webhookDisabled",

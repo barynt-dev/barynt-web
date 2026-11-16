@@ -31,6 +31,9 @@ mock.module("@/i18n/navigation", () => ({
     </a>
   ),
 }));
+mock.module("@/lib/context", () => ({
+  useModal: () => ({ openModal: () => "" }),
+}));
 mock.module("@/components/ui/layout/ConfirmDialog/ConfirmDialog", () => ({
   useConfirm: () => async () => false,
 }));
@@ -69,6 +72,7 @@ const view = (over: Partial<PluginSettingsView> = {}): PluginSettingsView => ({
   views: [],
   credentials: [],
   settingsPage: false,
+  service: null,
   ...over,
 });
 
@@ -100,6 +104,35 @@ describe("PluginSettings", () => {
   it("says so when a running plugin has nothing to set", () => {
     const html = render(view({ fields: [] }));
     expect(html).toContain("noSettings");
+  });
+
+  it("shows its server, how it's doing, and the way back after a pause (BARY-212)", () => {
+    const service = {
+      activationId: "act-1",
+      url: "https://ci.acme.dev/barynt",
+      events: ["issue.status_changed", "member.added"],
+      pausedAt: null,
+      failingSince: null,
+      last: { at: new Date(), status: 204, error: null },
+    };
+    const html = render(view({ fields: [], service }));
+    expect(html).toContain("service.title");
+    expect(html).toContain("https://ci.acme.dev/barynt");
+    expect(html).toContain("issue.status_changed");
+    expect(html).toContain("HTTP 204");
+    expect(html).toContain('data-state="ok"');
+    expect(html).not.toContain("noSettings");
+    expect(html).not.toContain("service.resume");
+
+    const paused = render(
+      view({
+        fields: [],
+        service: { ...service, pausedAt: new Date(), failingSince: new Date() },
+      }),
+    );
+    expect(paused).toContain('data-state="paused"');
+    expect(paused).toContain("service.pausedHint");
+    expect(paused).toContain("service.resume");
   });
 
   it("asks again after an update wants more", () => {

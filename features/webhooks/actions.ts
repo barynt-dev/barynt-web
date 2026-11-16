@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/permissions";
 import { redeliver } from "@/lib/webhooks/deliver";
 import { isWebhookEvent, type WebhookEvent } from "@/lib/webhooks/events";
+import { DELIVERY_SELECT } from "./deliveries";
 import type { WebhookDelivery } from "./types";
 
 // `createWebhook` is wired to a form and returns `{error}` for validation
@@ -77,21 +78,6 @@ export async function setWebhookEnabled(
 /** How many deliveries the log shows. */
 const LOG_SIZE = 50;
 
-const DELIVERY_SELECT = {
-  id: true,
-  event: true,
-  status: true,
-  attempts: true,
-  createdAt: true,
-  updatedAt: true,
-  nextAttemptAt: true,
-  lastStatus: true,
-  lastError: true,
-  lastResponse: true,
-  lastDurationMs: true,
-  payload: true,
-} as const;
-
 /** A webhook's latest deliveries, newest first (BARY-211). */
 export async function listWebhookDeliveries(
   webhookId: string,
@@ -112,19 +98,32 @@ export async function listWebhookDeliveries(
   });
 }
 
-/** Sends one delivery again, now — the log's "Send again". The receiver
- *  gets the same body under the same delivery id. */
+/** Sends one delivery again, now — the log's "Send again", for a webhook's
+ *  or a plugin's server (BARY-212). The receiver gets the same body under
+ *  the same delivery id. */
 export async function resendWebhookDelivery(
   deliveryId: string,
 ): Promise<WebhookDelivery | null> {
   const delivery = await db.eventDelivery.findUnique({
     where: { id: deliveryId },
-    select: { workspaceId: true },
+    select: {
+      workspaceId: true,
+      activation: { select: { workspaceId: true, projectId: true } },
+    },
   });
   if (!delivery) return null;
-  await requirePermission("webhook.manage", {
-    workspaceId: delivery.workspaceId,
-  });
+  const activation = delivery.activation;
+  if (activation)
+    await requirePermission(
+      "plugin.enable",
+      activation.projectId
+        ? { projectId: activation.projectId }
+        : { workspaceId: activation.workspaceId },
+    );
+  else
+    await requirePermission("webhook.manage", {
+      workspaceId: delivery.workspaceId,
+    });
   await redeliver(deliveryId);
   revalidatePath("/", "layout");
   return db.eventDelivery.findUnique({

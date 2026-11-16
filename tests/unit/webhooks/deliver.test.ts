@@ -9,6 +9,10 @@ import { createHmac } from "node:crypto";
 type Row = Record<string, unknown> & { id: string };
 let deliveries: Row[] = [];
 let hook: Row;
+/** Switched-on plugins and their active versions' manifests (BARY-212). */
+let activations: Row[] = [];
+let pluginRows: { pluginId: string; manifest: unknown }[] = [];
+let projectVisibility = "public";
 
 const mockWebhookFindMany = mock();
 const mockWebhookCount = mock();
@@ -61,7 +65,8 @@ mock.module("@/lib/db", () => ({
       },
       findUnique: async ({ where }: { where: { id: string } }) => {
         const row = find(where.id);
-        return row ? { ...row, webhook: hook } : null;
+        if (!row) return null;
+        return { ...row, webhook: row.webhookId ? hook : null };
       },
       update: async ({
         where,
@@ -80,6 +85,38 @@ mock.module("@/lib/db", () => ({
         return { count: 1 };
       },
     },
+    pluginActivation: {
+      findMany: async () =>
+        activations.filter((a) => a.enabled && !a.servicePausedAt),
+      count: async () =>
+        activations.filter((a) => a.enabled && !a.servicePausedAt).length,
+      findUnique: async ({ where }: { where: { id: string } }) =>
+        activations.find((a) => a.id === where.id) ?? null,
+      update: async ({
+        where,
+        data,
+      }: {
+        where: { id: string };
+        data: Record<string, unknown>;
+      }) =>
+        Object.assign(activations.find((a) => a.id === where.id) as Row, data),
+      updateMany: async ({
+        where,
+        data,
+      }: {
+        where: { id: string; servicePausedAt?: null };
+        data: Record<string, unknown>;
+      }) => {
+        const a = activations.find((x) => x.id === where.id);
+        if (!a || a.servicePausedAt) return { count: 0 };
+        Object.assign(a, data);
+        return { count: 1 };
+      },
+    },
+    plugin: { findMany: async () => pluginRows },
+    project: {
+      findUnique: async () => ({ visibility: projectVisibility }),
+    },
     user: { findUnique: mockUserFindUnique },
     workspace: { findUnique: async () => ({ name: "Acme" }) },
     auditLog: { create: mockAuditCreate },
@@ -89,11 +126,13 @@ mock.module("@/lib/db", () => ({
 
 mock.module("@/lib/net/pinned-fetch", () => ({ pinnedPost: mockPinnedPost }));
 
+import { sealSecret } from "@/lib/secret-box";
 import {
   attemptDelivery,
   claimDelivery,
-  deliverWebhookEvent,
+  deliverEvent,
   redeliver,
+  sendLifecycle,
   signPayload,
 } from "@/lib/webhooks/deliver";
 import {
@@ -104,10 +143,19 @@ import {
 import { DISABLE_AFTER_MS } from "@/lib/webhooks/retry";
 import { runAsPlugin } from "@/lib/webhooks/source";
 
-const ENVELOPE = { event: "issue.created", data: { id: "i-1" } };
+const ENVELOPE = {
+  event: "issue.created" as const,
+  workspaceId: "ws-1",
+  projectId: null,
+  via: null,
+  data: { id: "i-1" },
+};
 
 function reset() {
   deliveries = [];
+  activations = [];
+  pluginRows = [];
+  projectVisibility = "public";
   hook = {
     id: "wh-1",
     url: "https://example.com/hook",
@@ -150,19 +198,19 @@ describe("signPayload()", () => {
   });
 });
 
-describe("deliverWebhookEvent() (BARY-211)", () => {
+describe("deliverEvent() to webhooks (BARY-211)", () => {
   beforeEach(reset);
 
   it("does nothing when no webhook is subscribed to the event", async () => {
     mockWebhookFindMany.mockResolvedValue([]);
-    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    await deliverEvent(ENVELOPE);
     expect(deliveries).toHaveLength(0);
     expect(mockPinnedPost).not.toHaveBeenCalled();
   });
 
   it("looks up only enabled webhooks subscribed to this event", async () => {
     mockWebhookFindMany.mockResolvedValue([]);
-    await deliverWebhookEvent("ws-1", "comment.created", ENVELOPE);
+    await deliverEvent({ ...ENVELOPE, event: "comment.created" });
     expect(mockWebhookFindMany).toHaveBeenCalledWith({
       where: {
         workspaceId: "ws-1",
@@ -174,7 +222,7 @@ describe("deliverWebhookEvent() (BARY-211)", () => {
   });
 
   it("queues the delivery, sends it signed at once and logs the answer", async () => {
-    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    await deliverEvent(ENVELOPE);
 
     const [call] = mockPinnedPost.mock.calls[0] as [
       { url: string; body: string; headers: Record<string, string> },
@@ -214,7 +262,7 @@ describe("deliverWebhookEvent() (BARY-211)", () => {
       durationMs: 40,
     });
     const before = Date.now();
-    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    await deliverEvent(ENVELOPE);
 
     const row = deliveries[0];
     expect(row.status).toBe("PENDING");
@@ -229,7 +277,7 @@ describe("deliverWebhookEvent() (BARY-211)", () => {
 
   it("gives up at once on a 4xx and on a blocked address", async () => {
     mockPinnedPost.mockResolvedValue({ status: 404, body: "", durationMs: 5 });
-    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    await deliverEvent(ENVELOPE);
     expect(deliveries[0]).toMatchObject({ status: "FAILED", attempts: 1 });
 
     mockPinnedPost.mockResolvedValue({
@@ -237,7 +285,7 @@ describe("deliverWebhookEvent() (BARY-211)", () => {
       message: "The address is on a private network",
       durationMs: 1,
     });
-    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    await deliverEvent(ENVELOPE);
     expect(deliveries[1]).toMatchObject({
       status: "FAILED",
       lastStatus: null,
@@ -252,7 +300,7 @@ describe("deliverWebhookEvent() (BARY-211)", () => {
       message: "No answer within 10 s",
       durationMs: 10_000,
     });
-    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    await deliverEvent(ENVELOPE);
     for (let i = 2; i <= 6; i++) {
       deliveries[0].lockedUntil = null;
       expect(await claimDelivery("d-1")).toBe(true);
@@ -269,14 +317,14 @@ describe("deliverWebhookEvent() (BARY-211)", () => {
 
   it("leaves a held delivery to whoever holds it", async () => {
     mockPinnedPost.mockResolvedValue({ status: 500, body: "", durationMs: 3 });
-    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    await deliverEvent(ENVELOPE);
     deliveries[0].lockedUntil = new Date(Date.now() + 10_000);
     expect(await claimDelivery("d-1")).toBe(false);
   });
 
   it("stops sending to a webhook that was turned off meanwhile", async () => {
     mockPinnedPost.mockResolvedValue({ status: 500, body: "", durationMs: 3 });
-    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    await deliverEvent(ENVELOPE);
     hook.enabled = false;
     deliveries[0].lockedUntil = null;
     await claimDelivery("d-1");
@@ -292,7 +340,7 @@ describe("deliverWebhookEvent() (BARY-211)", () => {
     hook.failingSince = new Date(Date.now() - DISABLE_AFTER_MS - 1000);
     mockPinnedPost.mockResolvedValue({ status: 502, body: "", durationMs: 3 });
 
-    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    await deliverEvent(ENVELOPE);
     expect(hook.enabled).toBe(false);
     expect(hook.autoDisabledAt).toBeInstanceOf(Date);
     expect(mockAuditCreate).toHaveBeenCalledTimes(1);
@@ -314,13 +362,13 @@ describe("deliverWebhookEvent() (BARY-211)", () => {
 
   it("starts the day of failures over after a success", async () => {
     hook.failingSince = new Date(Date.now() - 60 * 60_000);
-    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    await deliverEvent(ENVELOPE);
     expect(hook.failingSince).toBeNull();
   });
 
   it("sends a delivery again on request, same body and id", async () => {
     mockPinnedPost.mockResolvedValue({ status: 410, body: "", durationMs: 3 });
-    await deliverWebhookEvent("ws-1", "issue.created", ENVELOPE);
+    await deliverEvent(ENVELOPE);
     expect(deliveries[0].status).toBe("FAILED");
 
     mockPinnedPost.mockResolvedValue({
@@ -340,9 +388,7 @@ describe("deliverWebhookEvent() (BARY-211)", () => {
 
   it("never throws, whatever the network does", async () => {
     mockPinnedPost.mockRejectedValue(new Error("boom"));
-    await expect(
-      deliverWebhookEvent("ws-1", "issue.created", ENVELOPE),
-    ).resolves.toBeUndefined();
+    await expect(deliverEvent(ENVELOPE)).resolves.toBeUndefined();
   });
 });
 
@@ -421,5 +467,193 @@ describe("the envelope (BARY-210)", () => {
     });
     mockWebhookCount.mockResolvedValue(2);
     expect(await hasEventListeners("ws-1")).toBe(true);
+  });
+});
+
+// ── Plugins' servers (BARY-212) ───────────────────────────────────────────────
+
+const SERVICE_SECRET = "plugin-server-secret";
+
+function servicePlugin(
+  events: string[],
+  capabilities: string[],
+  extra: Partial<Row> = {},
+) {
+  process.env.AUTH_SECRET ||= "x".repeat(40);
+  const manifest = {
+    id: "ci-bridge",
+    name: "CI Bridge",
+    version: "1.0.0",
+    minBaryntVersion: "0.1.0",
+    author: "Acme",
+    description: "Builds on status changes.",
+    license: "MIT",
+    kind: "service",
+    levels: ["workspace", "project"],
+    capabilities,
+    network: ["ci.acme.dev"],
+    service: { url: "https://ci.acme.dev/barynt", events },
+  };
+  pluginRows = [{ pluginId: "ci-bridge", manifest }];
+  activations.push({
+    id: "act-1",
+    pluginId: "ci-bridge",
+    workspaceId: "ws-1",
+    projectId: null,
+    enabled: true,
+    capabilities,
+    serviceSecret: sealSecret(SERVICE_SECRET, "plugin-service"),
+    serviceFailingSince: null,
+    servicePausedAt: null,
+    ...extra,
+  });
+}
+
+const ISSUE = {
+  event: "issue.status_changed" as const,
+  workspaceId: "ws-1",
+  projectId: "p-1",
+  via: null,
+  data: {
+    id: "i-1",
+    ref: "WEB-1",
+    title: "Secret plan",
+    project: { id: "p-1" },
+  },
+  changes: { status: { from: "todo", to: "done" } },
+};
+
+const sent = () =>
+  mockPinnedPost.mock.calls.map(
+    (c) =>
+      (
+        c as [{ url: string; body: string; headers: Record<string, string> }]
+      )[0],
+  );
+
+describe("deliverEvent() to plugins' servers (BARY-212)", () => {
+  beforeEach(() => {
+    reset();
+    mockWebhookFindMany.mockResolvedValue([]);
+  });
+
+  it("sends what a plugin subscribed to, signed with its own secret", async () => {
+    servicePlugin(["issue.status_changed"], ["events:issue", "issues:read"]);
+    await deliverEvent(ISSUE);
+
+    const [call] = sent();
+    expect(call.url).toBe("https://ci.acme.dev/barynt");
+    expect(JSON.parse(call.body)).toMatchObject({
+      event: "issue.status_changed",
+      data: { title: "Secret plan" },
+      changes: { status: { to: "done" } },
+    });
+    const h = call.headers;
+    expect(h["x-barynt-signature"]).toBe(
+      createHmac("sha256", SERVICE_SECRET)
+        .update(`${h["x-barynt-timestamp"]}.${call.body}`)
+        .digest("hex"),
+    );
+    expect(deliveries[0]).toMatchObject({
+      activationId: "act-1",
+      status: "SUCCEEDED",
+    });
+  });
+
+  it("leaves out what the plugin may not read", async () => {
+    servicePlugin(["issue.status_changed"], ["events:issue"]);
+    await deliverEvent(ISSUE);
+    const body = JSON.parse(sent()[0].body);
+    expect(body.data).toEqual({ id: "i-1", ref: "WEB-1", projectId: "p-1" });
+    expect(body.changes).toBeUndefined();
+  });
+
+  it("sends nothing the plugin didn't subscribe to or confirm", async () => {
+    servicePlugin(["issue.created"], ["events:issue", "issues:read"]);
+    await deliverEvent(ISSUE);
+    expect(mockPinnedPost).not.toHaveBeenCalled();
+
+    reset();
+    mockWebhookFindMany.mockResolvedValue([]);
+    servicePlugin(["issue.status_changed"], ["issues:read"]);
+    await deliverEvent(ISSUE);
+    expect(mockPinnedPost).not.toHaveBeenCalled();
+  });
+
+  it("keeps a project's plugin to its project and a workspace's out of private ones", async () => {
+    servicePlugin(["issue.status_changed"], ["events:issue"], {
+      projectId: "p-2",
+    });
+    await deliverEvent(ISSUE);
+    expect(mockPinnedPost).not.toHaveBeenCalled();
+
+    reset();
+    mockWebhookFindMany.mockResolvedValue([]);
+    servicePlugin(["issue.status_changed"], ["events:issue"]);
+    projectVisibility = "private";
+    await deliverEvent(ISSUE);
+    expect(mockPinnedPost).not.toHaveBeenCalled();
+  });
+
+  it("doesn't tell a plugin about its own change", async () => {
+    servicePlugin(["issue.status_changed"], ["events:issue"]);
+    await deliverEvent({ ...ISSUE, via: { plugin: { id: "ci-bridge" } } });
+    expect(mockPinnedPost).not.toHaveBeenCalled();
+  });
+
+  it("hands the secret over with app.installed", async () => {
+    servicePlugin(["issue.created"], ["events:issue"]);
+    await sendLifecycle("act-1", "app.installed");
+    const body = JSON.parse(sent()[0].body);
+    expect(body).toMatchObject({
+      event: "app.installed",
+      workspaceId: "ws-1",
+      data: {
+        installationId: "act-1",
+        pluginId: "ci-bridge",
+        secret: SERVICE_SECRET,
+      },
+    });
+
+    // The queue and its log never keep the secret in the clear.
+    expect(deliveries[0].payload).not.toContain(SERVICE_SECRET);
+    expect(JSON.parse(deliveries[0].payload as string).data.secret).toBe(
+      "[sealed]",
+    );
+
+    // Switched off: the goodbye still goes out, without the secret.
+    activations[0].enabled = false;
+    await sendLifecycle("act-1", "app.uninstalled");
+    const bye = JSON.parse(sent()[1].body);
+    expect(bye.event).toBe("app.uninstalled");
+    expect(bye.data.secret).toBeUndefined();
+  });
+
+  it("pauses a plugin's deliveries after a day of failures, once", async () => {
+    servicePlugin(["issue.status_changed"], ["events:issue"], {
+      serviceFailingSince: new Date(Date.now() - DISABLE_AFTER_MS - 1000),
+    });
+    mockPinnedPost.mockResolvedValue({ status: 500, body: "", durationMs: 2 });
+    await deliverEvent(ISSUE);
+
+    expect(activations[0].servicePausedAt).toBeInstanceOf(Date);
+    expect(activations[0].enabled).toBe(true);
+    const [{ data }] = mockAuditCreate.mock.calls[0] as unknown as [
+      { data: Record<string, unknown> },
+    ];
+    expect(data).toMatchObject({
+      action: "plugin.service.paused",
+      targetId: "ci-bridge",
+    });
+
+    // Paused: a retry that comes due goes nowhere.
+    deliveries[0].lockedUntil = null;
+    await claimDelivery("d-1");
+    await attemptDelivery("d-1");
+    expect(mockPinnedPost).toHaveBeenCalledTimes(1);
+    expect(deliveries[0]).toMatchObject({
+      status: "FAILED",
+      lastError: "Deliveries to the plugin are paused",
+    });
   });
 });

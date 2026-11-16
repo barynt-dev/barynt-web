@@ -19,6 +19,7 @@ import {
 import {
   createWebhook,
   deleteWebhook,
+  listWebhookDeliveries,
   setWebhookEnabled,
 } from "@/features/webhooks/actions";
 import type { WebhooksView } from "@/features/webhooks/types";
@@ -102,7 +103,7 @@ export function WorkspaceWebhooks({ workspaceId, webhooks }: Props) {
     openModal(
       ({ close }) => (
         <DeliveryLogModal
-          webhookId={id}
+          load={() => listWebhookDeliveries(id)}
           url={hookUrl}
           close={close}
           sheet={isPhone}

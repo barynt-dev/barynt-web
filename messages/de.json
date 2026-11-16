@@ -1599,7 +1599,9 @@
       "pluginActed": "Plugin hat im Namen der Person etwas geändert",
       "pluginCredentialSet": "Plugin-Zugangsdaten hinterlegt",
       "pluginCredentialRemoved": "Plugin-Zugangsdaten entfernt",
-      "webhookDisabled": "Webhook nach einem Tag fehlgeschlagener Zustellungen abgeschaltet"
+      "webhookDisabled": "Webhook nach einem Tag fehlgeschlagener Zustellungen abgeschaltet",
+      "pluginServicePaused": "Zustellung an den Server des Plugins nach einem Tag mit Fehlern angehalten",
+      "pluginServiceResumed": "Zustellung an den Server des Plugins fortgesetzt"
     }
   },
   "dashboard": {
@@ -2495,7 +2497,9 @@
       "storage:own": "Eigene Daten speichern",
       "notify:send": "Benachrichtigungen senden",
       "events:issue": "Von Änderungen an Issues erfahren",
-      "events:comment": "Von neuen Kommentaren erfahren",
+      "events:comment": "Von Kommentaren erfahren",
+      "events:project": "Von Projektänderungen erfahren",
+      "events:member": "Erfahren, wer beitritt und geht",
       "ui:nav-item": "Einen Eintrag in der Seitenleiste hinzufügen",
       "ui:project-view": "Eine Projektansicht hinzufügen",
       "ui:dashboard-widget": "Ein Dashboard-Widget hinzufügen",
@@ -2707,6 +2711,8 @@
     "networkTitle": "Netzwerk",
     "noNetwork": "Ruft keine anderen Server auf.",
     "networkNote": "Andere Hosts sind gesperrt.",
+    "serviceTitle": "Eigener Server",
+    "serviceNote": "Dorthin schickt Barynt die abonnierten Ereignisse, signiert und nur so viel, wie die Fähigkeiten oben erlauben.",
     "capsConfirmedIn": "{count, plural, =0 {Noch nirgends bestätigt.} one {In # Aktivierung bestätigt.} other {In # Aktivierungen bestätigt.}}",
     "whereItsOn": "Wo es aktiv ist",
     "versionState": {
@@ -2874,6 +2880,21 @@
     "credentialEnter": "Wert eingeben",
     "credentialReplace": "Neuen Wert eingeben, um ihn zu ersetzen",
     "credentialRemove": "Entfernen",
-    "userPluginsTitle": "Plugins"
+    "userPluginsTitle": "Plugins",
+    "service": {
+      "title": "Server",
+      "hint": "Das Plugin läuft auch auf einem eigenen Server. Barynt schickt ihm diese Ereignisse, signiert, und versucht es erneut, wenn er nicht erreichbar ist.",
+      "url": "Adresse",
+      "events": "Ereignisse",
+      "last": "Letzte Zustellung",
+      "ok": "Empfängt",
+      "idle": "Noch nichts gesendet",
+      "failing": "Fehler seit {date}",
+      "paused": "Angehalten",
+      "pausedHint": "Barynt hat die Zustellung am {date} angehalten: einen Tag lang ist jede gescheitert. Ereignisse aus der Pause werden nicht nachgeschickt.",
+      "log": "Zustellungen",
+      "resume": "Wieder senden",
+      "resumeFailed": "Konnte nicht wieder senden. Versuch es noch einmal."
+    }
   }
 }
