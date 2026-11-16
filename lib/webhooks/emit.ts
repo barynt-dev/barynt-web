@@ -63,13 +63,25 @@ export async function buildEnvelope(
   ctx: EventContext,
   extra?: { changes?: IssueChanges },
 ): Promise<EventEnvelope> {
-  const plugin = currentPlugin();
   const actor = ctx.actorId
     ? await db.user.findUnique({
         where: { id: ctx.actorId },
-        select: { id: true, firstName: true, lastName: true },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          pluginBot: { select: { pluginId: true } },
+        },
       })
     : null;
+  // Through a plugin: its sandbox frame's request (`runAsPlugin`), or its
+  // server acting as its app (BARY-213) — either way it doesn't hear about
+  // it again.
+  const plugin =
+    currentPlugin() ??
+    (actor?.pluginBot
+      ? { id: actor.pluginBot.pluginId, name: fullName(actor) }
+      : null);
   return {
     event,
     timestamp: Date.now(),

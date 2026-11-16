@@ -447,6 +447,25 @@ describe("the envelope (BARY-210)", () => {
     expect(mockUserFindUnique).toHaveBeenCalledTimes(1);
   });
 
+  it("names the plugin when its app did it (BARY-213)", async () => {
+    mockUserFindUnique.mockResolvedValue({
+      id: "bot-1",
+      firstName: "GitLab (App)",
+      lastName: "",
+      pluginBot: { pluginId: "gitlab" },
+    });
+    const env = await buildEnvelope(
+      "comment.created",
+      {},
+      {
+        workspaceId: "ws-1",
+        actorId: "bot-1",
+      },
+    );
+    expect(env.via).toEqual({ plugin: { id: "gitlab", name: "GitLab (App)" } });
+    expect(env.actor).toEqual({ id: "bot-1", name: "GitLab (App)" });
+  });
+
   it("names the plugin a change came through", async () => {
     const env = await runAsPlugin({ id: "gitlab", name: "GitLab" }, () =>
       buildEnvelope("comment.created", {}, { workspaceId: "ws-1" }),

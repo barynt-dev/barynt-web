@@ -41,6 +41,9 @@ export interface IssueEditorData {
   me: User;
   projects: Project[];
   members: User[];
+  /** The bots of its plugins (BARY-213) — for showing who wrote or created
+   *  something, never for picking. */
+  apps: User[];
   labels: Label[];
   statuses: Status[];
   priorities: Priority[];

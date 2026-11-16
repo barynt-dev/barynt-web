@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import {
+  getAppUsers,
   getIssueTypes,
   getLabels,
   getMembers,
@@ -167,6 +168,11 @@ export const getMe = cache(async (): Promise<User | null> => {
 
 export const getWorkspaceMembers = cache(
   async (): Promise<User[]> => getMembers(requireWorkspaceId()),
+);
+
+/** The bots of the workspace's plugins — to show, never to pick (BARY-213). */
+export const getWorkspaceAppUsers = cache(
+  async (): Promise<User[]> => getAppUsers(requireWorkspaceId()),
 );
 
 export const getWorkspaceProjects = cache(

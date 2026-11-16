@@ -46,13 +46,17 @@ export default async function WorkspaceSettingsMembersPage({
   if (current === "apps" && apps)
     return (
       <WorkspaceApps
-        apps={apps}
+        apps={apps.map((app) => ({
+          ...app,
+          settingsHref: app.project
+            ? projectSettingsPath(
+                workspace,
+                app.project.slug,
+                `plugins/${app.pluginId}`,
+              )
+            : workspaceSettingsPath(workspace, `plugins/${app.pluginId}`),
+        }))}
         tabs={tabs}
-        settingsHref={(pluginId, projectSlug) =>
-          projectSlug
-            ? projectSettingsPath(workspace, projectSlug, `plugins/${pluginId}`)
-            : workspaceSettingsPath(workspace, `plugins/${pluginId}`)
-        }
       />
     );
 
