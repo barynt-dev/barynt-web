@@ -32,6 +32,7 @@ import {
   recordAuditIn,
   toAuditAction,
 } from "@/lib/audit";
+import { runAsPlugin } from "@/lib/webhooks/source";
 
 beforeEach(() => {
   mock.clearAllMocks();
@@ -75,6 +76,23 @@ describe("Writing", () => {
     expect(entry.actorId).toBeNull();
     expect(entry.actorLabel).toBe("wer@auch.immer");
     expect(mockUserFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("names the plugin a person acted through (BARY-214)", async () => {
+    await runAsPlugin({ id: "gitlab", name: "GitLab" }, () =>
+      recordAudit({ action: "issue.created", actorId: "u1" }),
+    );
+    const entry = mockAuditCreate.mock.calls[0][0].data;
+    expect(entry.viaPluginId).toBe("gitlab");
+    expect(entry.viaPluginLabel).toBe("GitLab");
+
+    // On its own — and when the caller says so — nothing.
+    await recordAudit({ action: "auth.login", actorId: "u1" });
+    expect(mockAuditCreate.mock.calls[1][0].data.viaPluginId).toBeNull();
+    await runAsPlugin({ id: "gitlab", name: "GitLab" }, () =>
+      recordAudit({ action: "auth.login", actorId: "u1", via: null }),
+    );
+    expect(mockAuditCreate.mock.calls[2][0].data.viaPluginId).toBeNull();
   });
 
   it("makes do when the account is already gone", async () => {

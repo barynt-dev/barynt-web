@@ -197,7 +197,9 @@ export const getMyApiKeys = cache(async (): Promise<ApiKeysView | null> => {
   if (!session) return null;
 
   const rows = await db.apiKey.findMany({
-    where: { userId: session.userId },
+    // Not the short-lived tokens a plugin's server got to act for this
+    // person (BARY-214) — those are the plugin's, not keys they made.
+    where: { userId: session.userId, activationId: null },
     select: {
       id: true,
       name: true,

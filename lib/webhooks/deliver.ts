@@ -20,7 +20,9 @@ import {
   lifecyclePayload,
   pluginTarget,
   pluginTargetsFor,
+  pruneActingTokens,
   recordOnActivation,
+  withActingToken,
 } from "./plugin-targets";
 
 // Delivering events to webhooks (BARY-211) and plugins' servers (BARY-212). Every delivery is a row in
@@ -43,6 +45,7 @@ export async function deliverEvent(envelope: {
   workspaceId: string;
   projectId: string | null;
   via: { plugin: { id: string } } | null;
+  actor?: { id: string; name: string } | null;
   data: unknown;
 }): Promise<void> {
   const { event, workspaceId } = envelope;
@@ -219,10 +222,14 @@ export async function attemptDelivery(id: string): Promise<void> {
 
     // `app.installed` is kept without its secret; the body that goes out
     // is made again with it, for each attempt (BARY-212).
+    // An event for a plugin's server carries a fresh token to act for the
+    // person who caused it (BARY-214), made now, never stored.
     const body =
       row.event === "app.installed" && row.activationId
         ? (await lifecyclePayload(row.activationId, "app.installed"))?.sent
-        : row.payload;
+        : row.activationId && !row.event.startsWith("app.")
+          ? await withActingToken(row.activationId, row.payload)
+          : row.payload;
     if (!body) return;
 
     const timestamp = Date.now().toString();
@@ -235,6 +242,8 @@ export async function attemptDelivery(id: string): Promise<void> {
         "x-barynt-event": row.event,
         "x-barynt-delivery": id,
         "x-barynt-attempt": String(attempt),
+        // A plugin's server keeps one secret per installation (BARY-214).
+        ...(row.activationId && { "x-barynt-installation": row.activationId }),
         "x-barynt-signature": signPayload(target.secret, timestamp, body),
         "x-barynt-timestamp": timestamp,
       },
@@ -338,5 +347,6 @@ export async function pruneDeliveries(now = new Date()): Promise<number> {
   const { count } = await db.eventDelivery.deleteMany({
     where: { createdAt: { lt: new Date(now.getTime() - LOG_RETENTION_MS) } },
   });
+  await pruneActingTokens(now);
   return count;
 }

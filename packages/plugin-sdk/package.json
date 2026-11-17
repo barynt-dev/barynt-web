@@ -17,6 +17,10 @@
     "./ui": {
       "types": "./dist/ui.d.ts",
       "import": "./dist/ui.js"
+    },
+    "./service": {
+      "types": "./dist/service.d.ts",
+      "import": "./dist/service.js"
     }
   },
   "files": [
@@ -24,6 +28,6 @@
     "README.md"
   ],
   "scripts": {
-    "build": "bun build src/index.ts src/testing.ts src/ui.ts --outdir dist --format esm --target browser && tsc -p tsconfig.build.json"
+    "build": "bun build src/index.ts src/testing.ts src/ui.ts --outdir dist --format esm --target browser && bun build src/service.ts --outdir dist --format esm --target node && tsc -p tsconfig.build.json"
   }
 }

@@ -694,3 +694,50 @@ The SDK is a thin layer. A plugin can also export any class: Barynt calls
 `new YourClass(host)` and `onload()`, and `host` has `call(method, params)`,
 `context` and `root`. The SDK adds the types, the cleanup and the errors —
 there's little reason to go without it.
+
+## A plugin's server
+
+`@barynt/plugin-sdk/service` is for the other half of a plugin: its own
+server, where Barynt sends the events it subscribed to
+([`service`](plugins-manifest.md#its-server) in the manifest). It runs on the
+maker's server — Node 18+, Bun, Deno or an edge runtime — never in Barynt.
+
+```ts
+import { createService } from "@barynt/plugin-sdk/service";
+
+const service = createService({ store: myInstallations });
+
+service.on("issue.status_changed", async (event, { barynt, app }) => {
+  // For the person who changed it: what they may see, cut to the plugin's.
+  const issue = await barynt.issues.get(event.data.id);
+  // As the plugin's own app, "CI Bridge (App)".
+  await app.comments.create(issue.id, "Deploy started");
+});
+
+export default { fetch: service.fetch };
+```
+
+- **`fetch(request)`** is the whole endpoint. It takes `app.installed` (and
+  keeps the installation's secret, app token and Barynt's address in
+  `store`), checks every message's `X-Barynt-Signature` against its
+  installation's secret and its timestamp (5 minutes), skips an
+  `X-Barynt-Delivery` it already handled, runs the handlers and answers 204 —
+  500 when a handler throws, so Barynt tries again. `app.uninstalled` removes
+  the installation.
+- **`on(event, handler)`** — an event name, or `"*"` for all. The handler
+  gets the event (envelope, `data`, `changes`, `acting`) and `barynt` (acting
+  for the person when Barynt sent a token, else the app), `app` and the
+  `installation`.
+- **The clients** call the [REST API](../guide/en/integrations/api.md):
+  `issues.get/update`, `comments.list/create`, and `request(method, path,
+  body)` for everything else. A refusal throws `BaryntApiError` with its
+  `status`.
+- **`store`** keeps installations; in memory by default — give it your
+  database's (`get`/`set`/`delete`), or a restart forgets them until the
+  plugin is switched on again.
+- **`simulate(event, installation)`** runs the handlers without a signature,
+  for tests.
+
+The demo "Chat Notifications" (`scripts/plugins/demo-server.ts`,
+`/services/notify`) is a complete one.
+

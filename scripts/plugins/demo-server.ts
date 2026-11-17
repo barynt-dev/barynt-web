@@ -15,7 +15,6 @@
 // runs for real (BARY-144): `demo-plugins/timeline.ts`, built with the
 // plugin SDK into one `main.js` when the server starts (BARY-146).
 
-import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import {
   type DirectoryEntry,
@@ -23,6 +22,7 @@ import {
   releaseHash,
 } from "../../lib/plugins/directory";
 import { validateManifest } from "../../lib/plugins/manifest";
+import { createService } from "../../packages/plugin-sdk/src/service";
 import { type DemoScreen, demoScreenshot } from "./demo-images";
 
 const PORT = Number(process.env.PORT ?? 4555);
@@ -711,119 +711,78 @@ const directory = DEMOS.map((demo) => {
 const RELEASE = /^\/([^/]+\/[^/]+)\/(?:releases\/download\/)?([^/]+)\/([^/]+)$/;
 const GITEA_DIRECTORY = "/api/v1/repos/barynt-demo/plugins/raw/plugins.json";
 
-// ── The demo plugin's own server (BARY-212) ──────────────────────────────────
+// ── The demo plugin's own server (BARY-212, BARY-214) ───────────────────────
 //
-// What a plugin's server does with Barynt's messages: `app.installed` brings
-// the secret for that installation, every later message is checked against
-// it (`x-barynt-signature` over `<timestamp>.<body>`, at most 5 minutes old)
-// and skipped when its delivery id was seen. GET shows what arrived.
+// What a plugin's server looks like with the SDK's `createService`: it keeps
+// each installation's secret and app token from `app.installed`, checks every
+// message's signature and age, skips a delivery it has handled. On a status
+// change it reads the issue for the person who changed it (their token, cut
+// down to the plugin's rights) and answers in the issue as its app. GET shows
+// what arrived.
 
-const installations = new Map<string, string>();
-/** Each installation's app token and where its Barynt is (BARY-213). */
-const apps = new Map<string, { token: string; baryntUrl: string }>();
-const seen = new Set<string>();
 const received: {
   at: string;
   event: string;
-  attempt: string;
-  verified: boolean;
+  as: string;
   summary: string;
 }[] = [];
-
-async function notifyService(req: Request): Promise<Response> {
-  if (req.method === "GET") {
-    const rows = received
-      .slice(-30)
-      .reverse()
-      .map(
-        (r) =>
-          `<tr><td>${r.at}</td><td><code>${r.event}</code></td><td>${r.attempt}</td><td>${r.verified ? "✓ signed" : "✗ not verified"}</td><td>${r.summary.replace(/</g, "&lt;")}</td></tr>`,
-      )
-      .join("");
-    return new Response(
-      `<!doctype html><meta charset="utf-8"><title>Demo Chat Notifications — server</title><style>body{font:14px system-ui;background:#0f1619;color:#dbe4e8;padding:24px}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #2b3a40;padding:8px 10px;text-align:left}th{color:#9fb0b6;font-weight:500}code{color:#6bd6e4}</style><h1>Demo Chat Notifications</h1><p>The plugin's own server: what Barynt sent it. ${installations.size} installation(s).</p><table><tr><th>When</th><th>Event</th><th>Attempt</th><th>Signature</th><th>What</th></tr>${rows}</table>`,
-      { headers: { "content-type": "text/html; charset=utf-8" } },
-    );
-  }
-  const body = await req.text();
-  const message = JSON.parse(body) as {
-    event: string;
-    timestamp: number;
-    data: Record<string, unknown> & { installationId?: string };
-    actor?: { name: string } | null;
-  };
-  const delivery = req.headers.get("x-barynt-delivery") ?? "";
-  if (message.event === "app.installed") {
-    installations.set(
-      String(message.data.installationId),
-      String(message.data.secret),
-    );
-    if (message.data.token)
-      apps.set(String(message.data.installationId), {
-        token: String(message.data.token),
-        // The app's own address may differ from what Barynt thinks it is
-        // (a dev server on another port): BARYNT_URL wins.
-        baryntUrl: process.env.BARYNT_URL ?? String(message.data.baryntUrl),
-      });
-  }
-  const secret = [...installations.values()].find((s) => {
-    const ts = req.headers.get("x-barynt-timestamp") ?? "";
-    const expected = createHmac("sha256", s)
-      .update(`${ts}.${body}`)
-      .digest("hex");
-    return (
-      expected === req.headers.get("x-barynt-signature") &&
-      Math.abs(Date.now() - Number(ts)) < 5 * 60_000
-    );
-  });
-  if (!secret) return new Response("bad signature", { status: 401 });
-  if (seen.has(delivery)) return new Response(null, { status: 204 });
-  seen.add(delivery);
-  const d = message.data;
+const log = (event: string, as: string, summary: string) =>
   received.push({
     at: new Date().toLocaleTimeString("en-GB"),
-    event: message.event,
-    attempt: req.headers.get("x-barynt-attempt") ?? "",
-    verified: true,
-    summary:
-      message.event === "app.installed"
-        ? "installed — secret kept"
-        : [
-            d.ref ?? d.handle ?? d.name ?? d.id,
-            d.title ?? d.body ?? "",
-            message.actor ? `by ${message.actor.name}` : "",
-          ]
-            .filter(Boolean)
-            .join(" · "),
+    event,
+    as,
+    summary,
   });
-  if (message.event === "app.uninstalled")
-    installations.delete(String(d.installationId));
 
-  // It answers in the issue, as its app: what it "posted to the channel".
-  // Not awaited — Barynt wants its 2xx quickly.
-  const [app] = [...apps.values()];
-  if (message.event === "issue.status_changed" && app)
-    void fetch(new URL(`/api/v1/issues/${d.id}/comments`, app.baryntUrl), {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${app.token}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        body: `Posted to #dev: **${d.ref}** is now *${d.status}*.`,
-      }),
-    })
-      .then((res) =>
-        received.push({
-          at: new Date().toLocaleTimeString("en-GB"),
-          event: "→ comment via API",
-          attempt: "",
-          verified: res.ok,
-          summary: `${d.ref}: HTTP ${res.status}`,
-        }),
-      )
-      .catch(() => {});
-  return new Response(null, { status: 204 });
+const notify = createService({ baryntUrl: process.env.BARYNT_URL });
+notify.on("*", (e) => {
+  const d = e.data as Record<string, unknown>;
+  log(
+    e.event,
+    e.acting ? "with a token for the person" : "",
+    e.event === "app.installed"
+      ? "installed — secret and app token kept"
+      : [
+          d.ref ?? d.handle ?? d.name ?? d.id,
+          d.title ?? d.body ?? "",
+          e.actor ? `by ${e.actor.name}` : "",
+        ]
+          .filter(Boolean)
+          .join(" · "),
+  );
+});
+notify.on("issue.status_changed", async (e, { barynt, app }) => {
+  const d = e.data as { id: string; ref: string; status: string };
+  // For the person: whatever they may see, and the plugin too.
+  if (e.acting) {
+    const issue = await barynt.issues.get(d.id);
+    log(
+      "→ read via API",
+      `as ${e.actor?.name} via the plugin`,
+      `${issue.ref}: ${issue.title}`,
+    );
+  }
+  // As its app: "Demo Chat Notifications (App)".
+  await app.comments.create(
+    d.id,
+    `Posted to #dev: **${d.ref}** is now *${d.status}*.`,
+  );
+  log("→ comment via API", "as its app", d.ref);
+});
+
+function notifyPage(): Response {
+  const rows = received
+    .slice(-30)
+    .reverse()
+    .map(
+      (r) =>
+        `<tr><td>${r.at}</td><td><code>${r.event}</code></td><td>${r.as}</td><td>${r.summary.replace(/</g, "&lt;")}</td></tr>`,
+    )
+    .join("");
+  return new Response(
+    `<!doctype html><meta charset="utf-8"><title>Demo Chat Notifications — server</title><style>body{font:14px system-ui;background:#0f1619;color:#dbe4e8;padding:24px}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #2b3a40;padding:8px 10px;text-align:left}th{color:#9fb0b6;font-weight:500}code{color:#6bd6e4}</style><h1>Demo Chat Notifications</h1><p>The plugin's own server, built with <code>createService</code>: what Barynt sent it, and what it did in Barynt. Every message's signature checked.</p><table><tr><th>When</th><th>Event</th><th>As</th><th>What</th></tr>${rows}</table>`,
+    { headers: { "content-type": "text/html; charset=utf-8" } },
+  );
 }
 
 Bun.serve({
@@ -831,7 +790,8 @@ Bun.serve({
   fetch(req) {
     const { pathname } = new URL(req.url);
     console.log(`${req.method} ${pathname}`);
-    if (pathname === "/services/notify") return notifyService(req);
+    if (pathname === "/services/notify")
+      return req.method === "GET" ? notifyPage() : notify.fetch(req);
     if (pathname === "/plugins.json" || pathname === GITEA_DIRECTORY)
       return Response.json(directory);
     const m = pathname.match(RELEASE);

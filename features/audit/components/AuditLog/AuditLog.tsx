@@ -767,7 +767,15 @@ export function AuditLog({
             placeholder
             placeholderLabel={row.actorLabel}
           />
-          <span className={styles.actorName}>{row.actorLabel}</span>
+          <span className={styles.actorName}>
+            {row.actorLabel}
+            {row.viaPluginLabel && (
+              <span className={styles.via}>
+                {" "}
+                {t("audit.via", { plugin: row.viaPluginLabel })}
+              </span>
+            )}
+          </span>
         </span>
       ),
     },

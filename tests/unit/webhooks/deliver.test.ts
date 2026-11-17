@@ -758,3 +758,68 @@ describe("a plugin's identity (BARY-213)", () => {
     expect(apiKeys[1].revokedAt).toBeNull();
   });
 });
+
+describe("acting for the person who caused it (BARY-214)", () => {
+  beforeEach(() => {
+    reset();
+    mockWebhookFindMany.mockResolvedValue([]);
+  });
+
+  it("sends a fresh 15-minute token for that person, never stored", async () => {
+    servicePlugin(
+      ["issue.status_changed"],
+      ["events:issue", "comments:write"],
+      {
+        botUserId: "bot-1",
+      },
+    );
+    mockUserFindUnique.mockResolvedValue({
+      kind: "PERSON",
+      deactivatedAt: null,
+      firstName: "Ada",
+    });
+    const before = Date.now();
+    await deliverEvent({ ...ISSUE, actor: { id: "u-9", name: "Ada" } });
+
+    const body = JSON.parse(sent()[0].body);
+    expect(String(body.acting.token)).toStartWith("bpt_");
+    expect(body.acting.userId).toBe("u-9");
+    const ttl = new Date(body.acting.expiresAt).getTime() - before;
+    expect(ttl).toBeGreaterThan(14 * 60_000);
+    expect(ttl).toBeLessThanOrEqual(15 * 60_000 + 1000);
+
+    // The queue keeps the event without it; the key is only its hash.
+    expect(JSON.parse(deliveries[0].payload as string).acting).toBeUndefined();
+    expect(apiKeys[0]).toMatchObject({
+      userId: "u-9",
+      activationId: "act-1",
+      tokenHash: createHash("sha256").update(body.acting.token).digest("hex"),
+    });
+    expect(apiKeys[0].scopes).toContain("comments:write");
+  });
+
+  it("gives none for an app's change, or before the plugin has its identity", async () => {
+    servicePlugin(["issue.status_changed"], ["events:issue"], {
+      botUserId: "bot-1",
+    });
+    mockUserFindUnique.mockResolvedValue({
+      kind: "APP",
+      deactivatedAt: null,
+      firstName: "Other (App)",
+    });
+    await deliverEvent({ ...ISSUE, actor: { id: "bot-2", name: "Other" } });
+    expect(JSON.parse(sent()[0].body).acting).toBeUndefined();
+
+    reset();
+    mockWebhookFindMany.mockResolvedValue([]);
+    servicePlugin(["issue.status_changed"], ["events:issue"]);
+    mockUserFindUnique.mockResolvedValue({
+      kind: "PERSON",
+      deactivatedAt: null,
+      firstName: "Ada",
+    });
+    await deliverEvent({ ...ISSUE, actor: { id: "u-9", name: "Ada" } });
+    expect(JSON.parse(sent()[0].body).acting).toBeUndefined();
+    expect(apiKeys).toHaveLength(0);
+  });
+});

@@ -1620,7 +1620,8 @@
       "webhookDisabled": "Webhook turned off after a day of failed deliveries",
       "pluginServicePaused": "Deliveries to the plugin's server paused after a day of failures",
       "pluginServiceResumed": "Deliveries to the plugin's server resumed"
-    }
+    },
+    "via": "via {plugin}"
   },
   "dashboard": {
     "range": "Time range",

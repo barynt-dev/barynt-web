@@ -165,6 +165,11 @@ a.projectRef:hover {
   white-space: nowrap;
 }
 
+/* "via GitLab" (BARY-214): the plugin a person acted through. */
+.via {
+  color: var(--on-surface-variant);
+}
+
 /* The reason can be long and still stays on one line: the full text hangs
    off the `title` attribute, and the row stays a single row. A table where
    one out of twelve rows is triple height no longer reads as a history. */

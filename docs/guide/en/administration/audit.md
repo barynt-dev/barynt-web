@@ -50,7 +50,7 @@ For issue edits, the log tells you **which aspect** changed ("Status changed"), 
 
 ## Reading an entry
 
-Each entry shows the **event**, **who** did it, **when** and the **reason**, if one was given (for emergency access it is mandatory). A person's name is saved with the entry at the time. If someone is renamed or leaves later, the old entries stay as they were written.
+Each entry shows the **event**, **who** did it, **when** and the **reason**, if one was given (for emergency access it is mandatory). When someone acted through a plugin — its view, an action in its menu, or its server working for them — the entry says so: "Ada Rahman via GitLab". A plugin acting on its own appears as its app, "GitLab (App)". A person's name is saved with the entry at the time. If someone is renamed or leaves later, the old entries stay as they were written.
 
 ## Good to know
 

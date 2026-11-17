@@ -351,3 +351,67 @@ export async function lifecyclePayload(
     sent: message(secret, token || null),
   };
 }
+
+/** How long a server may act for the person who caused an event. */
+export const ACTING_TTL_MS = 15 * 60_000;
+
+/**
+ * The body a plugin's server gets for an event, with a token to act for the
+ * person who caused it (BARY-214): `acting: { token, userId, expiresAt }`.
+ * Made fresh for each attempt, so it never sits in the queue; valid for 15
+ * minutes; it can do what the person may and the plugin may too — never
+ * more than either (`lib/permissions.ts`). Not when nobody (or an app)
+ * caused it, or the plugin has no identity yet.
+ */
+export async function withActingToken(
+  activationId: string,
+  payload: string,
+): Promise<string> {
+  const message = JSON.parse(payload) as {
+    actor?: { id: string } | null;
+    [key: string]: unknown;
+  };
+  const actorId = message.actor?.id;
+  if (!actorId) return payload;
+  const [activation, person] = await Promise.all([
+    db.pluginActivation.findUnique({
+      where: { id: activationId },
+      select: { capabilities: true, botUserId: true, pluginId: true },
+    }),
+    db.user.findUnique({
+      where: { id: actorId },
+      select: { kind: true, deactivatedAt: true, firstName: true },
+    }),
+  ]);
+  if (!activation?.botUserId) return payload;
+  if (!person || person.kind !== "PERSON" || person.deactivatedAt)
+    return payload;
+
+  const token = `bpt_${randomBytes(32).toString("base64url")}`;
+  const expiresAt = new Date(Date.now() + ACTING_TTL_MS);
+  await db.apiKey.create({
+    data: {
+      userId: actorId,
+      activationId,
+      name: `${activation.pluginId} for ${person.firstName}`,
+      prefix: token.slice(0, 12),
+      tokenHash: hashApiToken(token),
+      scopes: appApiScopes(activation.capabilities),
+      expiresAt,
+    },
+  });
+  return JSON.stringify({
+    ...message,
+    acting: { token, userId: actorId, expiresAt: expiresAt.toISOString() },
+  });
+}
+
+/** Deletes acting tokens that ran out more than a day ago. */
+export async function pruneActingTokens(now = new Date()): Promise<void> {
+  await db.apiKey.deleteMany({
+    where: {
+      activationId: { not: null },
+      expiresAt: { lt: new Date(now.getTime() - 24 * 60 * 60_000) },
+    },
+  });
+}
