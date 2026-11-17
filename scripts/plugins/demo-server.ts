@@ -60,6 +60,39 @@ interface Demo {
   code?: string;
 }
 
+/** Demo Chat Notifications' settings, the same in each version. */
+const NOTIFY_SETTINGS = [
+  {
+    key: "channel",
+    type: "text",
+    label: "Channel",
+    description: "Where new issues are posted, e.g. #dev.",
+  },
+  {
+    key: "events",
+    type: "select",
+    label: "What to post",
+    default: "new",
+    options: [
+      { id: "new", label: "New issues" },
+      { id: "done", label: "New and done issues" },
+      { id: "all", label: "Every change" },
+    ],
+  },
+  {
+    key: "mentionAssignee",
+    type: "boolean",
+    label: "Mention the assignee",
+    default: true,
+  },
+  {
+    key: "quietHours",
+    type: "number",
+    label: "Quiet after (hour, 0–23)",
+    description: "No posts after this hour until 8 am.",
+  },
+];
+
 const DEMOS: Demo[] = [
   {
     entry: {
@@ -236,37 +269,7 @@ const DEMOS: Demo[] = [
       license: "Apache-2.0",
       network: ["hooks.example.com"],
       contributes: {
-        settings: [
-          {
-            key: "channel",
-            type: "text",
-            label: "Channel",
-            description: "Where new issues are posted, e.g. #dev.",
-          },
-          {
-            key: "events",
-            type: "select",
-            label: "What to post",
-            default: "new",
-            options: [
-              { id: "new", label: "New issues" },
-              { id: "done", label: "New and done issues" },
-              { id: "all", label: "Every change" },
-            ],
-          },
-          {
-            key: "mentionAssignee",
-            type: "boolean",
-            label: "Mention the assignee",
-            default: true,
-          },
-          {
-            key: "quietHours",
-            type: "number",
-            label: "Quiet after (hour, 0–23)",
-            description: "No posts after this hour until 8 am.",
-          },
-        ],
+        settings: NOTIFY_SETTINGS,
       },
     },
     versions: {
@@ -284,6 +287,41 @@ const DEMOS: Demo[] = [
           "events:member",
           "notify:send",
         ],
+        service: {
+          url: `${ORIGIN}/services/notify`,
+          events: [
+            "issue.created",
+            "issue.status_changed",
+            "issue.assigned",
+            "comment.created",
+            "member.added",
+          ],
+        },
+      },
+      "1.2.0": {
+        capabilities: [
+          "issues:read",
+          "comments:read",
+          // BARY-213: it answers in the issue, as its app.
+          "comments:write",
+          "events:issue",
+          "events:comment",
+          "events:member",
+          "notify:send",
+          "webhooks:receive",
+        ],
+        // BARY-215: GitLab reports merge requests here, through Barynt.
+        contributes: {
+          settings: NOTIFY_SETTINGS,
+          inboundHooks: [
+            {
+              id: "gitlab",
+              title: "GitLab project",
+              provider: "gitlab",
+              handle: "forward",
+            },
+          ],
+        },
         service: {
           url: `${ORIGIN}/services/notify`,
           events: [
@@ -736,6 +774,8 @@ const log = (event: string, as: string, summary: string) =>
 
 const notify = createService({ baryntUrl: process.env.BARYNT_URL });
 notify.on("*", (e) => {
+  // Those have a handler of their own below.
+  if (e.event.startsWith("inbound.")) return;
   const d = e.data as Record<string, unknown>;
   log(
     e.event,
@@ -749,6 +789,21 @@ notify.on("*", (e) => {
         ]
           .filter(Boolean)
           .join(" · "),
+  );
+});
+// A merge request GitLab reported through Barynt (BARY-215).
+notify.on("inbound.gitlab", (e) => {
+  const d = e.data as {
+    providerEvent: string;
+    body: {
+      object_attributes?: { iid?: number; title?: string; action?: string };
+    };
+  };
+  const mr = d.body.object_attributes;
+  log(
+    `← GitLab ${d.providerEvent}`,
+    "through Barynt",
+    mr ? `!${mr.iid} ${mr.action ?? ""}: ${mr.title ?? ""}` : "",
   );
 });
 notify.on("issue.status_changed", async (e, { barynt, app }) => {

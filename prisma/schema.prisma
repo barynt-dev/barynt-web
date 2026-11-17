@@ -430,6 +430,34 @@ model EventDelivery {
   @@index([createdAt])
 }
 
+/// Ein Webhook, den ein anderer Dienst (GitLab, GitHub) über Barynt an ein
+/// Plugin schickt (BARY-215) — einer je Aktivierung und `inboundHooks`-Eintrag
+/// des Manifests. Die Adresse ist `/api/plugins/hooks/<token>`; geprüft wird
+/// mit `secret` (versiegelt, Zweck `plugin-inbound-hook`), wie der Anbieter
+/// es vorsieht (`lib/plugins/inbound.ts`).
+model PluginInboundHook {
+  id           String   @id @default(cuid())
+  activationId String
+  /// Die `id` im Manifest.
+  hookId       String
+  /// Teil der Adresse — zufällig, nicht zu erraten. Allein reicht es nicht:
+  /// jeder Aufruf muss auch zum Geheimnis passen.
+  token        String   @unique
+  secret       String
+  createdAt    DateTime @default(now())
+
+  /// Was zuletzt ankam: wann, welches Ereignis des Anbieters, und was
+  /// Barynt daraus machte (HTTP-Status der Antwort, Fehlertext).
+  lastReceivedAt DateTime?
+  lastEvent      String?
+  lastStatus     Int?
+  lastError      String?
+
+  activation PluginActivation @relation(fields: [activationId], references: [id], onDelete: Cascade)
+
+  @@unique([activationId, hookId])
+}
+
 enum UserKind {
   PERSON
   APP
@@ -2152,14 +2180,15 @@ model PluginActivation {
   /// den Hash in `ApiKey`.
   serviceToken        String?
 
-  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  project     Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  activatedBy User?           @relation("PluginActivatedBy", fields: [activatedById], references: [id], onDelete: SetNull)
-  settings    PluginSettings?
-  storage     PluginStorage[]
-  deliveries  EventDelivery[]
-  bot         User?           @relation("PluginBot", fields: [botUserId], references: [id], onDelete: SetNull)
-  appTokens   ApiKey[]
+  workspace    Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project      Project?            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  activatedBy  User?               @relation("PluginActivatedBy", fields: [activatedById], references: [id], onDelete: SetNull)
+  settings     PluginSettings?
+  storage      PluginStorage[]
+  deliveries   EventDelivery[]
+  bot          User?               @relation("PluginBot", fields: [botUserId], references: [id], onDelete: SetNull)
+  appTokens    ApiKey[]
+  inboundHooks PluginInboundHook[]
 
   @@unique([pluginId, scopeKey])
   @@index([workspaceId])

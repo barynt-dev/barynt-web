@@ -29,6 +29,7 @@ import {
 import { settingsSlotId } from "@/lib/plugins/slots";
 import { PluginCredentials } from "../PluginCredentials/PluginCredentials";
 import { PluginFrame } from "../PluginFrame/PluginFrame";
+import { PluginInbound } from "../PluginInbound/PluginInbound";
 import { PluginService } from "../PluginService/PluginService";
 import { CapabilityCards } from "../PluginStore/capabilities";
 import { PluginTile } from "../PluginStore/PluginTile";
@@ -309,10 +310,12 @@ export function PluginSettings({
           />
         )}
         {running && view.service && <PluginService service={view.service} />}
+        {running && <PluginInbound hooks={view.inbound} />}
         {running &&
           view.fields.length === 0 &&
           view.credentials.length === 0 &&
-          !view.service && (
+          !view.service &&
+          view.inbound.length === 0 && (
             <p className={styles.empty}>{text.t("noSettings")}</p>
           )}
 

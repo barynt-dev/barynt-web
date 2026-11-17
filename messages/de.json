@@ -2519,6 +2519,7 @@
       "events:comment": "Von Kommentaren erfahren",
       "events:project": "Von Projektänderungen erfahren",
       "events:member": "Erfahren, wer beitritt und geht",
+      "webhooks:receive": "Webhooks anderer Dienste empfangen",
       "ui:nav-item": "Einen Eintrag in der Seitenleiste hinzufügen",
       "ui:project-view": "Eine Projektansicht hinzufügen",
       "ui:dashboard-widget": "Ein Dashboard-Widget hinzufügen",
@@ -2914,6 +2915,18 @@
       "log": "Zustellungen",
       "resume": "Wieder senden",
       "resumeFailed": "Konnte nicht wieder senden. Versuch es noch einmal."
+    },
+    "inbound": {
+      "title": "Webhooks anderer Dienste",
+      "hint": "Gib diese Angaben dem Dienst, der diesem Plugin berichten soll. Barynt prüft jeden Aufruf gegen das Geheimnis und lehnt alles andere ab.",
+      "url": "Adresse",
+      "secret": "Geheimnis",
+      "secretGitlab": "Secret Token",
+      "idle": "Noch nichts empfangen",
+      "last": "{date} · {event} · {status}",
+      "howtoGitlab": "In GitLab: Projekt oder Gruppe → Einstellungen → Webhooks → Neuen Webhook hinzufügen. Füge die Adresse als URL und das Geheimnis als Secret Token ein und wähle die Auslöser (Merge Requests, Pipelines, Pushes).",
+      "howtoGithub": "In GitHub: Repository oder Organisation → Settings → Webhooks → Add webhook. Füge die Adresse als Payload URL ein, wähle application/json, füge das Geheimnis ein und wähle die Ereignisse.",
+      "howtoGeneric": "Sende JSON per POST an die Adresse, mit X-Hub-Signature-256: sha256=<HMAC-SHA256 des Bodys mit dem Geheimnis>."
     }
   }
 }

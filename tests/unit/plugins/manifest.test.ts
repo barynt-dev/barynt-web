@@ -623,3 +623,51 @@ describe("a plugin's server (BARY-212)", () => {
     ).toBeGreaterThan(0);
   });
 });
+
+describe("webhooks from other services (BARY-215)", () => {
+  const hook = (handle: string) => ({
+    id: "gitlab",
+    title: "GitLab project",
+    provider: "gitlab",
+    handle,
+  });
+
+  it("needs webhooks:receive, and a server to forward to", () => {
+    expect(
+      errors({
+        ...base,
+        capabilities: [...base.capabilities, "webhooks:receive"],
+        contributes: { ...base.contributes, inboundHooks: [hook("link")] },
+      }),
+    ).toEqual([]);
+    expect(
+      errors({
+        ...base,
+        contributes: { ...base.contributes, inboundHooks: [hook("link")] },
+      }),
+    ).toContain(
+      "contributes.inboundHooks: needs the capability webhooks:receive",
+    );
+    expect(
+      errors({
+        ...base,
+        capabilities: [...base.capabilities, "webhooks:receive"],
+        contributes: { ...base.contributes, inboundHooks: [hook("forward")] },
+      }),
+    ).toContain(
+      "contributes.inboundHooks.0.handle: forward needs a service to forward to",
+    );
+  });
+
+  it("lets a plugin without code file calls under issues", () => {
+    expect(
+      errors({
+        ...base,
+        id: "gitlab-links",
+        kind: "declarative",
+        capabilities: ["webhooks:receive"],
+        contributes: { inboundHooks: [hook("link")] },
+      }),
+    ).toEqual([]);
+  });
+});

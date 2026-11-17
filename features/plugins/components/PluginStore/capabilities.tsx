@@ -21,7 +21,7 @@ const GROUPS: { id: string; icon: string; test: (cap: string) => boolean }[] = [
   {
     id: "data",
     icon: "lucide:database",
-    test: (c) => !/^(ui|events|notify):/.test(c),
+    test: (c) => !/^(ui|events|notify|webhooks):/.test(c),
   },
   {
     id: "ui",
@@ -31,7 +31,7 @@ const GROUPS: { id: string; icon: string; test: (cap: string) => boolean }[] = [
   {
     id: "events",
     icon: "lucide:activity",
-    test: (c) => /^(events|notify):/.test(c),
+    test: (c) => /^(events|notify|webhooks):/.test(c),
   },
 ];
 

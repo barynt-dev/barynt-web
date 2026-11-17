@@ -73,6 +73,7 @@ const view = (over: Partial<PluginSettingsView> = {}): PluginSettingsView => ({
   credentials: [],
   settingsPage: false,
   service: null,
+  inbound: [],
   ...over,
 });
 
