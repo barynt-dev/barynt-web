@@ -34,9 +34,9 @@ export function PluginInbound({ hooks }: { hooks: PluginInboundView[] }) {
                 <Icon
                   icon={
                     hook.provider === "gitlab"
-                      ? "logos:gitlab"
+                      ? "lucide:gitlab"
                       : hook.provider === "github"
-                        ? "mdi:github"
+                        ? "lucide:github"
                         : "lucide:webhook"
                   }
                   width={16}
