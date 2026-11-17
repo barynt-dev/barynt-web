@@ -2,6 +2,7 @@
 
 import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
+import { Badge } from "@/components/ui/atoms/Badge/Badge";
 import { Tab, Tabs } from "@/components/ui/layout/Tabs/Tabs";
 import styles from "./membersTabs.module.scss";
 
@@ -38,7 +39,7 @@ export function MembersTabs({
         icon={<Icon icon="lucide:bot" width={15} />}
       >
         {t("tabApps")}
-        <span className={styles.count}>{apps}</span>
+        <Badge className={styles.count}>{apps}</Badge>
       </Tab>
     </Tabs>
   );
