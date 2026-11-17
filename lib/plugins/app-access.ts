@@ -6,6 +6,18 @@ import type { Permission } from "../rbac";
 // narrow — a bot never manages anything (roles, members, settings, plugins),
 // whatever it asked for. No dependencies.
 
+/**
+ * Where a plugin may act (BARY-213/214): its activation's workspace, or just
+ * one project, and the capabilities confirmed there. A bot's only source of
+ * rights; for a token acting for a person, the frame those rights are cut
+ * down to.
+ */
+export interface AppScope {
+  workspaceId: string;
+  projectId: string | null;
+  capabilities: string[];
+}
+
 /** Capabilities that let it read anything in a project at all. */
 const SEES_PROJECT = [
   "issues:read",

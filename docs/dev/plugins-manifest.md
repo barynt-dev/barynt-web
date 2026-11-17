@@ -450,6 +450,20 @@ a project's bot only its project. Each
 time the plugin is switched on, a new token comes with `app.installed` and the
 one before stops; switched off, its token stops at once.
 
+**Acting for a person** (BARY-214): an event a person caused carries
+`acting: { token, userId, expiresAt }` — a token (`bpt_…`) to act for exactly
+that person, for 15 minutes. It can do what the person may **and** the plugin
+may (its capabilities, its workspace or project, no private projects for a
+workspace's plugin) — never more than either. What it changes shows as theirs,
+"Ada via GitLab" in the activity log. It's made fresh for each attempt and
+never stored; an event an app caused, or one with no person behind it, has
+none. Use it to read what the person sees; use the app token to act as the
+plugin itself.
+
+Every message to a server also carries `X-Barynt-Installation`: which
+installation it's for — the secret to check it with. The SDK's
+[`createService`](plugins-sdk.md#a-plugins-server) does all of this.
+
 A server that fails for a day is **paused**, not switched off: Barynt stops
 sending, logs it, and the plugin's settings show it with **Send again**. The
 settings also show the log of deliveries. Answer with a `2xx` within ten

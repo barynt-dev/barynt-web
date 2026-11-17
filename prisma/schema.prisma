@@ -1930,6 +1930,11 @@ model AuditLog {
   /// Die Begründung, die beim Notfall-Zugriff verlangt wird. Sonst leer.
   reason String?
 
+  /// Durch welches Plugin es geschah (BARY-214): seine Sandbox, sein Server
+  /// im Auftrag der Person oder sein Bot. Name eingefroren wie `actorLabel`.
+  viaPluginId    String?
+  viaPluginLabel String?
+
   /// Was sonst noch zur Tat gehört (alte und neue Rolle etwa). Bewusst formfrei:
   /// das Protokoll soll nicht bei jedem neuen Vorgang wandern müssen.
   meta Json?

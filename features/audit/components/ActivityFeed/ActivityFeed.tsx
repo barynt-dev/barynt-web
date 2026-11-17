@@ -74,7 +74,10 @@ export function ActivityFeed({ entries, workspaceSlug, hideRef }: Props) {
                   placeholder
                   placeholderLabel={entry.actorLabel}
                 />
-                {entry.actorLabel} · {timeAgo(entry.createdAt.getTime())} ·{" "}
+                {entry.actorLabel}
+                {entry.viaPluginLabel &&
+                  ` ${t("audit.via", { plugin: entry.viaPluginLabel })}`}{" "}
+                · {timeAgo(entry.createdAt.getTime())} ·{" "}
                 <time
                   dateTime={entry.createdAt.toISOString()}
                   suppressHydrationWarning

@@ -254,6 +254,9 @@ export interface AuditEntry {
   workspaceId: string | null;
   projectId: string | null;
   reason: string | null;
+  /** The plugin it went through — "Ada via GitLab" (BARY-214). */
+  viaPluginId: string | null;
+  viaPluginLabel: string | null;
   /**
    * Raw data depending on the event — unused for most rows. For status,
    * priority, and label changes on an issue it carries rendering hints

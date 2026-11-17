@@ -44,6 +44,7 @@ import {
   can,
   canEnterWorkspace,
 } from "@/lib/permissions";
+import { enterActing } from "@/lib/webhooks/source";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -817,5 +818,71 @@ describe("Der Bot eines Plugins (BARY-213)", () => {
       where: { workspaceId: "ws1", id: "p2" },
       select: { id: true },
     });
+  });
+});
+
+describe("Ein Server im Auftrag einer Person (BARY-214)", () => {
+  /** Acting from here on, inside the plugin's frame — synchronous, like
+   *  `resolveApiUser` does it before its first `await`. */
+  function acting(scope: {
+    projectId?: string | null;
+    capabilities: string[];
+  }) {
+    enterActing()(
+      { id: "gitlab", name: "GitLab" },
+      {
+        workspaceId: "ws1",
+        projectId: scope.projectId ?? null,
+        capabilities: scope.capabilities,
+      },
+    );
+  }
+
+  it("darf nur, was die Person und das Plugin dürfen", async () => {
+    setup({
+      workspace: role("member", 2, allow()),
+      project: role(
+        "contributor",
+        3,
+        allow("project.view", "issue.create", "comment.create"),
+      ),
+    });
+    acting({ capabilities: ["comments:write"] });
+    const access = await accessFor("u1", { projectId: "p1" });
+    expect(access.has("comment.create")).toBe(true);
+    // The person may, the plugin may not.
+    expect(access.has("issue.create")).toBe(false);
+  });
+
+  it("gibt dem Plugin nie mehr, als die Person darf", async () => {
+    setup({
+      workspace: role("member", 2, allow()),
+      project: role("viewer", 1, allow("project.view")),
+    });
+    acting({ capabilities: ["issues:write", "comments:write"] });
+    const access = await accessFor("u1", { projectId: "p1" });
+    expect(access.has("project.view")).toBe(true);
+    expect(access.has("issue.create")).toBe(false);
+    expect(access.has("comment.create")).toBe(false);
+  });
+
+  it("hält ein Workspace-Plugin aus privaten Projekten heraus", async () => {
+    setup({
+      workspace: role("member", 2, allow()),
+      project: role("contributor", 3, allow("project.view")),
+      visibility: "private",
+    });
+    acting({ capabilities: ["issues:read"] });
+    expect(await can("u1", "project.view", { projectId: "p1" })).toBe(false);
+  });
+
+  it("bleibt im Workspace und Projekt des Plugins", async () => {
+    setup({
+      workspace: role("member", 2, allow("member.view")),
+      project: role("contributor", 3, allow("project.view")),
+    });
+    acting({ projectId: "p2", capabilities: ["issues:read"] });
+    expect(await can("u1", "project.view", { projectId: "p1" })).toBe(false);
+    expect(await canEnterWorkspace("u1", "ws2")).toBe(false);
   });
 });

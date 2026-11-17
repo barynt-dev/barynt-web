@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
-import { appPermissions } from "@/lib/plugins/app-access";
+import { type AppScope, appPermissions } from "@/lib/plugins/app-access";
 import {
   isPermissionAllowedIn,
   type PERMISSIONS,
@@ -12,6 +12,7 @@ import {
   toPermission,
 } from "@/lib/rbac";
 import { getSession } from "@/lib/session";
+import { actingScope } from "@/lib/webhooks/source";
 
 export type { Permission } from "@/lib/rbac";
 
@@ -164,17 +165,6 @@ const loadPlatformState = cache(
     };
   },
 );
-
-/**
- * Where a plugin's bot works (BARY-213): its activation — the workspace, or
- * just one project — and the capabilities confirmed there. A bot is no
- * member; this is its only source of rights.
- */
-interface AppScope {
-  workspaceId: string;
-  projectId: string | null;
-  capabilities: string[];
-}
 
 /** Visibility of a project, for a workspace's bot (private ones are out). */
 const loadProjectVisibility = cache(async (projectId: string) => {
@@ -420,7 +410,22 @@ function opens(
   return base.granted.has(key);
 }
 
+/**
+ * A plugin's server acting for a person (BARY-214): what the person may,
+ * and only where and what the plugin may too — never more than either.
+ */
 async function resolve(
+  userId: string | null,
+  ctx: PermissionContext,
+): Promise<Access> {
+  const acting = actingScope();
+  const own = await resolveOwn(userId, ctx);
+  if (!acting || "scope" in ctx) return own;
+  const frame = await resolveApp(acting, ctx);
+  return { ...own, has: (p) => own.has(p) && frame.has(p) };
+}
+
+async function resolveOwn(
   userId: string | null,
   ctx: PermissionContext,
 ): Promise<Access> {
@@ -595,6 +600,9 @@ export async function requirePermission<P extends Permission>(
 export const canEnterWorkspace = cache(
   async (userId: string | null, workspaceId: string): Promise<boolean> => {
     if (!userId) return false;
+    // Acting for a person: only the plugin's workspace (BARY-214).
+    const acting = actingScope();
+    if (acting && acting.workspaceId !== workspaceId) return false;
     const state = await loadPlatformState(userId);
     if (state.app)
       return !state.deactivated && state.app.workspaceId === workspaceId;
@@ -649,6 +657,34 @@ export const accessibleProjectIds = cache(async function accessibleProjectIds(
   const visible = new Set<string>();
   if (!userId) return visible;
 
+  // Acting for a person (BARY-214): theirs, cut down to the plugin's.
+  const acting = actingScope();
+  if (acting) {
+    if (acting.workspaceId !== workspaceId) return visible;
+    const own = await ownProjectIds(userId, workspaceId);
+    const frame = await db.project.findMany({
+      where: {
+        workspaceId,
+        ...(acting.projectId
+          ? { id: acting.projectId }
+          : { visibility: "public" }),
+      },
+      select: { id: true },
+    });
+    for (const project of frame)
+      if (own.has(project.id)) visible.add(project.id);
+    return visible;
+  }
+  return ownProjectIds(userId, workspaceId);
+});
+
+/** The projects `userId` may see on their own — see `accessibleProjectIds`. */
+async function ownProjectIds(
+  userId: string,
+  workspaceId: string,
+): Promise<Set<string>> {
+  const visible = new Set<string>();
+
   // A bot: its project, or the workspace's public ones.
   const state = await loadPlatformState(userId);
   if (state.app) {
@@ -700,7 +736,7 @@ export const accessibleProjectIds = cache(async function accessibleProjectIds(
   }
 
   return visible;
-});
+}
 
 /** Like `accessibleProjectIds`, but for the logged-in user. */
 export async function visibleProjectIds(
