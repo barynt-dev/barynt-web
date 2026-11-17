@@ -499,6 +499,7 @@ method returns a `Promise` and rejects with a [`BaryntError`](#errors).
 | `api.projects.list()` | `projects.list` |
 | `api.members.list(params?)` | `members.list` |
 | `api.fields.list(params?)` | `fields.list` |
+| `api.issueData.list(issueIds)` | `issueData.list` |
 | `api.storage.get<T>(key)` | `storage.get` |
 | `api.storage.set(key, value)` | `storage.set` |
 | `api.storage.delete(key)` | `storage.delete` |
@@ -729,8 +730,9 @@ export default { fetch: service.fetch };
   for the person when Barynt sent a token, else the app), `app` and the
   `installation`.
 - **The clients** call the [REST API](../guide/en/integrations/api.md):
-  `issues.get/update`, `comments.list/create`, and `request(method, path,
-  body)` for everything else. A refusal throws `BaryntApiError` with its
+  `issues.get/update`, `comments.list/create`, `issueData.list/set/delete`
+  (what the plugin keeps on an issue, up to 16 KB a key), and
+  `request(method, path, body)` for everything else. A refusal throws `BaryntApiError` with its
   `status`.
 - **`store`** keeps installations; in memory by default — give it your
   database's (`get`/`set`/`delete`), or a restart forgets them until the

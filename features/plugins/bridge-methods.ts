@@ -16,6 +16,7 @@ import {
   listProjectsForUser,
   listWorkspaceMembersForUser,
 } from "@/features/api-v1/queries";
+import { ISSUE_DATA_BATCH, readIssueData } from "@/features/plugins/issue-data";
 import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
@@ -190,6 +191,23 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
         userId,
         issue.id,
         patch as Parameters<typeof updateIssueForUser>[2],
+      ),
+    );
+  },
+
+  async "issueData.list"(userId, plugin, p) {
+    const ids = Array.isArray(p.issueIds)
+      ? p.issueIds.map((id) => str(id)).filter((id) => id !== undefined)
+      : [str(p.issueId)].filter((id) => id !== undefined);
+    if (ids.length === 0 || ids.length > ISSUE_DATA_BATCH)
+      return no("invalid_params");
+    return ok(
+      await readIssueData(
+        userId,
+        plugin.pluginId,
+        plugin.workspaceId,
+        ids,
+        plugin.projectId,
       ),
     );
   },

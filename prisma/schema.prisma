@@ -458,6 +458,27 @@ model PluginInboundHook {
   @@unique([activationId, hookId])
 }
 
+/// Was ein Plugin an einem Issue ablegt (BARY-216): sein Server schreibt es
+/// über die REST-API, seine Frames lesen es — Barynt speichert nur, was es
+/// bedeutet, weiß das Plugin. Jede Aktivierung sieht nur ihre eigenen; je
+/// Issue und `key` ein Eintrag.
+model PluginIssueData {
+  id           String   @id @default(cuid())
+  activationId String
+  issueId      String
+  /// Was der Server wählt, z. B. `mr:412` oder `coverage`.
+  key          String
+  /// Höchstens 16 KB JSON.
+  value        Json
+  updatedAt    DateTime @updatedAt
+
+  activation PluginActivation @relation(fields: [activationId], references: [id], onDelete: Cascade)
+  issue      Issue            @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@unique([activationId, issueId, key])
+  @@index([issueId])
+}
+
 enum UserKind {
   PERSON
   APP
@@ -1680,6 +1701,8 @@ model Issue {
   /// Flussmetriken.
   statusEvents  IssueStatusEvent[]
 
+  pluginData PluginIssueData[]
+
   @@unique([projectId, key])
   @@index([projectId, status])
   @@index([assigneeId])
@@ -2189,6 +2212,7 @@ model PluginActivation {
   bot          User?               @relation("PluginBot", fields: [botUserId], references: [id], onDelete: SetNull)
   appTokens    ApiKey[]
   inboundHooks PluginInboundHook[]
+  issueData    PluginIssueData[]
 
   @@unique([pluginId, scopeKey])
   @@index([workspaceId])

@@ -459,3 +459,106 @@ curl -X DELETE "$BARYNT_URL/api/v1/relations/$RELATION_ID" \
   "data": { "id": "ir_8n3k2m" }
 }
 ```
+
+## `GET /api/v1/issues/{id}/plugin-data`
+
+Scope: `issues:read`
+
+Was das aufrufende Plugin an einem Issue abgelegt hat — was sein Server per PUT geschrieben hat. Nur mit dem Token eines Plugins (dem seiner App oder einem, das für eine Person handelt); der Schlüssel einer Person bekommt 403. Einträge anderer Plugins sind nie dabei.
+
+**Pfad-Parameter**
+
+| Name | Typ | Pflicht | Beschreibung |
+| --- | --- | --- | --- |
+| `id` | `string` | ja | Die ID des Issues. |
+
+**Beispiel**
+
+```bash
+curl "$BARYNT_URL/api/v1/issues/$ISSUE_ID/plugin-data" \
+  -H "Authorization: Bearer $BARYNT_API_KEY"
+```
+
+**Antwort**
+
+```json
+{
+  "data": [
+    {
+      "key": "coverage",
+      "value": { "coverage": 87.5 },
+      "updatedAt": "2026-11-17T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+## `PUT /api/v1/issues/{id}/plugin-data/{key}`
+
+Scope: `issues:read`
+
+Schreibt den Eintrag des aufrufenden Plugins unter einem Issue — beliebiges JSON bis 16 KB, als Ganzes ersetzt. Der Schlüssel hat 1–100 Zeichen aus Buchstaben, Ziffern und `_ . : -`. Nur mit dem Token eines Plugins, in seinem Projekt oder Workspace.
+
+**Pfad-Parameter**
+
+| Name | Typ | Pflicht | Beschreibung |
+| --- | --- | --- | --- |
+| `id` | `string` | ja | Die ID des Issues. |
+| `key` | `string` | ja | Der Schlüssel des Eintrags. |
+
+**Body**
+
+| Name | Typ | Pflicht | Beschreibung |
+| --- | --- | --- | --- |
+| `value` | `JSON` | ja | Was abgelegt wird. |
+
+**Beispiel**
+
+```bash
+curl -X PUT "$BARYNT_URL/api/v1/issues/$ISSUE_ID/plugin-data/{key}" \
+  -H "Authorization: Bearer $BARYNT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "value": { "coverage": 87.5 } }'
+```
+
+**Anfrage**
+
+```json
+{
+  "value": { "coverage": 87.5 }
+}
+```
+
+**Antwort**
+
+```json
+{
+  "data": { "key": "coverage", "value": { "coverage": 87.5 } }
+}
+```
+
+## `DELETE /api/v1/issues/{id}/plugin-data/{key}`
+
+Scope: `issues:read`
+
+Entfernt den Eintrag des aufrufenden Plugins unter einem Issue.
+
+**Pfad-Parameter**
+
+| Name | Typ | Pflicht | Beschreibung |
+| --- | --- | --- | --- |
+| `id` | `string` | ja | Die ID des Issues. |
+| `key` | `string` | ja | Der Schlüssel des Eintrags. |
+
+**Beispiel**
+
+```bash
+curl -X DELETE "$BARYNT_URL/api/v1/issues/$ISSUE_ID/plugin-data/{key}" \
+  -H "Authorization: Bearer $BARYNT_API_KEY"
+```
+
+**Antwort**
+
+```jsonc
+// 204 No Content
+```

@@ -496,8 +496,10 @@ Barynt, without anyone pointing that service at the plugin's own server:
   the event `inbound.<id>` with `data: { hook, provider, providerEvent,
   deliveryId, headers, body }` — signed, retried and logged like any event.
   It needs `service`. The provider's secret is never passed on.
-- `handle: "link"` lets Barynt itself file what the call says under the
-  issues it names, for plugins without a server (BARY-216).
+- `forward` is the only `handle` for now. What a call means — which issue
+  a merge request belongs to — is the plugin's to work out; its server keeps
+  the result on the issue (`PUT /api/v1/issues/{id}/plugin-data/{key}`) and
+  its frames show it with [`api.issueData.list`](plugins-host-api.md#what-it-keeps-on-issues).
 
 ## Rules Barynt checks
 

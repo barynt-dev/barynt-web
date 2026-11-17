@@ -12,6 +12,14 @@ export interface ApiAuthResult {
   /** Granular, Jira-style scopes (`lib/api/scopes.ts`) — a ceiling on top
    *  of the user's own RBAC permissions, never a grant beyond them. */
   scopes: ApiScope[];
+  /** A plugin's token (`bpa_`/`bpt_`): its activation — where what it files
+   *  under issues hangs off (BARY-216). */
+  plugin?: {
+    activationId: string;
+    pluginId: string;
+    workspaceId: string;
+    projectId: string | null;
+  };
 }
 
 /** Does this token carry the given scope? Routes gate on this before (and
@@ -86,6 +94,7 @@ export async function resolveApiUser(
       user: { select: { deactivatedAt: true } },
       activation: {
         select: {
+          id: true,
           pluginId: true,
           workspaceId: true,
           projectId: true,
@@ -121,6 +130,14 @@ export async function resolveApiUser(
     userId: key.userId,
     keyId: key.id,
     scopes: key.scopes as ApiScope[],
+    ...(key.activation && {
+      plugin: {
+        activationId: key.activation.id,
+        pluginId: key.activation.pluginId,
+        workspaceId: key.activation.workspaceId,
+        projectId: key.activation.projectId,
+      },
+    }),
   };
 }
 

@@ -183,7 +183,6 @@ export async function receiveInbound(
       }),
     });
   }
-  // `link` — filing it under issues — comes with BARY-216.
   await record(202, event, null);
   return answer(202, "accepted");
 }

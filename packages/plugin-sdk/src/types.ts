@@ -322,6 +322,14 @@ export type Json =
   | { [key: string]: Json };
 
 /** Each method of the host bridge: what it takes and what it gives. */
+/** What a plugin keeps on an issue (BARY-216): written by its server
+ *  (`PUT /api/v1/issues/{id}/plugin-data/{key}`), read by its frames. */
+export interface IssueDataEntry {
+  key: string;
+  value: Json;
+  updatedAt: string;
+}
+
 export interface Methods {
   "issues.list": [
     {
@@ -345,6 +353,10 @@ export interface Methods {
   "projects.list": [Record<string, never>, Project[]];
   "members.list": [{ projectId?: string }, Member[]];
   "fields.list": [{ projectId?: string }, CustomField[]];
+  "issueData.list": [
+    { issueId?: string; issueIds?: string[] },
+    Record<string, IssueDataEntry[]>,
+  ];
   "storage.get": [{ key: string }, Json];
   "storage.set": [{ key: string; value: Json }, null];
   "storage.delete": [{ key: string }, null];

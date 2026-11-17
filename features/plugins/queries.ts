@@ -611,7 +611,7 @@ export interface PluginInboundView {
   hookId: string;
   title: string;
   provider: "gitlab" | "github" | "generic";
-  handle: "forward" | "link";
+  handle: "forward";
   /** The address to give the provider. */
   url: string;
   /** The secret to give it — shown to whoever may manage the plugin. */
