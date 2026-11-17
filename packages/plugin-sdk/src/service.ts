@@ -65,8 +65,8 @@ export interface BaryntClient {
     list(issue: string): Promise<Record<string, unknown>[]>;
     create(issue: string, body: string): Promise<Record<string, unknown>>;
   };
-  /** What the plugin files under an issue (BARY-216) — shown by its own
-   *  badges and panels; its `link` hooks write here too. */
+  /** What the plugin keeps on an issue (BARY-216) — shown by its own
+   *  badges and panels. */
   issueData: {
     list(
       issue: string,

@@ -168,13 +168,6 @@ The plugin's settings show a **Server** card: the address, the events, how the l
 
 A plugin can ask to receive webhooks from another service — GitLab, GitHub — through Barynt ("Receive webhooks from other services"). Once it's switched on, its settings show each such webhook with an **address** and a **secret**, and how to enter them at GitLab or GitHub. Barynt checks every call against the secret and refuses the rest; the card shows when the last call came and how it went.
 
-Some plugins let Barynt **file what GitLab or GitHub reports under issues**: a merge request, a pipeline or a commit lands on the issues it names — `WEB-42` in the branch (`ada/web-42-login`), the title or the commit message — and the plugin shows it, on the card or in the issue. Such a webhook has **rules** you switch on in its card:
-
-- **Set the issue to done when its merge request is merged** — to the workspace's first done status.
-- **Comment on the issue when a merge request for it is opened.**
-
-Both are done by the plugin's [app](#apps), so the issue's activity says who did it.
-
 ### Apps
 
 Such a plugin also acts in Barynt — writes a comment, moves an issue — under its own name, as an **app**: "Demo Chat Notifications (App)" shows as the author wherever it did something. An app isn't a member and can't sign in, can't be assigned or mentioned, and never manages anything (roles, members, settings, plugins). It may only do what the capabilities you confirmed allow, in the workspace's public projects — or, switched on in a project, only there. **Members → Apps** lists them: where each acts, what it may, when it was last active. Switching the plugin off stops its app at once.

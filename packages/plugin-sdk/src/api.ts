@@ -96,8 +96,8 @@ export function createApi(host: Host) {
         call("fields.list", params),
     },
     issueData: {
-      /** What the plugin filed under issues, by issue id — one call for a
-       *  whole board. */
+      /** What its server keeps on these issues, by issue id — one call
+       *  for a whole board. */
       list: (issueIds: string[]) => call("issueData.list", { issueIds }),
     },
     storage: {

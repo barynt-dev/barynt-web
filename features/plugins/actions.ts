@@ -37,7 +37,6 @@ import {
   rollbackTarget,
   unblockTarget,
 } from "@/lib/plugins/lifecycle";
-import { LINK_RULES } from "@/lib/plugins/link";
 import { validateManifest } from "@/lib/plugins/manifest";
 import type { PluginActionEntry } from "@/lib/plugins/plugin-actions";
 import { credentialScopeKey } from "@/lib/plugins/proxy";
@@ -46,7 +45,6 @@ import { checkSettings } from "@/lib/plugins/settings";
 import { sealSecret } from "@/lib/secret-box";
 import { sendLifecycle } from "@/lib/webhooks/deliver";
 import {
-  ensureBot,
   ensureServiceIdentity,
   revokeAppTokens,
 } from "@/lib/webhooks/plugin-targets";
@@ -575,9 +573,6 @@ export async function activatePlugin(
   // each time it's switched on again.
   if (manifest.contributes.inboundHooks?.length)
     await ensureInboundHooks(activation.id, manifest);
-  // A `link` hook's rules act as the plugin's app — a server or not.
-  if (manifest.contributes.inboundHooks?.some((h) => h.handle === "link"))
-    await ensureBot(activation.id, manifest);
   if (
     manifest.service &&
     (await ensureServiceIdentity(activation.id, manifest))
@@ -1131,45 +1126,6 @@ export async function resumePluginService(
     },
     workspaceId: activation.workspaceId,
     projectId: activation.projectId,
-  });
-  done();
-  return { ok: true };
-}
-
-/** Switches one of a `link` hook's rules on or off (BARY-216) — what Barynt
- *  does, as the plugin's app, when GitLab or GitHub reports. */
-export async function setInboundRule(input: {
-  hookId: string;
-  rule: string;
-  on: boolean;
-}): Promise<PluginResult> {
-  if (!(LINK_RULES as readonly string[]).includes(input.rule))
-    return { error: "invalid" };
-  const hook = await db.pluginInboundHook.findUnique({
-    where: { id: input.hookId },
-    select: { id: true, activationId: true, rules: true },
-  });
-  if (!hook) return { error: "not_activated" };
-  const activation = await manageableActivation(hook.activationId);
-  if (!activation) return { error: "not_activated" };
-  const rules = new Set(hook.rules);
-  if (input.on) rules.add(input.rule);
-  else rules.delete(input.rule);
-  await db.pluginInboundHook.update({
-    where: { id: hook.id },
-    data: { rules: [...rules] },
-  });
-  await recordAudit({
-    action: "plugin.inbound.rules",
-    actorId: activation.actorId,
-    target: {
-      type: "plugin",
-      id: activation.pluginId,
-      label: await pluginLabel(activation.pluginId),
-    },
-    workspaceId: activation.workspaceId,
-    projectId: activation.projectId,
-    meta: { rule: input.rule, on: input.on },
   });
   done();
   return { ok: true };

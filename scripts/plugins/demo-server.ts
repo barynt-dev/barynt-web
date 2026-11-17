@@ -93,44 +93,6 @@ const NOTIFY_SETTINGS = [
   },
 ];
 
-/** Demo Code Review's contributions — each version that changes them
- *  repeats them whole. */
-const CODE_REVIEW_CONTRIBUTES = {
-  issueBadges: [
-    { id: "review", title: "Merge request" },
-    { id: "deploy", title: "Deployment" },
-  ],
-  // Where a merge request's row leads (BARY-208).
-  issuePanels: [
-    { id: "review", title: "Merge request" },
-    // In the issue's sidebar, next to its fields (BARY-209).
-    { id: "development", title: "Development", placement: "sidebar" },
-  ],
-  // In the issue's menu, a card's quick actions, the palette (BARY-152).
-  actions: [
-    { id: "rerun", title: "Re-run pipeline", icon: "lucide:rocket" },
-    {
-      id: "show-review",
-      title: "Show merge request",
-      icon: "lucide:git-pull-request",
-      where: ["issueMenu", "commandPalette"],
-    },
-    {
-      id: "comment-state",
-      title: "Post pipeline state as comment",
-      icon: "lucide:message-square",
-    },
-    {
-      id: "close-mr",
-      title: "Close merge request",
-      icon: "lucide:circle-x",
-      confirm:
-        "The merge request is closed in GitLab; the issue stays as it is.",
-      danger: true,
-    },
-  ],
-};
-
 const DEMOS: Demo[] = [
   {
     entry: {
@@ -515,7 +477,7 @@ const DEMOS: Demo[] = [
       name: "Demo Code Review",
       author: "Barynt demo",
       description:
-        "A merge request's state on every card it belongs to — from GitLab through its webhook, made up where nothing came yet.",
+        "A merge request's state on every card it belongs to — made-up data, to show badge rows.",
       repo: `${ORIGIN}/barynt-demo/code-review`,
       levels: ["project"],
       kind: "sandbox",
@@ -525,7 +487,41 @@ const DEMOS: Demo[] = [
     manifest: {
       minBaryntVersion: "0.9.0",
       license: "MIT",
-      contributes: CODE_REVIEW_CONTRIBUTES,
+      contributes: {
+        issueBadges: [
+          { id: "review", title: "Merge request" },
+          { id: "deploy", title: "Deployment" },
+        ],
+        // Where a merge request's row leads (BARY-208).
+        issuePanels: [
+          { id: "review", title: "Merge request" },
+          // In the issue's sidebar, next to its fields (BARY-209).
+          { id: "development", title: "Development", placement: "sidebar" },
+        ],
+        // In the issue's menu, a card's quick actions, the palette (BARY-152).
+        actions: [
+          { id: "rerun", title: "Re-run pipeline", icon: "lucide:rocket" },
+          {
+            id: "show-review",
+            title: "Show merge request",
+            icon: "lucide:git-pull-request",
+            where: ["issueMenu", "commandPalette"],
+          },
+          {
+            id: "comment-state",
+            title: "Post pipeline state as comment",
+            icon: "lucide:message-square",
+          },
+          {
+            id: "close-mr",
+            title: "Close merge request",
+            icon: "lucide:circle-x",
+            confirm:
+              "The merge request is closed in GitLab; the issue stays as it is.",
+            danger: true,
+          },
+        ],
+      },
     },
     versions: {
       "1.0.0": {
@@ -536,31 +532,6 @@ const DEMOS: Demo[] = [
           "ui:issue-panel",
           "ui:action",
         ],
-      },
-      // BARY-216: GitLab's merge requests and pipelines filed under the
-      // issues they name — the badges show what really came, the rules
-      // (done on merge, a comment on opening) act as its app.
-      "1.1.0": {
-        capabilities: [
-          "issues:read",
-          "issues:write",
-          "comments:write",
-          "ui:issue-badge",
-          "ui:issue-panel",
-          "ui:action",
-          "webhooks:receive",
-        ],
-        contributes: {
-          ...CODE_REVIEW_CONTRIBUTES,
-          inboundHooks: [
-            {
-              id: "gitlab",
-              title: "GitLab project",
-              provider: "gitlab",
-              handle: "link",
-            },
-          ],
-        },
       },
     },
     code: "code-review",

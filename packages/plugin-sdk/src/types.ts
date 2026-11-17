@@ -322,25 +322,12 @@ export type Json =
   | { [key: string]: Json };
 
 /** Each method of the host bridge: what it takes and what it gives. */
-/** What a plugin filed under an issue (BARY-216): a merge request, a
- *  pipeline, a commit from a `link` hook — or whatever its server wrote. */
+/** What a plugin keeps on an issue (BARY-216): written by its server
+ *  (`PUT /api/v1/issues/{id}/plugin-data/{key}`), read by its frames. */
 export interface IssueDataEntry {
   key: string;
   value: Json;
   updatedAt: string;
-}
-
-/** A `link` hook's entry, as `IssueDataEntry.value`. */
-export interface LinkRecord {
-  key: string;
-  kind: "merge_request" | "pipeline" | "commit";
-  number: string;
-  title: string;
-  state: string;
-  url: string | null;
-  branch: string | null;
-  author: string | null;
-  at: string;
 }
 
 export interface Methods {

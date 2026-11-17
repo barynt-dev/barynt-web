@@ -28,9 +28,6 @@ mock.module("@/lib/db", () => ({
 mock.module("@/lib/webhooks/deliver", () => ({ sendToPlugin }));
 mock.module("@/lib/redis", () => ({ redisClient: { set: redisSet } }));
 mock.module("@/lib/api/rateLimit", () => ({ countRequest }));
-// Filing under issues has its own tests (tests/unit/pluginIssueData).
-const fileLink = mock(async (..._: unknown[]) => 1);
-mock.module("@/features/plugins/issue-data", () => ({ fileLink }));
 
 const { receiveInbound } = await import("@/features/plugins/inbound");
 
@@ -45,9 +42,7 @@ function setup(provider: "gitlab" | "github", handle = "forward") {
       enabled: true,
       workspaceId: "ws-1",
       projectId: null,
-      botUserId: "bot-1",
     },
-    rules: ["merged_to_done"],
   };
   manifest = {
     id: "ci-bridge",
@@ -87,7 +82,6 @@ function gitlab(token = SECRET, extra: Record<string, string> = {}) {
 beforeEach(() => {
   update.mockClear();
   sendToPlugin.mockClear();
-  fileLink.mockClear();
   redisSet.mockClear();
   redisSet.mockResolvedValue("OK");
   countRequest.mockResolvedValue({ ok: true, info: {} });
@@ -159,18 +153,6 @@ describe("receiveInbound()", () => {
       body: { object_kind: "merge_request", iid: 412 },
     });
     expect(JSON.stringify(payload)).not.toContain(SECRET);
-  });
-
-  it("files a `link` hook's call under issues, with its rules — nothing forwarded", async () => {
-    setup("gitlab", "link");
-    const res = await receiveInbound("tok", gitlab());
-    expect(res.status).toBe(202);
-    expect(sendToPlugin).not.toHaveBeenCalled();
-    const [activation, hook, event, data] = fileLink.mock.calls[0];
-    expect(activation).toMatchObject({ id: "act-1", botUserId: "bot-1" });
-    expect(hook).toEqual({ provider: "gitlab", rules: ["merged_to_done"] });
-    expect(event).toBe("merge_request");
-    expect(data).toEqual({ object_kind: "merge_request", iid: 412 });
   });
 
   it("takes a provider's retry once", async () => {

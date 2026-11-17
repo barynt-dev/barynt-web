@@ -1,6 +1,3 @@
--- AlterTable
-ALTER TABLE "PluginInboundHook" ADD COLUMN     "rules" TEXT[] DEFAULT ARRAY[]::TEXT[];
-
 -- CreateTable
 CREATE TABLE "PluginIssueData" (
     "id" TEXT NOT NULL,

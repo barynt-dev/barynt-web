@@ -464,7 +464,7 @@ curl -X DELETE "$BARYNT_URL/api/v1/relations/$RELATION_ID" \
 
 Scope: `issues:read`
 
-Was das aufrufende Plugin unter einem Issue abgelegt hat — Merge Requests, Pipelines und Commits aus seinen `link`-Hooks und was sein Server selbst geschrieben hat. Nur mit dem Token eines Plugins (dem seiner App oder einem, das für eine Person handelt); der Schlüssel einer Person bekommt 403. Einträge anderer Plugins sind nie dabei.
+Was das aufrufende Plugin an einem Issue abgelegt hat — was sein Server per PUT geschrieben hat. Nur mit dem Token eines Plugins (dem seiner App oder einem, das für eine Person handelt); der Schlüssel einer Person bekommt 403. Einträge anderer Plugins sind nie dabei.
 
 **Pfad-Parameter**
 
@@ -481,22 +481,12 @@ curl "$BARYNT_URL/api/v1/issues/$ISSUE_ID/plugin-data" \
 
 **Antwort**
 
-```jsonc
+```json
 {
   "data": [
     {
-      "key": "mr:412",
-      "value": {
-        "key": "mr:412",
-        "kind": "merge_request",
-        "number": "!412",
-        "title": "Fix the login",
-        "state": "merged",
-        "url": "https://gitlab.acme.dev/web/-/merge_requests/412",
-        "branch": "ada/web-42-login",
-        "author": "Ada",
-        "at": "2026-11-17T10:00:00.000Z"
-      },
+      "key": "coverage",
+      "value": { "coverage": 87.5 },
       "updatedAt": "2026-11-17T10:00:00.000Z"
     }
   ]

@@ -731,7 +731,7 @@ export default { fetch: service.fetch };
   `installation`.
 - **The clients** call the [REST API](../guide/en/integrations/api.md):
   `issues.get/update`, `comments.list/create`, `issueData.list/set/delete`
-  (what the plugin files under an issue, up to 16 KB a key), and
+  (what the plugin keeps on an issue, up to 16 KB a key), and
   `request(method, path, body)` for everything else. A refusal throws `BaryntApiError` with its
   `status`.
 - **`store`** keeps installations; in memory by default — give it your

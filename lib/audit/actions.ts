@@ -123,8 +123,6 @@ export const AUDIT_ACTIONS = {
   // failures, and someone sending them on again.
   "plugin.service.paused": "Deliveries to a plugin's server paused",
   "plugin.service.resumed": "Deliveries to a plugin's server resumed",
-  // BARY-216: a `link` hook's rule switched on or off.
-  "plugin.inbound.rules": "Rules of a plugin's webhook changed",
 
   // ── Webhooks (BARY-211) ───────────────────────────────────────────────────
   //

@@ -200,9 +200,9 @@ const inboundHookSchema = z.strictObject({
   title,
   /** Who calls — decides how Barynt checks the call. */
   provider: z.enum(["gitlab", "github", "generic"]),
-  /** `forward` to the plugin's server, or `link` — Barynt files what it
-   *  reads under the issues it names (BARY-216). */
-  handle: z.enum(["forward", "link"]),
+  /** `forward` to the plugin's server — the only way for now; the field
+   *  stays so a later one doesn't break manifests. */
+  handle: z.literal("forward"),
 });
 
 const contributesSchema = z.strictObject({
@@ -246,13 +246,7 @@ const CONTRIBUTION_CAPABILITY: Record<
 /** What each kind may contribute: no code, no browser surface for services.
  *  Widget templates are data Barynt draws, so every kind may bring them. */
 const KIND_CONTRIBUTIONS: Record<PluginKind, readonly (keyof Contributes)[]> = {
-  declarative: [
-    "fields",
-    "settings",
-    "issueBadges",
-    "widgetTemplates",
-    "inboundHooks",
-  ],
+  declarative: ["fields", "settings", "issueBadges", "widgetTemplates"],
   service: ["fields", "settings", "widgetTemplates", "inboundHooks"],
   sandbox: [
     "widgetTemplates",

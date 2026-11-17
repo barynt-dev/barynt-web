@@ -845,25 +845,15 @@ export const API_DOC_GROUPS: ApiDocGroup[] = [
         path: "/api/v1/issues/{id}/plugin-data",
         scope: "issues:read",
         desc: {
-          en: "What the calling plugin filed under an issue — merge requests, pipelines and commits from its `link` hooks, and what its server wrote itself. Only for a plugin's token (its app's, or one acting for a person); a person's key gets 403. Entries of other plugins are never shown.",
-          de: "Was das aufrufende Plugin unter einem Issue abgelegt hat — Merge Requests, Pipelines und Commits aus seinen `link`-Hooks und was sein Server selbst geschrieben hat. Nur mit dem Token eines Plugins (dem seiner App oder einem, das für eine Person handelt); der Schlüssel einer Person bekommt 403. Einträge anderer Plugins sind nie dabei.",
+          en: "What the calling plugin keeps on an issue — whatever its server wrote with PUT. Only for a plugin's token (its app's, or one acting for a person); a person's key gets 403. Entries of other plugins are never shown.",
+          de: "Was das aufrufende Plugin an einem Issue abgelegt hat — was sein Server per PUT geschrieben hat. Nur mit dem Token eines Plugins (dem seiner App oder einem, das für eine Person handelt); der Schlüssel einer Person bekommt 403. Einträge anderer Plugins sind nie dabei.",
         },
         pathParams: [idParam("issue")],
         response: `{
   "data": [
     {
-      "key": "mr:412",
-      "value": {
-        "key": "mr:412",
-        "kind": "merge_request",
-        "number": "!412",
-        "title": "Fix the login",
-        "state": "merged",
-        "url": "https://gitlab.acme.dev/web/-/merge_requests/412",
-        "branch": "ada/web-42-login",
-        "author": "Ada",
-        "at": "2026-11-17T10:00:00.000Z"
-      },
+      "key": "coverage",
+      "value": { "coverage": 87.5 },
       "updatedAt": "2026-11-17T10:00:00.000Z"
     }
   ]

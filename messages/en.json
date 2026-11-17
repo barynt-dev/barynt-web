@@ -1619,8 +1619,7 @@
       "pluginCredentialRemoved": "Plugin credential removed",
       "webhookDisabled": "Webhook turned off after a day of failed deliveries",
       "pluginServicePaused": "Deliveries to the plugin's server paused after a day of failures",
-      "pluginServiceResumed": "Deliveries to the plugin's server resumed",
-      "pluginInboundRules": "Changed what the plugin does with reports from other services"
+      "pluginServiceResumed": "Deliveries to the plugin's server resumed"
     },
     "via": "via {plugin}"
   },
@@ -2927,14 +2926,7 @@
       "last": "{date} · {event} · {status}",
       "howtoGitlab": "In GitLab: project or group → Settings → Webhooks → Add new webhook. Paste the address as URL and the secret as Secret token, pick the triggers (merge requests, pipelines, pushes).",
       "howtoGithub": "In GitHub: repository or organization → Settings → Webhooks → Add webhook. Paste the address as Payload URL, choose application/json, paste the secret, pick the events.",
-      "howtoGeneric": "Send JSON as a POST to the address, with X-Hub-Signature-256: sha256=<HMAC-SHA256 of the body with the secret>.",
-      "linkHint": "Merge requests, pipelines and commits land on the issues they name — WEB-42 in the branch, the title or the commit message.",
-      "rules": "Rules",
-      "rule": {
-        "merged_to_done": "Set the issue to done when its merge request is merged",
-        "comment_on_open": "Comment on the issue when a merge request for it is opened"
-      },
-      "ruleFailed": "Couldn't save the rule. Try again."
+      "howtoGeneric": "Send JSON as a POST to the address, with X-Hub-Signature-256: sha256=<HMAC-SHA256 of the body with the secret>."
     }
   }
 }
