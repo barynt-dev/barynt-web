@@ -774,6 +774,8 @@ const log = (event: string, as: string, summary: string) =>
 
 const notify = createService({ baryntUrl: process.env.BARYNT_URL });
 notify.on("*", (e) => {
+  // Those have a handler of their own below.
+  if (e.event.startsWith("inbound.")) return;
   const d = e.data as Record<string, unknown>;
   log(
     e.event,
