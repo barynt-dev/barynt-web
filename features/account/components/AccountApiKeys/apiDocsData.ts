@@ -10,7 +10,7 @@ import type { DocText } from "./docText";
 // keep this in sync by hand when a route's shape changes, there's no
 // generator wiring the two together.
 
-export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export interface ApiDocParam {
   name: string;
@@ -839,6 +839,76 @@ export const API_DOC_GROUPS: ApiDocGroup[] = [
         response: `{
   "data": { "id": "ir_8n3k2m" }
 }`,
+      },
+      {
+        method: "GET",
+        path: "/api/v1/issues/{id}/plugin-data",
+        scope: "issues:read",
+        desc: {
+          en: "What the calling plugin keeps on an issue — whatever its server wrote with PUT. Only for a plugin's token (its app's, or one acting for a person); a person's key gets 403. Entries of other plugins are never shown.",
+          de: "Was das aufrufende Plugin an einem Issue abgelegt hat — was sein Server per PUT geschrieben hat. Nur mit dem Token eines Plugins (dem seiner App oder einem, das für eine Person handelt); der Schlüssel einer Person bekommt 403. Einträge anderer Plugins sind nie dabei.",
+        },
+        pathParams: [idParam("issue")],
+        response: `{
+  "data": [
+    {
+      "key": "coverage",
+      "value": { "coverage": 87.5 },
+      "updatedAt": "2026-11-17T10:00:00.000Z"
+    }
+  ]
+}`,
+      },
+      {
+        method: "PUT",
+        path: "/api/v1/issues/{id}/plugin-data/{key}",
+        scope: "issues:read",
+        desc: {
+          en: "Write the calling plugin's entry under an issue — any JSON up to 16 KB, replaced as a whole. The key is 1–100 characters of letters, digits and `_ . : -`. Only for a plugin's token, in the plugin's project or workspace.",
+          de: "Schreibt den Eintrag des aufrufenden Plugins unter einem Issue — beliebiges JSON bis 16 KB, als Ganzes ersetzt. Der Schlüssel hat 1–100 Zeichen aus Buchstaben, Ziffern und `_ . : -`. Nur mit dem Token eines Plugins, in seinem Projekt oder Workspace.",
+        },
+        pathParams: [
+          idParam("issue"),
+          {
+            name: "key",
+            type: "string",
+            required: true,
+            desc: { en: "The entry's key.", de: "Der Schlüssel des Eintrags." },
+          },
+        ],
+        bodyParams: [
+          {
+            name: "value",
+            type: "JSON",
+            required: true,
+            desc: { en: "What to keep.", de: "Was abgelegt wird." },
+          },
+        ],
+        requestExample: `{
+  "value": { "coverage": 87.5 }
+}`,
+        response: `{
+  "data": { "key": "coverage", "value": { "coverage": 87.5 } }
+}`,
+      },
+      {
+        method: "DELETE",
+        path: "/api/v1/issues/{id}/plugin-data/{key}",
+        scope: "issues:read",
+        desc: {
+          en: "Remove the calling plugin's entry under an issue.",
+          de: "Entfernt den Eintrag des aufrufenden Plugins unter einem Issue.",
+        },
+        pathParams: [
+          idParam("issue"),
+          {
+            name: "key",
+            type: "string",
+            required: true,
+            desc: { en: "The entry's key.", de: "Der Schlüssel des Eintrags." },
+          },
+        ],
+        response: `// 204 No Content`,
       },
     ],
   },

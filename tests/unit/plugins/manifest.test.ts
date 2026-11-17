@@ -623,3 +623,59 @@ describe("a plugin's server (BARY-212)", () => {
     ).toBeGreaterThan(0);
   });
 });
+
+describe("webhooks from other services (BARY-215)", () => {
+  const hook = (handle: string) => ({
+    id: "gitlab",
+    title: "GitLab project",
+    provider: "gitlab",
+    handle,
+  });
+  const service = {
+    url: "https://ci.acme.dev/hook",
+    events: ["issue.created"],
+  };
+  const withServer = {
+    ...base,
+    capabilities: [...base.capabilities, "events:issue"],
+    network: ["ci.acme.dev"],
+    service,
+  };
+
+  it("needs webhooks:receive, and a server to forward to", () => {
+    expect(
+      errors({
+        ...withServer,
+        capabilities: [...withServer.capabilities, "webhooks:receive"],
+        contributes: { ...base.contributes, inboundHooks: [hook("forward")] },
+      }),
+    ).toEqual([]);
+    expect(
+      errors({
+        ...withServer,
+        contributes: { ...base.contributes, inboundHooks: [hook("forward")] },
+      }),
+    ).toContain(
+      "contributes.inboundHooks: needs the capability webhooks:receive",
+    );
+    expect(
+      errors({
+        ...base,
+        capabilities: [...base.capabilities, "webhooks:receive"],
+        contributes: { ...base.contributes, inboundHooks: [hook("forward")] },
+      }),
+    ).toContain(
+      "contributes.inboundHooks.0.handle: forward needs a service to forward to",
+    );
+  });
+
+  it("knows no other way to handle a call", () => {
+    expect(
+      errors({
+        ...withServer,
+        capabilities: [...withServer.capabilities, "webhooks:receive"],
+        contributes: { ...base.contributes, inboundHooks: [hook("link")] },
+      }).some((e) => e.startsWith("contributes.inboundHooks.0.handle")),
+    ).toBe(true);
+  });
+});

@@ -4,6 +4,8 @@ import {
   readSourceRecent,
   sourceRepo,
 } from "@/features/plugins/directory";
+import { openInboundSecret } from "@/features/plugins/inbound";
+import { appUrl } from "@/lib/app-url";
 import { db } from "@/lib/db";
 import {
   accessFor,
@@ -600,6 +602,26 @@ export interface PluginSettingsView {
   settingsPage: false | "page" | "section";
   /** Its own server (BARY-212), while it has one here. */
   service: PluginServiceView | null;
+  /** Webhooks other services send it through Barynt (BARY-215). */
+  inbound: PluginInboundView[];
+}
+
+/** A hook another service calls, as its settings show it (BARY-215). */
+export interface PluginInboundView {
+  hookId: string;
+  title: string;
+  provider: "gitlab" | "github" | "generic";
+  handle: "forward";
+  /** The address to give the provider. */
+  url: string;
+  /** The secret to give it — shown to whoever may manage the plugin. */
+  secret: string | null;
+  last: {
+    at: Date;
+    event: string | null;
+    status: number | null;
+    error: string | null;
+  } | null;
 }
 
 /** A plugin's server, as its settings show it (BARY-212). */
@@ -703,13 +725,23 @@ export async function getPluginSettingsView(
     activationScopeKey(scope),
   );
   const service = parsed.manifest.service;
+  const hooks = parsed.manifest.contributes.inboundHooks ?? [];
   if (
     scope.projectId
       ? !grant
       : !activation?.enabled ||
-        (settings.length === 0 && credentials.length === 0 && !service)
+        (settings.length === 0 &&
+          credentials.length === 0 &&
+          !service &&
+          hooks.length === 0)
   )
     return null;
+  const inboundRows =
+    activation?.enabled && hooks.length > 0
+      ? await db.pluginInboundHook.findMany({
+          where: { activationId: activation.id },
+        })
+      : [];
   const lastDelivery =
     service && activation
       ? await db.eventDelivery.findFirst({
@@ -735,6 +767,28 @@ export async function getPluginSettingsView(
         ...(o.color && { color: o.color }),
       })),
     })),
+    inbound: hooks.flatMap((hook) => {
+      const row = inboundRows.find((r) => r.hookId === hook.id);
+      if (!row) return [];
+      return [
+        {
+          hookId: hook.id,
+          title: hook.title,
+          provider: hook.provider,
+          handle: hook.handle,
+          url: appUrl(`/api/plugins/hooks/${row.token}`),
+          secret: openInboundSecret(row.secret),
+          last: row.lastReceivedAt
+            ? {
+                at: row.lastReceivedAt,
+                event: row.lastEvent,
+                status: row.lastStatus,
+                error: row.lastError,
+              }
+            : null,
+        },
+      ];
+    }),
     service:
       service && activation?.enabled
         ? {

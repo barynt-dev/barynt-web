@@ -8,6 +8,7 @@ import {
   readSource,
   sealSourceToken,
 } from "@/features/plugins/directory";
+import { ensureInboundHooks } from "@/features/plugins/inbound";
 import { getPluginIssueActions } from "@/features/plugins/slots";
 import { DELIVERY_SELECT } from "@/features/webhooks/deliveries";
 import type { WebhookDelivery } from "@/features/webhooks/types";
@@ -568,6 +569,10 @@ export async function activatePlugin(
   // A plugin with its own server hears that it's on — and gets the secret
   // its messages are signed with (BARY-212) and its bot's token (BARY-213). In the background: a slow
   // server doesn't hold up switching it on.
+  // Hooks other services call it through (BARY-215) — the same addresses
+  // each time it's switched on again.
+  if (manifest.contributes.inboundHooks?.length)
+    await ensureInboundHooks(activation.id, manifest);
   if (
     manifest.service &&
     (await ensureServiceIdentity(activation.id, manifest))

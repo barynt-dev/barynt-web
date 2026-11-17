@@ -120,6 +120,23 @@ export async function sendLifecycle(
   }
 }
 
+/**
+ * Queues one message for a plugin's server and tries it — a webhook
+ * another service sent it through Barynt (BARY-215). Retried and logged
+ * like any delivery. Never throws.
+ */
+export async function sendToPlugin(
+  activationId: string,
+  message: { workspaceId: string; event: string; payload: string },
+): Promise<void> {
+  try {
+    const id = await queue({ ...message, activationId });
+    await attemptDelivery(id);
+  } catch (error) {
+    console.error("[webhooks] message to a plugin failed:", error);
+  }
+}
+
 /** Hex, no `sha256=` prefix — same convention as Linear's `Linear-Signature`
  *  header, over `<timestamp>.<body>` rather than the body alone, so a
  *  captured signature can't be replayed against a different payload sent

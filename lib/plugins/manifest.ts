@@ -44,6 +44,8 @@ export const CAPABILITIES = [
   // BARY-212: a service hears about projects and people too.
   "events:project",
   "events:member",
+  // BARY-215: another service (GitLab, GitHub) may call it through Barynt.
+  "webhooks:receive",
   "ui:nav-item",
   "ui:project-view",
   "ui:dashboard-widget",
@@ -192,6 +194,17 @@ const credentialSchema = z.strictObject({
     .default("Bearer {value}"),
 });
 
+/** A webhook another service sends it through Barynt (BARY-215). */
+const inboundHookSchema = z.strictObject({
+  id: localId,
+  title,
+  /** Who calls — decides how Barynt checks the call. */
+  provider: z.enum(["gitlab", "github", "generic"]),
+  /** `forward` to the plugin's server — the only way for now; the field
+   *  stays so a later one doesn't break manifests. */
+  handle: z.literal("forward"),
+});
+
 const contributesSchema = z.strictObject({
   navItems: z.array(entry).max(5).optional(),
   projectViews: z.array(entry).max(5).optional(),
@@ -204,6 +217,7 @@ const contributesSchema = z.strictObject({
   fields: z.array(fieldSchema).max(20).optional(),
   settings: z.array(settingSchema).max(30).optional(),
   credentials: z.array(credentialSchema).max(10).optional(),
+  inboundHooks: z.array(inboundHookSchema).max(5).optional(),
   /** Draws its settings itself, in its own frame, instead of Barynt's form
    *  of `settings` (BARY-149) — or, `"section"`, below that form (BARY-204).
    *  Saving still goes through Barynt, checked against `settings`. */
@@ -226,15 +240,17 @@ const CONTRIBUTION_CAPABILITY: Record<
   issueBadges: "ui:issue-badge",
   actions: "ui:action",
   fields: "fields:write",
+  inboundHooks: "webhooks:receive",
 };
 
 /** What each kind may contribute: no code, no browser surface for services.
  *  Widget templates are data Barynt draws, so every kind may bring them. */
 const KIND_CONTRIBUTIONS: Record<PluginKind, readonly (keyof Contributes)[]> = {
   declarative: ["fields", "settings", "issueBadges", "widgetTemplates"],
-  service: ["fields", "settings", "widgetTemplates"],
+  service: ["fields", "settings", "widgetTemplates", "inboundHooks"],
   sandbox: [
     "widgetTemplates",
+    "inboundHooks",
     "credentials",
     "settingsPage",
     "navItems",
@@ -340,6 +356,14 @@ export const manifestSchema = z
           add(["service", "events", i], `needs the capability ${needed}`);
       });
     }
+
+    (m.contributes.inboundHooks ?? []).forEach((hook, i) => {
+      if (hook.handle === "forward" && !m.service)
+        add(
+          ["contributes", "inboundHooks", i, "handle"],
+          "forward needs a service to forward to",
+        );
+    });
 
     if (m.kind === "declarative" && m.network.length > 0)
       add(
