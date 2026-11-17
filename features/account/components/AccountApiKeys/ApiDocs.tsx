@@ -23,6 +23,8 @@ const METHOD_CLASS: Record<HttpMethod, string> = {
   GET: styles.methodGet,
   POST: styles.methodPost,
   PATCH: styles.methodPatch,
+  // Replaces a value — same tone as changing one.
+  PUT: styles.methodPatch,
   DELETE: styles.methodDelete,
 };
 

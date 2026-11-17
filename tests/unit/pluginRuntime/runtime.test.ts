@@ -50,6 +50,8 @@ mock.module("@/lib/permissions", () => ({
   canEnterWorkspace,
   currentUserCanEnterWorkspace,
   hasPermission,
+  // What a plugin filed under issues (BARY-216) — not what this file checks.
+  accessibleProjectIds: async () => new Set<string>(),
 }));
 const listIssuesForUser = mock();
 const listProjectsForUser = mock();

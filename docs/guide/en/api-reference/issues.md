@@ -459,3 +459,116 @@ curl -X DELETE "$BARYNT_URL/api/v1/relations/$RELATION_ID" \
   "data": { "id": "ir_8n3k2m" }
 }
 ```
+
+## `GET /api/v1/issues/{id}/plugin-data`
+
+Scope: `issues:read`
+
+What the calling plugin filed under an issue — merge requests, pipelines and commits from its `link` hooks, and what its server wrote itself. Only for a plugin's token (its app's, or one acting for a person); a person's key gets 403. Entries of other plugins are never shown.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | The issue's id. |
+
+**Example**
+
+```bash
+curl "$BARYNT_URL/api/v1/issues/$ISSUE_ID/plugin-data" \
+  -H "Authorization: Bearer $BARYNT_API_KEY"
+```
+
+**Response**
+
+```jsonc
+{
+  "data": [
+    {
+      "key": "mr:412",
+      "value": {
+        "key": "mr:412",
+        "kind": "merge_request",
+        "number": "!412",
+        "title": "Fix the login",
+        "state": "merged",
+        "url": "https://gitlab.acme.dev/web/-/merge_requests/412",
+        "branch": "ada/web-42-login",
+        "author": "Ada",
+        "at": "2026-11-17T10:00:00.000Z"
+      },
+      "updatedAt": "2026-11-17T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+## `PUT /api/v1/issues/{id}/plugin-data/{key}`
+
+Scope: `issues:read`
+
+Write the calling plugin's entry under an issue — any JSON up to 16 KB, replaced as a whole. The key is 1–100 characters of letters, digits and `_ . : -`. Only for a plugin's token, in the plugin's project or workspace.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | The issue's id. |
+| `key` | `string` | yes | The entry's key. |
+
+**Body**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `value` | `JSON` | yes | What to keep. |
+
+**Example**
+
+```bash
+curl -X PUT "$BARYNT_URL/api/v1/issues/$ISSUE_ID/plugin-data/{key}" \
+  -H "Authorization: Bearer $BARYNT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "value": { "coverage": 87.5 } }'
+```
+
+**Request**
+
+```json
+{
+  "value": { "coverage": 87.5 }
+}
+```
+
+**Response**
+
+```json
+{
+  "data": { "key": "coverage", "value": { "coverage": 87.5 } }
+}
+```
+
+## `DELETE /api/v1/issues/{id}/plugin-data/{key}`
+
+Scope: `issues:read`
+
+Remove the calling plugin's entry under an issue.
+
+**Path parameters**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | The issue's id. |
+| `key` | `string` | yes | The entry's key. |
+
+**Example**
+
+```bash
+curl -X DELETE "$BARYNT_URL/api/v1/issues/$ISSUE_ID/plugin-data/{key}" \
+  -H "Authorization: Bearer $BARYNT_API_KEY"
+```
+
+**Response**
+
+```jsonc
+// 204 No Content
+```

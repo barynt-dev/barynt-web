@@ -101,6 +101,19 @@ Returns the `Comment`.
 | `api.members.list({ projectId? })` | `members:read` | The project's members — or, for a workspace's plugin without `projectId`, the workspace's. |
 | `api.fields.list({ projectId? })` | `fields:read` | The project's custom fields. |
 
+## What it filed under issues
+
+Needs `issues:read`. `api.issueData.list(issueIds)` — what the plugin's
+`link` hooks filed (merge requests, pipelines, commits) and what its server
+wrote, by issue id, for issues the person can see in the plugin's place. Up
+to 200 ids in one call, so a board's badges need one request; only the
+plugin's own entries, never another's.
+
+```ts
+const data = await api.issueData.list([issue.id]);
+const mr = data[issue.id]?.find((e) => e.key.startsWith("mr:"));
+```
+
 ## Storage
 
 Needs `storage:own`. The plugin's own key–value store, **per place**: a

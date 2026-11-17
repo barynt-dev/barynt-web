@@ -608,6 +608,8 @@ export interface PluginSettingsView {
 
 /** A hook another service calls, as its settings show it (BARY-215). */
 export interface PluginInboundView {
+  /** Its row — what its rules are saved on. */
+  id: string;
   hookId: string;
   title: string;
   provider: "gitlab" | "github" | "generic";
@@ -616,6 +618,8 @@ export interface PluginInboundView {
   url: string;
   /** The secret to give it — shown to whoever may manage the plugin. */
   secret: string | null;
+  /** A `link` hook's rules that are on (BARY-216). */
+  rules: string[];
   last: {
     at: Date;
     event: string | null;
@@ -772,12 +776,14 @@ export async function getPluginSettingsView(
       if (!row) return [];
       return [
         {
+          id: row.id,
           hookId: hook.id,
           title: hook.title,
           provider: hook.provider,
           handle: hook.handle,
           url: appUrl(`/api/plugins/hooks/${row.token}`),
           secret: openInboundSecret(row.secret),
+          rules: row.rules,
           last: row.lastReceivedAt
             ? {
                 at: row.lastReceivedAt,

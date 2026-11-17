@@ -3,13 +3,16 @@
 // state, pipeline) and freely laid out (a deployment over two lines: groups,
 // an image drawn on a canvas, a sparkline, a person, a link). A click on the
 // merge request opens the issue at this plugin's panel, where it draws with
-// the UI kit. The data is made up from the issue's number, so the demo
-// needs no server; a real plugin would ask its host once per batch.
+// the UI kit. What GitLab reported through the plugin's `link` hook
+// (BARY-216) shows as it came — one request per batch of cards; an issue
+// nothing came for gets made-up data, so the demo still shows its rows.
 
 import {
   type Badge,
   type BadgeIssue,
   type Issue,
+  type IssueDataEntry,
+  type LinkRecord,
   Plugin,
   type RowPart,
 } from "@barynt/plugin-sdk";
@@ -153,6 +156,56 @@ function deployment(n: number): Badge {
   };
 }
 
+/** How a reported state looks. */
+const REPORTED: Record<
+  string,
+  {
+    text: string;
+    tone: NonNullable<Badge["tone"]>;
+    status: "success" | "danger" | "warning" | "pending";
+  }
+> = {
+  opened: { text: "Open", tone: "primary", status: "pending" },
+  merged: { text: "Merged", tone: "success", status: "success" },
+  closed: { text: "Closed", tone: "neutral", status: "warning" },
+  running: { text: "Running", tone: "primary", status: "pending" },
+  success: { text: "Passed", tone: "success", status: "success" },
+  failed: { text: "Failed", tone: "danger", status: "danger" },
+};
+
+/** A merge request as GitLab reported it, with its branch's pipeline. */
+function reportedRow(mr: LinkRecord, pipeline?: LinkRecord): Badge {
+  const state = REPORTED[mr.state] ?? REPORTED.opened;
+  const ci = pipeline ? (REPORTED[pipeline.state] ?? REPORTED.running) : null;
+  const parts: RowPart[] = [
+    { type: "icon", icon: "git-pull-request", tone: "success" },
+    { type: "text", text: mr.number, mono: true, tone: "subtle" },
+    { type: "text", text: state.text, tone: state.tone, strong: true },
+    { type: "spacer" },
+  ];
+  if (ci) parts.push({ type: "status", status: ci.status });
+  return {
+    badge: "review",
+    kind: "row",
+    tone: state.tone,
+    panel: "review",
+    tooltip: `${mr.title}${ci ? ` · pipeline ${ci.text.toLowerCase()}` : ""}`,
+    parts,
+  };
+}
+
+function reportedFor(entries: IssueDataEntry[]): Badge[] | null {
+  const records = entries.map((e) => e.value as unknown as LinkRecord);
+  const mr = records
+    .filter((r) => r.kind === "merge_request")
+    .sort((a, b) => b.at.localeCompare(a.at))[0];
+  if (!mr) return null;
+  const pipeline = records.find(
+    (r) => r.kind === "pipeline" && r.branch === mr.branch,
+  );
+  return [reportedRow(mr, pipeline)];
+}
+
 function rowsFor(issue: BadgeIssue): Badge[] {
   const n = seed(issue.id);
   if (n % 3 === 0) return [];
@@ -267,13 +320,19 @@ export default class CodeReview extends Plugin {
 
   onload() {
     this.registerBadges({
-      provide: (issues) =>
-        Object.fromEntries(
+      provide: async (issues) => {
+        // What GitLab reported, for all these cards at once.
+        const reported = await this.api.issueData
+          .list(issues.map((issue) => issue.id))
+          .catch(() => ({}) as Record<string, IssueDataEntry[]>);
+        return Object.fromEntries(
           issues.flatMap((issue) => {
-            const badges = rowsFor(issue);
+            const badges =
+              reportedFor(reported[issue.id] ?? []) ?? rowsFor(issue);
             return badges.length ? [[issue.id, badges]] : [];
           }),
-        ),
+        );
+      },
     });
     // A section in the issue's sidebar (BARY-209), next to its fields:
     // the branch, the merge request, the pipeline, where it all went.

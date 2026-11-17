@@ -167,6 +167,13 @@ Die Einstellungen des Plugins zeigen eine Karte **Server**: die Adresse, die Ere
 
 Ein Plugin kann Webhooks eines anderen Dienstes — GitLab, GitHub — über Barynt empfangen wollen („Webhooks anderer Dienste empfangen“). Ist es eingeschaltet, zeigen seine Einstellungen jeden solchen Webhook mit **Adresse** und **Geheimnis** und wie du sie bei GitLab oder GitHub einträgst. Barynt prüft jeden Aufruf gegen das Geheimnis und lehnt den Rest ab; die Karte zeigt, wann zuletzt etwas kam und wie es lief.
 
+Manche Plugins lassen Barynt **ablegen, was GitLab oder GitHub meldet**: Ein Merge Request, eine Pipeline oder ein Commit landet bei den Issues, die er nennt — `WEB-42` im Branch (`ada/web-42-login`), im Titel oder in der Commit-Nachricht — und das Plugin zeigt es an, auf der Karte oder im Issue. Ein solcher Webhook hat **Regeln**, die du in seiner Karte einschaltest:
+
+- **Issue auf erledigt setzen, wenn sein Merge Request gemergt wird** — auf den ersten Erledigt-Status des Workspace.
+- **Am Issue kommentieren, wenn ein Merge Request dafür geöffnet wird.**
+
+Beides tut die [App](#apps) des Plugins, die Aktivität des Issues zeigt also, wer es war.
+
 ### Apps
 
 So ein Plugin handelt auch in Barynt — schreibt einen Kommentar, verschiebt ein Issue — unter eigenem Namen, als **App**: „Demo Chat Notifications (App)“ steht überall als Urheber, wo es etwas getan hat. Eine App ist kein Mitglied, kann sich nicht anmelden, nicht zugewiesen oder erwähnt werden und verwaltet nie etwas (Rollen, Mitglieder, Einstellungen, Plugins). Sie darf nur, was die bestätigten Fähigkeiten erlauben, in den öffentlichen Projekten des Workspace — oder, in einem Projekt eingeschaltet, nur dort. **Mitglieder → Apps** listet sie: wo sie handelt, was sie darf, wann sie zuletzt aktiv war. Schaltest du das Plugin aus, hört seine App sofort auf.

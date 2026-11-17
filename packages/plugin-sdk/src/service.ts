@@ -65,6 +65,15 @@ export interface BaryntClient {
     list(issue: string): Promise<Record<string, unknown>[]>;
     create(issue: string, body: string): Promise<Record<string, unknown>>;
   };
+  /** What the plugin files under an issue (BARY-216) — shown by its own
+   *  badges and panels; its `link` hooks write here too. */
+  issueData: {
+    list(
+      issue: string,
+    ): Promise<{ key: string; value: unknown; updatedAt: string }[]>;
+    set(issue: string, key: string, value: unknown): Promise<unknown>;
+    delete(issue: string, key: string): Promise<unknown>;
+  };
 }
 
 export interface HandlerContext {
@@ -177,6 +186,15 @@ export function baryntClient(
       list: (issue) => request("GET", `/issues/${id(issue)}/comments`),
       create: (issue, body) =>
         request("POST", `/issues/${id(issue)}/comments`, { body }),
+    },
+    issueData: {
+      list: (issue) => request("GET", `/issues/${id(issue)}/plugin-data`),
+      set: (issue, key, value) =>
+        request("PUT", `/issues/${id(issue)}/plugin-data/${id(key)}`, {
+          value,
+        }),
+      delete: (issue, key) =>
+        request("DELETE", `/issues/${id(issue)}/plugin-data/${id(key)}`),
     },
   };
 }

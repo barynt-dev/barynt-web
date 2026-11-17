@@ -83,6 +83,9 @@ const SEGMENTS: string[][] = [
   // Incoming webhooks (BARY-215): mocks the delivery queue, Redis and the
   // rate limit away entirely — tests/unit/webhooks needs the real queue.
   ["tests/unit/pluginInbound"],
+  // Filing GitLab/GitHub calls under issues (BARY-216): mocks `@/lib/db`,
+  // `@/lib/permissions` and the API mutations — a process of its own.
+  ["tests/unit/pluginIssueData"],
   ["tests/unit/account"],
   // Mocks `@/lib/db`, `@/lib/permissions` and `@/lib/audit` — own process,
   // like the other action tests that replace `@/lib/permissions`.

@@ -89,3 +89,18 @@
     color: var(--on-surface-variant);
   }
 }
+
+/* A `link` hook's rules: a switch each, under a small heading. */
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.625rem;
+  border-top: 1px dashed var(--outline-variant);
+
+  h4 {
+    margin: 0.25rem 0 0;
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+}

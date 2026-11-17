@@ -452,10 +452,34 @@ model PluginInboundHook {
   lastEvent      String?
   lastStatus     Int?
   lastError      String?
+  /// Für `handle: "link"` (BARY-216): welche Regeln der Admin eingeschaltet
+  /// hat (`lib/plugins/link.ts#LINK_RULES`).
+  rules          String[]  @default([])
 
   activation PluginActivation @relation(fields: [activationId], references: [id], onDelete: Cascade)
 
   @@unique([activationId, hookId])
+}
+
+/// Was ein Plugin an einem Issue weiß (BARY-216): ein Merge Request, eine
+/// Pipeline, ein Commit — abgelegt von Barynt aus einem eingehenden Webhook
+/// (`handle: "link"`) oder vom Server des Plugins über die REST-API. Jede
+/// Aktivierung sieht nur ihre eigenen; je Issue und `key` ein Eintrag.
+model PluginIssueData {
+  id           String   @id @default(cuid())
+  activationId String
+  issueId      String
+  /// `mr:412`, `pipeline:main`, `commit:3f2a…` — oder was der Server wählt.
+  key          String
+  /// Höchstens 16 KB JSON.
+  value        Json
+  updatedAt    DateTime @updatedAt
+
+  activation PluginActivation @relation(fields: [activationId], references: [id], onDelete: Cascade)
+  issue      Issue            @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@unique([activationId, issueId, key])
+  @@index([issueId])
 }
 
 enum UserKind {
@@ -1680,6 +1704,8 @@ model Issue {
   /// Flussmetriken.
   statusEvents  IssueStatusEvent[]
 
+  pluginData PluginIssueData[]
+
   @@unique([projectId, key])
   @@index([projectId, status])
   @@index([assigneeId])
@@ -2189,6 +2215,7 @@ model PluginActivation {
   bot          User?               @relation("PluginBot", fields: [botUserId], references: [id], onDelete: SetNull)
   appTokens    ApiKey[]
   inboundHooks PluginInboundHook[]
+  issueData    PluginIssueData[]
 
   @@unique([pluginId, scopeKey])
   @@index([workspaceId])

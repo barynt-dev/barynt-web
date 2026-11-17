@@ -1,5 +1,6 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
+import { fileLink } from "@/features/plugins/issue-data";
 import { countRequest } from "@/lib/api/rateLimit";
 import { db } from "@/lib/db";
 import {
@@ -82,8 +83,10 @@ export async function receiveInbound(
           enabled: true,
           workspaceId: true,
           projectId: true,
+          botUserId: true,
         },
       },
+      rules: true,
     },
   });
   if (!hook) return answer(404, "unknown hook");
@@ -183,7 +186,17 @@ export async function receiveInbound(
       }),
     });
   }
-  // `link` — filing it under issues — comes with BARY-216.
+  // Filed under the issues it names, and the hook's rules run (BARY-216).
+  if (entry.handle === "link")
+    void fileLink(
+      activation,
+      { provider: entry.provider, rules: hook.rules },
+      event,
+      data,
+    ).catch((error) => {
+      console.error("[inbound] filing failed", error);
+      void record(500, event, "Filing it under issues failed");
+    });
   await record(202, event, null);
   return answer(202, "accepted");
 }

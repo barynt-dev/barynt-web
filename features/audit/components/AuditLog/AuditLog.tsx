@@ -346,6 +346,10 @@ export const AUDIT_ACTION_META = {
     icon: "lucide:circle-play",
     message: "pluginServiceResumed",
   },
+  "plugin.inbound.rules": {
+    icon: "lucide:git-merge",
+    message: "pluginInboundRules",
+  },
   "webhook.disabled": {
     icon: "lucide:webhook-off",
     message: "webhookDisabled",

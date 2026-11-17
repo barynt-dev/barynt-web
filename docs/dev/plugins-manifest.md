@@ -497,7 +497,22 @@ Barynt, without anyone pointing that service at the plugin's own server:
   deliveryId, headers, body }` — signed, retried and logged like any event.
   It needs `service`. The provider's secret is never passed on.
 - `handle: "link"` lets Barynt itself file what the call says under the
-  issues it names, for plugins without a server (BARY-216).
+  issues it names — no server needed:
+  - It reads GitLab's `merge_request`, `pipeline` and `push`, GitHub's
+    `pull_request`, `workflow_run`/`check_suite` and `push`; anything else
+    is taken (202) and left alone.
+  - Issue keys are found in the branch, the title, the description and
+    commit messages — `WEB-42`, also `web-42-fix-login` or `feature/WEB_42`
+    — among the projects the plugin works in (its own, or the workspace's
+    public ones).
+  - Each lands as one entry per issue (`mr:<number>`, `pipeline:<branch>`,
+    `commit:<sha>`), a later call updating its own:
+    `{ key, kind, number, title, state, url, branch, author, at }`. The
+    plugin reads them with [`api.issueData.list`](plugins-host-api.md#what-it-filed-under-issues),
+    its server over the REST API (`/api/v1/issues/{id}/plugin-data`).
+  - Rules an admin switches on per hook — set the issue done when its merge
+    request is merged, comment when one is opened — run as the plugin's
+    app, "<Plugin> (App)" — see [its server](#its-server).
 
 ## Rules Barynt checks
 
