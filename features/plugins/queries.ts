@@ -43,6 +43,8 @@ export interface PluginSummary {
   levels: string[];
   capabilities: string[];
   network: string[];
+  /** Its own server and what it hears about (BARY-212). */
+  service?: { url: string; events: string[] } | null;
   /** Screenshots, served from the installed version (BARY-199). */
   previews: { title: string; src: string }[];
 }
@@ -68,6 +70,7 @@ function summaryOf(
     levels: m.levels ?? [],
     capabilities: m.capabilities ?? [],
     network: m.network ?? [],
+    service: m.service ?? null,
     previews: rowId
       ? (m.previews ?? []).map(({ file, title }) => ({
           title,
@@ -594,6 +597,24 @@ export interface PluginSettingsView {
   /** Draws its settings itself, in its own frame (BARY-149): instead of
    *  the form, or — `"section"` — below it (BARY-204). */
   settingsPage: false | "page" | "section";
+  /** Its own server (BARY-212), while it has one here. */
+  service: PluginServiceView | null;
+}
+
+/** A plugin's server, as its settings show it (BARY-212). */
+export interface PluginServiceView {
+  activationId: string;
+  url: string;
+  events: string[];
+  /** Set while Barynt has stopped delivering after a day of failures. */
+  pausedAt: Date | null;
+  /** Since when every delivery fails. */
+  failingSince: Date | null;
+  last: {
+    at: Date;
+    status: number | null;
+    error: string | null;
+  } | null;
 }
 
 /** A credential a plugin declares, as its form shows it (BARY-147). */
@@ -680,13 +701,22 @@ export async function getPluginSettingsView(
     level,
     activationScopeKey(scope),
   );
+  const service = parsed.manifest.service;
   if (
     scope.projectId
       ? !grant
       : !activation?.enabled ||
-        (settings.length === 0 && credentials.length === 0)
+        (settings.length === 0 && credentials.length === 0 && !service)
   )
     return null;
+  const lastDelivery =
+    service && activation
+      ? await db.eventDelivery.findFirst({
+          where: { activationId: activation.id, attempts: { gt: 0 } },
+          orderBy: { updatedAt: "desc" },
+          select: { updatedAt: true, lastStatus: true, lastError: true },
+        })
+      : null;
   return {
     plugin: {
       ...summaryOf(pluginId, active.manifest, active.id),
@@ -704,6 +734,23 @@ export async function getPluginSettingsView(
         ...(o.color && { color: o.color }),
       })),
     })),
+    service:
+      service && activation?.enabled
+        ? {
+            activationId: activation.id,
+            url: service.url,
+            events: service.events,
+            pausedAt: activation.servicePausedAt,
+            failingSince: activation.serviceFailingSince,
+            last: lastDelivery
+              ? {
+                  at: lastDelivery.updatedAt,
+                  status: lastDelivery.lastStatus,
+                  error: lastDelivery.lastError,
+                }
+              : null,
+          }
+        : null,
     values: (activation?.settings?.values ?? {}) as Record<string, unknown>,
     state: activation
       ? activationState(

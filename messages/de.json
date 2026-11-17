@@ -1374,6 +1374,7 @@
     "guidePagingFields": "Nur bestimmte Felder",
     "docsWebhookDesc": "Keine Anfrage, die du stellst — ein ausgehender Push. Registriert unter Einstellungen → Webhooks, gesendet als signiertes HTTP-POST, sobald ein abonniertes Ereignis eintritt.",
     "docsSignature": "Signatur",
+    "docsEnvelope": "Hülle",
     "docsPayloadExample": "Beispiel-Payload",
     "docsScopeLabel": "Benötigt Scope",
     "docsPathParams": "Pfad-Parameter",
@@ -1434,13 +1435,52 @@
     "urlLabel": "Endpunkt-URL",
     "urlPlaceholder": "https://example.com/webhooks/barynt",
     "eventsLabel": "Ereignisse",
-    "eventIssueCreated": "Issue erstellt",
-    "eventIssueUpdated": "Issue geändert",
-    "eventIssueDeleted": "Issue gelöscht",
-    "eventCommentCreated": "Kommentar erstellt",
-    "eventViewCreated": "View angelegt",
-    "eventViewUpdated": "View geändert",
-    "eventViewDeleted": "View gelöscht",
+    "groups": {
+      "issue": "Issues",
+      "comment": "Kommentare",
+      "label": "Labels",
+      "project": "Projekte",
+      "member": "Mitglieder",
+      "view": "Ansichten"
+    },
+    "groupAll": "Alle {group}",
+    "events": {
+      "issue": {
+        "created": "Issue erstellt",
+        "updated": "Issue geändert (alles)",
+        "status_changed": "Status geändert",
+        "assigned": "Zuweisung geändert",
+        "fields_changed": "Eigenes Feld geändert",
+        "deleted": "Issue gelöscht"
+      },
+      "comment": {
+        "created": "Kommentar erstellt",
+        "updated": "Kommentar bearbeitet",
+        "deleted": "Kommentar gelöscht"
+      },
+      "label": {
+        "created": "Label erstellt",
+        "updated": "Label geändert",
+        "deleted": "Label gelöscht"
+      },
+      "project": {
+        "created": "Projekt erstellt",
+        "updated": "Projekt geändert",
+        "archived": "Projekt archiviert",
+        "unarchived": "Projekt wiederhergestellt",
+        "deleted": "Projekt gelöscht"
+      },
+      "member": {
+        "added": "Mitglied hinzugefügt",
+        "removed": "Mitglied entfernt",
+        "role_changed": "Rolle geändert"
+      },
+      "view": {
+        "created": "View erstellt",
+        "updated": "View aktualisiert",
+        "deleted": "View gelöscht"
+      }
+    },
     "create": "Webhook erstellen",
     "createdTitle": "Jetzt kopieren",
     "createdDesc": "Damit prüfst du den X-Barynt-Signature-Header bei jeder Zustellung — danach ist er nicht mehr einsehbar.",
@@ -1452,7 +1492,24 @@
     "deleteDesc": "Dieser Endpunkt erhält sofort keine Ereignisse mehr. Das lässt sich nicht rückgängig machen.",
     "deleteFailed": "Dieser Webhook konnte nicht gelöscht werden.",
     "toggleFailed": "Dieser Webhook konnte nicht aktualisiert werden.",
-    "empty": "Noch keine Webhooks."
+    "empty": "Noch keine Webhooks.",
+    "autoDisabled": "Von Barynt am {date} abgeschaltet: einen Tag lang ist jede Zustellung gescheitert. Schalte ihn wieder ein, sobald der Empfänger funktioniert.",
+    "log": {
+      "title": "Zustellungen",
+      "loading": "Wird geladen…",
+      "empty": "Noch nichts zugestellt. Das Protokoll reicht 7 Tage zurück.",
+      "delivered": "Zugestellt",
+      "sending": "Wird gesendet",
+      "retryAt": "Neuer Versuch um {time}",
+      "gaveUp": "Aufgegeben",
+      "attempts": "Versuche",
+      "duration": "Dauer",
+      "id": "Zustellungs-ID",
+      "error": "Fehler",
+      "response": "Antwort",
+      "payload": "Inhalt",
+      "resend": "Erneut senden"
+    }
   },
   "audit": {
     "desc": "Wer war da, wer hat wem Rechte gegeben, wer hat etwas gelöscht — und jeder Notfall-Zugriff.",
@@ -1541,7 +1598,10 @@
       "pluginGrantRevoked": "Plugin-Freigabe für Projekte zurückgenommen",
       "pluginActed": "Plugin hat im Namen der Person etwas geändert",
       "pluginCredentialSet": "Plugin-Zugangsdaten hinterlegt",
-      "pluginCredentialRemoved": "Plugin-Zugangsdaten entfernt"
+      "pluginCredentialRemoved": "Plugin-Zugangsdaten entfernt",
+      "webhookDisabled": "Webhook nach einem Tag fehlgeschlagener Zustellungen abgeschaltet",
+      "pluginServicePaused": "Zustellung an den Server des Plugins nach einem Tag mit Fehlern angehalten",
+      "pluginServiceResumed": "Zustellung an den Server des Plugins fortgesetzt"
     }
   },
   "dashboard": {
@@ -2437,7 +2497,9 @@
       "storage:own": "Eigene Daten speichern",
       "notify:send": "Benachrichtigungen senden",
       "events:issue": "Von Änderungen an Issues erfahren",
-      "events:comment": "Von neuen Kommentaren erfahren",
+      "events:comment": "Von Kommentaren erfahren",
+      "events:project": "Von Projektänderungen erfahren",
+      "events:member": "Erfahren, wer beitritt und geht",
       "ui:nav-item": "Einen Eintrag in der Seitenleiste hinzufügen",
       "ui:project-view": "Eine Projektansicht hinzufügen",
       "ui:dashboard-widget": "Ein Dashboard-Widget hinzufügen",
@@ -2649,6 +2711,8 @@
     "networkTitle": "Netzwerk",
     "noNetwork": "Ruft keine anderen Server auf.",
     "networkNote": "Andere Hosts sind gesperrt.",
+    "serviceTitle": "Eigener Server",
+    "serviceNote": "Dorthin schickt Barynt die abonnierten Ereignisse, signiert und nur so viel, wie die Fähigkeiten oben erlauben.",
     "capsConfirmedIn": "{count, plural, =0 {Noch nirgends bestätigt.} one {In # Aktivierung bestätigt.} other {In # Aktivierungen bestätigt.}}",
     "whereItsOn": "Wo es aktiv ist",
     "versionState": {
@@ -2816,6 +2880,21 @@
     "credentialEnter": "Wert eingeben",
     "credentialReplace": "Neuen Wert eingeben, um ihn zu ersetzen",
     "credentialRemove": "Entfernen",
-    "userPluginsTitle": "Plugins"
+    "userPluginsTitle": "Plugins",
+    "service": {
+      "title": "Server",
+      "hint": "Das Plugin läuft auch auf einem eigenen Server. Barynt schickt ihm diese Ereignisse, signiert, und versucht es erneut, wenn er nicht erreichbar ist.",
+      "url": "Adresse",
+      "events": "Ereignisse",
+      "last": "Letzte Zustellung",
+      "ok": "Empfängt",
+      "idle": "Noch nichts gesendet",
+      "failing": "Fehler seit {date}",
+      "paused": "Angehalten",
+      "pausedHint": "Barynt hat die Zustellung am {date} angehalten: einen Tag lang ist jede gescheitert. Ereignisse aus der Pause werden nicht nachgeschickt.",
+      "log": "Zustellungen",
+      "resume": "Wieder senden",
+      "resumeFailed": "Konnte nicht wieder senden. Versuch es noch einmal."
+    }
   }
 }

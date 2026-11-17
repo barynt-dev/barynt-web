@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import {
+  API_DOC_WEBHOOK_ENVELOPE,
   API_DOC_WEBHOOK_EVENTS,
   API_DOC_WEBHOOK_SIGNATURE,
 } from "./apiDocsData";
@@ -32,6 +33,10 @@ export function WebhookDocs() {
         />
         <GuideCode code={API_DOC_WEBHOOK_SIGNATURE.formula} />
         <GuideCode code={API_DOC_WEBHOOK_SIGNATURE.verify} />
+      </GuideCard>
+
+      <GuideCard title={t("apiKeys.docsEnvelope")}>
+        <GuideRows rows={API_DOC_WEBHOOK_ENVELOPE} />
       </GuideCard>
 
       <GuideCard title={t("apiKeys.guideWebhooksEvents")}>

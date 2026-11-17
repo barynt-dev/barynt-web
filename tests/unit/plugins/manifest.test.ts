@@ -548,3 +548,78 @@ describe("issue panels in the sidebar (BARY-209)", () => {
     expect(panels("footer")).not.toEqual([]);
   });
 });
+
+describe("a plugin's server (BARY-212)", () => {
+  const service = {
+    ...base,
+    id: "ci-bridge",
+    kind: "service",
+    levels: ["workspace"],
+    capabilities: ["issues:read", "events:issue", "events:member"],
+    network: ["ci.acme.dev"],
+    contributes: {},
+    service: {
+      url: "https://ci.acme.dev/barynt/events",
+      events: ["issue.status_changed", "member.added"],
+    },
+  };
+
+  it("accepts a server on a host the plugin names, over https", () => {
+    expect(errors(service)).toEqual([]);
+  });
+
+  it("lets a sandbox plugin have a server too", () => {
+    expect(
+      errors({
+        ...base,
+        capabilities: [...base.capabilities, "events:issue"],
+        network: ["ci.acme.dev"],
+        service: { url: "https://ci.acme.dev/hook", events: ["issue.created"] },
+      }),
+    ).toEqual([]);
+  });
+
+  it("refuses plain http, a host outside network and a declarative one", () => {
+    expect(
+      errors({
+        ...service,
+        service: { ...service.service, url: "http://ci.acme.dev/x" },
+      }),
+    ).toContain("service.url: a service must be reached over https");
+    expect(
+      errors({
+        ...service,
+        service: { ...service.service, url: "https://evil.example/x" },
+      }),
+    ).toContain("service.url: the host must be in network");
+    expect(
+      errors({ ...service, kind: "declarative", network: [] }).some((e) =>
+        e.startsWith("service:"),
+      ),
+    ).toBe(true);
+  });
+
+  it("allows localhost over http, for building one on one's machine", () => {
+    expect(
+      errors({
+        ...service,
+        service: { ...service.service, url: "http://localhost:4556/hook" },
+      }),
+    ).toEqual([]);
+  });
+
+  it("needs each event's capability, and no saved views", () => {
+    expect(
+      errors({
+        ...service,
+        service: { ...service.service, events: ["comment.created"] },
+      }),
+    ).toContain("service.events.0: needs the capability events:comment");
+    expect(
+      errors({
+        ...service,
+        service: { ...service.service, events: ["view.created"] },
+      }).length,
+    ).toBeGreaterThan(0);
+  });
+});

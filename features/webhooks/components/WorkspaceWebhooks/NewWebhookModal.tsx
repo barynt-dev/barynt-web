@@ -10,7 +10,7 @@ import { ModalHeader } from "@/components/ui/layout/Modal/components/ModalHeader
 import { SheetHeader } from "@/components/ui/layout/Modal/components/SheetHeader";
 import { Modal, ModalBody } from "@/components/ui/layout/Modal/Modal";
 import { useSwipeToClose } from "@/lib/utils/useSwipeToClose";
-import { WEBHOOK_EVENTS, type WebhookEvent } from "@/lib/webhooks/events";
+import { WEBHOOK_EVENT_GROUPS, type WebhookEvent } from "@/lib/webhooks/events";
 import styles from "./workspaceWebhooks.module.scss";
 
 export interface NewWebhookInput {
@@ -48,11 +48,13 @@ export function NewWebhookModal({
   const bodyRef = useRef<HTMLDivElement>(null);
   const swipe = useSwipeToClose(close, bodyRef);
 
-  const toggleEvent = (event: WebhookEvent, checked: boolean) =>
+  const toggleEvents = (list: readonly WebhookEvent[], checked: boolean) =>
     setEvents((prev) => {
       const next = new Set(prev);
-      if (checked) next.add(event);
-      else next.delete(event);
+      for (const event of list) {
+        if (checked) next.add(event);
+        else next.delete(event);
+      }
       return next;
     });
 
@@ -99,24 +101,53 @@ export function NewWebhookModal({
 
         <div className={styles.eventSection}>
           <span className={styles.fieldLabel}>{t("webhooks.eventsLabel")}</span>
-          <div className={styles.eventCards}>
-            {WEBHOOK_EVENTS.map((event) => (
-              <label
-                key={event}
-                className={styles.eventCard}
-                data-checked={events.has(event) || undefined}
-              >
-                <input
-                  type="checkbox"
-                  checked={events.has(event)}
-                  disabled={isPending}
-                  onChange={(e) => toggleEvent(event, e.target.checked)}
-                />
-                <code>{event}</code>
-                <span>{eventLabel[event]}</span>
-              </label>
-            ))}
-          </div>
+          {WEBHOOK_EVENT_GROUPS.map((group) => {
+            const title = t(`webhooks.groups.${group.key}`);
+            const chosen = group.events.filter((e) => events.has(e)).length;
+            return (
+              <fieldset key={group.key} className={styles.eventGroup}>
+                <legend className={styles.eventGroupHead}>
+                  <span>{title}</span>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={chosen === group.events.length}
+                      ref={(el) => {
+                        if (el)
+                          el.indeterminate =
+                            chosen > 0 && chosen < group.events.length;
+                      }}
+                      disabled={isPending}
+                      onChange={(e) =>
+                        toggleEvents(group.events, e.target.checked)
+                      }
+                    />
+                    {t("webhooks.groupAll", { group: title })}
+                  </label>
+                </legend>
+                <div className={styles.eventCards}>
+                  {group.events.map((event) => (
+                    <label
+                      key={event}
+                      className={styles.eventCard}
+                      data-checked={events.has(event) || undefined}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={events.has(event)}
+                        disabled={isPending}
+                        onChange={(e) =>
+                          toggleEvents([event], e.target.checked)
+                        }
+                      />
+                      <code>{event}</code>
+                      <span>{eventLabel[event]}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            );
+          })}
         </div>
 
         {error && (

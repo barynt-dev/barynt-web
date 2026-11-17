@@ -16,6 +16,7 @@ import {
 import { buildFrameDocument, frameCsp } from "@/lib/plugins/frame";
 import { type PluginManifest, validateManifest } from "@/lib/plugins/manifest";
 import { settingsSlotId, slotEntries } from "@/lib/plugins/slots";
+import { runAsPlugin } from "@/lib/webhooks/source";
 import { HANDLERS } from "./bridge-methods";
 
 // Running a sandboxed plugin (BARY-144): which plugin may run where for
@@ -213,7 +214,11 @@ export async function callBridge(
   const p = (
     params && typeof params === "object" && !Array.isArray(params) ? params : {}
   ) as Record<string, unknown>;
-  const result = await HANDLERS[method](userId, plugin, p);
+  // Whatever this changes goes out as an event "via" the plugin (BARY-210).
+  const result = await runAsPlugin(
+    { id: plugin.pluginId, name: plugin.manifest.name },
+    () => HANDLERS[method](userId, plugin, p),
+  );
 
   if (result.ok && WRITE_METHODS.includes(method)) {
     const target = result.result as { id?: unknown; ref?: unknown } | null;

@@ -22,6 +22,7 @@ import {
   requirePermission,
 } from "@/lib/permissions";
 import { PROJECT_ADMIN_ROLE_KEY, systemRoleId } from "@/lib/rbac";
+import { emitProjectEvent } from "@/lib/webhooks/resources";
 
 // ─── What platform administration is allowed to do ────────────────────────────
 //
@@ -286,6 +287,11 @@ export async function setProjectArchived(
     workspaceId: project.workspaceId,
     projectId,
   });
+  emitProjectEvent(
+    archived ? "project.archived" : "project.unarchived",
+    projectId,
+    { workspaceId: project.workspaceId, actorId },
+  );
 
   await revalidate();
   return { ok: true };

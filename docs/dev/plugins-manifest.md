@@ -57,6 +57,7 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `capabilities` | yes | What it asks for, from the list below. Ask for as little as you need — people read this list before they say yes. |
 | `network` | yes | Host names it may call through Barynt with [`net.fetch`](plugins-host-api.md#netfetch), e.g. `api.acme.example`: no scheme, port or wildcard, at most 10. `[]` for none. People see them before they switch the plugin on. |
 | `contributes` | no | What it adds, see below. |
+| `service` | no | Its own server and the events it hears about, see [Its server](#its-server). |
 | `previews` | no | Up to 6 screenshots for the store, see [Publishing](plugins-publishing.md#screenshots). |
 
 ## Capabilities
@@ -74,7 +75,10 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `fields:write` | Change custom field values | `customFields` in `issues.create`/`issues.update`; needed for `contributes.fields` |
 | `storage:own` | Keep its own data | `storage.*` |
 | `notify:send` | Send notifications | reserved, not callable yet |
-| `events:issue`, `events:comment` | Hear about changes | reserved, not callable yet |
+| `events:issue` | Hear about issue changes | `issue.*` and `label.*` in [`service.events`](#its-server) |
+| `events:comment` | Hear about comments | `comment.*` in `service.events` |
+| `events:project` | Hear about project changes | `project.*` in `service.events` |
+| `events:member` | Hear about people joining and leaving | `member.*` in `service.events` |
 | `ui:project-view` | Add a project view | `contributes.projectViews` |
 | `ui:nav-item` | Add an entry to the sidebar | `contributes.navItems` |
 | `ui:dashboard-widget` | Add a dashboard widget | `contributes.dashboardWidgets`, `contributes.widgetTemplates`, `contributes.widgetBlocks` |
@@ -380,6 +384,57 @@ A plugin can bring custom fields its issues carry:
 `CHECKBOX`, `URL`, `USER`. `SELECT` and `MULTI_SELECT` need `options`
 (`{ id, label, color? }`, up to 50), the others must not have them.
 
+## Its server
+
+A `service` plugin — or a `sandbox` plugin that also keeps something running
+in the background — names its own server, and Barynt sends it events there:
+
+```json
+{
+  "kind": "service",
+  "capabilities": ["issues:read", "events:issue", "events:member"],
+  "network": ["ci.acme.dev"],
+  "service": {
+    "url": "https://ci.acme.dev/barynt/events",
+    "events": ["issue.status_changed", "member.added"]
+  }
+}
+```
+
+- `url` is `https`, its host in `network`. Only `http://localhost` or
+  `http://127.0.0.1` may be plain — for building on your own machine; Barynt
+  reaches it only in development (`PLUGIN_DEV_BASE`).
+- `events` are the [webhook events](../guide/en/api-reference/webhook-events.md)
+  except `view.*`; each needs its capability (`issue.*` and `label.*` →
+  `events:issue`, `comment.*` → `events:comment`, `project.*` →
+  `events:project`, `member.*` → `events:member`).
+
+**What arrives** is a signed `POST`, the same envelope and headers as a
+workspace webhook (`X-Barynt-Event`, `X-Barynt-Delivery`, `X-Barynt-Attempt`,
+`X-Barynt-Timestamp`, `X-Barynt-Signature`), retried the same way. Each
+installation — the plugin switched on in a workspace or project — has its own
+secret:
+
+1. When it's switched on, Barynt sends **`app.installed`** with
+   `data: { installationId, pluginId, baryntUrl, secret }`. Keep the secret
+   per `installationId`; every later message is signed with it. Switched on
+   again later, the same message comes again with the same secret. Barynt
+   keeps the secret sealed; the delivery log shows `[sealed]` in its place.
+2. Then the events it subscribed to, as they happen.
+3. When it's switched off, **`app.uninstalled`** with
+   `data: { installationId, pluginId, baryntUrl }` — no secret.
+
+What a server gets of an event follows what was confirmed: without
+`issues:read` an issue is only `{ id, ref, projectId }` and has no `changes`;
+without `comments:read` a comment has no `body`. A project's installation hears
+only about its project, a workspace's never about a private project, and a
+change the plugin made itself doesn't come back to it.
+
+A server that fails for a day is **paused**, not switched off: Barynt stops
+sending, logs it, and the plugin's settings show it with **Send again**. The
+settings also show the log of deliveries. Answer with a `2xx` within ten
+seconds, and skip an `X-Barynt-Delivery` you've already handled.
+
 ## Rules Barynt checks
 
 - Each contribution needs its capability (`projectViews` → `ui:project-view`,
@@ -398,5 +453,8 @@ A plugin can bring custom fields its issues carry:
   choice fields need options, other types must not have them; only a
   `multiselect`'s default is a list.
 - `maxBaryntVersion` isn't lower than `minBaryntVersion`.
+- `service` isn't for a `declarative` plugin; its `url` is `https` on a host
+  in `network` (or local `http`), each of its `events` once and with its
+  capability.
 - The release's manifest must have the same `id`, `version`, `kind` and
   `levels` as its [directory entry](plugins-publishing.md#the-directory-entry).

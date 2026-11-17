@@ -150,15 +150,45 @@ a stumbling notification must never block an assignment, a comment or a role cha
 
 ## Webhooks
 
-`fireWebhookEvent(workspaceId, event, data)` (`lib/webhooks/deliver.ts`) is called without
-`await` after the change succeeded. It finds the enabled webhooks of the workspace that
-subscribed to the event and sends each a signed `POST`:
-`{ event, timestamp, data }`, header `X-Barynt-Signature` = hex HMAC-SHA256 over
-`<timestamp>.<body>` with the webhook's secret, and `X-Barynt-Timestamp`.
+`emitEvent(event, data, ctx)` (`lib/webhooks/emit.ts`) is called without `await` after the
+change succeeded. It wraps `data` in the envelope
+`{ event, timestamp, workspaceId, projectId, actor, via, data, changes? }` and hands it to
+`deliverEvent` (`lib/webhooks/deliver.ts`), which finds the enabled webhooks of the
+workspace that subscribed to the event and sends each a signed `POST`: header
+`X-Barynt-Signature` = hex HMAC-SHA256 over `<timestamp>.<body>` with the webhook's secret,
+`X-Barynt-Timestamp` and `X-Barynt-Event`.
 
-It is **one attempt with a ten-second timeout, no retries**. A retry needs a durable queue,
-which the app does not have, so the outcome (status or error) is stored on the webhook row
-(`lastDeliveryAt`, `lastDeliveryStatus`, `lastDeliveryError`) for the settings page. Events:
+Plugins with their own server are delivery targets too (BARY-212): `pluginTargetsFor`
+(`lib/webhooks/plugin-targets.ts`) picks the switched-on activations whose active manifest
+subscribes to the event (`service.events`) and whose confirmed capabilities cover it, keeps a
+project's plugin to its project and a workspace's out of private ones, skips the plugin the change
+came through (`via`), and trims the body to what it may read (`eventForPlugin`,
+`lib/plugins/service.ts`). Each activation signs with its own sealed secret (`serviceSecret`),
+handed over in `app.installed` when it's switched on (`sendLifecycle`); `app.uninstalled` follows
+when it's switched off. A server failing for a day is paused (`servicePausedAt`, audit
+`plugin.service.paused`), not the plugin; `resumePluginService` sends again.
+
+Every delivery is a row in `EventDelivery` first — the queue and the log in one — and is tried
+at once (`attemptDelivery`). Each attempt goes through `pinnedPost` (`lib/net/pinned-fetch.ts`):
+the host is resolved once, private and local addresses are refused unless listed in
+`WEBHOOK_INTERNAL_HOSTS`, the request goes to exactly the checked address (no DNS rebinding), and
+redirects aren't followed. Extra headers: `X-Barynt-Delivery` (the row's id, the same on every
+attempt) and `X-Barynt-Attempt`.
+
+What happens after an attempt is in `lib/webhooks/retry.ts` (pure, tested): a 2xx is delivered; a
+timeout, no connection, 5xx, 408, 409 or 429 is retried after 1 min, 5 min, 30 min, 2 h and 6 h
+(six attempts); anything else is given up. The webhook row keeps the last result
+(`lastDelivery*`) and `failingSince`; after 24 hours of nothing but failures it is turned off
+(`autoDisabledAt`), once — `updateMany` on `enabled: true` decides which process does it — with an
+audit entry `webhook.disabled` and a mail to its creator (`sendWebhookDisabledEmail`). Turning it on
+again clears both.
+
+Retries come from the worker (`lib/webhooks/worker.ts`), started by `instrumentation.ts` in the
+Node runtime: every 15 seconds it takes due rows with `UPDATE … FOR UPDATE SKIP LOCKED`
+(`claimDueDeliveries`) and tries them, so several instances share the work without sending
+anything twice. A row is held by `lockedUntil` while an attempt runs. Once an hour it deletes rows
+older than seven days. `WEBHOOK_WORKER=false` turns it off for an instance. The settings page shows
+the log per webhook (`listWebhookDeliveries`) with "Send again" (`redeliver`). Events:
 `lib/webhooks/events.ts`. Payload shapes and how to add an event: [API and MCP
 internals](api-and-mcp.md#adding-a-webhook-event). For receivers, see the user guide's
 [Webhooks](../guide/en/integrations/webhooks.md).

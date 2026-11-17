@@ -56,6 +56,11 @@ import {
 } from "@/lib/storage";
 import { generateHandle, pickUserColor } from "@/lib/user-defaults";
 import { uid } from "@/lib/utils/id";
+import {
+  emitMemberEvent,
+  emitProjectEvent,
+  eventProject,
+} from "@/lib/webhooks/resources";
 
 /**
  * `inviteUrl` is only present when inviting an unknown address: that creates
@@ -182,6 +187,10 @@ export async function createProject(data: {
     workspaceId: data.workspaceId,
     projectId: id,
   });
+  emitProjectEvent("project.created", id, {
+    workspaceId: data.workspaceId,
+    actorId: session.userId,
+  });
 
   revalidatePath("/", "layout");
   return { ok: true };
@@ -306,6 +315,10 @@ export async function updateProject(
       meta: { from: guard.visibility, to: data.visibility },
     });
   }
+  emitProjectEvent("project.updated", projectId, {
+    workspaceId: project.workspaceId,
+    actorId: guard.actorId,
+  });
 
   revalidatePath("/", "layout");
   return { ok: true };
@@ -452,6 +465,7 @@ export async function deleteProject(projectId: string): Promise<ProjectResult> {
       _count: { select: { issues: true, members: true } },
     },
   });
+  const gone = await eventProject(projectId);
 
   await db.$transaction(async (tx) => {
     await tx.issue.deleteMany({ where: { projectId } });
@@ -473,6 +487,13 @@ export async function deleteProject(projectId: string): Promise<ProjectResult> {
       members: doomed?._count.members ?? 0,
     },
   });
+  if (gone)
+    emitProjectEvent(
+      "project.deleted",
+      projectId,
+      { workspaceId: gone.workspaceId, actorId: guard.actorId },
+      gone,
+    );
 
   revalidatePath("/", "layout");
   return { ok: true };
@@ -653,6 +674,12 @@ export async function addProjectMembers(data: {
     where: { id: { in: newlyAdded } },
     select: { id: true, firstName: true, lastName: true, color: true },
   });
+  for (const userId of newlyAdded)
+    emitMemberEvent(
+      "member.added",
+      { userId, roleId: role.id, projectId: data.projectId },
+      { workspaceId: guard.workspaceId, actorId: guard.actorId },
+    );
   for (const user of addedUsers) {
     await recordAudit({
       action: "project.member.added",
@@ -691,7 +718,7 @@ export async function setProjectMemberRole(
 
   const target = await db.projectMember.findUnique({
     where: { projectId_userId: { projectId, userId } },
-    select: { role: { select: { rank: true } } },
+    select: { roleId: true, role: { select: { rank: true } } },
   });
   if (!target) return { error: "This person is not a member of the project." };
   if (target.role.rank > guard.actorRank)
@@ -737,6 +764,12 @@ export async function setProjectMemberRole(
     projectId,
     meta: { to: role.name },
   });
+  emitMemberEvent(
+    "member.role_changed",
+    { userId, roleId: role.id, projectId },
+    { workspaceId: guard.workspaceId, actorId: guard.actorId },
+    { previousRoleId: target.roleId },
+  );
 
   revalidatePath("/", "layout");
   return { ok: true };
@@ -766,6 +799,7 @@ export async function removeProjectMember(
   const target = await db.projectMember.findUnique({
     where: { projectId_userId: { projectId, userId } },
     select: {
+      roleId: true,
       role: { select: { rank: true } },
       user: { select: { firstName: true, lastName: true, color: true } },
     },
@@ -803,6 +837,11 @@ export async function removeProjectMember(
     workspaceId: guard.workspaceId,
     projectId,
   });
+  emitMemberEvent(
+    "member.removed",
+    { userId, roleId: target.roleId, projectId },
+    { workspaceId: guard.workspaceId, actorId: guard.actorId },
+  );
 
   revalidatePath("/", "layout");
   return { ok: true };
@@ -965,6 +1004,11 @@ async function inviteOneProjectMember(params: {
       projectId,
       meta: { role: role.name },
     });
+    emitMemberEvent(
+      "member.added",
+      { userId: existing.id, roleId: role.id, projectId },
+      { workspaceId: guard.workspaceId, actorId: guard.actorId },
+    );
 
     return { ok: true };
   }

@@ -15,6 +15,7 @@
 // runs for real (BARY-144): `demo-plugins/timeline.ts`, built with the
 // plugin SDK into one `main.js` when the server starts (BARY-146).
 
+import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import {
   type DirectoryEntry,
@@ -268,7 +269,31 @@ const DEMOS: Demo[] = [
         ],
       },
     },
-    versions: { "1.0.0": { capabilities: ["events:issue", "notify:send"] } },
+    versions: {
+      "1.0.0": { capabilities: ["events:issue", "notify:send"] },
+      // BARY-212: its own server, here on this demo server — what it gets
+      // is at /services/notify.
+      "1.1.0": {
+        capabilities: [
+          "issues:read",
+          "comments:read",
+          "events:issue",
+          "events:comment",
+          "events:member",
+          "notify:send",
+        ],
+        service: {
+          url: `${ORIGIN}/services/notify`,
+          events: [
+            "issue.created",
+            "issue.status_changed",
+            "issue.assigned",
+            "comment.created",
+            "member.added",
+          ],
+        },
+      },
+    },
     previews: [
       { title: "A message in the channel", screen: "chat", accent: "#3b7bd5" },
       { title: "Channel per workspace", screen: "settings", accent: "#3b7bd5" },
@@ -684,11 +709,92 @@ const directory = DEMOS.map((demo) => {
 const RELEASE = /^\/([^/]+\/[^/]+)\/(?:releases\/download\/)?([^/]+)\/([^/]+)$/;
 const GITEA_DIRECTORY = "/api/v1/repos/barynt-demo/plugins/raw/plugins.json";
 
+// ── The demo plugin's own server (BARY-212) ──────────────────────────────────
+//
+// What a plugin's server does with Barynt's messages: `app.installed` brings
+// the secret for that installation, every later message is checked against
+// it (`x-barynt-signature` over `<timestamp>.<body>`, at most 5 minutes old)
+// and skipped when its delivery id was seen. GET shows what arrived.
+
+const installations = new Map<string, string>();
+const seen = new Set<string>();
+const received: {
+  at: string;
+  event: string;
+  attempt: string;
+  verified: boolean;
+  summary: string;
+}[] = [];
+
+async function notifyService(req: Request): Promise<Response> {
+  if (req.method === "GET") {
+    const rows = received
+      .slice(-30)
+      .reverse()
+      .map(
+        (r) =>
+          `<tr><td>${r.at}</td><td><code>${r.event}</code></td><td>${r.attempt}</td><td>${r.verified ? "✓ signed" : "✗ not verified"}</td><td>${r.summary.replace(/</g, "&lt;")}</td></tr>`,
+      )
+      .join("");
+    return new Response(
+      `<!doctype html><meta charset="utf-8"><title>Demo Chat Notifications — server</title><style>body{font:14px system-ui;background:#0f1619;color:#dbe4e8;padding:24px}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #2b3a40;padding:8px 10px;text-align:left}th{color:#9fb0b6;font-weight:500}code{color:#6bd6e4}</style><h1>Demo Chat Notifications</h1><p>The plugin's own server: what Barynt sent it. ${installations.size} installation(s).</p><table><tr><th>When</th><th>Event</th><th>Attempt</th><th>Signature</th><th>What</th></tr>${rows}</table>`,
+      { headers: { "content-type": "text/html; charset=utf-8" } },
+    );
+  }
+  const body = await req.text();
+  const message = JSON.parse(body) as {
+    event: string;
+    timestamp: number;
+    data: Record<string, unknown> & { installationId?: string };
+    actor?: { name: string } | null;
+  };
+  const delivery = req.headers.get("x-barynt-delivery") ?? "";
+  if (message.event === "app.installed")
+    installations.set(
+      String(message.data.installationId),
+      String(message.data.secret),
+    );
+  const secret = [...installations.values()].find((s) => {
+    const ts = req.headers.get("x-barynt-timestamp") ?? "";
+    const expected = createHmac("sha256", s)
+      .update(`${ts}.${body}`)
+      .digest("hex");
+    return (
+      expected === req.headers.get("x-barynt-signature") &&
+      Math.abs(Date.now() - Number(ts)) < 5 * 60_000
+    );
+  });
+  if (!secret) return new Response("bad signature", { status: 401 });
+  if (seen.has(delivery)) return new Response(null, { status: 204 });
+  seen.add(delivery);
+  const d = message.data;
+  received.push({
+    at: new Date().toLocaleTimeString("en-GB"),
+    event: message.event,
+    attempt: req.headers.get("x-barynt-attempt") ?? "",
+    verified: true,
+    summary:
+      message.event === "app.installed"
+        ? "installed — secret kept"
+        : [
+            d.ref ?? d.handle ?? d.name ?? d.id,
+            d.title ?? d.body ?? "",
+            message.actor ? `by ${message.actor.name}` : "",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+  });
+  if (message.event === "app.uninstalled")
+    installations.delete(String(d.installationId));
+  return new Response(null, { status: 204 });
+}
+
 Bun.serve({
   port: PORT,
   fetch(req) {
     const { pathname } = new URL(req.url);
     console.log(`${req.method} ${pathname}`);
+    if (pathname === "/services/notify") return notifyService(req);
     if (pathname === "/plugins.json" || pathname === GITEA_DIRECTORY)
       return Response.json(directory);
     const m = pathname.match(RELEASE);

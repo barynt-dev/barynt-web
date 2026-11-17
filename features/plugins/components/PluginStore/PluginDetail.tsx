@@ -449,7 +449,11 @@ function Capabilities({
   // Installed: what it may do now, and on top what an update would change.
   // Not installed: what the picked version would be allowed.
   const shown = installed
-    ? { capabilities: installed.capabilities, network: installed.network }
+    ? {
+        capabilities: installed.capabilities,
+        network: installed.network,
+        service: installed.service,
+      }
     : release.status === "ready"
       ? release.preview
       : null;
