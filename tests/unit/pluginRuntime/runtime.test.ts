@@ -50,6 +50,8 @@ mock.module("@/lib/permissions", () => ({
   canEnterWorkspace,
   currentUserCanEnterWorkspace,
   hasPermission,
+  // What a plugin filed under issues (BARY-216) — not what this file checks.
+  accessibleProjectIds: async () => new Set<string>(),
 }));
 const listIssuesForUser = mock();
 const listProjectsForUser = mock();
@@ -131,6 +133,7 @@ const { callBridge, getPluginFrame, getPluginSlotView } = await import(
   "@/features/plugins/runtime"
 );
 const { parseWidgets } = await import("@/features/dashboard/widgets");
+const { currentPlugin } = await import("@/lib/webhooks/source");
 const {
   getPluginBadgeProviders,
   getPluginIssueActions,
@@ -279,9 +282,10 @@ describe("callBridge (BARY-145)", () => {
 
   it("writes as the plugin, in the person's name, and logs it", async () => {
     confirm("issues:write");
-    createIssueForUser.mockResolvedValue({
-      ok: true,
-      data: { id: "i1", ref: "WEB-1" },
+    let seenPlugin: unknown = null;
+    createIssueForUser.mockImplementation(async () => {
+      seenPlugin = currentPlugin();
+      return { ok: true, data: { id: "i1", ref: "WEB-1" } };
     });
     const res = await callBridge("u1", place, "issues.create", {
       title: "From a plugin",
@@ -291,13 +295,9 @@ describe("callBridge (BARY-145)", () => {
     expect(createIssueForUser.mock.calls[0]?.[1]).toBe("p1");
     // Shown as the person's own, like the app's: no badge.
     expect(createIssueForUser.mock.calls[0]?.[3]).toBe("APP");
-    expect(recordAudit).toHaveBeenCalledTimes(1);
-    expect(recordAudit.mock.calls[0]?.[0]).toMatchObject({
-      action: "plugin.acted",
-      actorId: "u1",
-      target: { type: "plugin", id: "timeline" },
-      meta: { method: "issues.create", ref: "WEB-1" },
-    });
+    // The write logs itself, as the person's "via" the plugin (BARY-214).
+    expect(seenPlugin).toEqual({ id: "timeline", name: expect.any(String) });
+    expect(recordAudit).not.toHaveBeenCalled();
   });
 
   it("logs nothing for a read, or a refused write", async () => {

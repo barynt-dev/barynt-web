@@ -157,6 +157,20 @@ Nimmst du die Freischaltung zurück, wird das Plugin im Workspace und in allen s
 
 Ein eingeschaltetes Plugin mit Einstellungen bekommt in den Einstellungen des Workspaces oder Projekts einen Eintrag unter **Plugins**, unterhalb der anderen Bereiche. Seine Seite enthält das Formular, das das Plugin mitbringt (ein Kanalname, was gepostet wird, …), und unten das Ausschalten an dieser Stelle.
 
+### Der Server eines Plugins
+
+Manche Plugins laufen auch auf einem Server ihres Herstellers — um in einen Chat zu posten, einen Build zu starten oder ein anderes Werkzeug abzugleichen. Der Store zeigt, wovon so ein Plugin erfährt (zum Beispiel „Von Änderungen an Issues erfahren“), und du bestätigst das wie jede andere Fähigkeit. Sobald es eingeschaltet ist, schickt Barynt dem Server des Plugins diese Ereignisse, signiert, und versucht es erneut, wenn er nicht erreichbar ist — wie bei einem [Webhook](../integrations/webhooks.md). Es erfährt nur, was seine bestätigten Fähigkeiten erlauben, nie etwas aus einem privaten Projekt, außer es wurde dort eingeschaltet, und nie von seinen eigenen Änderungen.
+
+Die Einstellungen des Plugins zeigen eine Karte **Server**: die Adresse, die Ereignisse, wie die letzte Zustellung lief, und **Zustellungen** mit dem Protokoll der letzten sieben Tage. Ist einen Tag lang jede Zustellung gescheitert, **hält** Barynt sie **an** — das Plugin bleibt an, die Pause steht in der Aktivität, und **Wieder senden** setzt sie fort. Ereignisse aus der Pause werden nicht nachgeschickt.
+
+### Webhooks anderer Dienste
+
+Ein Plugin kann Webhooks eines anderen Dienstes — GitLab, GitHub — über Barynt empfangen wollen („Webhooks anderer Dienste empfangen“). Ist es eingeschaltet, zeigen seine Einstellungen jeden solchen Webhook mit **Adresse** und **Geheimnis** und wie du sie bei GitLab oder GitHub einträgst. Barynt prüft jeden Aufruf gegen das Geheimnis und lehnt den Rest ab; die Karte zeigt, wann zuletzt etwas kam und wie es lief.
+
+### Apps
+
+So ein Plugin handelt auch in Barynt — schreibt einen Kommentar, verschiebt ein Issue — unter eigenem Namen, als **App**: „Demo Chat Notifications (App)“ steht überall als Urheber, wo es etwas getan hat. Eine App ist kein Mitglied, kann sich nicht anmelden, nicht zugewiesen oder erwähnt werden und verwaltet nie etwas (Rollen, Mitglieder, Einstellungen, Plugins). Sie darf nur, was die bestätigten Fähigkeiten erlauben, in den öffentlichen Projekten des Workspace — oder, in einem Projekt eingeschaltet, nur dort. **Mitglieder → Apps** listet sie: wo sie handelt, was sie darf, wann sie zuletzt aktiv war. Schaltest du das Plugin aus, hört seine App sofort auf.
+
 ## Eigene Plugins bauen
 
 Wie man selbst ein Plugin schreibt, steht unter [Building plugins](../../../dev/plugins.md) in der Entwickler-Doku (auf Englisch).

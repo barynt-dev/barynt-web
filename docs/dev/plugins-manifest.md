@@ -57,6 +57,7 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `capabilities` | yes | What it asks for, from the list below. Ask for as little as you need — people read this list before they say yes. |
 | `network` | yes | Host names it may call through Barynt with [`net.fetch`](plugins-host-api.md#netfetch), e.g. `api.acme.example`: no scheme, port or wildcard, at most 10. `[]` for none. People see them before they switch the plugin on. |
 | `contributes` | no | What it adds, see below. |
+| `service` | no | Its own server and the events it hears about, see [Its server](#its-server). |
 | `previews` | no | Up to 6 screenshots for the store, see [Publishing](plugins-publishing.md#screenshots). |
 
 ## Capabilities
@@ -74,7 +75,11 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `fields:write` | Change custom field values | `customFields` in `issues.create`/`issues.update`; needed for `contributes.fields` |
 | `storage:own` | Keep its own data | `storage.*` |
 | `notify:send` | Send notifications | reserved, not callable yet |
-| `events:issue`, `events:comment` | Hear about changes | reserved, not callable yet |
+| `events:issue` | Hear about issue changes | `issue.*` and `label.*` in [`service.events`](#its-server) |
+| `events:comment` | Hear about comments | `comment.*` in `service.events` |
+| `events:project` | Hear about project changes | `project.*` in `service.events` |
+| `events:member` | Hear about people joining and leaving | `member.*` in `service.events` |
+| `webhooks:receive` | Receive webhooks from other services | `contributes.inboundHooks` |
 | `ui:project-view` | Add a project view | `contributes.projectViews` |
 | `ui:nav-item` | Add an entry to the sidebar | `contributes.navItems` |
 | `ui:dashboard-widget` | Add a dashboard widget | `contributes.dashboardWidgets`, `contributes.widgetTemplates`, `contributes.widgetBlocks` |
@@ -380,6 +385,122 @@ A plugin can bring custom fields its issues carry:
 `CHECKBOX`, `URL`, `USER`. `SELECT` and `MULTI_SELECT` need `options`
 (`{ id, label, color? }`, up to 50), the others must not have them.
 
+## Its server
+
+A `service` plugin — or a `sandbox` plugin that also keeps something running
+in the background — names its own server, and Barynt sends it events there:
+
+```json
+{
+  "kind": "service",
+  "capabilities": ["issues:read", "events:issue", "events:member"],
+  "network": ["ci.acme.dev"],
+  "service": {
+    "url": "https://ci.acme.dev/barynt/events",
+    "events": ["issue.status_changed", "member.added"]
+  }
+}
+```
+
+- `url` is `https`, its host in `network`. Only `http://localhost` or
+  `http://127.0.0.1` may be plain — for building on your own machine; Barynt
+  reaches it only in development (`PLUGIN_DEV_BASE`).
+- `events` are the [webhook events](../guide/en/api-reference/webhook-events.md)
+  except `view.*`; each needs its capability (`issue.*` and `label.*` →
+  `events:issue`, `comment.*` → `events:comment`, `project.*` →
+  `events:project`, `member.*` → `events:member`).
+
+**What arrives** is a signed `POST`, the same envelope and headers as a
+workspace webhook (`X-Barynt-Event`, `X-Barynt-Delivery`, `X-Barynt-Attempt`,
+`X-Barynt-Timestamp`, `X-Barynt-Signature`), retried the same way. Each
+installation — the plugin switched on in a workspace or project — has its own
+secret:
+
+1. When it's switched on, Barynt sends **`app.installed`** with
+   `data: { installationId, pluginId, baryntUrl, secret, token, botUserId }`. Keep the secret
+   per `installationId`; every later message is signed with it. Switched on
+   again later, the same message comes again with the same secret. Barynt
+   keeps the secret sealed; the delivery log shows `[sealed]` in its place.
+2. Then the events it subscribed to, as they happen.
+3. When it's switched off, **`app.uninstalled`** with
+   `data: { installationId, pluginId, baryntUrl }` — no secret.
+
+What a server gets of an event follows what was confirmed: without
+`issues:read` an issue is only `{ id, ref, projectId }` and has no `changes`;
+without `comments:read` a comment has no `body`. A project's installation hears
+only about its project, a workspace's never about a private project, and a
+change the plugin made itself doesn't come back to it.
+
+**Acting in Barynt** (BARY-213): `token` is an app token (`bpa_…`) for the
+[REST API](../guide/en/integrations/api.md), `Authorization: Bearer <token>`.
+It acts as the plugin's bot — "<Plugin name> (App)", shown so on every comment
+or change it makes — not as a person. The bot is no member and can't sign in;
+what it may do comes from the capabilities confirmed for this installation:
+
+| Capability | The bot may |
+| --- | --- |
+| any `…:read`/`…:write` | see the projects it's switched on for |
+| `issues:write` | create, change and assign issues |
+| `fields:write` | change custom field values (by changing the issue) |
+| `comments:write` | write comments, change and delete its own |
+| `members:read` | see the workspace's members |
+
+Never anything that manages: roles, members, settings, plugins, deleting
+issues. A workspace's bot sees the workspace's public projects, never a private one;
+a project's bot only its project. Each
+time the plugin is switched on, a new token comes with `app.installed` and the
+one before stops; switched off, its token stops at once.
+
+**Acting for a person** (BARY-214): an event a person caused carries
+`acting: { token, userId, expiresAt }` — a token (`bpt_…`) to act for exactly
+that person, for 15 minutes. It can do what the person may **and** the plugin
+may (its capabilities, its workspace or project, no private projects for a
+workspace's plugin) — never more than either. What it changes shows as theirs,
+"Ada via GitLab" in the activity log. It's made fresh for each attempt and
+never stored; an event an app caused, or one with no person behind it, has
+none. Use it to read what the person sees; use the app token to act as the
+plugin itself.
+
+Every message to a server also carries `X-Barynt-Installation`: which
+installation it's for — the secret to check it with. The SDK's
+[`createService`](plugins-sdk.md#a-plugins-server) does all of this.
+
+A server that fails for a day is **paused**, not switched off: Barynt stops
+sending, logs it, and the plugin's settings show it with **Send again**. The
+settings also show the log of deliveries. Answer with a `2xx` within ten
+seconds, and skip an `X-Barynt-Delivery` you've already handled.
+
+## Webhooks from other services
+
+A plugin can take webhooks another service sends — GitLab, GitHub — through
+Barynt, without anyone pointing that service at the plugin's own server:
+
+```json
+"capabilities": ["webhooks:receive"],
+"contributes": {
+  "inboundHooks": [
+    { "id": "gitlab", "title": "GitLab project", "provider": "gitlab", "handle": "forward" }
+  ]
+}
+```
+
+- When the plugin is switched on, each hook gets an address
+  (`/api/plugins/hooks/<token>`, unguessable) and a secret. Its settings show
+  both, with how to enter them at the provider, and what came last.
+- `provider` decides how a call is checked: **GitHub** and **generic** sign
+  the body (`X-Hub-Signature-256: sha256=<HMAC-SHA256>`), **GitLab** sends the
+  secret as `X-Gitlab-Token`. Anything else is refused (401). At most 1 MB,
+  120 calls a minute per hook; a provider's retry (same `X-GitHub-Delivery` /
+  `X-Gitlab-Event-UUID`) is taken once. Barynt answers 202 at once.
+- `handle: "forward"` hands the call to the plugin's [server](#its-server), as
+  the event `inbound.<id>` with `data: { hook, provider, providerEvent,
+  deliveryId, headers, body }` — signed, retried and logged like any event.
+  It needs `service`. The provider's secret is never passed on.
+- `forward` is the only `handle` for now. What a call means — which issue
+  a merge request belongs to — is the plugin's to work out; its server keeps
+  the result on the issue (`PUT /api/v1/issues/{id}/plugin-data/{key}`) and
+  its frames show it with [`api.issueData.list`](plugins-host-api.md#what-it-keeps-on-issues).
+
 ## Rules Barynt checks
 
 - Each contribution needs its capability (`projectViews` → `ui:project-view`,
@@ -398,5 +519,8 @@ A plugin can bring custom fields its issues carry:
   choice fields need options, other types must not have them; only a
   `multiselect`'s default is a list.
 - `maxBaryntVersion` isn't lower than `minBaryntVersion`.
+- `service` isn't for a `declarative` plugin; its `url` is `https` on a host
+  in `network` (or local `http`), each of its `events` once and with its
+  capability.
 - The release's manifest must have the same `id`, `version`, `kind` and
   `levels` as its [directory entry](plugins-publishing.md#the-directory-entry).

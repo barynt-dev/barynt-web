@@ -371,6 +371,7 @@ function ReleaseDialog({
       </header>
       <CapabilityCards
         capabilities={plugin.capabilities}
+        service={plugin.service}
         network={plugin.network}
       />
       <label className={styles.confirm}>

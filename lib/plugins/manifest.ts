@@ -11,6 +11,7 @@
 import { z } from "zod";
 import { pluginTemplateSchema } from "@/features/dashboard/widgets";
 import { compareSemver, isSemver } from "./semver";
+import { eventCapability, isLocalServiceUrl, PLUGIN_EVENTS } from "./service";
 import { SETTING_TYPES } from "./settings";
 
 /** How a plugin runs. In-process code is Barynt's own and not a plugin kind. */
@@ -40,6 +41,11 @@ export const CAPABILITIES = [
   "notify:send",
   "events:issue",
   "events:comment",
+  // BARY-212: a service hears about projects and people too.
+  "events:project",
+  "events:member",
+  // BARY-215: another service (GitLab, GitHub) may call it through Barynt.
+  "webhooks:receive",
   "ui:nav-item",
   "ui:project-view",
   "ui:dashboard-widget",
@@ -188,6 +194,17 @@ const credentialSchema = z.strictObject({
     .default("Bearer {value}"),
 });
 
+/** A webhook another service sends it through Barynt (BARY-215). */
+const inboundHookSchema = z.strictObject({
+  id: localId,
+  title,
+  /** Who calls — decides how Barynt checks the call. */
+  provider: z.enum(["gitlab", "github", "generic"]),
+  /** `forward` to the plugin's server — the only way for now; the field
+   *  stays so a later one doesn't break manifests. */
+  handle: z.literal("forward"),
+});
+
 const contributesSchema = z.strictObject({
   navItems: z.array(entry).max(5).optional(),
   projectViews: z.array(entry).max(5).optional(),
@@ -200,6 +217,7 @@ const contributesSchema = z.strictObject({
   fields: z.array(fieldSchema).max(20).optional(),
   settings: z.array(settingSchema).max(30).optional(),
   credentials: z.array(credentialSchema).max(10).optional(),
+  inboundHooks: z.array(inboundHookSchema).max(5).optional(),
   /** Draws its settings itself, in its own frame, instead of Barynt's form
    *  of `settings` (BARY-149) — or, `"section"`, below that form (BARY-204).
    *  Saving still goes through Barynt, checked against `settings`. */
@@ -222,15 +240,17 @@ const CONTRIBUTION_CAPABILITY: Record<
   issueBadges: "ui:issue-badge",
   actions: "ui:action",
   fields: "fields:write",
+  inboundHooks: "webhooks:receive",
 };
 
 /** What each kind may contribute: no code, no browser surface for services.
  *  Widget templates are data Barynt draws, so every kind may bring them. */
 const KIND_CONTRIBUTIONS: Record<PluginKind, readonly (keyof Contributes)[]> = {
   declarative: ["fields", "settings", "issueBadges", "widgetTemplates"],
-  service: ["fields", "settings", "widgetTemplates"],
+  service: ["fields", "settings", "widgetTemplates", "inboundHooks"],
   sandbox: [
     "widgetTemplates",
+    "inboundHooks",
     "credentials",
     "settingsPage",
     "navItems",
@@ -269,6 +289,14 @@ export const manifestSchema = z
     capabilities: z.array(z.enum(CAPABILITIES)).max(CAPABILITIES.length),
     network: z.array(z.string().regex(HOST_RE, "expected a host name")).max(10),
     contributes: contributesSchema.default({}),
+    /** The plugin's own server and what it hears about (BARY-212): Barynt
+     *  sends each event there, signed, and retries when it's down. */
+    service: z
+      .strictObject({
+        url: z.url({ protocol: /^https?$/ }).max(300),
+        events: z.array(z.enum(PLUGIN_EVENTS)).min(1).max(PLUGIN_EVENTS.length),
+      })
+      .optional(),
     /** Screenshots for the store, in the order they're shown (BARY-199). */
     previews: z
       .array(
@@ -310,6 +338,32 @@ export const manifestSchema = z
       new Set(m.previews.map((p) => p.file)).size !== m.previews.length
     )
       add(["previews"], "preview files must be unique");
+
+    if (m.service) {
+      const url = new URL(m.service.url);
+      const local = isLocalServiceUrl(url);
+      if (m.kind === "declarative")
+        add(["service"], "a declarative plugin has no server");
+      if (url.protocol !== "https:" && !local)
+        add(["service", "url"], "a service must be reached over https");
+      if (!local && !m.network.includes(url.hostname))
+        add(["service", "url"], "the host must be in network");
+      if (new Set(m.service.events).size !== m.service.events.length)
+        add(["service", "events"], "events must be unique");
+      m.service.events.forEach((event, i) => {
+        const needed = eventCapability(event);
+        if (!m.capabilities.includes(needed))
+          add(["service", "events", i], `needs the capability ${needed}`);
+      });
+    }
+
+    (m.contributes.inboundHooks ?? []).forEach((hook, i) => {
+      if (hook.handle === "forward" && !m.service)
+        add(
+          ["contributes", "inboundHooks", i, "handle"],
+          "forward needs a service to forward to",
+        );
+    });
 
     if (m.kind === "declarative" && m.network.length > 0)
       add(

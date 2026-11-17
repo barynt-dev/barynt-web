@@ -311,6 +311,7 @@ Templates, as of today:
 | ---------------------- | --------------------------------------------- | --------------------------------------------------------------------- |
 | `invitation.ts`        | Invitation (new account)                      | `sendInvitationEmail()`, from the invite actions                      |
 | `memberRemoved.ts`     | Removed from workspace/project                | `sendMemberRemovedEmail()`, from `removeMember`/`removeProjectMember` |
+| `webhookDisabled.ts`   | Webhook turned off after a day of failures    | `sendWebhookDisabledEmail()`, from `lib/webhooks/deliver.ts`          |
 | `notification.ts`      | assigned/mentioned/comment/status/invite/role | `lib/notify` (per `*Email` column)                                    |
 | `welcome.ts`           | Registration with password                    | **not wired up yet**                                                  |
 | `emailVerification.ts` | Confirm email address                         | **not wired up yet** (no token system)                                |

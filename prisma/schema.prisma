@@ -162,6 +162,10 @@ model User {
   /// `features/projects/actions.ts`) setzen es sofort bei der Erstellung —
   /// die Einladung selbst bleibt dadurch reibungslos, ohne Zwischenschritt.
   onboardedAt   DateTime?
+  /// `APP` für den Bot eines Plugins (BARY-213): handelt über sein App-Token,
+  /// kann sich nie anmelden, ist kein Mitglied — seine Rechte kommen aus der
+  /// Aktivierung (`lib/permissions.ts`).
+  kind          UserKind  @default(PERSON)
 
   workspaces              WorkspaceMember[]
   assignedIssues          Issue[]                        @relation("IssueAssignee")
@@ -199,6 +203,7 @@ model User {
   pluginCredentials       PluginCredential[]             @relation("PluginCredentialUpdatedBy")
   pluginsInstalled        Plugin[]                       @relation("PluginInstalledBy")
   pluginActivationsMade   PluginActivation[]             @relation("PluginActivatedBy")
+  pluginBot               PluginActivation?              @relation("PluginBot")
   pluginGrantsMade        PluginGrant[]                  @relation("PluginGrantedBy")
   oauthAuthorizationCodes OAuthAuthorizationCode[]
   oauthAccessTokens       OAuthAccessToken[]
@@ -213,30 +218,34 @@ model User {
 /// RBAC-Prüfung entscheidet zusätzlich pro Ressource, genau wie bei einer
 /// Session.
 model ApiKey {
-  id         String    @id @default(cuid())
-  userId     String
+  id           String    @id @default(cuid())
+  userId       String
   /// Frei gewählt, erscheint in der Liste — "CI-Pipeline", "Zapier" usw.
-  name       String
+  name         String
   /// Die ersten ~12 Zeichen des rohen Tokens, im Klartext für die maskierte
   /// Anzeige ("bry_a1b2c3d4…") — der einzige Teil des Secrets, der nach der
   /// Erstellung je wieder sichtbar ist.
-  prefix     String
+  prefix       String
   /// SHA-256-Hex-Digest des vollen rohen Tokens. `@unique`, das ist der
   /// Lookup-Schlüssel (`lib/api-auth.ts`) — kein gehärteter Passwort-Hash, das
   /// rohe Token trägt bereits 256 Bit CSPRNG-Entropie.
-  tokenHash  String    @unique
+  tokenHash    String    @unique
   /// Granulare Scopes im Jira-Stil ("issues:read", "comments:write", …) statt
   /// eines groben READ/WRITE — die Werte sind die Schlüssel aus
   /// `lib/api/scopes.ts#API_SCOPES`, hier bewusst als freier String statt Enum,
   /// damit ein neuer Scope keine Migration braucht.
-  scopes     String[]  @default([])
-  lastUsedAt DateTime?
-  expiresAt  DateTime?
-  createdAt  DateTime  @default(now())
+  scopes       String[]  @default([])
+  lastUsedAt   DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
   /// Gesetzt heißt: nicht mehr benutzbar, unabhängig von `expiresAt`.
-  revokedAt  DateTime?
+  revokedAt    DateTime?
+  /// Gesetzt für das App-Token eines Plugins (BARY-213) — ausgegeben an
+  /// seinen Bot, beim nächsten Einschalten ersetzt.
+  activationId String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activation PluginActivation? @relation(fields: [activationId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -335,9 +344,9 @@ model OAuthRefreshToken {
 }
 
 /// Ein Webhook-Endpunkt eines Workspace — schickt eine signierte HTTP-POST-
-/// Anfrage bei bestimmten Ereignissen (`lib/webhooks/events.ts`), ausgelöst
-/// aus `features/issues/actions.ts` und `features/api-v1/mutations.ts`
-/// (`lib/webhooks/deliver.ts#fireWebhookEvent`). Anders als bei `ApiKey`:
+/// Anfrage bei bestimmten Ereignissen (`lib/webhooks/events.ts`), angekündigt
+/// über `lib/webhooks/emit.ts#emitEvent` und zugestellt über `EventDelivery`
+/// (`lib/webhooks/deliver.ts`). Anders als bei `ApiKey`:
 /// gehört dem Workspace, nicht einer einzelnen Person — Integrationen wie
 /// Slack- oder CI-Benachrichtigungen sind workspaceweite Konfiguration, kein
 /// persönliches Zugriffstoken.
@@ -356,20 +365,130 @@ model Webhook {
   createdById String
   createdAt   DateTime @default(now())
 
-  /// Ergebnis des letzten Zustellversuchs — ein Feld statt einer eigenen
-  /// Log-Tabelle, weil es (noch) keinen Retry gibt: nur der letzte Versuch
-  /// ist überhaupt relevant. `lastDeliveryStatus` ist der HTTP-Status bei
-  /// einer erhaltenen Antwort, `lastDeliveryError` der Fehlertext, wenn gar
-  /// keine Antwort zustande kam (Timeout, DNS, Verbindung abgelehnt) —
-  /// gesetzt wird immer nur genau eines von beiden.
+  /// Ergebnis des letzten Zustellversuchs, für die Liste — die einzelnen
+  /// Versuche stehen in `EventDelivery`. `lastDeliveryStatus` ist der
+  /// HTTP-Status bei einer erhaltenen Antwort, `lastDeliveryError` der
+  /// Fehlertext, wenn gar keine Antwort zustande kam (Timeout, DNS,
+  /// Verbindung abgelehnt, gesperrte Adresse) — gesetzt wird immer nur genau
+  /// eines von beiden.
   lastDeliveryAt     DateTime?
   lastDeliveryStatus Int?
   lastDeliveryError  String?
+  /// Seit wann jeder Versuch scheitert — `null`, sobald einer gelingt. Nach
+  /// 24 Stunden schaltet Barynt den Webhook ab (BARY-211).
+  failingSince       DateTime?
+  /// Wann Barynt ihn wegen Dauerfehlern abgeschaltet hat (`enabled` ist dann
+  /// false). Wieder einschalten setzt das zurück.
+  autoDisabledAt     DateTime?
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdBy User      @relation("WebhookCreatedBy", fields: [createdById], references: [id])
+  workspace  Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy  User            @relation("WebhookCreatedBy", fields: [createdById], references: [id])
+  deliveries EventDelivery[]
 
   @@index([workspaceId])
+}
+
+/// Eine Zustellung eines Ereignisses an einen Empfänger (BARY-211) — zugleich
+/// Warteschlange und Protokoll. Sie entsteht beim Ereignis, wird sofort
+/// versucht und, wenn das scheitert, vom Worker (`lib/webhooks/worker.ts`)
+/// wiederholt: Zeilen mit `PENDING` und fälligem `nextAttemptAt`, geholt mit
+/// `FOR UPDATE SKIP LOCKED`, damit mehrere Instanzen nichts doppelt senden.
+/// Nach 7 Tagen gelöscht.
+model EventDelivery {
+  id             String              @id @default(cuid())
+  workspaceId    String
+  /// Wohin: ein Webhook des Workspace oder der Dienst eines eingeschalteten
+  /// Plugins (BARY-212) — genau eines von beiden.
+  webhookId      String?
+  activationId   String?
+  event          String
+  /// Der Body, genau wie gesendet und signiert — beim Wiederholen gleich.
+  payload        String
+  status         EventDeliveryStatus @default(PENDING)
+  /// Bisherige Versuche.
+  attempts       Int                 @default(0)
+  /// Wann der nächste Versuch fällig ist; `null`, wenn keiner mehr kommt.
+  nextAttemptAt  DateTime?
+  /// Solange ein Versuch läuft — ein anderer Prozess fasst sie bis dahin
+  /// nicht an.
+  lockedUntil    DateTime?
+  /// Antwort des letzten Versuchs: HTTP-Status oder Fehlertext, dazu der
+  /// Anfang des Bodys (höchstens 2 KB) und die Dauer.
+  lastStatus     Int?
+  lastError      String?
+  lastResponse   String?
+  lastDurationMs Int?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  webhook    Webhook?          @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  activation PluginActivation? @relation(fields: [activationId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([webhookId, createdAt])
+  @@index([activationId, createdAt])
+  @@index([createdAt])
+}
+
+/// Ein Webhook, den ein anderer Dienst (GitLab, GitHub) über Barynt an ein
+/// Plugin schickt (BARY-215) — einer je Aktivierung und `inboundHooks`-Eintrag
+/// des Manifests. Die Adresse ist `/api/plugins/hooks/<token>`; geprüft wird
+/// mit `secret` (versiegelt, Zweck `plugin-inbound-hook`), wie der Anbieter
+/// es vorsieht (`lib/plugins/inbound.ts`).
+model PluginInboundHook {
+  id           String   @id @default(cuid())
+  activationId String
+  /// Die `id` im Manifest.
+  hookId       String
+  /// Teil der Adresse — zufällig, nicht zu erraten. Allein reicht es nicht:
+  /// jeder Aufruf muss auch zum Geheimnis passen.
+  token        String   @unique
+  secret       String
+  createdAt    DateTime @default(now())
+
+  /// Was zuletzt ankam: wann, welches Ereignis des Anbieters, und was
+  /// Barynt daraus machte (HTTP-Status der Antwort, Fehlertext).
+  lastReceivedAt DateTime?
+  lastEvent      String?
+  lastStatus     Int?
+  lastError      String?
+
+  activation PluginActivation @relation(fields: [activationId], references: [id], onDelete: Cascade)
+
+  @@unique([activationId, hookId])
+}
+
+/// Was ein Plugin an einem Issue ablegt (BARY-216): sein Server schreibt es
+/// über die REST-API, seine Frames lesen es — Barynt speichert nur, was es
+/// bedeutet, weiß das Plugin. Jede Aktivierung sieht nur ihre eigenen; je
+/// Issue und `key` ein Eintrag.
+model PluginIssueData {
+  id           String   @id @default(cuid())
+  activationId String
+  issueId      String
+  /// Was der Server wählt, z. B. `mr:412` oder `coverage`.
+  key          String
+  /// Höchstens 16 KB JSON.
+  value        Json
+  updatedAt    DateTime @updatedAt
+
+  activation PluginActivation @relation(fields: [activationId], references: [id], onDelete: Cascade)
+  issue      Issue            @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@unique([activationId, issueId, key])
+  @@index([issueId])
+}
+
+enum UserKind {
+  PERSON
+  APP
+}
+
+enum EventDeliveryStatus {
+  PENDING
+  SUCCEEDED
+  /// Aufgegeben: keine Wiederholung mehr (Dauerfehler oder 4xx).
+  FAILED
 }
 
 /// Was einer Person gehört und keinem Workspace: wie die Oberfläche aussieht und
@@ -1582,6 +1701,8 @@ model Issue {
   /// Flussmetriken.
   statusEvents  IssueStatusEvent[]
 
+  pluginData PluginIssueData[]
+
   @@unique([projectId, key])
   @@index([projectId, status])
   @@index([assigneeId])
@@ -1860,6 +1981,11 @@ model AuditLog {
   /// Die Begründung, die beim Notfall-Zugriff verlangt wird. Sonst leer.
   reason String?
 
+  /// Durch welches Plugin es geschah (BARY-214): seine Sandbox, sein Server
+  /// im Auftrag der Person oder sein Bot. Name eingefroren wie `actorLabel`.
+  viaPluginId    String?
+  viaPluginLabel String?
+
   /// Was sonst noch zur Tat gehört (alte und neue Rolle etwa). Bewusst formfrei:
   /// das Protokoll soll nicht bei jedem neuen Vorgang wandern müssen.
   meta Json?
@@ -2059,11 +2185,34 @@ model PluginActivation {
   activatedById String?
   activatedAt   DateTime @default(now())
 
-  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  project     Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  activatedBy User?           @relation("PluginActivatedBy", fields: [activatedById], references: [id], onDelete: SetNull)
-  settings    PluginSettings?
-  storage     PluginStorage[]
+  /// Für ein Plugin mit eigenem Dienst (BARY-212): das Geheimnis, mit dem
+  /// Barynt jede Zustellung an ihn signiert — versiegelt
+  /// (`lib/secret-box.ts`, Zweck `plugin-service`). Entsteht beim ersten
+  /// Einschalten und geht mit `app.installed` an den Dienst.
+  serviceSecret       String?
+  /// Seit wann jede Zustellung an den Dienst scheitert — `null`, sobald eine
+  /// gelingt.
+  serviceFailingSince DateTime?
+  /// Wann Barynt die Zustellung nach einem Tag mit Fehlern angehalten hat.
+  /// Das Plugin bleibt an; „Fortsetzen“ in den Einstellungen setzt das zurück.
+  servicePausedAt     DateTime?
+  /// Der Bot des Plugins hier (BARY-213): in wessen Namen sein Server handelt.
+  botUserId           String?   @unique
+  /// Das App-Token im Klartext, versiegelt (Zweck `plugin-app-token`) — damit
+  /// `app.installed` es bei jedem Versuch mitschicken kann. Geprüft wird über
+  /// den Hash in `ApiKey`.
+  serviceToken        String?
+
+  workspace    Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project      Project?            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  activatedBy  User?               @relation("PluginActivatedBy", fields: [activatedById], references: [id], onDelete: SetNull)
+  settings     PluginSettings?
+  storage      PluginStorage[]
+  deliveries   EventDelivery[]
+  bot          User?               @relation("PluginBot", fields: [botUserId], references: [id], onDelete: SetNull)
+  appTokens    ApiKey[]
+  inboundHooks PluginInboundHook[]
+  issueData    PluginIssueData[]
 
   @@unique([pluginId, scopeKey])
   @@index([workspaceId])

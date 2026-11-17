@@ -10,7 +10,7 @@ import type { DocText } from "./docText";
 // keep this in sync by hand when a route's shape changes, there's no
 // generator wiring the two together.
 
-export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export interface ApiDocParam {
   name: string;
@@ -839,6 +839,76 @@ export const API_DOC_GROUPS: ApiDocGroup[] = [
         response: `{
   "data": { "id": "ir_8n3k2m" }
 }`,
+      },
+      {
+        method: "GET",
+        path: "/api/v1/issues/{id}/plugin-data",
+        scope: "issues:read",
+        desc: {
+          en: "What the calling plugin keeps on an issue — whatever its server wrote with PUT. Only for a plugin's token (its app's, or one acting for a person); a person's key gets 403. Entries of other plugins are never shown.",
+          de: "Was das aufrufende Plugin an einem Issue abgelegt hat — was sein Server per PUT geschrieben hat. Nur mit dem Token eines Plugins (dem seiner App oder einem, das für eine Person handelt); der Schlüssel einer Person bekommt 403. Einträge anderer Plugins sind nie dabei.",
+        },
+        pathParams: [idParam("issue")],
+        response: `{
+  "data": [
+    {
+      "key": "coverage",
+      "value": { "coverage": 87.5 },
+      "updatedAt": "2026-11-17T10:00:00.000Z"
+    }
+  ]
+}`,
+      },
+      {
+        method: "PUT",
+        path: "/api/v1/issues/{id}/plugin-data/{key}",
+        scope: "issues:read",
+        desc: {
+          en: "Write the calling plugin's entry under an issue — any JSON up to 16 KB, replaced as a whole. The key is 1–100 characters of letters, digits and `_ . : -`. Only for a plugin's token, in the plugin's project or workspace.",
+          de: "Schreibt den Eintrag des aufrufenden Plugins unter einem Issue — beliebiges JSON bis 16 KB, als Ganzes ersetzt. Der Schlüssel hat 1–100 Zeichen aus Buchstaben, Ziffern und `_ . : -`. Nur mit dem Token eines Plugins, in seinem Projekt oder Workspace.",
+        },
+        pathParams: [
+          idParam("issue"),
+          {
+            name: "key",
+            type: "string",
+            required: true,
+            desc: { en: "The entry's key.", de: "Der Schlüssel des Eintrags." },
+          },
+        ],
+        bodyParams: [
+          {
+            name: "value",
+            type: "JSON",
+            required: true,
+            desc: { en: "What to keep.", de: "Was abgelegt wird." },
+          },
+        ],
+        requestExample: `{
+  "value": { "coverage": 87.5 }
+}`,
+        response: `{
+  "data": { "key": "coverage", "value": { "coverage": 87.5 } }
+}`,
+      },
+      {
+        method: "DELETE",
+        path: "/api/v1/issues/{id}/plugin-data/{key}",
+        scope: "issues:read",
+        desc: {
+          en: "Remove the calling plugin's entry under an issue.",
+          de: "Entfernt den Eintrag des aufrufenden Plugins unter einem Issue.",
+        },
+        pathParams: [
+          idParam("issue"),
+          {
+            name: "key",
+            type: "string",
+            required: true,
+            desc: { en: "The entry's key.", de: "Der Schlüssel des Eintrags." },
+          },
+        ],
+        response: `// 204 No Content`,
       },
     ],
   },
@@ -1770,64 +1840,225 @@ export interface ApiDocWebhookEvent {
   payload: string;
 }
 
+/** What every message carries around its `data` (BARY-210). */
+export const API_DOC_WEBHOOK_ENVELOPE: { name: string; desc: DocText }[] = [
+  {
+    name: "event",
+    desc: { en: "The event's name.", de: "Der Name des Ereignisses." },
+  },
+  {
+    name: "timestamp",
+    desc: {
+      en: "When it was sent, Unix milliseconds.",
+      de: "Wann sie gesendet wurde, Unix-Millisekunden.",
+    },
+  },
+  {
+    name: "workspaceId",
+    desc: { en: "Where it happened.", de: "Wo es passiert ist." },
+  },
+  {
+    name: "projectId",
+    desc: {
+      en: "The project, or null for something workspace-wide (a workspace label, a workspace member).",
+      de: "Das Projekt, oder null für etwas Workspace-weites (ein Workspace-Label, ein Workspace-Mitglied).",
+    },
+  },
+  {
+    name: "actor",
+    desc: {
+      en: "Who did it — { id, name }, or null when nobody did (someone joined by their email domain).",
+      de: "Wer es getan hat — { id, name }, oder null, wenn niemand (jemand ist über die E-Mail-Domain beigetreten).",
+    },
+  },
+  {
+    name: "via",
+    desc: {
+      en: "{ plugin: { id, name } } when the change came through a plugin, else null.",
+      de: "{ plugin: { id, name } }, wenn die Änderung über ein Plugin kam, sonst null.",
+    },
+  },
+  {
+    name: "data",
+    desc: {
+      en: "The resource, in the same shape the REST API returns it.",
+      de: "Die Ressource, in derselben Form wie in der REST-API.",
+    },
+  },
+  {
+    name: "changes",
+    desc: {
+      en: 'Only on updates: what changed, { field: { from, to } }. A custom field is "customFields.<key>".',
+      de: 'Nur bei Änderungen: was sich geändert hat, { feld: { from, to } }. Ein eigenes Feld heißt "customFields.<key>".',
+    },
+  },
+];
+
+const EXAMPLE_ACTOR = { id: "u_1a2b3c", name: "Alex Kim" };
+
+/** An example message, the way `lib/webhooks/emit.ts` builds it. */
+function example(
+  event: string,
+  data: unknown,
+  extra: { projectId?: string | null; changes?: unknown; via?: unknown } = {},
+): string {
+  return JSON.stringify(
+    {
+      event,
+      timestamp: 1772870400000,
+      workspaceId: "ws_1a2b3c",
+      projectId:
+        extra.projectId === undefined ? "proj_9f8e7d" : extra.projectId,
+      actor: EXAMPLE_ACTOR,
+      via: extra.via ?? null,
+      data,
+      ...(extra.changes !== undefined && { changes: extra.changes }),
+    },
+    null,
+    2,
+  );
+}
+
+const EXAMPLE_ISSUE = {
+  id: "i_4k2n1x",
+  ref: "WEB-42",
+  title: "Fix broken checkout flow",
+  status: "done",
+  statusCategory: "completed",
+  priority: 2,
+  type: "bug",
+  labels: [{ id: "l_9f2a1b", name: "frontend" }],
+  assignee: { id: "u_7h3j2k", name: "Priya Shah" },
+  reporter: EXAMPLE_ACTOR,
+  project: { id: "proj_9f8e7d", name: "Website Relaunch" },
+  description: "Checkout fails on Safari when …",
+  created: "2026-03-01T09:12:00.000Z",
+  updated: "2026-03-05T11:02:00.000Z",
+  closedAt: "2026-03-05T11:02:00.000Z",
+  dueDate: null,
+  storyPoints: 3,
+  customFields: { branch: "priya/web-42-checkout" },
+};
+
+const EXAMPLE_COMMENT = {
+  id: "c_5m9p3q",
+  issueId: "i_4k2n1x",
+  author: EXAMPLE_ACTOR,
+  parentId: null,
+  body: "Confirmed on Safari 17.",
+  created: "2026-03-02T10:05:00.000Z",
+  updated: null,
+};
+
+const EXAMPLE_LABEL = {
+  id: "l_9f2a1b",
+  name: "frontend",
+  slug: "frontend",
+  color: "#3b7bd5",
+  projectId: null,
+};
+
+const EXAMPLE_PROJECT = {
+  id: "proj_9f8e7d",
+  name: "Website Relaunch",
+  slug: "website-relaunch",
+  prefix: "WEB",
+  color: "#5ab98a",
+  visibility: "public",
+  archived: false,
+};
+
+const EXAMPLE_MEMBER = {
+  id: "u_7h3j2k",
+  name: "Priya Shah",
+  handle: "priya",
+  role: "member",
+  projectId: null,
+};
+
+const EXAMPLE_VIEW = {
+  id: "v_3c9d1e",
+  name: "Urgent bugs",
+  slug: "urgent-bugs",
+  workspaceId: "ws_1a2b3c",
+  projectId: "proj_9f8e7d",
+  ownerId: "u_7h3j2k",
+  visibility: "PROJECT",
+  layout: "list",
+  filter: {
+    op: "and",
+    rules: [{ field: "priority", is: "gte", value: 3 }],
+  },
+  groupBy: "status",
+  sortBy: "priority",
+  sortDir: "desc",
+  updatedAt: "2026-10-12T14:20:00.000Z",
+};
+
 export const API_DOC_WEBHOOK_EVENTS: ApiDocWebhookEvent[] = [
   {
     event: "issue.created",
     desc: {
-      en: "An issue was created, via the app or this API.",
-      de: "Ein Issue wurde angelegt, in der App oder über diese API.",
+      en: "An issue was created — in the app, through this API, MCP or a plugin.",
+      de: "Ein Issue wurde angelegt — in der App, über diese API, MCP oder ein Plugin.",
     },
-    payload: `{
-  "event": "issue.created",
-  "timestamp": 1772870400000,
-  "data": {
-    "id": "i_4k2n1x",
-    "ref": "WEB-42",
-    "title": "Fix broken checkout flow",
-    "status": "backlog",
-    "priority": 2,
-    "type": "feature",
-    "labels": [
-      { "id": "l_9f2a1b", "name": "frontend" }
-    ],
-    "assignee": null,
-    "reporter": { "id": "u_1a2b3c", "name": "Alex Kim" },
-    "project": { "id": "proj_9f8e7d", "name": "Website Relaunch" },
-    "description": "Checkout fails on Safari when …",
-    "created": "2026-03-04T15:40:00.000Z",
-    "updated": "2026-03-04T15:40:00.000Z",
-    "closedAt": null
-  }
-}`,
+    payload: example("issue.created", {
+      ...EXAMPLE_ISSUE,
+      status: "backlog",
+      statusCategory: "backlog",
+      closedAt: null,
+    }),
   },
   {
     event: "issue.updated",
     desc: {
-      en: "An issue changed — the full current issue, not a diff of just what changed.",
-      de: "Ein Issue hat sich geändert — das vollständige aktuelle Issue, kein Diff der Änderungen.",
+      en: "Anything on an issue changed — the full current issue, and in changes what changed from what to what.",
+      de: "Irgendetwas an einem Issue hat sich geändert — das vollständige aktuelle Issue und in changes, was sich wovon worauf geändert hat.",
     },
-    payload: `{
-  "event": "issue.updated",
-  "timestamp": 1772870400000,
-  "data": {
-    "id": "i_4k2n1x",
-    "ref": "WEB-42",
-    "title": "Fix broken checkout flow",
-    "status": "done",
-    "priority": 2,
-    "type": "bug",
-    "labels": [
-      { "id": "l_9f2a1b", "name": "frontend" }
-    ],
-    "assignee": { "id": "u_7h3j2k", "name": "Priya Shah" },
-    "reporter": { "id": "u_1a2b3c", "name": "Alex Kim" },
-    "project": { "id": "proj_9f8e7d", "name": "Website Relaunch" },
-    "description": "Checkout fails on Safari when …",
-    "created": "2026-03-01T09:12:00.000Z",
-    "updated": "2026-03-05T11:02:00.000Z",
-    "closedAt": "2026-03-05T11:02:00.000Z"
-  }
-}`,
+    payload: example("issue.updated", EXAMPLE_ISSUE, {
+      changes: {
+        status: { from: "in-progress", to: "done" },
+        statusCategory: { from: "started", to: "completed" },
+        storyPoints: { from: 2, to: 3 },
+      },
+    }),
+  },
+  {
+    event: "issue.status_changed",
+    desc: {
+      en: "The status changed — also sent as issue.updated; changes holds only status and statusCategory.",
+      de: "Der Status hat sich geändert — kommt auch als issue.updated; changes enthält nur status und statusCategory.",
+    },
+    payload: example("issue.status_changed", EXAMPLE_ISSUE, {
+      changes: {
+        status: { from: "in-progress", to: "done" },
+        statusCategory: { from: "started", to: "completed" },
+      },
+    }),
+  },
+  {
+    event: "issue.assigned",
+    desc: {
+      en: "Someone else (or nobody) is assigned now — also sent as issue.updated.",
+      de: "Jemand anderes (oder niemand) ist jetzt zugewiesen — kommt auch als issue.updated.",
+    },
+    payload: example("issue.assigned", EXAMPLE_ISSUE, {
+      changes: {
+        assignee: { from: null, to: { id: "u_7h3j2k", name: "Priya Shah" } },
+      },
+    }),
+  },
+  {
+    event: "issue.fields_changed",
+    desc: {
+      en: "One or more custom fields changed — also sent as issue.updated.",
+      de: "Ein oder mehrere eigene Felder haben sich geändert — kommt auch als issue.updated.",
+    },
+    payload: example("issue.fields_changed", EXAMPLE_ISSUE, {
+      changes: {
+        "customFields.branch": { from: null, to: "priya/web-42-checkout" },
+      },
+    }),
   },
   {
     event: "issue.deleted",
@@ -1835,36 +2066,142 @@ export const API_DOC_WEBHOOK_EVENTS: ApiDocWebhookEvent[] = [
       en: "An issue was deleted — a minimal snapshot, not the full shape, since the issue no longer exists to look up.",
       de: "Ein Issue wurde gelöscht — eine knappe Momentaufnahme statt des vollen Objekts, weil das Issue nicht mehr existiert.",
     },
-    payload: `{
-  "event": "issue.deleted",
-  "timestamp": 1772870400000,
-  "data": {
-    "id": "i_4k2n1x",
-    "ref": "WEB-42",
-    "projectId": "proj_9f8e7d",
-    "title": "Fix broken checkout flow"
-  }
-}`,
+    payload: example("issue.deleted", {
+      id: "i_4k2n1x",
+      ref: "WEB-42",
+      projectId: "proj_9f8e7d",
+      title: "Fix broken checkout flow",
+    }),
   },
   {
     event: "comment.created",
     desc: {
-      en: "A comment was added to an issue, via the app or this API.",
-      de: "Ein Kommentar wurde zu einem Issue hinzugefügt, in der App oder über diese API.",
+      en: "A comment was added to an issue.",
+      de: "Ein Kommentar wurde zu einem Issue hinzugefügt.",
     },
-    payload: `{
-  "event": "comment.created",
-  "timestamp": 1772870400000,
-  "data": {
-    "id": "c_5m9p3q",
-    "issueId": "i_4k2n1x",
-    "author": { "id": "u_1a2b3c", "name": "Alex Kim" },
-    "parentId": null,
-    "body": "Confirmed on Safari 17.",
-    "created": "2026-03-02T10:05:00.000Z",
-    "updated": null
-  }
-}`,
+    payload: example("comment.created", EXAMPLE_COMMENT),
+  },
+  {
+    event: "comment.updated",
+    desc: {
+      en: "A comment was edited — the comment as it is now.",
+      de: "Ein Kommentar wurde bearbeitet — der Kommentar, wie er jetzt ist.",
+    },
+    payload: example("comment.updated", {
+      ...EXAMPLE_COMMENT,
+      body: "Confirmed on Safari 17 and 18.",
+      updated: "2026-03-02T10:09:00.000Z",
+    }),
+  },
+  {
+    event: "comment.deleted",
+    desc: {
+      en: "A comment was deleted — its id and issue.",
+      de: "Ein Kommentar wurde gelöscht — seine Id und sein Issue.",
+    },
+    payload: example("comment.deleted", {
+      id: "c_5m9p3q",
+      issueId: "i_4k2n1x",
+    }),
+  },
+  {
+    event: "label.created",
+    desc: {
+      en: "A label was created. projectId is null for a workspace label.",
+      de: "Ein Label wurde angelegt. projectId ist null bei einem Workspace-Label.",
+    },
+    payload: example("label.created", EXAMPLE_LABEL, { projectId: null }),
+  },
+  {
+    event: "label.updated",
+    desc: {
+      en: "A label's name or color changed.",
+      de: "Name oder Farbe eines Labels haben sich geändert.",
+    },
+    payload: example(
+      "label.updated",
+      { ...EXAMPLE_LABEL, color: "#d5713b" },
+      { projectId: null },
+    ),
+  },
+  {
+    event: "label.deleted",
+    desc: {
+      en: "A label was deleted — it's gone from every issue too.",
+      de: "Ein Label wurde gelöscht — es ist auch von allen Issues verschwunden.",
+    },
+    payload: example("label.deleted", EXAMPLE_LABEL, { projectId: null }),
+  },
+  {
+    event: "project.created",
+    desc: { en: "A project was created.", de: "Ein Projekt wurde angelegt." },
+    payload: example("project.created", EXAMPLE_PROJECT),
+  },
+  {
+    event: "project.updated",
+    desc: {
+      en: "A project's name, identifier, color or visibility changed.",
+      de: "Name, Kürzel, Farbe oder Sichtbarkeit eines Projekts haben sich geändert.",
+    },
+    payload: example("project.updated", {
+      ...EXAMPLE_PROJECT,
+      visibility: "private",
+    }),
+  },
+  {
+    event: "project.archived",
+    desc: {
+      en: "A project was archived.",
+      de: "Ein Projekt wurde archiviert.",
+    },
+    payload: example("project.archived", {
+      ...EXAMPLE_PROJECT,
+      archived: true,
+    }),
+  },
+  {
+    event: "project.unarchived",
+    desc: {
+      en: "An archived project was restored.",
+      de: "Ein archiviertes Projekt wurde wiederhergestellt.",
+    },
+    payload: example("project.unarchived", EXAMPLE_PROJECT),
+  },
+  {
+    event: "project.deleted",
+    desc: {
+      en: "A project was deleted, with its issues — the project as it was.",
+      de: "Ein Projekt wurde mit seinen Issues gelöscht — das Projekt, wie es war.",
+    },
+    payload: example("project.deleted", EXAMPLE_PROJECT),
+  },
+  {
+    event: "member.added",
+    desc: {
+      en: "Someone joined the workspace (projectId null) or a project. An invitation counts once it's accepted. No email address.",
+      de: "Jemand ist dem Workspace (projectId null) oder einem Projekt beigetreten. Eine Einladung zählt, sobald sie angenommen ist. Ohne E-Mail-Adresse.",
+    },
+    payload: example("member.added", EXAMPLE_MEMBER, { projectId: null }),
+  },
+  {
+    event: "member.removed",
+    desc: {
+      en: "Someone was removed from the workspace or a project — with the role they had.",
+      de: "Jemand wurde aus dem Workspace oder einem Projekt entfernt — mit der Rolle, die die Person hatte.",
+    },
+    payload: example("member.removed", EXAMPLE_MEMBER, { projectId: null }),
+  },
+  {
+    event: "member.role_changed",
+    desc: {
+      en: "Someone's role changed — role is the role's key, changes says from which.",
+      de: "Die Rolle von jemandem hat sich geändert — role ist der Schlüssel der Rolle, changes sagt, von welcher.",
+    },
+    payload: example(
+      "member.role_changed",
+      { ...EXAMPLE_MEMBER, role: "admin" },
+      { projectId: null, changes: { role: { from: "member", to: "admin" } } },
+    ),
   },
   {
     event: "view.created",
@@ -1872,28 +2209,7 @@ export const API_DOC_WEBHOOK_EVENTS: ApiDocWebhookEvent[] = [
       en: "A shared view (project or workspace) was saved. Private views never send events.",
       de: "Eine geteilte View (Projekt oder Workspace) wurde gespeichert. Private Views senden nie Events.",
     },
-    payload: `{
-  "event": "view.created",
-  "timestamp": 1772870400000,
-  "data": {
-    "id": "v_3c9d1e",
-    "name": "Urgent bugs",
-    "slug": "urgent-bugs",
-    "workspaceId": "ws_1a2b3c",
-    "projectId": "proj_9f8e7d",
-    "ownerId": "u_7h3j2k",
-    "visibility": "PROJECT",
-    "layout": "list",
-    "filter": {
-      "op": "and",
-      "rules": [{ "field": "priority", "is": "gte", "value": 3 }]
-    },
-    "groupBy": "status",
-    "sortBy": "priority",
-    "sortDir": "desc",
-    "updatedAt": "2026-10-12T14:20:00.000Z"
-  }
-}`,
+    payload: example("view.created", EXAMPLE_VIEW),
   },
   {
     event: "view.updated",
@@ -1901,28 +2217,10 @@ export const API_DOC_WEBHOOK_EVENTS: ApiDocWebhookEvent[] = [
       en: "A shared view changed — the full stored view. Also sent when a shared view goes private; visibility then says PRIVATE.",
       de: "Eine geteilte View hat sich geändert — die vollständige gespeicherte View. Kommt auch, wenn eine geteilte View privat wird; visibility ist dann PRIVATE.",
     },
-    payload: `{
-  "event": "view.updated",
-  "timestamp": 1772870400000,
-  "data": {
-    "id": "v_3c9d1e",
-    "name": "Urgent bugs (P1+)",
-    "slug": "urgent-bugs",
-    "workspaceId": "ws_1a2b3c",
-    "projectId": "proj_9f8e7d",
-    "ownerId": "u_7h3j2k",
-    "visibility": "PROJECT",
-    "layout": "list",
-    "filter": {
-      "op": "and",
-      "rules": [{ "field": "priority", "is": "gte", "value": 3 }]
-    },
-    "groupBy": "status",
-    "sortBy": "priority",
-    "sortDir": "desc",
-    "updatedAt": "2026-10-12T14:20:00.000Z"
-  }
-}`,
+    payload: example("view.updated", {
+      ...EXAMPLE_VIEW,
+      name: "Urgent bugs (P1+)",
+    }),
   },
   {
     event: "view.deleted",
@@ -1930,16 +2228,12 @@ export const API_DOC_WEBHOOK_EVENTS: ApiDocWebhookEvent[] = [
       en: "A shared view was deleted — a minimal snapshot.",
       de: "Eine geteilte View wurde gelöscht — eine knappe Momentaufnahme.",
     },
-    payload: `{
-  "event": "view.deleted",
-  "timestamp": 1772870400000,
-  "data": {
-    "id": "v_3c9d1e",
-    "name": "Urgent bugs",
-    "workspaceId": "ws_1a2b3c",
-    "projectId": "proj_9f8e7d"
-  }
-}`,
+    payload: example("view.deleted", {
+      id: "v_3c9d1e",
+      name: "Urgent bugs",
+      workspaceId: "ws_1a2b3c",
+      projectId: "proj_9f8e7d",
+    }),
   },
 ];
 
@@ -1950,6 +2244,27 @@ export const API_DOC_WEBHOOK_SIGNATURE = {
       desc: {
         en: 'Hex-encoded HMAC-SHA256, no prefix (unlike GitHub\'s "sha256=").',
         de: 'Hex-kodiertes HMAC-SHA256 ohne Präfix (anders als GitHubs "sha256=").',
+      },
+    },
+    {
+      name: "X-Barynt-Event",
+      desc: {
+        en: "The event's name, the same as event in the body — to route before parsing.",
+        de: "Der Name des Ereignisses, wie event im Body — zum Verteilen vor dem Parsen.",
+      },
+    },
+    {
+      name: "X-Barynt-Delivery",
+      desc: {
+        en: "The delivery's id — the same on every attempt of one message, so a receiver can skip one it has already handled.",
+        de: "Die Id der Zustellung — bei jedem Versuch derselben Nachricht gleich, damit ein Empfänger eine schon verarbeitete überspringen kann.",
+      },
+    },
+    {
+      name: "X-Barynt-Attempt",
+      desc: {
+        en: "Which attempt this is, from 1. Barynt retries after 1 min, 5 min, 30 min, 2 h and 6 h when there's no 2xx (not after a 4xx other than 408, 409, 429).",
+        de: "Der wievielte Versuch das ist, ab 1. Barynt wiederholt nach 1 min, 5 min, 30 min, 2 h und 6 h, wenn kein 2xx kommt (nicht nach einem 4xx außer 408, 409, 429).",
       },
     },
     {

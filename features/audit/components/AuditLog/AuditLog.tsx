@@ -337,6 +337,20 @@ export const AUDIT_ACTION_META = {
     icon: "lucide:badge-x",
     message: "pluginGrantRevoked",
   },
+  "plugin.service.paused": {
+    icon: "lucide:circle-pause",
+    message: "pluginServicePaused",
+    loud: true,
+  },
+  "plugin.service.resumed": {
+    icon: "lucide:circle-play",
+    message: "pluginServiceResumed",
+  },
+  "webhook.disabled": {
+    icon: "lucide:webhook-off",
+    message: "webhookDisabled",
+    loud: true,
+  },
 } as const satisfies Record<
   AuditAction,
   { icon: string; message: string; loud?: boolean }
@@ -753,7 +767,15 @@ export function AuditLog({
             placeholder
             placeholderLabel={row.actorLabel}
           />
-          <span className={styles.actorName}>{row.actorLabel}</span>
+          <span className={styles.actorName}>
+            {row.actorLabel}
+            {row.viaPluginLabel && (
+              <span className={styles.via}>
+                {" "}
+                {t("audit.via", { plugin: row.viaPluginLabel })}
+              </span>
+            )}
+          </span>
         </span>
       ),
     },

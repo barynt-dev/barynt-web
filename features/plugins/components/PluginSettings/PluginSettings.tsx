@@ -29,6 +29,8 @@ import {
 import { settingsSlotId } from "@/lib/plugins/slots";
 import { PluginCredentials } from "../PluginCredentials/PluginCredentials";
 import { PluginFrame } from "../PluginFrame/PluginFrame";
+import { PluginInbound } from "../PluginInbound/PluginInbound";
+import { PluginService } from "../PluginService/PluginService";
 import { CapabilityCards } from "../PluginStore/capabilities";
 import { PluginTile } from "../PluginStore/PluginTile";
 import shared from "../plugins.module.scss";
@@ -202,6 +204,7 @@ export function PluginSettings({
             {!running && <p className={styles.about}>{plugin.description}</p>}
             <CapabilityCards
               capabilities={plugin.capabilities}
+              service={plugin.service}
               network={plugin.network}
             />
             <label className={shared.confirm}>
@@ -306,9 +309,13 @@ export function PluginSettings({
             scope={scope}
           />
         )}
+        {running && view.service && <PluginService service={view.service} />}
+        {running && <PluginInbound hooks={view.inbound} />}
         {running &&
           view.fields.length === 0 &&
-          view.credentials.length === 0 && (
+          view.credentials.length === 0 &&
+          !view.service &&
+          view.inbound.length === 0 && (
             <p className={styles.empty}>{text.t("noSettings")}</p>
           )}
 

@@ -20,6 +20,7 @@ export const METHODS = [
   "projects.list",
   "members.list",
   "fields.list",
+  "issueData.list",
   "storage.get",
   "storage.set",
   "storage.delete",
@@ -93,6 +94,11 @@ export function createApi(host: Host) {
     fields: {
       list: (params: Methods["fields.list"][0] = {}) =>
         call("fields.list", params),
+    },
+    issueData: {
+      /** What its server keeps on these issues, by issue id — one call
+       *  for a whole board. */
+      list: (issueIds: string[]) => call("issueData.list", { issueIds }),
     },
     storage: {
       get: <T extends Json = Json>(key: string) =>

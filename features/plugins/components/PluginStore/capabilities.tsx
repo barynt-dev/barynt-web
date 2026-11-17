@@ -12,6 +12,8 @@ import styles from "./pluginStore.module.scss";
 export interface Permissions {
   capabilities: string[];
   network: string[];
+  /** Its own server, where Barynt sends events (BARY-212). */
+  service?: { url: string; events: string[] } | null;
 }
 
 /** Capabilities by what they touch. */
@@ -19,7 +21,7 @@ const GROUPS: { id: string; icon: string; test: (cap: string) => boolean }[] = [
   {
     id: "data",
     icon: "lucide:database",
-    test: (c) => !/^(ui|events|notify):/.test(c),
+    test: (c) => !/^(ui|events|notify|webhooks):/.test(c),
   },
   {
     id: "ui",
@@ -29,12 +31,16 @@ const GROUPS: { id: string; icon: string; test: (cap: string) => boolean }[] = [
   {
     id: "events",
     icon: "lucide:activity",
-    test: (c) => /^(events|notify):/.test(c),
+    test: (c) => /^(events|notify|webhooks):/.test(c),
   },
 ];
 
 /** A version's capabilities as cards by group, then its network. */
-export function CapabilityCards({ capabilities, network }: Permissions) {
+export function CapabilityCards({
+  capabilities,
+  network,
+  service,
+}: Permissions) {
   const text = usePluginText();
   return (
     <div className={styles.capGrid}>
@@ -78,6 +84,25 @@ export function CapabilityCards({ capabilities, network }: Permissions) {
         )}
         <p className={styles.muted}>{text.t("networkNote")}</p>
       </section>
+      {service && (
+        <section className={styles.card} data-tone="warning">
+          <h3 className={styles.cardTitle}>
+            <Icon icon="lucide:server" width={14} aria-hidden />
+            {text.t("serviceTitle")}
+          </h3>
+          <ul className={styles.capRows}>
+            <li className={styles.capRow}>
+              <code className={styles.host}>{service.url}</code>
+            </li>
+            {service.events.map((event) => (
+              <li key={event} className={styles.capRow}>
+                <code className={styles.host}>{event}</code>
+              </li>
+            ))}
+          </ul>
+          <p className={styles.muted}>{text.t("serviceNote")}</p>
+        </section>
+      )}
     </div>
   );
 }

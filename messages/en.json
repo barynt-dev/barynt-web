@@ -1149,7 +1149,25 @@
     "removeFailed": "That person could not be removed.",
     "roleFailed": "The role could not be changed.",
     "emptyTitle": "Nobody here yet",
-    "emptyDesc": "Invite someone by email to start working together."
+    "emptyDesc": "Invite someone by email to start working together.",
+    "tabsLabel": "People and apps",
+    "tabPeople": "People",
+    "tabApps": "Apps",
+    "appsTitle": "Apps",
+    "appsSubtitle": "The identities this workspace's plugins act as. An app can't sign in and isn't a member: what it may do comes from its plugin.",
+    "appColumn": "App",
+    "appBadge": "App",
+    "appWhere": "Where",
+    "appWholeWorkspace": "Whole workspace",
+    "appMay": "May",
+    "appCapabilities": "{count, plural, one {# capability} other {# capabilities}}",
+    "appLastUsed": "Last active",
+    "appNeverUsed": "Not yet",
+    "appOn": "On",
+    "appOff": "Off",
+    "appManage": "Manage",
+    "appsEmptyTitle": "No apps yet",
+    "appsEmptyDesc": "A plugin with its own server gets one when it's switched on."
   },
   "avatarUploader": {
     "change": "Change avatar",
@@ -1374,6 +1392,7 @@
     "guidePagingFields": "Only some fields",
     "docsWebhookDesc": "Not a request you make — an outbound push. Registered under Settings → Webhooks, sent as a signed HTTP POST whenever a subscribed event happens.",
     "docsSignature": "Signature",
+    "docsEnvelope": "Envelope",
     "docsPayloadExample": "Example payload",
     "docsScopeLabel": "Requires scope",
     "docsPathParams": "Path parameters",
@@ -1434,13 +1453,52 @@
     "urlLabel": "Endpoint URL",
     "urlPlaceholder": "https://example.com/webhooks/barynt",
     "eventsLabel": "Events",
-    "eventIssueCreated": "Issue created",
-    "eventIssueUpdated": "Issue updated",
-    "eventIssueDeleted": "Issue deleted",
-    "eventCommentCreated": "Comment created",
-    "eventViewCreated": "View created",
-    "eventViewUpdated": "View updated",
-    "eventViewDeleted": "View deleted",
+    "groups": {
+      "issue": "Issues",
+      "comment": "Comments",
+      "label": "Labels",
+      "project": "Projects",
+      "member": "Members",
+      "view": "Views"
+    },
+    "groupAll": "All {group}",
+    "events": {
+      "issue": {
+        "created": "Issue created",
+        "updated": "Issue changed (anything)",
+        "status_changed": "Status changed",
+        "assigned": "Assignee changed",
+        "fields_changed": "Custom field changed",
+        "deleted": "Issue deleted"
+      },
+      "comment": {
+        "created": "Comment created",
+        "updated": "Comment edited",
+        "deleted": "Comment deleted"
+      },
+      "label": {
+        "created": "Label created",
+        "updated": "Label changed",
+        "deleted": "Label deleted"
+      },
+      "project": {
+        "created": "Project created",
+        "updated": "Project changed",
+        "archived": "Project archived",
+        "unarchived": "Project restored",
+        "deleted": "Project deleted"
+      },
+      "member": {
+        "added": "Member added",
+        "removed": "Member removed",
+        "role_changed": "Role changed"
+      },
+      "view": {
+        "created": "View created",
+        "updated": "View updated",
+        "deleted": "View deleted"
+      }
+    },
     "create": "Create webhook",
     "createdTitle": "Copy your webhook secret now",
     "createdDesc": "Use it to verify the X-Barynt-Signature header on every delivery — this is the only time it's shown.",
@@ -1452,7 +1510,24 @@
     "deleteDesc": "This endpoint stops receiving events immediately. This cannot be undone.",
     "deleteFailed": "Could not delete this webhook.",
     "toggleFailed": "Could not update this webhook.",
-    "empty": "No webhooks yet."
+    "empty": "No webhooks yet.",
+    "autoDisabled": "Turned off by Barynt on {date}: every delivery failed for a day. Turn it on again once the receiver works.",
+    "log": {
+      "title": "Deliveries",
+      "loading": "Loading…",
+      "empty": "Nothing delivered yet. The log keeps 7 days.",
+      "delivered": "Delivered",
+      "sending": "Sending",
+      "retryAt": "Retry at {time}",
+      "gaveUp": "Given up",
+      "attempts": "Attempts",
+      "duration": "Duration",
+      "id": "Delivery id",
+      "error": "Error",
+      "response": "Response",
+      "payload": "Payload",
+      "resend": "Send again"
+    }
   },
   "audit": {
     "desc": "Who signed in, who granted whom rights, who deleted something — and every emergency access.",
@@ -1541,8 +1616,12 @@
       "pluginGrantRevoked": "Plugin release for projects withdrawn",
       "pluginActed": "Plugin changed something in their name",
       "pluginCredentialSet": "Plugin credential kept",
-      "pluginCredentialRemoved": "Plugin credential removed"
-    }
+      "pluginCredentialRemoved": "Plugin credential removed",
+      "webhookDisabled": "Webhook turned off after a day of failed deliveries",
+      "pluginServicePaused": "Deliveries to the plugin's server paused after a day of failures",
+      "pluginServiceResumed": "Deliveries to the plugin's server resumed"
+    },
+    "via": "via {plugin}"
   },
   "dashboard": {
     "range": "Time range",
@@ -2437,7 +2516,10 @@
       "storage:own": "Keep its own data",
       "notify:send": "Send notifications",
       "events:issue": "Hear about issue changes",
-      "events:comment": "Hear about new comments",
+      "events:comment": "Hear about comments",
+      "events:project": "Hear about project changes",
+      "events:member": "Hear about people joining and leaving",
+      "webhooks:receive": "Receive webhooks from other services",
       "ui:nav-item": "Add an entry to the sidebar",
       "ui:project-view": "Add a project view",
       "ui:dashboard-widget": "Add a dashboard widget",
@@ -2649,6 +2731,8 @@
     "networkTitle": "Network",
     "noNetwork": "Calls no other servers.",
     "networkNote": "Other hosts are blocked.",
+    "serviceTitle": "Its own server",
+    "serviceNote": "Barynt sends the events it subscribed to there, signed, and only what the capabilities above allow.",
     "capsConfirmedIn": "{count, plural, =0 {Not confirmed anywhere yet.} one {Confirmed in # activation.} other {Confirmed in # activations.}}",
     "whereItsOn": "Where it’s on",
     "versionState": {
@@ -2816,6 +2900,33 @@
     "credentialEnter": "Enter the value",
     "credentialReplace": "Enter a new value to replace it",
     "credentialRemove": "Remove",
-    "userPluginsTitle": "Plugins"
+    "userPluginsTitle": "Plugins",
+    "service": {
+      "title": "Server",
+      "hint": "The plugin runs on its own server too. Barynt sends it these events, signed, and tries again when it is down.",
+      "url": "Address",
+      "events": "Events",
+      "last": "Last delivery",
+      "ok": "Receiving",
+      "idle": "Nothing sent yet",
+      "failing": "Failing since {date}",
+      "paused": "Paused",
+      "pausedHint": "Barynt paused the deliveries on {date}: every one failed for a day. Events from the pause are not sent later.",
+      "log": "Deliveries",
+      "resume": "Send again",
+      "resumeFailed": "Could not send again. Try once more."
+    },
+    "inbound": {
+      "title": "Webhooks from other services",
+      "hint": "Give these to the service that should report to this plugin. Barynt checks every call against the secret and refuses anything else.",
+      "url": "Address",
+      "secret": "Secret",
+      "secretGitlab": "Secret token",
+      "idle": "Nothing received yet",
+      "last": "{date} · {event} · {status}",
+      "howtoGitlab": "In GitLab: project or group → Settings → Webhooks → Add new webhook. Paste the address as URL and the secret as Secret token, pick the triggers (merge requests, pipelines, pushes).",
+      "howtoGithub": "In GitHub: repository or organization → Settings → Webhooks → Add webhook. Paste the address as Payload URL, choose application/json, paste the secret, pick the events.",
+      "howtoGeneric": "Send JSON as a POST to the address, with X-Hub-Signature-256: sha256=<HMAC-SHA256 of the body with the secret>."
+    }
   }
 }

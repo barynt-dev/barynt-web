@@ -35,6 +35,9 @@ export const BRIDGE_METHODS = {
   "projects.list": "projects:read",
   "members.list": "members:read",
   "fields.list": "fields:read",
+  // What its server keeps on issues (BARY-216); `issueIds` for a whole
+  // board at once.
+  "issueData.list": "issues:read",
   "storage.get": "storage:own",
   "storage.set": "storage:own",
   "storage.delete": "storage:own",

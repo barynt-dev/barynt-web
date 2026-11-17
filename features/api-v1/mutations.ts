@@ -63,13 +63,19 @@ import {
 import { guessContentType } from "@/lib/storage/validation";
 import { canCreateWorkspace, getSystemSettings } from "@/lib/system-settings";
 import { uid } from "@/lib/utils/id";
-import { fireWebhookEvent } from "@/lib/webhooks/deliver";
+import { emitEvent } from "@/lib/webhooks/emit";
+import {
+  emitLabelEvent,
+  emitProjectEvent,
+  eventProject,
+} from "@/lib/webhooks/resources";
 import {
   DEFAULT_ISSUE_TYPES,
   DEFAULT_PRIORITIES,
   DEFAULT_STATUSES,
 } from "@/lib/workspace-defaults";
 import type { EstimateUnit } from "@/types";
+import { emitCommentEvent, trackIssue } from "./events";
 
 // Thin, `userId`-parameterized write helpers for the public API
 // (`app/api/v1`) — deliberately NOT calls into `features/issues/actions.ts`.
@@ -360,7 +366,7 @@ export async function createIssueForUser(
   // returns for the same issue.
   const data = await getIssueUnchecked(id);
   if (!data) return fail(404);
-  fireWebhookEvent(workspaceId, "issue.created", data);
+  emitEvent("issue.created", data, { workspaceId, projectId, actorId: userId });
   await notifyMentions(
     mentionedUserIds(doc),
     { workspaceId, projectId, issueId: id, text: toPreview(doc) },
@@ -514,6 +520,7 @@ export async function updateIssueForUser(
     fieldValues = translated.values;
   }
 
+  const tracker = await trackIssue(issueId, issue.project.workspaceId);
   await db.issue.update({
     where: { id: issueId },
     data: {
@@ -556,14 +563,13 @@ export async function updateIssueForUser(
     );
   }
 
-  // Re-fetched (not built from `patch`) so the webhook payload carries the
-  // full, current issue — not just the fields this particular request
-  // touched. `getIssueUnchecked` (no permission check) rather than
-  // `getIssueForUser`: the actor already passed a stricter check above, a
-  // second `can()` call would be redundant.
-  const updated = await getIssueUnchecked(issueId);
-  if (updated)
-    fireWebhookEvent(issue.project.workspaceId, "issue.updated", updated);
+  // The event re-reads the issue, so it carries all of it and what
+  // changed — not just the fields this request touched.
+  tracker?.emit({
+    workspaceId: issue.project.workspaceId,
+    projectId: issue.projectId,
+    actorId: userId,
+  });
 
   if (doc !== null) {
     const before = new Set(mentionedUserIds(issue.description));
@@ -1041,7 +1047,11 @@ export async function createCommentForUser(
 
   const data = await getCommentUnchecked(row.id);
   if (!data) return fail(404);
-  fireWebhookEvent(issue.project.workspaceId, "comment.created", data);
+  emitEvent("comment.created", data, {
+    workspaceId: issue.project.workspaceId,
+    projectId: issue.projectId,
+    actorId: userId,
+  });
   await notifyMentions(
     mentionedUserIds(doc),
     {
@@ -1111,6 +1121,11 @@ export async function updateCommentForUser(
       updated: new Date(),
     },
   });
+  emitCommentEvent("comment.updated", commentId, {
+    workspaceId: comment.issue.project.workspaceId,
+    projectId: comment.issue.projectId,
+    actorId: userId,
+  });
 
   return { ok: true, data: { id: commentId } };
 }
@@ -1155,6 +1170,15 @@ export async function deleteCommentForUser(
     userId,
     toPreview(comment.body),
   );
+  emitEvent(
+    "comment.deleted",
+    { id: commentId, issueId: comment.issueId },
+    {
+      workspaceId: comment.issue.project.workspaceId,
+      projectId: comment.issue.projectId,
+      actorId: userId,
+    },
+  );
 
   return { ok: true, data: { id: commentId } };
 }
@@ -1185,7 +1209,14 @@ async function uniqueLabelSlug(
 async function labelScope(labelId: string) {
   const label = await db.label.findUnique({
     where: { id: labelId },
-    select: { id: true, name: true, workspaceId: true, projectId: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      color: true,
+      workspaceId: true,
+      projectId: true,
+    },
   });
   if (!label) return null;
 
@@ -1248,6 +1279,10 @@ export async function createLabelForUser(
     workspaceId: effectiveWorkspaceId,
     projectId: input.projectId ?? null,
   });
+  emitLabelEvent("label.created", label, {
+    workspaceId: effectiveWorkspaceId,
+    actorId: userId,
+  });
 
   return { ok: true, data: label };
 }
@@ -1269,12 +1304,16 @@ export async function updateLabelForUser(
   const name = input.name?.trim();
   if (name !== undefined && !name) return fail(422);
 
-  await db.label.update({
+  const updated = await db.label.update({
     where: { id: labelId },
     data: {
       ...(name !== undefined ? { name } : {}),
       ...(input.color !== undefined ? { color: input.color } : {}),
     },
+  });
+  emitLabelEvent("label.updated", updated, {
+    workspaceId: scoped.label.workspaceId,
+    actorId: userId,
   });
 
   return { ok: true, data: { id: labelId } };
@@ -1311,6 +1350,10 @@ export async function deleteLabelForUser(
     target: { type: "label", id: labelId, label: scoped.label.name },
     workspaceId: scoped.label.workspaceId,
     projectId: scoped.label.projectId,
+  });
+  emitLabelEvent("label.deleted", scoped.label, {
+    workspaceId: scoped.label.workspaceId,
+    actorId: userId,
   });
 
   return { ok: true, data: { id: labelId } };
@@ -1548,6 +1591,11 @@ export async function createProjectForUser(
     }
   });
 
+  emitProjectEvent("project.created", id, {
+    workspaceId,
+    actorId: userId,
+  });
+
   return { ok: true, data: { id, name, slug, prefix, color: input.color } };
 }
 
@@ -1608,6 +1656,10 @@ export async function updateProjectForUser(
   if (input.visibility === "public") {
     await enrollWorkspaceMembers(db, updated);
   }
+  emitProjectEvent("project.updated", projectId, {
+    workspaceId: updated.workspaceId,
+    actorId: userId,
+  });
 
   return { ok: true, data: { id: projectId } };
 }
@@ -1618,10 +1670,18 @@ export async function deleteProjectForUser(
 ): Promise<MutationResult<{ id: string }>> {
   if (!(await can(userId, "project.delete", { projectId }))) return fail(404);
 
+  const gone = await eventProject(projectId);
   await db.$transaction(async (tx) => {
     await tx.issue.deleteMany({ where: { projectId } });
     await tx.project.delete({ where: { id: projectId } });
   });
+  if (gone)
+    emitProjectEvent(
+      "project.deleted",
+      projectId,
+      { workspaceId: gone.workspaceId, actorId: userId },
+      gone,
+    );
 
   return { ok: true, data: { id: projectId } };
 }

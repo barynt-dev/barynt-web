@@ -4,8 +4,11 @@ import {
   readSourceRecent,
   sourceRepo,
 } from "@/features/plugins/directory";
+import { openInboundSecret } from "@/features/plugins/inbound";
+import { appUrl } from "@/lib/app-url";
 import { db } from "@/lib/db";
 import {
+  accessFor,
   currentUserCanEnterWorkspace,
   currentUserId,
   hasPermission,
@@ -43,6 +46,8 @@ export interface PluginSummary {
   levels: string[];
   capabilities: string[];
   network: string[];
+  /** Its own server and what it hears about (BARY-212). */
+  service?: { url: string; events: string[] } | null;
   /** Screenshots, served from the installed version (BARY-199). */
   previews: { title: string; src: string }[];
 }
@@ -68,6 +73,7 @@ function summaryOf(
     levels: m.levels ?? [],
     capabilities: m.capabilities ?? [],
     network: m.network ?? [],
+    service: m.service ?? null,
     previews: rowId
       ? (m.previews ?? []).map(({ file, title }) => ({
           title,
@@ -594,6 +600,44 @@ export interface PluginSettingsView {
   /** Draws its settings itself, in its own frame (BARY-149): instead of
    *  the form, or — `"section"` — below it (BARY-204). */
   settingsPage: false | "page" | "section";
+  /** Its own server (BARY-212), while it has one here. */
+  service: PluginServiceView | null;
+  /** Webhooks other services send it through Barynt (BARY-215). */
+  inbound: PluginInboundView[];
+}
+
+/** A hook another service calls, as its settings show it (BARY-215). */
+export interface PluginInboundView {
+  hookId: string;
+  title: string;
+  provider: "gitlab" | "github" | "generic";
+  handle: "forward";
+  /** The address to give the provider. */
+  url: string;
+  /** The secret to give it — shown to whoever may manage the plugin. */
+  secret: string | null;
+  last: {
+    at: Date;
+    event: string | null;
+    status: number | null;
+    error: string | null;
+  } | null;
+}
+
+/** A plugin's server, as its settings show it (BARY-212). */
+export interface PluginServiceView {
+  activationId: string;
+  url: string;
+  events: string[];
+  /** Set while Barynt has stopped delivering after a day of failures. */
+  pausedAt: Date | null;
+  /** Since when every delivery fails. */
+  failingSince: Date | null;
+  last: {
+    at: Date;
+    status: number | null;
+    error: string | null;
+  } | null;
 }
 
 /** A credential a plugin declares, as its form shows it (BARY-147). */
@@ -680,13 +724,32 @@ export async function getPluginSettingsView(
     level,
     activationScopeKey(scope),
   );
+  const service = parsed.manifest.service;
+  const hooks = parsed.manifest.contributes.inboundHooks ?? [];
   if (
     scope.projectId
       ? !grant
       : !activation?.enabled ||
-        (settings.length === 0 && credentials.length === 0)
+        (settings.length === 0 &&
+          credentials.length === 0 &&
+          !service &&
+          hooks.length === 0)
   )
     return null;
+  const inboundRows =
+    activation?.enabled && hooks.length > 0
+      ? await db.pluginInboundHook.findMany({
+          where: { activationId: activation.id },
+        })
+      : [];
+  const lastDelivery =
+    service && activation
+      ? await db.eventDelivery.findFirst({
+          where: { activationId: activation.id, attempts: { gt: 0 } },
+          orderBy: { updatedAt: "desc" },
+          select: { updatedAt: true, lastStatus: true, lastError: true },
+        })
+      : null;
   return {
     plugin: {
       ...summaryOf(pluginId, active.manifest, active.id),
@@ -704,6 +767,45 @@ export async function getPluginSettingsView(
         ...(o.color && { color: o.color }),
       })),
     })),
+    inbound: hooks.flatMap((hook) => {
+      const row = inboundRows.find((r) => r.hookId === hook.id);
+      if (!row) return [];
+      return [
+        {
+          hookId: hook.id,
+          title: hook.title,
+          provider: hook.provider,
+          handle: hook.handle,
+          url: appUrl(`/api/plugins/hooks/${row.token}`),
+          secret: openInboundSecret(row.secret),
+          last: row.lastReceivedAt
+            ? {
+                at: row.lastReceivedAt,
+                event: row.lastEvent,
+                status: row.lastStatus,
+                error: row.lastError,
+              }
+            : null,
+        },
+      ];
+    }),
+    service:
+      service && activation?.enabled
+        ? {
+            activationId: activation.id,
+            url: service.url,
+            events: service.events,
+            pausedAt: activation.servicePausedAt,
+            failingSince: activation.serviceFailingSince,
+            last: lastDelivery
+              ? {
+                  at: lastDelivery.updatedAt,
+                  status: lastDelivery.lastStatus,
+                  error: lastDelivery.lastError,
+                }
+              : null,
+          }
+        : null,
     values: (activation?.settings?.values ?? {}) as Record<string, unknown>,
     state: activation
       ? activationState(
@@ -797,4 +899,64 @@ export async function getUserCredentialsView(
       `us:${userId}`,
     ),
   };
+}
+
+// ─── Apps (BARY-213) ─────────────────────────────────────────────────────────
+
+/** A plugin's bot, as the members' "Apps" tab lists it. */
+export interface WorkspaceAppRow {
+  botUserId: string;
+  name: string;
+  handle: string;
+  color: string;
+  pluginId: string;
+  /** `null` for the workspace. */
+  project: { id: string; name: string; slug: string } | null;
+  enabled: boolean;
+  capabilities: string[];
+  /** When its token was last used — roughly, see `lib/api-auth.ts`. */
+  lastUsedAt: Date | null;
+}
+
+/** The bots of a workspace's plugins — `null` without `member.view`. */
+export async function getWorkspaceApps(
+  workspaceId: string,
+): Promise<WorkspaceAppRow[] | null> {
+  const actorId = await currentUserId();
+  const access = await accessFor(actorId, { workspaceId });
+  if (!access.has("member.view")) return null;
+  const rows = await db.pluginActivation.findMany({
+    where: { workspaceId, botUserId: { not: null } },
+    orderBy: { activatedAt: "desc" },
+    select: {
+      pluginId: true,
+      enabled: true,
+      capabilities: true,
+      project: { select: { id: true, name: true, slug: true } },
+      bot: { select: { id: true, firstName: true, handle: true, color: true } },
+      appTokens: {
+        where: { revokedAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { lastUsedAt: true },
+      },
+    },
+  });
+  return rows.flatMap((row) =>
+    row.bot
+      ? [
+          {
+            botUserId: row.bot.id,
+            name: row.bot.firstName,
+            handle: row.bot.handle,
+            color: row.bot.color,
+            pluginId: row.pluginId,
+            project: row.project,
+            enabled: row.enabled,
+            capabilities: row.capabilities,
+            lastUsedAt: row.appTokens[0]?.lastUsedAt ?? null,
+          },
+        ]
+      : [],
+  );
 }

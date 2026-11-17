@@ -310,6 +310,34 @@ export const getProjects = cache(
   },
 );
 
+/**
+ * The bots of the workspace's plugins (BARY-213), as people to show: a
+ * comment's author, an issue's creator. Never for picking — a bot isn't a
+ * member, can't be assigned or mentioned; that's `getMembers`.
+ */
+export const getAppUsers = cache(
+  async (workspaceId: string): Promise<User[]> => {
+    if (!(await currentUserCanEnterWorkspace(workspaceId))) return [];
+    const rows = await db.pluginActivation.findMany({
+      where: { workspaceId, botUserId: { not: null } },
+      select: {
+        bot: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            handle: true,
+            color: true,
+          },
+        },
+      },
+    });
+    return rows.flatMap((r) =>
+      r.bot ? [{ ...r.bot, email: null, role: "app" }] : [],
+    );
+  },
+);
+
 export const getMembers = cache(
   async (workspaceId: string): Promise<User[]> => {
     // The member list carries names and email addresses — it's nobody

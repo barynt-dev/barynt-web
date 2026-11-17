@@ -61,6 +61,7 @@ import {
 import { canCreateWorkspace, getSystemSettings } from "@/lib/system-settings";
 import { generateHandle, pickUserColor } from "@/lib/user-defaults";
 import { uid } from "@/lib/utils/id";
+import { emitMemberEvent } from "@/lib/webhooks/resources";
 import {
   DEFAULT_ISSUE_TYPES,
   DEFAULT_PRIORITIES,
@@ -901,7 +902,7 @@ export async function setMemberRole(
 
   const target = await db.workspaceMember.findUnique({
     where: { workspaceId_userId: { workspaceId, userId } },
-    select: { role: { select: { key: true, rank: true } } },
+    select: { roleId: true, role: { select: { key: true, rank: true } } },
   });
   if (!target) throw new PermissionError(guard);
 
@@ -960,6 +961,12 @@ export async function setMemberRole(
     workspaceId,
     meta: { from: target.role.key, to: roleKey },
   });
+  emitMemberEvent(
+    "member.role_changed",
+    { userId, roleId: next.id },
+    { workspaceId, actorId },
+    { previousRoleId: target.roleId },
+  );
 
   revalidatePath("/", "layout");
 }
@@ -979,6 +986,7 @@ export async function removeMember(workspaceId: string, userId: string) {
   const target = await db.workspaceMember.findUnique({
     where: { workspaceId_userId: { workspaceId, userId } },
     select: {
+      roleId: true,
       role: { select: { key: true, rank: true } },
       user: { select: { firstName: true, lastName: true, color: true } },
     },
@@ -1004,6 +1012,11 @@ export async function removeMember(workspaceId: string, userId: string) {
   // `canEnterWorkspace` already locks out the workspace before they could
   // even see the inbox.
   await sendMemberRemovedEmail({ userId, workspaceId, actorId });
+  emitMemberEvent(
+    "member.removed",
+    { userId, roleId: target.roleId },
+    { workspaceId, actorId },
+  );
 
   await recordAudit({
     action: "member.removed",
@@ -1175,6 +1188,11 @@ async function inviteOneWorkspaceMember(params: {
       workspaceId,
       text: role.name,
     });
+    emitMemberEvent(
+      "member.added",
+      { userId: existing.id, roleId: role.id },
+      { workspaceId, actorId },
+    );
 
     await recordAudit({
       action: "member.added",
@@ -1500,14 +1518,19 @@ export async function joinViaInviteLink(
   if (!link)
     return { error: "This invite link is no longer valid. Ask for a new one." };
 
-  await db.$transaction(async (tx) => {
-    await redeemInviteLink(
+  const joins = await db.$transaction((tx) =>
+    redeemInviteLink(
       tx,
       link,
       userId,
       systemRoleId("WORKSPACE", DEFAULT_WORKSPACE_ROLE_KEY),
-    );
-  });
+    ),
+  );
+  for (const join of joins)
+    emitMemberEvent("member.added", join, {
+      workspaceId: link.workspaceId,
+      actorId: userId,
+    });
 
   revalidatePath("/", "layout");
   return { ok: true, workspaceId: link.workspaceId };

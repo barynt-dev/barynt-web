@@ -67,6 +67,19 @@ mock.module("@/lib/permissions", () => ({
   PermissionError,
 }));
 mock.module("@/lib/audit", () => ({ recordAudit: mock(async () => {}) }));
+// A plugin's server (BARY-212): whether the secret is made and the server
+// told — the delivery itself is tested in tests/unit/webhooks.
+const mockSendLifecycle = mock(async () => {});
+const mockEnsureServiceIdentity = mock(async () => true);
+mock.module("@/lib/webhooks/deliver", () => ({
+  sendLifecycle: mockSendLifecycle,
+  redeliver: mock(),
+}));
+const mockRevokeAppTokens = mock(async () => {});
+mock.module("@/lib/webhooks/plugin-targets", () => ({
+  ensureServiceIdentity: mockEnsureServiceIdentity,
+  revokeAppTokens: mockRevokeAppTokens,
+}));
 mock.module("next/cache", () => ({ revalidatePath: mock() }));
 mock.module("@/features/plugins/directory", () => ({
   fetchRelease: mock(),
@@ -482,6 +495,43 @@ describe("activations", () => {
       }),
     ).toEqual({ error: "not_installed" });
     expect(activation.upsert).not.toHaveBeenCalled();
+  });
+
+  it("hands a plugin with a server its secret when switched on, and says goodbye when off", async () => {
+    const withServer = {
+      ...manifest,
+      id: "ci-bridge",
+      kind: "service",
+      levels: ["workspace"],
+      capabilities: ["events:issue"],
+      network: ["ci.acme.dev"],
+      contributes: {},
+      service: { url: "https://ci.acme.dev/hook", events: ["issue.created"] },
+    };
+    plugin.findFirst.mockResolvedValue({ manifest: withServer });
+    activation.upsert.mockResolvedValue({ id: "act-9" });
+    mockSendLifecycle.mockClear();
+    expect(
+      await activatePlugin({
+        pluginId: "ci-bridge",
+        workspaceId: "ws-1",
+        capabilities: ["events:issue"],
+      }),
+    ).toEqual({ ok: true });
+    expect(mockEnsureServiceIdentity).toHaveBeenCalledWith(
+      "act-9",
+      expect.objectContaining({ id: "ci-bridge" }),
+    );
+    expect(mockSendLifecycle).toHaveBeenCalledWith("act-9", "app.installed");
+
+    activation.updateMany.mockResolvedValue({ count: 1 });
+    activation.findUnique.mockResolvedValue({
+      id: "act-9",
+      serviceSecret: "v1.sealed",
+    });
+    await deactivatePlugin({ pluginId: "ci-bridge", workspaceId: "ws-1" });
+    expect(mockRevokeAppTokens).toHaveBeenCalledWith("act-9");
+    expect(mockSendLifecycle).toHaveBeenCalledWith("act-9", "app.uninstalled");
   });
 
   it("switches off, keeping the data", async () => {

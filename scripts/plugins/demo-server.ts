@@ -22,6 +22,7 @@ import {
   releaseHash,
 } from "../../lib/plugins/directory";
 import { validateManifest } from "../../lib/plugins/manifest";
+import { createService } from "../../packages/plugin-sdk/src/service";
 import { type DemoScreen, demoScreenshot } from "./demo-images";
 
 const PORT = Number(process.env.PORT ?? 4555);
@@ -58,6 +59,39 @@ interface Demo {
    *  (bundled with the SDK) and `.css` (BARY-144). */
   code?: string;
 }
+
+/** Demo Chat Notifications' settings, the same in each version. */
+const NOTIFY_SETTINGS = [
+  {
+    key: "channel",
+    type: "text",
+    label: "Channel",
+    description: "Where new issues are posted, e.g. #dev.",
+  },
+  {
+    key: "events",
+    type: "select",
+    label: "What to post",
+    default: "new",
+    options: [
+      { id: "new", label: "New issues" },
+      { id: "done", label: "New and done issues" },
+      { id: "all", label: "Every change" },
+    ],
+  },
+  {
+    key: "mentionAssignee",
+    type: "boolean",
+    label: "Mention the assignee",
+    default: true,
+  },
+  {
+    key: "quietHours",
+    type: "number",
+    label: "Quiet after (hour, 0–23)",
+    description: "No posts after this hour until 8 am.",
+  },
+];
 
 const DEMOS: Demo[] = [
   {
@@ -235,40 +269,71 @@ const DEMOS: Demo[] = [
       license: "Apache-2.0",
       network: ["hooks.example.com"],
       contributes: {
-        settings: [
-          {
-            key: "channel",
-            type: "text",
-            label: "Channel",
-            description: "Where new issues are posted, e.g. #dev.",
-          },
-          {
-            key: "events",
-            type: "select",
-            label: "What to post",
-            default: "new",
-            options: [
-              { id: "new", label: "New issues" },
-              { id: "done", label: "New and done issues" },
-              { id: "all", label: "Every change" },
-            ],
-          },
-          {
-            key: "mentionAssignee",
-            type: "boolean",
-            label: "Mention the assignee",
-            default: true,
-          },
-          {
-            key: "quietHours",
-            type: "number",
-            label: "Quiet after (hour, 0–23)",
-            description: "No posts after this hour until 8 am.",
-          },
-        ],
+        settings: NOTIFY_SETTINGS,
       },
     },
-    versions: { "1.0.0": { capabilities: ["events:issue", "notify:send"] } },
+    versions: {
+      "1.0.0": { capabilities: ["events:issue", "notify:send"] },
+      // BARY-212: its own server, here on this demo server — what it gets
+      // is at /services/notify.
+      "1.1.0": {
+        capabilities: [
+          "issues:read",
+          "comments:read",
+          // BARY-213: it answers in the issue, as its app.
+          "comments:write",
+          "events:issue",
+          "events:comment",
+          "events:member",
+          "notify:send",
+        ],
+        service: {
+          url: `${ORIGIN}/services/notify`,
+          events: [
+            "issue.created",
+            "issue.status_changed",
+            "issue.assigned",
+            "comment.created",
+            "member.added",
+          ],
+        },
+      },
+      "1.2.0": {
+        capabilities: [
+          "issues:read",
+          "comments:read",
+          // BARY-213: it answers in the issue, as its app.
+          "comments:write",
+          "events:issue",
+          "events:comment",
+          "events:member",
+          "notify:send",
+          "webhooks:receive",
+        ],
+        // BARY-215: GitLab reports merge requests here, through Barynt.
+        contributes: {
+          settings: NOTIFY_SETTINGS,
+          inboundHooks: [
+            {
+              id: "gitlab",
+              title: "GitLab project",
+              provider: "gitlab",
+              handle: "forward",
+            },
+          ],
+        },
+        service: {
+          url: `${ORIGIN}/services/notify`,
+          events: [
+            "issue.created",
+            "issue.status_changed",
+            "issue.assigned",
+            "comment.created",
+            "member.added",
+          ],
+        },
+      },
+    },
     previews: [
       { title: "A message in the channel", screen: "chat", accent: "#3b7bd5" },
       { title: "Channel per workspace", screen: "settings", accent: "#3b7bd5" },
@@ -684,11 +749,104 @@ const directory = DEMOS.map((demo) => {
 const RELEASE = /^\/([^/]+\/[^/]+)\/(?:releases\/download\/)?([^/]+)\/([^/]+)$/;
 const GITEA_DIRECTORY = "/api/v1/repos/barynt-demo/plugins/raw/plugins.json";
 
+// ── The demo plugin's own server (BARY-212, BARY-214) ───────────────────────
+//
+// What a plugin's server looks like with the SDK's `createService`: it keeps
+// each installation's secret and app token from `app.installed`, checks every
+// message's signature and age, skips a delivery it has handled. On a status
+// change it reads the issue for the person who changed it (their token, cut
+// down to the plugin's rights) and answers in the issue as its app. GET shows
+// what arrived.
+
+const received: {
+  at: string;
+  event: string;
+  as: string;
+  summary: string;
+}[] = [];
+const log = (event: string, as: string, summary: string) =>
+  received.push({
+    at: new Date().toLocaleTimeString("en-GB"),
+    event,
+    as,
+    summary,
+  });
+
+const notify = createService({ baryntUrl: process.env.BARYNT_URL });
+notify.on("*", (e) => {
+  // Those have a handler of their own below.
+  if (e.event.startsWith("inbound.")) return;
+  const d = e.data as Record<string, unknown>;
+  log(
+    e.event,
+    e.acting ? "with a token for the person" : "",
+    e.event === "app.installed"
+      ? "installed — secret and app token kept"
+      : [
+          d.ref ?? d.handle ?? d.name ?? d.id,
+          d.title ?? d.body ?? "",
+          e.actor ? `by ${e.actor.name}` : "",
+        ]
+          .filter(Boolean)
+          .join(" · "),
+  );
+});
+// A merge request GitLab reported through Barynt (BARY-215).
+notify.on("inbound.gitlab", (e) => {
+  const d = e.data as {
+    providerEvent: string;
+    body: {
+      object_attributes?: { iid?: number; title?: string; action?: string };
+    };
+  };
+  const mr = d.body.object_attributes;
+  log(
+    `← GitLab ${d.providerEvent}`,
+    "through Barynt",
+    mr ? `!${mr.iid} ${mr.action ?? ""}: ${mr.title ?? ""}` : "",
+  );
+});
+notify.on("issue.status_changed", async (e, { barynt, app }) => {
+  const d = e.data as { id: string; ref: string; status: string };
+  // For the person: whatever they may see, and the plugin too.
+  if (e.acting) {
+    const issue = await barynt.issues.get(d.id);
+    log(
+      "→ read via API",
+      `as ${e.actor?.name} via the plugin`,
+      `${issue.ref}: ${issue.title}`,
+    );
+  }
+  // As its app: "Demo Chat Notifications (App)".
+  await app.comments.create(
+    d.id,
+    `Posted to #dev: **${d.ref}** is now *${d.status}*.`,
+  );
+  log("→ comment via API", "as its app", d.ref);
+});
+
+function notifyPage(): Response {
+  const rows = received
+    .slice(-30)
+    .reverse()
+    .map(
+      (r) =>
+        `<tr><td>${r.at}</td><td><code>${r.event}</code></td><td>${r.as}</td><td>${r.summary.replace(/</g, "&lt;")}</td></tr>`,
+    )
+    .join("");
+  return new Response(
+    `<!doctype html><meta charset="utf-8"><title>Demo Chat Notifications — server</title><style>body{font:14px system-ui;background:#0f1619;color:#dbe4e8;padding:24px}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #2b3a40;padding:8px 10px;text-align:left}th{color:#9fb0b6;font-weight:500}code{color:#6bd6e4}</style><h1>Demo Chat Notifications</h1><p>The plugin's own server, built with <code>createService</code>: what Barynt sent it, and what it did in Barynt. Every message's signature checked.</p><table><tr><th>When</th><th>Event</th><th>As</th><th>What</th></tr>${rows}</table>`,
+    { headers: { "content-type": "text/html; charset=utf-8" } },
+  );
+}
+
 Bun.serve({
   port: PORT,
   fetch(req) {
     const { pathname } = new URL(req.url);
     console.log(`${req.method} ${pathname}`);
+    if (pathname === "/services/notify")
+      return req.method === "GET" ? notifyPage() : notify.fetch(req);
     if (pathname === "/plugins.json" || pathname === GITEA_DIRECTORY)
       return Response.json(directory);
     const m = pathname.match(RELEASE);

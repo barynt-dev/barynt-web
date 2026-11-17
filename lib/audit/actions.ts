@@ -119,6 +119,15 @@ export const AUDIT_ACTIONS = {
   "plugin.credential.removed": "Plugin credential removed",
   "plugin.granted": "Plugin released for projects",
   "plugin.grant.revoked": "Plugin release for projects withdrawn",
+  // BARY-212: Barynt pausing deliveries to a plugin's server after a day of
+  // failures, and someone sending them on again.
+  "plugin.service.paused": "Deliveries to a plugin's server paused",
+  "plugin.service.resumed": "Deliveries to a plugin's server resumed",
+
+  // ── Webhooks (BARY-211) ───────────────────────────────────────────────────
+  //
+  // Barynt itself turning one off after a day of failed deliveries.
+  "webhook.disabled": "Webhook turned off after failing",
 } as const;
 
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
@@ -156,7 +165,8 @@ export type AuditTargetType =
   | "customField"
   | "view"
   | "plugin"
-  | "pluginSource";
+  | "pluginSource"
+  | "webhook";
 
 export interface AuditTarget {
   type: AuditTargetType;
@@ -244,6 +254,9 @@ export interface AuditEntry {
   workspaceId: string | null;
   projectId: string | null;
   reason: string | null;
+  /** The plugin it went through — "Ada via GitLab" (BARY-214). */
+  viaPluginId: string | null;
+  viaPluginLabel: string | null;
   /**
    * Raw data depending on the event — unused for most rows. For status,
    * priority, and label changes on an issue it carries rendering hints

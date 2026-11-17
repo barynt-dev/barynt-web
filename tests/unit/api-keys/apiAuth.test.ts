@@ -9,10 +9,14 @@ const mockUpdateMany = mock();
 mock.module("@/lib/db", () => ({
   db: {
     apiKey: { findUnique: mockFindUnique, updateMany: mockUpdateMany },
+    plugin: {
+      findFirst: async () => ({ manifest: { name: "GitLab" } }),
+    },
   },
 }));
 
 import { type ApiAuthResult, hasScope, resolveApiUser } from "@/lib/api-auth";
+import { actingScope, currentPlugin } from "@/lib/webhooks/source";
 
 const TOKEN = "bry_abc123";
 const HASH = createHash("sha256").update(TOKEN).digest("hex");
@@ -69,6 +73,55 @@ describe("resolveApiUser()", () => {
   it("rejects a token without the bry_ prefix", async () => {
     expect(await resolveApiUser(request("Bearer sk_notours"))).toBeNull();
     expect(mockFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("takes a plugin's app token too (BARY-213)", async () => {
+    const app = "bpa_plugin-token";
+    mockFindUnique.mockResolvedValue({ ...ACTIVE_KEY, userId: "bot-1" });
+    const result = await resolveApiUser(request(`Bearer ${app}`));
+    expect(result?.userId).toBe("bot-1");
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { tokenHash: createHash("sha256").update(app).digest("hex") },
+      select: expect.anything(),
+    });
+  });
+
+  it("acts for a person through a plugin — and the caller knows (BARY-214)", async () => {
+    const actingToken = "bpt_for-a-person";
+    mockFindUnique.mockResolvedValue({
+      ...ACTIVE_KEY,
+      userId: "person-1",
+      activation: {
+        pluginId: "gitlab",
+        workspaceId: "ws-1",
+        projectId: null,
+        capabilities: ["comments:write"],
+        enabled: true,
+      },
+    });
+    const result = await resolveApiUser(request(`Bearer ${actingToken}`));
+    expect(result?.userId).toBe("person-1");
+    // Carried on into the route that awaited it.
+    expect(currentPlugin()).toEqual({ id: "gitlab", name: "GitLab" });
+    expect(actingScope()).toEqual({
+      workspaceId: "ws-1",
+      projectId: null,
+      capabilities: ["comments:write"],
+    });
+  });
+
+  it("refuses an acting token whose plugin is off", async () => {
+    mockFindUnique.mockResolvedValue({
+      ...ACTIVE_KEY,
+      activation: {
+        pluginId: "gitlab",
+        workspaceId: "ws-1",
+        projectId: null,
+        capabilities: [],
+        enabled: false,
+      },
+    });
+    expect(await resolveApiUser(request("Bearer bpt_x"))).toBeNull();
   });
 
   it("rejects an unknown hash", async () => {

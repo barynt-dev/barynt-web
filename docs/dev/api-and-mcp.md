@@ -122,18 +122,29 @@ migration. Then use it in the routes and tools, and describe it in the user guid
 
 ### Adding a webhook event
 
-1. Add the name to `WEBHOOK_EVENTS` in `lib/webhooks/events.ts`.
-2. Call `fireWebhookEvent(workspaceId, "<event>", data)` where the change happens, **after** it has
-   succeeded, in **every** place that can cause it (a Server Function *and* the matching API/MCP
-   mutation; issues fire from both `features/issues/actions.ts` and `features/api-v1/mutations.ts`).
-   Do not `await` it, and never let it throw into the caller.
-3. Use the public shape for `data` (`ApiIssue`, the comment shape, a view's stored shape) so
-   receivers see what the REST API shows. A deleted object cannot be re-read, so send a small
-   snapshot instead (id, reference, title).
-4. Add the event to the new-webhook dialog (labels in `messages/*`, list in
-   `features/webhooks/components`) and an example payload to `API_DOC_WEBHOOK_EVENTS` in
-   `apiDocsData.ts`; run `bun run docs:api`.
-5. Test delivery in `tests/unit/webhooks/`.
+1. Add the name to its group in `WEBHOOK_EVENT_GROUPS` (`lib/webhooks/events.ts`).
+2. Announce it where the change happens, **after** it has succeeded, in **every** place that can
+   cause it (a Server Function *and* the matching `*ForUser` mutation behind REST, MCP and
+   plugins). Use `emitEvent(event, data, { workspaceId, projectId, actorId })`
+   (`lib/webhooks/emit.ts`) or one of the helpers in `features/api-v1/events.ts`
+   (`emitProjectEvent`, `emitLabelEvent`, `emitMemberEvent`). All of them are fire-and-forget:
+   no `await`, and they never throw into the caller. Inside a transaction, collect what changed
+   and announce it after the commit (`redeemInviteLink` returns its joins for that).
+3. An issue change goes through `trackIssue(id, workspaceId)` **before** the write and
+   `tracker?.emit(ctx)` after it: it takes a snapshot, diffs it with the stored issue
+   (`issueChanges`, `lib/webhooks/changes.ts`) and sends `issue.updated` with `changes`, plus
+   `issue.status_changed` / `issue.assigned` / `issue.fields_changed` when those fields moved.
+   It costs nothing while no webhook is enabled in the workspace (`hasEventListeners`).
+4. Use the public shape for `data` (`ApiIssue`, the comment shape, `EventProject`, `EventLabel`,
+   `EventMember`, a view's stored shape) so receivers see what the REST API shows. A deleted
+   object cannot be re-read, so send a small snapshot instead (id, reference, title), or what
+   was read before the delete. A member never carries an email address.
+5. The envelope (`workspaceId`, `projectId`, `actor`, `via`) is built in one place
+   (`buildEnvelope`); `via` comes from `runAsPlugin` (`lib/webhooks/source.ts`), which the host
+   bridge wraps around every plugin request, so nothing has to be passed down.
+6. Add the label in `messages/*` (`webhooks.events.<group>.<name>`) and an example to
+   `API_DOC_WEBHOOK_EVENTS` in `apiDocsData.ts` (`example(...)`); run `bun run docs:api`.
+7. Test it in `tests/unit/webhooks/`.
 
 A view event is sent only for **shared** views; a private view is nobody else's news.
 

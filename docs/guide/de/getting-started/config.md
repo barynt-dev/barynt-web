@@ -33,6 +33,8 @@ barynt config SMTP_HOST=smtp.example.com UPDATE_CHECK=false
 | `POSTGRES_PASSWORD` | Das Passwort der mitgelieferten Datenbank. Es wird beim ersten Start gesetzt und lässt sich danach nicht mehr ändern. |
 | `UPDATE_CHECK` | `false` hält Barynt davon ab, bei GitHub nachzufragen, ob es eine neuere Version gibt. Es ist der einzige Aufruf, den Barynt von sich aus macht. |
 | `PLUGIN_INTERNAL_HOSTS` | Git-Server in eurem internen Netz, die Plugin-Quellen erreichen dürfen, mit Komma getrennt (`gitlab.acme.internal,git.acme.internal:8443`). Ohne die Angabe werden Quellen mit privaten Adressen abgelehnt. Siehe [Plugins](../administration/plugins.md). |
+| `WEBHOOK_INTERNAL_HOSTS` | Empfänger in eurem internen Netz, die [Webhooks](../integrations/webhooks.md) erreichen dürfen, mit Komma getrennt als `name` oder `name:port` (`n8n.acme.internal,hooks.acme.internal:8443`). Ohne die Angabe werden Zustellungen an private Adressen und `localhost` abgelehnt. |
+| `WEBHOOK_WORKER` | `false` hält diese Instanz davon ab, gescheiterte Webhook-Zustellungen zu wiederholen. Neue Ereignisse gehen trotzdem sofort raus. Lass ihn in mindestens einer Instanz an. |
 
 ## Anmeldung
 

@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { openInvitation } from "@/lib/invitations";
 import { enrollInWorkspaceProjects } from "@/lib/project-membership";
 import { getSession } from "@/lib/session";
+import { emitMemberEvent } from "@/lib/webhooks/resources";
 
 type AuthResult = { redirectTo: string } | { error: string };
 
@@ -115,6 +116,8 @@ export async function acceptInvitation(token: string): Promise<AuthResult> {
   }
 
   let joined = false;
+  /** The role the person joined with — for `member.added`. */
+  let joinedRoleId: string | null = null;
 
   await db.$transaction(async (tx) => {
     const membership = await tx.workspaceMember.findUnique({
@@ -124,7 +127,7 @@ export async function acceptInvitation(token: string): Promise<AuthResult> {
           userId: invitation.userId,
         },
       },
-      select: { pending: true },
+      select: { pending: true, roleId: true },
     });
 
     if (membership?.pending) {
@@ -142,6 +145,7 @@ export async function acceptInvitation(token: string): Promise<AuthResult> {
         userId: invitation.userId,
       });
       joined = true;
+      joinedRoleId = membership.roleId;
     }
 
     await tx.invitation.update({
@@ -164,6 +168,12 @@ export async function acceptInvitation(token: string): Promise<AuthResult> {
       },
       workspaceId: invitation.workspaceId,
     });
+    if (joinedRoleId)
+      emitMemberEvent(
+        "member.added",
+        { userId: invitation.userId, roleId: joinedRoleId },
+        { workspaceId: invitation.workspaceId, actorId: invitation.userId },
+      );
   }
 
   return { redirectTo: `/${invitation.workspaceId}` };

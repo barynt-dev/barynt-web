@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { slugify } from "@/lib/slug";
 import { uid } from "@/lib/utils/id";
-import { fireWebhookEvent } from "@/lib/webhooks/deliver";
+import { emitEvent } from "@/lib/webhooks/emit";
 import {
   canChangeVisibility,
   canCreateView,
@@ -174,7 +174,11 @@ export async function createViewFor(
   });
 
   if (row.visibility !== "PRIVATE") {
-    fireWebhookEvent(workspaceId, "view.created", viewPayload(row));
+    emitEvent("view.created", viewPayload(row), {
+      workspaceId,
+      projectId: row.projectId,
+      actorId: userId,
+    });
   }
   return { ok: true, data: mapView(row, facts) };
 }
@@ -223,7 +227,11 @@ export async function updateViewFor(
   // Shared before or after: a view that just went private is news too —
   // the payload's `visibility` says so.
   if (row.visibility !== "PRIVATE" || updated.visibility !== "PRIVATE") {
-    fireWebhookEvent(row.workspaceId, "view.updated", viewPayload(updated));
+    emitEvent("view.updated", viewPayload(updated), {
+      workspaceId: row.workspaceId,
+      projectId: updated.projectId,
+      actorId: userId,
+    });
   }
   return { ok: true, data: mapView(updated, facts) };
 }
@@ -244,12 +252,20 @@ export async function deleteViewFor(
 
   await db.savedView.delete({ where: { id } });
   if (row.visibility !== "PRIVATE") {
-    fireWebhookEvent(row.workspaceId, "view.deleted", {
-      id: row.id,
-      name: row.name,
-      workspaceId: row.workspaceId,
-      projectId: row.projectId,
-    });
+    emitEvent(
+      "view.deleted",
+      {
+        id: row.id,
+        name: row.name,
+        workspaceId: row.workspaceId,
+        projectId: row.projectId,
+      },
+      {
+        workspaceId: row.workspaceId,
+        projectId: row.projectId,
+        actorId: userId,
+      },
+    );
   }
 
   if (row.visibility !== "PRIVATE") {
