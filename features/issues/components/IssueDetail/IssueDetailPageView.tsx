@@ -262,7 +262,8 @@ export function IssueDetailPageView({
               identifier={identifier}
               comments={issue.comments}
               activity={issue.activity}
-              members={data.members}
+              // Authors: members and the plugins' apps (BARY-213).
+              members={[...data.members, ...data.apps]}
               me={data.me}
               data={data}
               canUpdateAnyComment={issue.access.canUpdateAnyComment}

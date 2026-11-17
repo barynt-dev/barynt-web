@@ -11,7 +11,6 @@ import {
   type BridgeResponse,
   type FrameContext,
   isBridgeMethod,
-  WRITE_METHODS,
 } from "@/lib/plugins/bridge";
 import { buildFrameDocument, frameCsp } from "@/lib/plugins/frame";
 import { type PluginManifest, validateManifest } from "@/lib/plugins/manifest";
@@ -214,33 +213,14 @@ export async function callBridge(
   const p = (
     params && typeof params === "object" && !Array.isArray(params) ? params : {}
   ) as Record<string, unknown>;
-  // Whatever this changes goes out as an event "via" the plugin (BARY-210).
+  // Whatever this changes goes out as an event "via" the plugin (BARY-210)
+  // and is logged as the person's "via" it (BARY-214) — the writes log
+  // themselves, so there's no entry of its own here any more.
   const result = await runAsPlugin(
     { id: plugin.pluginId, name: plugin.manifest.name },
     () => HANDLERS[method](userId, plugin, p),
   );
 
-  if (result.ok && WRITE_METHODS.includes(method)) {
-    const target = result.result as { id?: unknown; ref?: unknown } | null;
-    await recordAudit({
-      action: "plugin.acted",
-      actorId: userId,
-      target: {
-        type: "plugin",
-        id: plugin.pluginId,
-        label: plugin.manifest.name,
-      },
-      workspaceId: plugin.workspaceId,
-      projectId: plugin.projectId,
-      meta: {
-        method,
-        ...(typeof target?.ref === "string" && { ref: target.ref }),
-        ...(typeof target?.id === "string" && { id: target.id }),
-        ...(typeof p.id === "string" && { id: p.id }),
-        ...(typeof p.issueId === "string" && { issueId: p.issueId }),
-      },
-    });
-  }
   return result;
 }
 

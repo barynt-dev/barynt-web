@@ -50,7 +50,7 @@ Bei Änderungen an Aufgaben sagt dir das Protokoll, **welcher Aspekt** sich geä
 
 ## Einen Eintrag lesen
 
-Jeder Eintrag zeigt das **Ereignis**, **wer** es war, **wann** und den **Grund**, falls einer angegeben wurde (bei Notfallzugriff ist er Pflicht). Der Name einer Person wird zu diesem Zeitpunkt mit dem Eintrag gespeichert. Wird jemand später umbenannt oder verlässt die Firma, bleiben die alten Einträge, wie sie geschrieben wurden.
+Jeder Eintrag zeigt das **Ereignis**, **wer** es war, **wann** und den **Grund**, falls einer angegeben wurde (bei Notfallzugriff ist er Pflicht). Hat jemand über ein Plugin gehandelt — seine Ansicht, eine Aktion aus seinem Menü oder sein Server in seinem Auftrag —, steht das dabei: „Ada Rahman über GitLab“. Handelt ein Plugin selbst, erscheint es als seine App, „GitLab (App)“. Der Name einer Person wird zu diesem Zeitpunkt mit dem Eintrag gespeichert. Wird jemand später umbenannt oder verlässt die Firma, bleiben die alten Einträge, wie sie geschrieben wurden.
 
 ## Gut zu wissen
 

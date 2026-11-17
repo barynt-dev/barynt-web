@@ -529,3 +529,23 @@ the `test` script — together with the rich-text and table tests, not
 alongside `issues/getLabels.test.ts`, which replaces `react` with a stub.
 
 `bun run test` (not `bun test` — see CLAUDE.md).
+
+## A plugin's bot (BARY-213)
+
+A plugin with its own server acts as a bot: a `User` with `kind = APP`, no
+address, no way to sign in, and **no membership** — neither `WorkspaceMember`
+nor `ProjectMember`. `resolve` sees the bot in `loadPlatformState` and decides
+in `resolveApp` from its activation alone:
+
+- only the activation's workspace; a project activation only its project, a
+  workspace activation only public projects;
+- a suspended workspace or a switched-off plugin: nothing;
+- the permissions come from the confirmed capabilities (`appPermissions`,
+  `lib/plugins/app-access.ts`) — reading lets it see a project, writing
+  creates and changes, nothing ever manages or deletes.
+
+`canEnterWorkspace` and `accessibleProjectIds` follow the same rules. Because
+it's no member, it never shows in member lists, pickers or mentions; the
+members page lists bots in their own tab (`getWorkspaceApps`). It acts through
+an app token (`bpa_…`, an `ApiKey` with `activationId`), issued anew each time
+the plugin is switched on and revoked when it's switched off.

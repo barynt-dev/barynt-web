@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import type { ApiScope } from "@/lib/api/scopes";
 import { db } from "@/lib/db";
+import { enterActing } from "@/lib/webhooks/source";
 
 /** What a valid Bearer token resolves to — the token-auth analogue of a
  *  session's `{ userId }` (`lib/session.ts`). */
@@ -64,7 +65,15 @@ export async function resolveApiUser(
   const match = req.headers.get("authorization")?.match(BEARER);
   if (!match) return null;
   const token = match[1];
-  if (!token.startsWith("bry_")) return null;
+  // `bry_` a person's key, `bpa_` a plugin's app token (BARY-213), `bpt_` a
+  // plugin's server acting for a person (BARY-214) — same table. A bot's
+  // rights come from its plugin; an acting token's are the person's, cut
+  // down to the plugin's (`lib/permissions.ts`).
+  const acting = token.startsWith("bpt_");
+  if (!token.startsWith("bry_") && !token.startsWith("bpa_") && !acting)
+    return null;
+  // Before the first `await`: the route that awaits this carries it on.
+  const fillActing = acting ? enterActing() : null;
 
   const key = await db.apiKey.findUnique({
     where: { tokenHash: hashApiToken(token) },
@@ -75,11 +84,36 @@ export async function resolveApiUser(
       revokedAt: true,
       expiresAt: true,
       user: { select: { deactivatedAt: true } },
+      activation: {
+        select: {
+          pluginId: true,
+          workspaceId: true,
+          projectId: true,
+          capabilities: true,
+          enabled: true,
+        },
+      },
     },
   });
   if (!key || key.revokedAt) return null;
   if (key.expiresAt && key.expiresAt <= new Date()) return null;
   if (key.user.deactivatedAt) return null;
+  if (fillActing) {
+    const activation = key.activation;
+    // An acting token without its plugin, or with the plugin off: nothing.
+    if (!activation?.enabled) return null;
+    fillActing(
+      {
+        id: activation.pluginId,
+        name: await pluginName(activation.pluginId),
+      },
+      {
+        workspaceId: activation.workspaceId,
+        projectId: activation.projectId,
+        capabilities: activation.capabilities,
+      },
+    );
+  }
 
   touchLastUsed(key.id);
 
@@ -88,4 +122,14 @@ export async function resolveApiUser(
     keyId: key.id,
     scopes: key.scopes as ApiScope[],
   };
+}
+
+/** A plugin's name, from its active version — for "Ada via GitLab". */
+async function pluginName(pluginId: string): Promise<string> {
+  const row = await db.plugin.findFirst({
+    where: { pluginId, status: "active" },
+    select: { manifest: true },
+  });
+  const name = (row?.manifest as { name?: unknown } | null)?.name;
+  return typeof name === "string" ? name : pluginId;
 }

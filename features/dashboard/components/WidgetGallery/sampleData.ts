@@ -311,6 +311,8 @@ export function sampleData(widget: Widget, words: SampleWords): WidgetData {
           workspaceId: null,
           projectId: null,
           reason: null,
+          viaPluginId: null,
+          viaPluginLabel: null,
           meta: null,
           projectRef: null,
           workspaceRef: null,

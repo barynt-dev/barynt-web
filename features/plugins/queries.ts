@@ -6,6 +6,7 @@ import {
 } from "@/features/plugins/directory";
 import { db } from "@/lib/db";
 import {
+  accessFor,
   currentUserCanEnterWorkspace,
   currentUserId,
   hasPermission,
@@ -844,4 +845,64 @@ export async function getUserCredentialsView(
       `us:${userId}`,
     ),
   };
+}
+
+// ─── Apps (BARY-213) ─────────────────────────────────────────────────────────
+
+/** A plugin's bot, as the members' "Apps" tab lists it. */
+export interface WorkspaceAppRow {
+  botUserId: string;
+  name: string;
+  handle: string;
+  color: string;
+  pluginId: string;
+  /** `null` for the workspace. */
+  project: { id: string; name: string; slug: string } | null;
+  enabled: boolean;
+  capabilities: string[];
+  /** When its token was last used — roughly, see `lib/api-auth.ts`. */
+  lastUsedAt: Date | null;
+}
+
+/** The bots of a workspace's plugins — `null` without `member.view`. */
+export async function getWorkspaceApps(
+  workspaceId: string,
+): Promise<WorkspaceAppRow[] | null> {
+  const actorId = await currentUserId();
+  const access = await accessFor(actorId, { workspaceId });
+  if (!access.has("member.view")) return null;
+  const rows = await db.pluginActivation.findMany({
+    where: { workspaceId, botUserId: { not: null } },
+    orderBy: { activatedAt: "desc" },
+    select: {
+      pluginId: true,
+      enabled: true,
+      capabilities: true,
+      project: { select: { id: true, name: true, slug: true } },
+      bot: { select: { id: true, firstName: true, handle: true, color: true } },
+      appTokens: {
+        where: { revokedAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { lastUsedAt: true },
+      },
+    },
+  });
+  return rows.flatMap((row) =>
+    row.bot
+      ? [
+          {
+            botUserId: row.bot.id,
+            name: row.bot.firstName,
+            handle: row.bot.handle,
+            color: row.bot.color,
+            pluginId: row.pluginId,
+            project: row.project,
+            enabled: row.enabled,
+            capabilities: row.capabilities,
+            lastUsedAt: row.appTokens[0]?.lastUsedAt ?? null,
+          },
+        ]
+      : [],
+  );
 }

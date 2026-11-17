@@ -164,6 +164,10 @@ Some plugins also run on a server of their maker — to post to a chat, start a 
 
 The plugin's settings show a **Server** card: the address, the events, how the last delivery went, and **Deliveries** with the log of the last seven days. When every delivery has failed for a day, Barynt **pauses** them — the plugin stays on, the pause lands in the activity log, and **Send again** resumes. Events from the pause aren't sent later.
 
+### Apps
+
+Such a plugin also acts in Barynt — writes a comment, moves an issue — under its own name, as an **app**: "Demo Chat Notifications (App)" shows as the author wherever it did something. An app isn't a member and can't sign in, can't be assigned or mentioned, and never manages anything (roles, members, settings, plugins). It may only do what the capabilities you confirmed allow, in the workspace's public projects — or, switched on in a project, only there. **Members → Apps** lists them: where each acts, what it may, when it was last active. Switching the plugin off stops its app at once.
+
 ## Building your own
 
 To write a plugin yourself, see [Building plugins](../../../dev/plugins.md) in the developer docs.

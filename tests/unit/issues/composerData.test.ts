@@ -27,6 +27,7 @@ mock.module("@/features/workspaces/queries", () => ({
   getMe: mockGetMe,
   getWorkspaceProjects: mock(async () => PROJECTS),
   getWorkspaceMembers: mock(async () => [ME]),
+  getWorkspaceAppUsers: mock(async () => []),
   getWorkspaceLabels: mock(async () => []),
   getWorkspaceStatuses: mock(async () => [
     { id: "backlog", name: "Backlog", short: "B", color: "#111" },

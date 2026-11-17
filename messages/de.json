@@ -1149,7 +1149,25 @@
     "removeFailed": "Die Person konnte nicht entfernt werden.",
     "roleFailed": "Die Rolle konnte nicht geändert werden.",
     "emptyTitle": "Noch niemand hier",
-    "emptyDesc": "Lade jemanden per E-Mail ein, um gemeinsam zu arbeiten."
+    "emptyDesc": "Lade jemanden per E-Mail ein, um gemeinsam zu arbeiten.",
+    "tabsLabel": "Personen und Apps",
+    "tabPeople": "Personen",
+    "tabApps": "Apps",
+    "appsTitle": "Apps",
+    "appsSubtitle": "Die Identitäten, unter denen die Plugins dieses Workspace handeln. Eine App kann sich nicht anmelden und ist kein Mitglied: Was sie darf, kommt von ihrem Plugin.",
+    "appColumn": "App",
+    "appBadge": "App",
+    "appWhere": "Wo",
+    "appWholeWorkspace": "Ganzer Workspace",
+    "appMay": "Darf",
+    "appCapabilities": "{count, plural, one {# Fähigkeit} other {# Fähigkeiten}}",
+    "appLastUsed": "Zuletzt aktiv",
+    "appNeverUsed": "Noch nicht",
+    "appOn": "An",
+    "appOff": "Aus",
+    "appManage": "Verwalten",
+    "appsEmptyTitle": "Noch keine Apps",
+    "appsEmptyDesc": "Ein Plugin mit eigenem Server bekommt eine, wenn es eingeschaltet wird."
   },
   "avatarUploader": {
     "change": "Avatar ändern",
@@ -1602,7 +1620,8 @@
       "webhookDisabled": "Webhook nach einem Tag fehlgeschlagener Zustellungen abgeschaltet",
       "pluginServicePaused": "Zustellung an den Server des Plugins nach einem Tag mit Fehlern angehalten",
       "pluginServiceResumed": "Zustellung an den Server des Plugins fortgesetzt"
-    }
+    },
+    "via": "über {plugin}"
   },
   "dashboard": {
     "range": "Zeitraum",

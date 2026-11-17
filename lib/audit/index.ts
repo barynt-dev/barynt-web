@@ -3,6 +3,7 @@ import type { AuditAction, AuditEntry, AuditTarget } from "@/lib/audit/actions";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { resolveAvatarUrl } from "@/lib/storage";
+import { currentPlugin } from "@/lib/webhooks/source";
 
 // ─── Audit log: writing and reading ─────────────────────────────────────────────
 //
@@ -43,6 +44,9 @@ export interface AuditInput {
   projectId?: string | null;
   /** The justification — mandatory for break-glass access, otherwise empty. */
   reason?: string | null;
+  /** The plugin it went through. Left out, it's found by itself: the
+   *  sandbox's request or a server acting for the person (BARY-214). */
+  via?: { id: string; name: string } | null;
   meta?: Prisma.InputJsonValue;
 }
 
@@ -95,7 +99,12 @@ async function actorInfoFor(
 }
 
 function rowFor(input: AuditInput, actor: ActorInfo) {
+  // A plugin's app as the actor says so by its name already ("GitLab
+  // (App)"); "via" is for a person acting through a plugin.
+  const via = input.via === undefined ? currentPlugin() : input.via;
   return {
+    viaPluginId: via?.id ?? null,
+    viaPluginLabel: via?.name ?? null,
     action: input.action,
     actorId: input.actorId ?? null,
     actorLabel: actor.label,
@@ -241,6 +250,8 @@ export async function listAudit(
       workspaceId: true,
       projectId: true,
       reason: true,
+      viaPluginId: true,
+      viaPluginLabel: true,
       // Unlike previously documented, it is included in the selection after
       // all: some issue events carry rendering hints in it (status/priority
       // ids, label colors) for the icon and chip in `TargetLabel`. The rest

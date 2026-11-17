@@ -44,14 +44,16 @@ function Row({
  * divider above it already separates it.
  */
 export function IssueMeta({ issue, data, layout }: IssueMetaProps) {
-  const { members, projects } = data;
+  const { members, apps, projects } = data;
   const t = useTranslations();
   const format = useFormatter();
   const timeAgo = useTimeAgo();
   const { dateFormat } = usePreferences();
 
   const project = projects.find((p) => p.id === issue.project);
-  const reporter = members.find((m) => m.id === issue.reporter) ?? null;
+  // An app can create issues too (BARY-213).
+  const reporter =
+    [...members, ...apps].find((m) => m.id === issue.reporter) ?? null;
 
   const rows = (
     <>
