@@ -277,6 +277,8 @@ const DEMOS: Demo[] = [
         capabilities: [
           "issues:read",
           "comments:read",
+          // BARY-213: it answers in the issue, as its app.
+          "comments:write",
           "events:issue",
           "events:comment",
           "events:member",
@@ -717,6 +719,8 @@ const GITEA_DIRECTORY = "/api/v1/repos/barynt-demo/plugins/raw/plugins.json";
 // and skipped when its delivery id was seen. GET shows what arrived.
 
 const installations = new Map<string, string>();
+/** Each installation's app token and where its Barynt is (BARY-213). */
+const apps = new Map<string, { token: string; baryntUrl: string }>();
 const seen = new Set<string>();
 const received: {
   at: string;
@@ -749,11 +753,19 @@ async function notifyService(req: Request): Promise<Response> {
     actor?: { name: string } | null;
   };
   const delivery = req.headers.get("x-barynt-delivery") ?? "";
-  if (message.event === "app.installed")
+  if (message.event === "app.installed") {
     installations.set(
       String(message.data.installationId),
       String(message.data.secret),
     );
+    if (message.data.token)
+      apps.set(String(message.data.installationId), {
+        token: String(message.data.token),
+        // The app's own address may differ from what Barynt thinks it is
+        // (a dev server on another port): BARYNT_URL wins.
+        baryntUrl: process.env.BARYNT_URL ?? String(message.data.baryntUrl),
+      });
+  }
   const secret = [...installations.values()].find((s) => {
     const ts = req.headers.get("x-barynt-timestamp") ?? "";
     const expected = createHmac("sha256", s)
@@ -786,6 +798,31 @@ async function notifyService(req: Request): Promise<Response> {
   });
   if (message.event === "app.uninstalled")
     installations.delete(String(d.installationId));
+
+  // It answers in the issue, as its app: what it "posted to the channel".
+  // Not awaited — Barynt wants its 2xx quickly.
+  const [app] = [...apps.values()];
+  if (message.event === "issue.status_changed" && app)
+    void fetch(new URL(`/api/v1/issues/${d.id}/comments`, app.baryntUrl), {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${app.token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        body: `Posted to #dev: **${d.ref}** is now *${d.status}*.`,
+      }),
+    })
+      .then((res) =>
+        received.push({
+          at: new Date().toLocaleTimeString("en-GB"),
+          event: "→ comment via API",
+          attempt: "",
+          verified: res.ok,
+          summary: `${d.ref}: HTTP ${res.status}`,
+        }),
+      )
+      .catch(() => {});
   return new Response(null, { status: 204 });
 }
 

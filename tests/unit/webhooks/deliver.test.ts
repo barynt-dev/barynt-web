@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 //
@@ -13,6 +13,8 @@ let hook: Row;
 let activations: Row[] = [];
 let pluginRows: { pluginId: string; manifest: unknown }[] = [];
 let projectVisibility = "public";
+let apiKeys: Row[] = [];
+let users: Row[] = [];
 
 const mockWebhookFindMany = mock();
 const mockWebhookCount = mock();
@@ -114,10 +116,28 @@ mock.module("@/lib/db", () => ({
       },
     },
     plugin: { findMany: async () => pluginRows },
+    apiKey: {
+      updateMany: async ({ data }: { data: Record<string, unknown> }) => {
+        for (const k of apiKeys) if (!k.revokedAt) Object.assign(k, data);
+        return { count: 1 };
+      },
+      create: async ({ data }: { data: Row }) => {
+        apiKeys.push({ ...data, revokedAt: null });
+        return data;
+      },
+    },
+    $transaction: async (ops: Promise<unknown>[]) => Promise.all(ops),
     project: {
       findUnique: async () => ({ visibility: projectVisibility }),
     },
-    user: { findUnique: mockUserFindUnique },
+    user: {
+      findUnique: mockUserFindUnique,
+      create: async ({ data }: { data: Row }) => {
+        const row = { ...data, id: `bot-${users.length + 1}` };
+        users.push(row);
+        return { id: row.id };
+      },
+    },
     workspace: { findUnique: async () => ({ name: "Acme" }) },
     auditLog: { create: mockAuditCreate },
     mailTemplate: { findUnique: async () => null },
@@ -140,6 +160,7 @@ import {
   dispatchEvent,
   hasEventListeners,
 } from "@/lib/webhooks/emit";
+import { ensureServiceIdentity } from "@/lib/webhooks/plugin-targets";
 import { DISABLE_AFTER_MS } from "@/lib/webhooks/retry";
 import { runAsPlugin } from "@/lib/webhooks/source";
 
@@ -155,6 +176,8 @@ function reset() {
   deliveries = [];
   activations = [];
   pluginRows = [];
+  apiKeys = [];
+  users = [];
   projectVisibility = "public";
   hook = {
     id: "wh-1",
@@ -424,6 +447,25 @@ describe("the envelope (BARY-210)", () => {
     expect(mockUserFindUnique).toHaveBeenCalledTimes(1);
   });
 
+  it("names the plugin when its app did it (BARY-213)", async () => {
+    mockUserFindUnique.mockResolvedValue({
+      id: "bot-1",
+      firstName: "GitLab (App)",
+      lastName: "",
+      pluginBot: { pluginId: "gitlab" },
+    });
+    const env = await buildEnvelope(
+      "comment.created",
+      {},
+      {
+        workspaceId: "ws-1",
+        actorId: "bot-1",
+      },
+    );
+    expect(env.via).toEqual({ plugin: { id: "gitlab", name: "GitLab (App)" } });
+    expect(env.actor).toEqual({ id: "bot-1", name: "GitLab (App)" });
+  });
+
   it("names the plugin a change came through", async () => {
     const env = await runAsPlugin({ id: "gitlab", name: "GitLab" }, () =>
       buildEnvelope("comment.created", {}, { workspaceId: "ws-1" }),
@@ -655,5 +697,64 @@ describe("deliverEvent() to plugins' servers (BARY-212)", () => {
       status: "FAILED",
       lastError: "Deliveries to the plugin are paused",
     });
+  });
+});
+
+describe("a plugin's identity (BARY-213)", () => {
+  beforeEach(() => {
+    reset();
+    mockWebhookFindMany.mockResolvedValue([]);
+  });
+
+  it("makes a bot, a token for it and hands the token over with app.installed", async () => {
+    servicePlugin(["issue.created"], ["events:issue", "issues:write"], {
+      serviceSecret: null,
+      botUserId: null,
+    });
+    const manifest = pluginRows[0].manifest as never;
+    expect(await ensureServiceIdentity("act-1", manifest)).toBe(true);
+
+    expect(users[0]).toMatchObject({
+      kind: "APP",
+      firstName: "CI Bridge (App)",
+      lastName: "",
+    });
+    expect(users[0].email).toBeUndefined();
+    expect(apiKeys[0]).toMatchObject({
+      userId: "bot-1",
+      activationId: "act-1",
+      revokedAt: null,
+    });
+    expect(apiKeys[0].scopes).toContain("issues:write");
+    expect(String(apiKeys[0].prefix)).toStartWith("bpa_");
+    expect(activations[0].botUserId).toBe("bot-1");
+    expect(activations[0].serviceSecret).toBeTruthy();
+
+    await sendLifecycle("act-1", "app.installed");
+    const sentBody = JSON.parse(sent()[0].body);
+    expect(String(sentBody.data.token)).toStartWith("bpa_");
+    expect(sentBody.data.botUserId).toBe("bot-1");
+    // Its hash is what the API checks; the token itself is never stored.
+    expect(apiKeys[0].tokenHash).toBe(
+      createHash("sha256").update(sentBody.data.token).digest("hex"),
+    );
+    const stored = JSON.parse(deliveries[0].payload as string);
+    expect(stored.data.token).toBe("[sealed]");
+  });
+
+  it("replaces the token when switched on again, keeping bot and secret", async () => {
+    servicePlugin(["issue.created"], ["events:issue"], {
+      serviceSecret: null,
+      botUserId: null,
+    });
+    const manifest = pluginRows[0].manifest as never;
+    await ensureServiceIdentity("act-1", manifest);
+    const secret = activations[0].serviceSecret;
+    await ensureServiceIdentity("act-1", manifest);
+    expect(users).toHaveLength(1);
+    expect(activations[0].serviceSecret).toBe(secret);
+    expect(apiKeys).toHaveLength(2);
+    expect(apiKeys[0].revokedAt).toBeInstanceOf(Date);
+    expect(apiKeys[1].revokedAt).toBeNull();
   });
 });

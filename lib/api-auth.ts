@@ -64,7 +64,9 @@ export async function resolveApiUser(
   const match = req.headers.get("authorization")?.match(BEARER);
   if (!match) return null;
   const token = match[1];
-  if (!token.startsWith("bry_")) return null;
+  // `bry_` a person's key, `bpa_` a plugin's app token (BARY-213) — same
+  // table, the bot's rights come from its plugin (`lib/permissions.ts`).
+  if (!token.startsWith("bry_") && !token.startsWith("bpa_")) return null;
 
   const key = await db.apiKey.findUnique({
     where: { tokenHash: hashApiToken(token) },

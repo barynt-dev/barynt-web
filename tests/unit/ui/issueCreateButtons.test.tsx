@@ -79,6 +79,7 @@ function composer(...creatableProjectIds: string[]): IssueComposerData {
     },
     projects: PROJECTS,
     members: [],
+    apps: [],
     customFields: [],
     labels: [],
     statuses: [STATUS],

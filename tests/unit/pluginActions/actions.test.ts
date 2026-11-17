@@ -70,13 +70,15 @@ mock.module("@/lib/audit", () => ({ recordAudit: mock(async () => {}) }));
 // A plugin's server (BARY-212): whether the secret is made and the server
 // told — the delivery itself is tested in tests/unit/webhooks.
 const mockSendLifecycle = mock(async () => {});
-const mockEnsureServiceSecret = mock(async () => true);
+const mockEnsureServiceIdentity = mock(async () => true);
 mock.module("@/lib/webhooks/deliver", () => ({
   sendLifecycle: mockSendLifecycle,
   redeliver: mock(),
 }));
+const mockRevokeAppTokens = mock(async () => {});
 mock.module("@/lib/webhooks/plugin-targets", () => ({
-  ensureServiceSecret: mockEnsureServiceSecret,
+  ensureServiceIdentity: mockEnsureServiceIdentity,
+  revokeAppTokens: mockRevokeAppTokens,
 }));
 mock.module("next/cache", () => ({ revalidatePath: mock() }));
 mock.module("@/features/plugins/directory", () => ({
@@ -516,7 +518,7 @@ describe("activations", () => {
         capabilities: ["events:issue"],
       }),
     ).toEqual({ ok: true });
-    expect(mockEnsureServiceSecret).toHaveBeenCalledWith(
+    expect(mockEnsureServiceIdentity).toHaveBeenCalledWith(
       "act-9",
       expect.objectContaining({ id: "ci-bridge" }),
     );
@@ -528,6 +530,7 @@ describe("activations", () => {
       serviceSecret: "v1.sealed",
     });
     await deactivatePlugin({ pluginId: "ci-bridge", workspaceId: "ws-1" });
+    expect(mockRevokeAppTokens).toHaveBeenCalledWith("act-9");
     expect(mockSendLifecycle).toHaveBeenCalledWith("act-9", "app.uninstalled");
   });
 

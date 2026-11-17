@@ -416,7 +416,7 @@ installation — the plugin switched on in a workspace or project — has its ow
 secret:
 
 1. When it's switched on, Barynt sends **`app.installed`** with
-   `data: { installationId, pluginId, baryntUrl, secret }`. Keep the secret
+   `data: { installationId, pluginId, baryntUrl, secret, token, botUserId }`. Keep the secret
    per `installationId`; every later message is signed with it. Switched on
    again later, the same message comes again with the same secret. Barynt
    keeps the secret sealed; the delivery log shows `[sealed]` in its place.
@@ -429,6 +429,26 @@ What a server gets of an event follows what was confirmed: without
 without `comments:read` a comment has no `body`. A project's installation hears
 only about its project, a workspace's never about a private project, and a
 change the plugin made itself doesn't come back to it.
+
+**Acting in Barynt** (BARY-213): `token` is an app token (`bpa_…`) for the
+[REST API](../guide/en/integrations/api.md), `Authorization: Bearer <token>`.
+It acts as the plugin's bot — "<Plugin name> (App)", shown so on every comment
+or change it makes — not as a person. The bot is no member and can't sign in;
+what it may do comes from the capabilities confirmed for this installation:
+
+| Capability | The bot may |
+| --- | --- |
+| any `…:read`/`…:write` | see the projects it's switched on for |
+| `issues:write` | create, change and assign issues |
+| `fields:write` | change custom field values (by changing the issue) |
+| `comments:write` | write comments, change and delete its own |
+| `members:read` | see the workspace's members |
+
+Never anything that manages: roles, members, settings, plugins, deleting
+issues. A workspace's bot sees the workspace's public projects, never a private one;
+a project's bot only its project. Each
+time the plugin is switched on, a new token comes with `app.installed` and the
+one before stops; switched off, its token stops at once.
 
 A server that fails for a day is **paused**, not switched off: Barynt stops
 sending, logs it, and the plugin's settings show it with **Send again**. The

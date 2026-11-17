@@ -1,8 +1,10 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
+import { hashApiToken } from "@/lib/api-auth";
 import { appUrl } from "@/lib/app-url";
 import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
+import { appApiScopes } from "@/lib/plugins/app-access";
 import { pluginDevBase, pluginInternalHosts } from "@/lib/plugins/dev";
 import {
   type PluginManifest as Manifest,
@@ -17,6 +19,7 @@ import {
   type PluginEvent,
 } from "@/lib/plugins/service";
 import { openSecret, sealSecret } from "@/lib/secret-box";
+import { pickUserColor } from "@/lib/user-defaults";
 import {
   type AttemptOutcome,
   shouldDisable,
@@ -212,30 +215,83 @@ export async function recordOnActivation(
   });
 }
 
+const TOKEN_PURPOSE = "plugin-app-token";
+
 /**
- * The secret a switched-on plugin's server is signed with — made the first
- * time, kept after. `null` when the plugin has no server.
+ * What a switched-on plugin's server needs, made when it's switched on
+ * (BARY-212, BARY-213): the secret its messages are signed with (made once,
+ * kept), its bot — the identity it acts as — and a fresh app token for that
+ * bot, replacing the one before. `false` when the plugin has no server.
  */
-export async function ensureServiceSecret(
+export async function ensureServiceIdentity(
   activationId: string,
   manifest: Manifest,
 ): Promise<boolean> {
   if (!manifest.service) return false;
   const row = await db.pluginActivation.findUnique({
     where: { id: activationId },
-    select: { serviceSecret: true },
+    select: { serviceSecret: true, botUserId: true, capabilities: true },
   });
-  if (row?.serviceSecret) return true;
-  await db.pluginActivation.update({
-    where: { id: activationId },
-    data: {
-      serviceSecret: sealSecret(
-        randomBytes(32).toString("base64url"),
-        SECRET_PURPOSE,
-      ),
-    },
-  });
+  if (!row) return false;
+
+  const botUserId = row.botUserId ?? (await createBot(manifest));
+  // A new token each time it's switched on (again) — the old one stops.
+  const token = `bpa_${randomBytes(32).toString("base64url")}`;
+  await db.$transaction([
+    db.apiKey.updateMany({
+      where: { activationId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    }),
+    db.apiKey.create({
+      data: {
+        userId: botUserId,
+        activationId,
+        name: `${manifest.name} (app)`,
+        prefix: token.slice(0, 12),
+        tokenHash: hashApiToken(token),
+        scopes: appApiScopes(row.capabilities),
+      },
+    }),
+    db.pluginActivation.update({
+      where: { id: activationId },
+      data: {
+        botUserId,
+        serviceToken: sealSecret(token, TOKEN_PURPOSE),
+        ...(!row.serviceSecret && {
+          serviceSecret: sealSecret(
+            randomBytes(32).toString("base64url"),
+            SECRET_PURPOSE,
+          ),
+        }),
+      },
+    }),
+  ]);
   return true;
+}
+
+/** A bot for a plugin: named like it — "GitLab (App)", so a comment or a
+ *  change it made says so wherever it shows — no address, no way to sign
+ *  in. */
+async function createBot(manifest: Manifest): Promise<string> {
+  const bot = await db.user.create({
+    data: {
+      kind: "APP",
+      firstName: `${manifest.name} (App)`,
+      lastName: "",
+      handle: `${manifest.id.replace(/[^a-z0-9]/g, "").slice(0, 20)}-app-${randomBytes(3).toString("hex")}`,
+      color: pickUserColor(),
+    },
+    select: { id: true },
+  });
+  return bot.id;
+}
+
+/** Stops a switched-off plugin's app token. */
+export async function revokeAppTokens(activationId: string): Promise<void> {
+  await db.apiKey.updateMany({
+    where: { activationId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
 }
 
 /** What stands in for the secret in the stored copy of `app.installed`. */
@@ -259,12 +315,17 @@ export async function lifecyclePayload(
       workspaceId: true,
       projectId: true,
       serviceSecret: true,
+      serviceToken: true,
+      botUserId: true,
     },
   });
   if (!activation?.serviceSecret) return null;
   const secret = openSecret(activation.serviceSecret, SECRET_PURPOSE);
   if (!secret) return null;
-  const message = (shown: string) =>
+  const token =
+    activation.serviceToken &&
+    openSecret(activation.serviceToken, TOKEN_PURPOSE);
+  const message = (shown: string, shownToken: string | null) =>
     JSON.stringify({
       event,
       timestamp: Date.now(),
@@ -274,12 +335,19 @@ export async function lifecyclePayload(
         installationId: activationId,
         pluginId: activation.pluginId,
         baryntUrl: appUrl("/"),
-        ...(event === "app.installed" && { secret: shown }),
+        ...(event === "app.installed" && {
+          secret: shown,
+          // Its bot's token for Barynt's REST API (BARY-213).
+          ...(shownToken && {
+            token: shownToken,
+            botUserId: activation.botUserId,
+          }),
+        }),
       },
     });
   return {
     workspaceId: activation.workspaceId,
-    stored: message(SEALED),
-    sent: message(secret),
+    stored: message(SEALED, token ? SEALED : null),
+    sent: message(secret, token || null),
   };
 }

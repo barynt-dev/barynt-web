@@ -698,3 +698,124 @@ describe("Ein stillgelegtes Konto bekommt nirgends Rechte", () => {
     expect([...(await accessibleProjectIds("u1", "ws1"))]).toEqual([]);
   });
 });
+
+describe("Der Bot eines Plugins (BARY-213)", () => {
+  /** A bot whose plugin runs in `ws1` — or only in a project. */
+  function bot(
+    opts: {
+      projectId?: string | null;
+      enabled?: boolean;
+      capabilities?: string[];
+    } = {},
+  ) {
+    setup({ visibility: "public" });
+    mockUserFindUnique.mockResolvedValue({
+      kind: "APP",
+      deactivatedAt: null,
+      platformRole: null,
+      pluginBot: {
+        workspaceId: "ws1",
+        projectId: opts.projectId ?? null,
+        enabled: opts.enabled ?? true,
+        capabilities: opts.capabilities ?? ["issues:read", "comments:write"],
+      },
+    });
+  }
+
+  it("bekommt nur, was seine Fähigkeiten geben — ohne Mitgliedschaft", async () => {
+    bot();
+    const access = await accessFor("bot1", { projectId: "p1" });
+    expect(access.has("project.view")).toBe(true);
+    expect(access.has("comment.create")).toBe(true);
+    expect(access.has("issue.create")).toBe(false);
+    expect(access.has("issue.delete.any")).toBe(false);
+    // The membership tables aren't even asked.
+    expect(mockWorkspaceMemberFindUnique).not.toHaveBeenCalled();
+    expect(mockProjectMemberFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("verwaltet nie etwas, egal was es angefragt hat", async () => {
+    bot({
+      capabilities: ["issues:write", "members:read", "fields:write"],
+    });
+    const ws = await accessFor("bot1", { workspaceId: "ws1" });
+    expect(ws.has("member.view")).toBe(true);
+    for (const p of [
+      "member.invite",
+      "member.remove",
+      "role.manage",
+      "plugin.enable",
+      "webhook.manage",
+      "workspace.update",
+      "project.create",
+    ] as const)
+      expect(ws.has(p)).toBe(false);
+    const project = await accessFor("bot1", { projectId: "p1" });
+    expect(project.has("issue.update.any")).toBe(true);
+    expect(project.has("project.update")).toBe(false);
+    expect(project.has("issue.delete.any")).toBe(false);
+  });
+
+  it("bleibt in seinem Workspace und aus privaten Projekten", async () => {
+    bot();
+    expect(await canEnterWorkspace("bot1", "ws1")).toBe(true);
+    expect(await canEnterWorkspace("bot1", "ws2")).toBe(false);
+    expect(
+      (await accessFor("bot1", { workspaceId: "ws2" })).has("member.view"),
+    ).toBe(false);
+
+    mockProjectFindUnique.mockResolvedValue({
+      workspaceId: "ws1",
+      visibility: "private",
+    });
+    expect(await can("bot1", "project.view", { projectId: "p1" })).toBe(false);
+
+    mockProjectFindUnique.mockResolvedValue({
+      workspaceId: "ws2",
+      visibility: "public",
+    });
+    expect(await can("bot1", "project.view", { projectId: "p9" })).toBe(false);
+  });
+
+  it("bleibt als Projekt-Plugin in seinem Projekt — auch privat", async () => {
+    bot({ projectId: "p1" });
+    mockProjectFindUnique.mockResolvedValue({
+      workspaceId: "ws1",
+      visibility: "private",
+    });
+    expect(await can("bot1", "project.view", { projectId: "p1" })).toBe(true);
+    mockProjectFindUnique.mockResolvedValue({
+      workspaceId: "ws1",
+      visibility: "public",
+    });
+    expect(await can("bot1", "project.view", { projectId: "p2" })).toBe(false);
+  });
+
+  it("kann nichts, solange sein Plugin aus ist", async () => {
+    bot({ enabled: false });
+    expect(await can("bot1", "project.view", { projectId: "p1" })).toBe(false);
+    expect(await canEnterWorkspace("bot1", "ws1")).toBe(false);
+    expect((await accessibleProjectIds("bot1", "ws1")).size).toBe(0);
+  });
+
+  it("sieht in Listen nur die öffentlichen Projekte oder sein eigenes", async () => {
+    bot();
+    mockProjectFindMany.mockResolvedValue([{ id: "p1" }, { id: "p2" }]);
+    expect([...(await accessibleProjectIds("bot1", "ws1"))]).toEqual([
+      "p1",
+      "p2",
+    ]);
+    expect(mockProjectFindMany).toHaveBeenCalledWith({
+      where: { workspaceId: "ws1", visibility: "public" },
+      select: { id: true },
+    });
+
+    bot({ projectId: "p2" });
+    mockProjectFindMany.mockResolvedValue([{ id: "p2" }]);
+    await accessibleProjectIds("bot1", "ws1");
+    expect(mockProjectFindMany).toHaveBeenLastCalledWith({
+      where: { workspaceId: "ws1", id: "p2" },
+      select: { id: true },
+    });
+  });
+});

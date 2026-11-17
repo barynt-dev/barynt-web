@@ -162,6 +162,10 @@ model User {
   /// `features/projects/actions.ts`) setzen es sofort bei der Erstellung —
   /// die Einladung selbst bleibt dadurch reibungslos, ohne Zwischenschritt.
   onboardedAt   DateTime?
+  /// `APP` für den Bot eines Plugins (BARY-213): handelt über sein App-Token,
+  /// kann sich nie anmelden, ist kein Mitglied — seine Rechte kommen aus der
+  /// Aktivierung (`lib/permissions.ts`).
+  kind          UserKind  @default(PERSON)
 
   workspaces              WorkspaceMember[]
   assignedIssues          Issue[]                        @relation("IssueAssignee")
@@ -199,6 +203,7 @@ model User {
   pluginCredentials       PluginCredential[]             @relation("PluginCredentialUpdatedBy")
   pluginsInstalled        Plugin[]                       @relation("PluginInstalledBy")
   pluginActivationsMade   PluginActivation[]             @relation("PluginActivatedBy")
+  pluginBot               PluginActivation?              @relation("PluginBot")
   pluginGrantsMade        PluginGrant[]                  @relation("PluginGrantedBy")
   oauthAuthorizationCodes OAuthAuthorizationCode[]
   oauthAccessTokens       OAuthAccessToken[]
@@ -213,30 +218,34 @@ model User {
 /// RBAC-Prüfung entscheidet zusätzlich pro Ressource, genau wie bei einer
 /// Session.
 model ApiKey {
-  id         String    @id @default(cuid())
-  userId     String
+  id           String    @id @default(cuid())
+  userId       String
   /// Frei gewählt, erscheint in der Liste — "CI-Pipeline", "Zapier" usw.
-  name       String
+  name         String
   /// Die ersten ~12 Zeichen des rohen Tokens, im Klartext für die maskierte
   /// Anzeige ("bry_a1b2c3d4…") — der einzige Teil des Secrets, der nach der
   /// Erstellung je wieder sichtbar ist.
-  prefix     String
+  prefix       String
   /// SHA-256-Hex-Digest des vollen rohen Tokens. `@unique`, das ist der
   /// Lookup-Schlüssel (`lib/api-auth.ts`) — kein gehärteter Passwort-Hash, das
   /// rohe Token trägt bereits 256 Bit CSPRNG-Entropie.
-  tokenHash  String    @unique
+  tokenHash    String    @unique
   /// Granulare Scopes im Jira-Stil ("issues:read", "comments:write", …) statt
   /// eines groben READ/WRITE — die Werte sind die Schlüssel aus
   /// `lib/api/scopes.ts#API_SCOPES`, hier bewusst als freier String statt Enum,
   /// damit ein neuer Scope keine Migration braucht.
-  scopes     String[]  @default([])
-  lastUsedAt DateTime?
-  expiresAt  DateTime?
-  createdAt  DateTime  @default(now())
+  scopes       String[]  @default([])
+  lastUsedAt   DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
   /// Gesetzt heißt: nicht mehr benutzbar, unabhängig von `expiresAt`.
-  revokedAt  DateTime?
+  revokedAt    DateTime?
+  /// Gesetzt für das App-Token eines Plugins (BARY-213) — ausgegeben an
+  /// seinen Bot, beim nächsten Einschalten ersetzt.
+  activationId String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activation PluginActivation? @relation(fields: [activationId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -419,6 +428,11 @@ model EventDelivery {
   @@index([webhookId, createdAt])
   @@index([activationId, createdAt])
   @@index([createdAt])
+}
+
+enum UserKind {
+  PERSON
+  APP
 }
 
 enum EventDeliveryStatus {
@@ -2126,6 +2140,12 @@ model PluginActivation {
   /// Wann Barynt die Zustellung nach einem Tag mit Fehlern angehalten hat.
   /// Das Plugin bleibt an; „Fortsetzen“ in den Einstellungen setzt das zurück.
   servicePausedAt     DateTime?
+  /// Der Bot des Plugins hier (BARY-213): in wessen Namen sein Server handelt.
+  botUserId           String?   @unique
+  /// Das App-Token im Klartext, versiegelt (Zweck `plugin-app-token`) — damit
+  /// `app.installed` es bei jedem Versuch mitschicken kann. Geprüft wird über
+  /// den Hash in `ApiKey`.
+  serviceToken        String?
 
   workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project     Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -2133,6 +2153,8 @@ model PluginActivation {
   settings    PluginSettings?
   storage     PluginStorage[]
   deliveries  EventDelivery[]
+  bot         User?           @relation("PluginBot", fields: [botUserId], references: [id], onDelete: SetNull)
+  appTokens   ApiKey[]
 
   @@unique([pluginId, scopeKey])
   @@index([workspaceId])
