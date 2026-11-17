@@ -79,6 +79,7 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `events:comment` | Hear about comments | `comment.*` in `service.events` |
 | `events:project` | Hear about project changes | `project.*` in `service.events` |
 | `events:member` | Hear about people joining and leaving | `member.*` in `service.events` |
+| `webhooks:receive` | Receive webhooks from other services | `contributes.inboundHooks` |
 | `ui:project-view` | Add a project view | `contributes.projectViews` |
 | `ui:nav-item` | Add an entry to the sidebar | `contributes.navItems` |
 | `ui:dashboard-widget` | Add a dashboard widget | `contributes.dashboardWidgets`, `contributes.widgetTemplates`, `contributes.widgetBlocks` |
@@ -468,6 +469,35 @@ A server that fails for a day is **paused**, not switched off: Barynt stops
 sending, logs it, and the plugin's settings show it with **Send again**. The
 settings also show the log of deliveries. Answer with a `2xx` within ten
 seconds, and skip an `X-Barynt-Delivery` you've already handled.
+
+## Webhooks from other services
+
+A plugin can take webhooks another service sends — GitLab, GitHub — through
+Barynt, without anyone pointing that service at the plugin's own server:
+
+```json
+"capabilities": ["webhooks:receive"],
+"contributes": {
+  "inboundHooks": [
+    { "id": "gitlab", "title": "GitLab project", "provider": "gitlab", "handle": "forward" }
+  ]
+}
+```
+
+- When the plugin is switched on, each hook gets an address
+  (`/api/plugins/hooks/<token>`, unguessable) and a secret. Its settings show
+  both, with how to enter them at the provider, and what came last.
+- `provider` decides how a call is checked: **GitHub** and **generic** sign
+  the body (`X-Hub-Signature-256: sha256=<HMAC-SHA256>`), **GitLab** sends the
+  secret as `X-Gitlab-Token`. Anything else is refused (401). At most 1 MB,
+  120 calls a minute per hook; a provider's retry (same `X-GitHub-Delivery` /
+  `X-Gitlab-Event-UUID`) is taken once. Barynt answers 202 at once.
+- `handle: "forward"` hands the call to the plugin's [server](#its-server), as
+  the event `inbound.<id>` with `data: { hook, provider, providerEvent,
+  deliveryId, headers, body }` — signed, retried and logged like any event.
+  It needs `service`. The provider's secret is never passed on.
+- `handle: "link"` lets Barynt itself file what the call says under the
+  issues it names, for plugins without a server (BARY-216).
 
 ## Rules Barynt checks
 

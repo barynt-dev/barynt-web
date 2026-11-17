@@ -80,6 +80,9 @@ const SEGMENTS: string[][] = [
   ["tests/unit/pluginActions"],
   // Mocks `@/lib/permissions` and the API queries the bridge calls.
   ["tests/unit/pluginRuntime"],
+  // Incoming webhooks (BARY-215): mocks the delivery queue, Redis and the
+  // rate limit away entirely — tests/unit/webhooks needs the real queue.
+  ["tests/unit/pluginInbound"],
   ["tests/unit/account"],
   // Mocks `@/lib/db`, `@/lib/permissions` and `@/lib/audit` — own process,
   // like the other action tests that replace `@/lib/permissions`.
