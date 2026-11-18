@@ -2,8 +2,14 @@
 
 A starting point for a [Barynt](https://github.com/barynt-dev/barynt-web)
 plugin: a sandboxed project view that lists the project's open issues,
-with tests, a build, a release script and CI. Copy this folder, rename the
-plugin, and change what it does.
+with tests, a build, a release script and CI. Start a repository from it
+(**Use this template** on
+[barynt-dev/barynt-plugin-template](https://github.com/barynt-dev/barynt-plugin-template)),
+rename the plugin, and change what it does.
+
+> [!NOTE]
+> This repository is published from `templates/plugin/` in barynt-web —
+> changes to the template go there.
 
 ```text
 manifest.json        who the plugin is, where it runs, what it may do
@@ -25,7 +31,7 @@ once:
 
 ```bash
 git clone https://github.com/barynt-dev/barynt-web barynt
-cp -r barynt/templates/plugin open-issues
+git clone https://github.com/you/open-issues    # your copy of the template
 (cd barynt/packages/plugin-sdk && bun install && bun run build)
 cd open-issues && bun install
 ```

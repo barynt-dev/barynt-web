@@ -20,10 +20,12 @@ jobs:
         with:
           path: plugin
       # The SDK isn't on npm yet: it comes from Barynt's repository, next
-      # to the plugin as package.json expects (`file:../barynt/…`).
+      # to the plugin as package.json expects (`file:../barynt/…`). The
+      # repository variable BARYNT_REF picks another branch or tag than main.
       - uses: actions/checkout@v4
         with:
           repository: barynt-dev/barynt-web
+          ref: ${{ vars.BARYNT_REF || 'main' }}
           path: barynt
           sparse-checkout: packages/plugin-sdk
       - uses: oven-sh/setup-bun@v2

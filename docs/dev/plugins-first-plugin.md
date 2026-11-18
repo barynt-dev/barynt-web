@@ -10,9 +10,11 @@ the SDK and the plugin template live there.
 
 ## 1. The project
 
-Start from the template in Barynt's repository, `templates/plugin/`: this
-plugin, with its tests, a build, a release script and CI. Put the copy next
-to your Barynt checkout — its `package.json` takes the SDK from
+Start from the template: **Use this template** on
+[barynt-dev/barynt-plugin-template](https://github.com/barynt-dev/barynt-plugin-template),
+or copy `templates/plugin/` from Barynt's repository, where it's kept. It is
+this plugin, with its tests, a build, a release script and CI. Put your copy
+next to your Barynt checkout — its `package.json` takes the SDK from
 `../barynt/packages/plugin-sdk` — and build the SDK once:
 
 ```bash
