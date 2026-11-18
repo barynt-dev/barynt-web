@@ -59,6 +59,7 @@ const installed: InstalledPlugin = {
   previews: [{ title: "Board", src: "/api/plugin-previews/r1/preview-1.png" }],
   version: "1.0.0",
   blocked: false,
+  serviceAddress: null,
   versions: [
     { version: "1.0.0", status: "active", installedAt: new Date(0) },
     { version: "0.9.0", status: "superseded", installedAt: new Date(0) },

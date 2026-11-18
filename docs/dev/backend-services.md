@@ -168,6 +168,14 @@ handed over in `app.installed` when it's switched on (`sendLifecycle`); `app.uni
 when it's switched off. A server failing for a day is paused (`servicePausedAt`, audit
 `plugin.service.paused`), not the plugin; `resumePluginService` sends again.
 
+Where the server is follows `service.address` (BARY-223, `serviceAddressOf`): the manifest's
+`url` (`fixed`), the operator's (`platform`: `PLUGIN_SERVICE_URLS`, else `PluginServiceAddress`,
+saved by `setPluginServiceAddress`; its host joins the delivery's internal hosts), or the
+activation's own `serviceUrl` (`activation`, `setActivationServiceAddress`). Without one,
+`ensureServiceIdentity` makes nothing and a delivery closes ("no address yet"). A new address
+calls it with `newSecret` and sends `app.installed` again; `checkServiceAddress`
+(`lib/plugins/service.ts`) decides what an address may be.
+
 Every delivery is a row in `EventDelivery` first — the queue and the log in one — and is tried
 at once (`attemptDelivery`). Each attempt goes through `pinnedPost` (`lib/net/pinned-fetch.ts`):
 the host is resolved once, private and local addresses are refused unless listed in

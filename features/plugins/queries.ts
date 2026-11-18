@@ -26,10 +26,20 @@ import {
 import {
   type CredentialLevel,
   type PluginManifest,
+  serviceAddressMode,
   validateManifest,
 } from "@/lib/plugins/manifest";
 import { compareSemver } from "@/lib/plugins/semver";
+import {
+  type ServiceAddressMode,
+  type ServiceSummary,
+  serviceSummary,
+} from "@/lib/plugins/service";
 import type { SettingType, SettingValue } from "@/lib/plugins/settings";
+import {
+  platformServiceUrl,
+  serviceAddressOf,
+} from "@/lib/webhooks/plugin-targets";
 import { placeSettings } from "./settings-options";
 
 // What the plugin pages show (BARY-143). Every view checks its own
@@ -47,7 +57,7 @@ export interface PluginSummary {
   capabilities: string[];
   network: string[];
   /** Its own server and what it hears about (BARY-212). */
-  service?: { url: string; events: string[] } | null;
+  service?: ServiceSummary | null;
   /** Screenshots, served from the installed version (BARY-199). */
   previews: { title: string; src: string }[];
 }
@@ -73,7 +83,7 @@ function summaryOf(
     levels: m.levels ?? [],
     capabilities: m.capabilities ?? [],
     network: m.network ?? [],
-    service: m.service ?? null,
+    service: m.service ? serviceSummary(m.service) : null,
     previews: rowId
       ? (m.previews ?? []).map(({ file, title }) => ({
           title,
@@ -132,6 +142,9 @@ export interface InstalledPlugin extends PluginSummary {
   rollbackTo: string | null;
   /** Where it's switched on. */
   activations: number;
+  /** For a server the operator runs (`platform`, BARY-223): its address,
+   *  and whether `PLUGIN_SERVICE_URLS` sets it. `null` for any other. */
+  serviceAddress: { url: string | null; fromEnv: boolean } | null;
 }
 
 export interface AdminPluginsView {
@@ -162,8 +175,8 @@ export async function getAdminPluginsView(): Promise<AdminPluginsView | null> {
       lastSyncAt: s.lastSyncAt,
       lastSyncError: s.lastSyncError,
     })),
-    installed: byPlugin(rows as Row[])
-      .map(({ versions, current }) => {
+    installed: await withServiceAddresses(
+      byPlugin(rows as Row[]).map(({ versions, current }) => {
         const shown = current ?? versions[0];
         return {
           ...summaryOf(shown.pluginId, shown.manifest, shown.id),
@@ -179,9 +192,27 @@ export async function getAdminPluginsView(): Promise<AdminPluginsView | null> {
           activations:
             counts.find((c) => c.pluginId === shown.pluginId)?._count._all ?? 0,
         };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name)),
+      }),
+    ).then((list) => list.sort((a, b) => a.name.localeCompare(b.name))),
   };
+}
+
+/** Adds where a `platform` plugin's server is — the admin gives it here. */
+async function withServiceAddresses(
+  plugins: Omit<InstalledPlugin, "serviceAddress">[],
+): Promise<InstalledPlugin[]> {
+  return Promise.all(
+    plugins.map(async (p) => ({
+      ...p,
+      serviceAddress:
+        p.service?.address === "platform"
+          ? ((await platformServiceUrl(p.pluginId)) ?? {
+              url: null,
+              fromEnv: false,
+            })
+          : null,
+    })),
+  );
 }
 
 // ─── The store (BARY-200) ───────────────────────────────────────────────────
@@ -627,7 +658,12 @@ export interface PluginInboundView {
 /** A plugin's server, as its settings show it (BARY-212). */
 export interface PluginServiceView {
   activationId: string;
-  url: string;
+  /** Where Barynt sends — `null` while nobody has given an address. */
+  url: string | null;
+  /** Who runs the server and gives its address (BARY-223). */
+  address: ServiceAddressMode;
+  /** The manifest's address, offered when one is to be given here. */
+  suggestion: string | null;
   events: string[];
   /** Set while Barynt has stopped delivering after a day of failures. */
   pausedAt: Date | null;
@@ -793,7 +829,11 @@ export async function getPluginSettingsView(
       service && activation?.enabled
         ? {
             activationId: activation.id,
-            url: service.url,
+            url:
+              (await serviceAddressOf(activation, parsed.manifest))?.url ??
+              null,
+            address: serviceAddressMode(service),
+            suggestion: service.url ?? null,
             events: service.events,
             pausedAt: activation.servicePausedAt,
             failingSince: activation.serviceFailingSince,

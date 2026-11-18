@@ -1619,7 +1619,8 @@
       "pluginCredentialRemoved": "Plugin credential removed",
       "webhookDisabled": "Webhook turned off after a day of failed deliveries",
       "pluginServicePaused": "Deliveries to the plugin's server paused after a day of failures",
-      "pluginServiceResumed": "Deliveries to the plugin's server resumed"
+      "pluginServiceResumed": "Deliveries to the plugin's server resumed",
+      "pluginServiceAddress": "Changed the address of the plugin's server"
     },
     "via": "via {plugin}"
   },
@@ -2733,6 +2734,8 @@
     "networkNote": "Other hosts are blocked.",
     "serviceTitle": "Its own server",
     "serviceNote": "Barynt sends the events it subscribed to there, signed, and only what the capabilities above allow.",
+    "serviceByOperator": "Run by whoever runs this Barynt; the platform admin gives its address.",
+    "serviceByActivation": "Run by whoever switches it on, for that place alone; they give its address.",
     "capsConfirmedIn": "{count, plural, =0 {Not confirmed anywhere yet.} one {Confirmed in # activation.} other {Confirmed in # activations.}}",
     "whereItsOn": "Where it’s on",
     "versionState": {
@@ -2901,6 +2904,16 @@
     "credentialReplace": "Enter a new value to replace it",
     "credentialRemove": "Remove",
     "userPluginsTitle": "Plugins",
+    "serverAddress": {
+      "title": "Server",
+      "label": "Address of its server",
+      "save": "Save",
+      "hint": "Barynt sends this plugin's events here, from every place it's on. Run by you — plain http to a container on the same network is fine.",
+      "missing": "This plugin's server is run by whoever runs this Barynt. Until it has an address, the plugin runs without it.",
+      "fromEnv": "Set by PLUGIN_SERVICE_URLS; change it there.",
+      "invalid": "Enter a full address, like http://barynt-github:8080/events.",
+      "failed": "Couldn't save the address. Try again."
+    },
     "service": {
       "title": "Server",
       "hint": "The plugin runs on its own server too. Barynt sends it these events, signed, and tries again when it is down.",
@@ -2914,7 +2927,16 @@
       "pausedHint": "Barynt paused the deliveries on {date}: every one failed for a day. Events from the pause are not sent later.",
       "log": "Deliveries",
       "resume": "Send again",
-      "resumeFailed": "Could not send again. Try once more."
+      "resumeFailed": "Could not send again. Try once more.",
+      "noAddress": "No address yet",
+      "platformMissing": "No address yet. The platform admin gives it under Admin → Plugins.",
+      "byOperator": "Run by whoever runs this Barynt",
+      "activationHint": "This plugin's server is run by you, for this place alone. Barynt sends its events there, signed.",
+      "test": "Test connection",
+      "save": "Save address",
+      "notHttps": "Use https — plain http only reaches hosts the operator let through.",
+      "invalidUrl": "Enter a full address, like https://ci.acme.dev/barynt.",
+      "saveFailed": "Couldn't save the address. Try again."
     },
     "inbound": {
       "title": "Webhooks from other services",

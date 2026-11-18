@@ -33,6 +33,7 @@ barynt config SMTP_HOST=smtp.example.com UPDATE_CHECK=false
 | `POSTGRES_PASSWORD` | The password of the bundled database. Set once at the first start, it cannot be changed afterwards. |
 | `UPDATE_CHECK` | `false` stops Barynt from asking GitHub whether a newer version exists. It is the only call Barynt makes on its own. |
 | `PLUGIN_INTERNAL_HOSTS` | Git servers on your internal network that plugin sources may reach, comma-separated (`gitlab.acme.internal,git.acme.internal:8443`). Without it, sources on private addresses are refused. See [Plugins](../administration/plugins.md). |
+| `PLUGIN_SERVICE_URLS` | Addresses of plugin servers you run yourself, for plugins that leave that to the operator: `pluginId=url`, comma-separated (`barynt-github=http://barynt-github:8080/events`). Wins over the address saved under Admin → Plugins. See [Plugins](../administration/plugins.md). |
 | `WEBHOOK_INTERNAL_HOSTS` | Receivers on your internal network that [webhooks](../integrations/webhooks.md) may reach, comma-separated `name` or `name:port` (`n8n.acme.internal,hooks.acme.internal:8443`). Without it, deliveries to private addresses and `localhost` are refused. |
 | `WEBHOOK_WORKER` | `false` stops this instance from retrying failed webhook deliveries. Fresh events still go out at once. Leave it on in at least one instance. |
 

@@ -26,6 +26,7 @@ import { type StoreActions, storeHref } from "./PluginStore";
 import { PluginTile } from "./PluginTile";
 import { PreviewGallery } from "./PreviewGallery";
 import styles from "./pluginStore.module.scss";
+import { ServiceAddressCard } from "./ServiceAddressCard";
 import { STORE_TABS, type StoreTab } from "./tabs";
 import { useRelease } from "./useRelease";
 
@@ -257,6 +258,7 @@ function Overview({
       </div>
 
       <aside className={styles.facts}>
+        {installed?.serviceAddress && <ServiceAddressCard plugin={installed} />}
         <section className={styles.card}>
           <h3 className={styles.cardTitle}>
             <Icon icon="lucide:key-round" width={14} aria-hidden />
