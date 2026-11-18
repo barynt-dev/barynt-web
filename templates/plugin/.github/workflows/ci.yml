@@ -1,0 +1,61 @@
+# Tests and builds every push. A tag `X.Y.Z` (the manifest's version, no
+# "v") makes a GitHub release with the files Barynt installs and prints the
+# hash for your plugins.json.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["[0-9]+.[0-9]+.[0-9]+*"]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: plugin
+      # The SDK isn't on npm yet: it comes from Barynt's repository, next
+      # to the plugin as package.json expects (`file:../barynt/…`). The
+      # repository variable BARYNT_REF picks another branch or tag than main.
+      - uses: actions/checkout@v5
+        with:
+          repository: barynt-dev/barynt-web
+          ref: ${{ vars.BARYNT_REF || 'main' }}
+          path: barynt
+          sparse-checkout: packages/plugin-sdk
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - name: Build the SDK
+        working-directory: barynt/packages/plugin-sdk
+        run: bun install && bun run build
+      - name: Install
+        working-directory: plugin
+        run: bun install
+      - name: Typecheck
+        working-directory: plugin
+        run: bun run typecheck
+      - name: Test
+        working-directory: plugin
+        run: bun run test
+      - name: Build
+        working-directory: plugin
+        run: bun run build
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: plugin
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLUGIN_REPO: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          test "$(jq -r .version manifest.json)" = "$GITHUB_REF_NAME" \
+            || { echo "The tag must be the manifest's version"; exit 1; }
+          bun scripts/release.ts | tee release.txt
+          gh release create "$GITHUB_REF_NAME" release/"$GITHUB_REF_NAME"/* \
+            --title "$GITHUB_REF_NAME" --notes-file release.txt
