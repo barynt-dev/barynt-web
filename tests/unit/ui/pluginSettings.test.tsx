@@ -111,6 +111,8 @@ describe("PluginSettings", () => {
     const service = {
       activationId: "act-1",
       url: "https://ci.acme.dev/barynt",
+      address: "fixed" as const,
+      suggestion: "https://ci.acme.dev/barynt",
       events: ["issue.status_changed", "member.added"],
       pausedAt: null,
       failingSince: null,
@@ -134,6 +136,59 @@ describe("PluginSettings", () => {
     expect(paused).toContain('data-state="paused"');
     expect(paused).toContain("service.pausedHint");
     expect(paused).toContain("service.resume");
+  });
+
+  it("asks for the address of a server run just here, and says when the operator's is missing (BARY-223)", () => {
+    const base = {
+      activationId: "act-1",
+      events: ["issue.created"],
+      pausedAt: null,
+      failingSince: null,
+      last: null,
+    };
+    const own = render(
+      view({
+        fields: [],
+        service: {
+          ...base,
+          url: null,
+          address: "activation" as const,
+          suggestion: "https://ci.example.dev/hook",
+        },
+      }),
+    );
+    expect(own).toContain('name="url"');
+    expect(own).toContain("service.suggested");
+    expect(own).toContain('data-state="noAddress"');
+    expect(own).not.toContain("service.test");
+
+    const operator = render(
+      view({
+        fields: [],
+        service: {
+          ...base,
+          url: null,
+          address: "platform" as const,
+          suggestion: null,
+        },
+      }),
+    );
+    expect(operator).toContain("service.platformMissing");
+    expect(operator).not.toContain('name="url"');
+
+    const running = render(
+      view({
+        fields: [],
+        service: {
+          ...base,
+          url: "http://barynt-github:8080/events",
+          address: "platform" as const,
+          suggestion: null,
+        },
+      }),
+    );
+    expect(running).toContain("service.byOperator");
+    expect(running).toContain("service.test");
   });
 
   it("asks again after an update wants more", () => {

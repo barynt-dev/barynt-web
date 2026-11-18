@@ -8,6 +8,7 @@ import { appApiScopes } from "@/lib/plugins/app-access";
 import { pluginDevBase, pluginInternalHosts } from "@/lib/plugins/dev";
 import {
   type PluginManifest as Manifest,
+  serviceAddressMode,
   validateManifest,
 } from "@/lib/plugins/manifest";
 import {
@@ -17,6 +18,7 @@ import {
   type LifecycleEvent,
   PLUGIN_EVENTS,
   type PluginEvent,
+  serviceUrlsFromEnv,
 } from "@/lib/plugins/service";
 import { openSecret, sealSecret } from "@/lib/secret-box";
 import { pickUserColor } from "@/lib/user-defaults";
@@ -55,6 +57,47 @@ async function manifestsOf(
     if (parsed.ok) map.set(row.pluginId, parsed.manifest);
   }
   return map;
+}
+
+/**
+ * Where a plugin's server is for one activation (BARY-223), by who runs
+ * it: the manifest's address, the operator's (`PLUGIN_SERVICE_URLS` before
+ * what the platform admin saved), or the one given where it was switched
+ * on. `null` while nobody has given one. `operator` marks an address the
+ * operator chose — its host may be on the private network.
+ */
+export async function serviceAddressOf(
+  activation: { pluginId: string; serviceUrl: string | null },
+  manifest: Manifest,
+): Promise<{ url: string; operator: boolean } | null> {
+  if (!manifest.service) return null;
+  const mode = serviceAddressMode(manifest.service);
+  if (mode === "fixed")
+    return manifest.service.url
+      ? { url: manifest.service.url, operator: false }
+      : null;
+  if (mode === "activation")
+    return activation.serviceUrl
+      ? { url: activation.serviceUrl, operator: false }
+      : null;
+  const url = await platformServiceUrl(activation.pluginId);
+  return url ? { url: url.url, operator: true } : null;
+}
+
+/** The operator's address for a `platform` plugin's server, and whether
+ *  it comes from the environment (and so can't be changed in Barynt). */
+export async function platformServiceUrl(
+  pluginId: string,
+): Promise<{ url: string; fromEnv: boolean } | null> {
+  const fromEnv = serviceUrlsFromEnv(process.env.PLUGIN_SERVICE_URLS).get(
+    pluginId,
+  );
+  if (fromEnv) return { url: fromEnv, fromEnv: true };
+  const row = await db.pluginServiceAddress.findUnique({
+    where: { pluginId },
+    select: { url: true },
+  });
+  return row ? { url: row.url, fromEnv: false } : null;
 }
 
 /** Whether any switched-on plugin of the workspace has a server to tell. */
@@ -144,6 +187,7 @@ export async function pluginTarget(
       serviceSecret: true,
       serviceFailingSince: true,
       servicePausedAt: true,
+      serviceUrl: true,
     },
   });
   if (!activation?.serviceSecret) return { closed: "The plugin has no server" };
@@ -160,16 +204,20 @@ export async function pluginTarget(
   const secret = openSecret(activation.serviceSecret, SECRET_PURPOSE);
   if (!secret) return { closed: "The plugin's secret can't be read" };
 
-  const url = new URL(manifest.service.url);
+  const address = await serviceAddressOf(activation, manifest);
+  if (!address) return { closed: "The plugin's server has no address yet" };
+  const url = new URL(address.url);
   const dev = pluginDevBase();
   return {
-    url: manifest.service.url,
+    url: address.url,
     secret,
     internalHosts: [
       ...webhookInternalHosts(),
       ...pluginInternalHosts(),
       // A plugin built on this machine, while developing.
       ...(dev && isLocalServiceUrl(url) ? [url.host] : []),
+      // A server the operator runs — a container on the same network.
+      ...(address.operator ? [url.host] : []),
     ],
     failingSince: activation.serviceFailingSince,
   };
@@ -221,18 +269,28 @@ const TOKEN_PURPOSE = "plugin-app-token";
  * What a switched-on plugin's server needs, made when it's switched on
  * (BARY-212, BARY-213): the secret its messages are signed with (made once,
  * kept), its bot — the identity it acts as — and a fresh app token for that
- * bot, replacing the one before. `false` when the plugin has no server.
+ * bot, replacing the one before. `false` when the plugin has no server, or
+ * its server no address yet (BARY-223). `newSecret` when the server moved:
+ * the one before can't read what goes to the new one.
  */
 export async function ensureServiceIdentity(
   activationId: string,
   manifest: Manifest,
+  { newSecret = false }: { newSecret?: boolean } = {},
 ): Promise<boolean> {
   if (!manifest.service) return false;
   const row = await db.pluginActivation.findUnique({
     where: { id: activationId },
-    select: { serviceSecret: true, botUserId: true, capabilities: true },
+    select: {
+      pluginId: true,
+      serviceUrl: true,
+      serviceSecret: true,
+      botUserId: true,
+      capabilities: true,
+    },
   });
   if (!row) return false;
+  if (!(await serviceAddressOf(row, manifest))) return false;
 
   const botUserId = row.botUserId ?? (await createBot(manifest));
   // A new token each time it's switched on (again) — the old one stops.
@@ -257,7 +315,7 @@ export async function ensureServiceIdentity(
       data: {
         botUserId,
         serviceToken: sealSecret(token, TOKEN_PURPOSE),
-        ...(!row.serviceSecret && {
+        ...((newSecret || !row.serviceSecret) && {
           serviceSecret: sealSecret(
             randomBytes(32).toString("base64url"),
             SECRET_PURPOSE,

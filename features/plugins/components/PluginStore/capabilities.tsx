@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@iconify/react";
+import type { ServiceSummary } from "@/lib/plugins/service";
 import { usePluginText } from "../shared";
 import styles from "./pluginStore.module.scss";
 
@@ -13,7 +14,7 @@ export interface Permissions {
   capabilities: string[];
   network: string[];
   /** Its own server, where Barynt sends events (BARY-212). */
-  service?: { url: string; events: string[] } | null;
+  service?: ServiceSummary | null;
 }
 
 /** Capabilities by what they touch. */
@@ -91,9 +92,17 @@ export function CapabilityCards({
             {text.t("serviceTitle")}
           </h3>
           <ul className={styles.capRows}>
-            <li className={styles.capRow}>
-              <code className={styles.host}>{service.url}</code>
-            </li>
+            {service.address === "fixed" && service.url ? (
+              <li className={styles.capRow}>
+                <code className={styles.host}>{service.url}</code>
+              </li>
+            ) : (
+              <li className={styles.capRow}>
+                {service.address === "platform"
+                  ? text.t("serviceByOperator")
+                  : text.t("serviceByActivation")}
+              </li>
+            )}
             {service.events.map((event) => (
               <li key={event} className={styles.capRow}>
                 <code className={styles.host}>{event}</code>

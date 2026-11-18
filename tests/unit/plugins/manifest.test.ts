@@ -579,6 +579,37 @@ describe("a plugin's server (BARY-212)", () => {
     ).toEqual([]);
   });
 
+  it("lets the maker leave the address to the operator or the place (BARY-223)", () => {
+    const { url: _, ...withoutUrl } = service.service;
+    expect(
+      errors({
+        ...service,
+        network: [],
+        service: { ...withoutUrl, address: "platform" },
+      }),
+    ).toEqual([]);
+    expect(
+      errors({
+        ...service,
+        network: [],
+        service: {
+          ...service.service,
+          url: "http://localhost:8080/events",
+          address: "activation",
+        },
+      }),
+    ).toEqual([]);
+    expect(errors({ ...service, service: withoutUrl })).toContain(
+      "service.url: a fixed server needs its address",
+    );
+    expect(
+      errors({
+        ...service,
+        service: { ...withoutUrl, address: "anywhere" },
+      }).some((e) => e.startsWith("service.address")),
+    ).toBe(true);
+  });
+
   it("refuses plain http, a host outside network and a declarative one", () => {
     expect(
       errors({

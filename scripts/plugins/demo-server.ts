@@ -341,6 +341,70 @@ const DEMOS: Demo[] = [
     ],
   },
   {
+    // A server whoever runs this Barynt runs (BARY-223): the platform admin
+    // gives its address — here, this demo server's notify endpoint.
+    entry: {
+      id: "demo-build-runner",
+      name: "Demo Build Runner",
+      author: "Barynt demo",
+      description:
+        "Starts a build when an issue moves, on a server you run beside Barynt.",
+      repo: `${ORIGIN}/barynt-demo/build-runner`,
+      levels: ["workspace", "project"],
+      kind: "service",
+      categories: ["development"],
+      added: "2026-11-18",
+    },
+    manifest: {
+      minBaryntVersion: "0.9.0",
+      license: "MIT",
+      network: [],
+      contributes: {},
+    },
+    versions: {
+      "1.0.0": {
+        capabilities: ["issues:read", "events:issue"],
+        service: {
+          address: "platform",
+          url: "http://build-runner:8080/barynt",
+          events: ["issue.status_changed"],
+        },
+      },
+    },
+  },
+  {
+    // A server each team runs for its own project (BARY-223): whoever
+    // switches it on gives the address.
+    entry: {
+      id: "demo-team-relay",
+      name: "Demo Team Relay",
+      author: "Barynt demo",
+      description:
+        "Relays a project's new issues to a server your team runs for it.",
+      repo: `${ORIGIN}/barynt-demo/team-relay`,
+      levels: ["project"],
+      kind: "service",
+      categories: ["communication"],
+      added: "2026-11-18",
+    },
+    manifest: {
+      minBaryntVersion: "0.9.0",
+      license: "MIT",
+      network: [],
+      contributes: {},
+    },
+    versions: {
+      "1.0.0": {
+        capabilities: ["issues:read", "events:issue"],
+        service: {
+          address: "activation",
+          url: "https://relay.example.dev/barynt",
+          events: ["issue.created"],
+        },
+      },
+    },
+  },
+  {
     entry: {
       id: "demo-tampered",
       name: "Demo Tampered",
