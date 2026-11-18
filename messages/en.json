@@ -2912,7 +2912,8 @@
       "missing": "This plugin's server is run by whoever runs this Barynt. Until it has an address, the plugin runs without it.",
       "fromEnv": "Set by PLUGIN_SERVICE_URLS; change it there.",
       "invalid": "Enter a full address, like http://barynt-github:8080/events.",
-      "failed": "Couldn't save the address. Try again."
+      "failed": "Couldn't save the address. Try again.",
+      "suggested": "The plugin suggests {url}."
     },
     "service": {
       "title": "Server",
@@ -2936,7 +2937,8 @@
       "save": "Save address",
       "notHttps": "Use https — plain http only reaches hosts the operator let through.",
       "invalidUrl": "Enter a full address, like https://ci.acme.dev/barynt.",
-      "saveFailed": "Couldn't save the address. Try again."
+      "saveFailed": "Couldn't save the address. Try again.",
+      "suggested": "The plugin suggests {url}."
     },
     "inbound": {
       "title": "Webhooks from other services",

@@ -158,7 +158,7 @@ describe("PluginSettings", () => {
       }),
     );
     expect(own).toContain('name="url"');
-    expect(own).toContain("https://ci.example.dev/hook");
+    expect(own).toContain("service.suggested");
     expect(own).toContain('data-state="noAddress"');
     expect(own).not.toContain("service.test");
 

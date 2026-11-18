@@ -51,7 +51,12 @@ export function ServiceAddressCard({ plugin }: { plugin: InstalledPlugin }) {
             variant="url"
             label={text.t("serverAddress.label")}
             defaultValue={address.url ?? ""}
-            placeholder={plugin.service?.url ?? "http://"}
+            placeholder="http://"
+            hint={
+              plugin.service?.url
+                ? text.t("serverAddress.suggested", { url: plugin.service.url })
+                : undefined
+            }
           />
           {error && (
             <p className={styles.formError}>

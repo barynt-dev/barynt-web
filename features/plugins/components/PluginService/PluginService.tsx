@@ -224,8 +224,12 @@ function AddressForm({ service }: { service: PluginServiceView }) {
         variant="url"
         label={text.t("service.url")}
         defaultValue={service.url ?? ""}
-        placeholder={service.suggestion ?? "https://"}
-        hint={text.t("service.activationHint")}
+        placeholder="https://"
+        hint={
+          service.suggestion
+            ? `${text.t("service.activationHint")} ${text.t("service.suggested", { url: service.suggestion })}`
+            : text.t("service.activationHint")
+        }
       />
       {error && (
         <p className={styles.error}>

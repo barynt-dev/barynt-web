@@ -2912,7 +2912,8 @@
       "missing": "Den Server dieses Plugins betreibt, wer dieses Barynt betreibt. Bis er eine Adresse hat, läuft das Plugin ohne ihn.",
       "fromEnv": "Festgelegt über PLUGIN_SERVICE_URLS; dort ändern.",
       "invalid": "Gib eine vollständige Adresse ein, etwa http://barynt-github:8080/events.",
-      "failed": "Die Adresse konnte nicht gespeichert werden. Versuch es noch einmal."
+      "failed": "Die Adresse konnte nicht gespeichert werden. Versuch es noch einmal.",
+      "suggested": "Das Plugin schlägt {url} vor."
     },
     "service": {
       "title": "Server",
@@ -2936,7 +2937,8 @@
       "save": "Adresse speichern",
       "notHttps": "Nutze https. Einfaches http geht nur zu Hosts, die der Betreiber freigegeben hat.",
       "invalidUrl": "Gib eine vollständige Adresse ein, etwa https://ci.acme.dev/barynt.",
-      "saveFailed": "Die Adresse konnte nicht gespeichert werden. Versuch es noch einmal."
+      "saveFailed": "Die Adresse konnte nicht gespeichert werden. Versuch es noch einmal.",
+      "suggested": "Das Plugin schlägt {url} vor."
     },
     "inbound": {
       "title": "Webhooks anderer Dienste",
