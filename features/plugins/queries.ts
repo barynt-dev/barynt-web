@@ -493,9 +493,18 @@ export interface ScopeStoreView {
   plugins: ScopeStorePlugin[];
 }
 
+/** Whether a plugin's settings page has something on it: a form, or the
+ *  cards of its server and of the webhooks other services send it — a
+ *  server run just for this place takes its address there (BARY-223). */
 const hasSettingsForm = (manifest: unknown) => {
   const parsed = validateManifest(manifest);
-  return parsed.ok && (parsed.manifest.contributes.settings?.length ?? 0) > 0;
+  if (!parsed.ok) return false;
+  const m = parsed.manifest;
+  return (
+    (m.contributes.settings?.length ?? 0) > 0 ||
+    !!m.service ||
+    (m.contributes.inboundHooks?.length ?? 0) > 0
+  );
 };
 
 /**
