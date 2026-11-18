@@ -120,10 +120,44 @@ Build it:
 bun install && bun run build
 ```
 
-## 4. A local release
+## 4. Load it from its folder
 
-Barynt installs releases, never a folder. For local work, a directory on a
-plain web server is enough. Make this folder next to your plugin:
+While you work on it, Barynt loads the plugin straight from your project,
+with no release and no hash. In Barynt's `.env`, then restart Barynt:
+
+```bash
+PLUGIN_DEV_DIRS="/home/you/open-issues"
+```
+
+Barynt reads `manifest.json` and `styles.css` from that folder and
+`main.js` from it or its `dist/`. Several plugins are separated by commas,
+and an address like `http://localhost:5173` works too, for a dev server
+that serves the three files.
+
+> [!NOTE]
+> `PLUGIN_DEV_DIRS` only works in development. In production it is ignored.
+
+## 5. Install and switch it on
+
+1. **Admin → Plugins → Sources**: your plugin is listed under *Local
+   plugins*, with anything wrong in its manifest. **Install** it.
+2. **Settings → Plugin store**: open it and **Release** it for the workspace.
+3. **Project settings → Plugins → Open Issues**: confirm what it may do and
+   **Switch on**. Under **Views**, open *Open issues*.
+
+## Changing it
+
+Run `bun run build --watch` (or build again after a change). Barynt reads
+the folder again whenever a frame loads, and open frames check it every
+two seconds: after a build they load again on their own. The manifest is
+checked every time. If it asks for more capabilities than a place
+confirmed, that place confirms again, as after an update.
+
+## Trying a release
+
+Before you publish, try the plugin the way an admin gets it: as a release
+from a directory. A directory on a plain web server is enough. Make this
+folder next to your plugin:
 
 ```text
 plugin-dev/
@@ -171,15 +205,9 @@ PLUGIN_DEV_BASE="http://localhost:4555"
 > `PLUGIN_DEV_BASE` only works for `localhost` and never in production. It
 > lets Barynt read plain `http` from there.
 
-## 5. Install and switch it on
-
-1. **Admin → Plugins → Add source**: `http://localhost:4555/plugins.json`,
-   provider *Web server*. Your plugin shows up; install it.
-2. **Settings → Plugin store**: open it and **Release** it for the workspace.
-3. **Project settings → Plugins → Open Issues**: confirm what it may do and
-   **Switch on**. Under **Views**, open *Open issues*.
-
-## Changing it
+In **Admin → Plugins → Add source**, add `http://localhost:4555/plugins.json`
+with provider *Web server* and install the release from there; it replaces
+the local install.
 
 A version's files are fixed by their hash. For a change, build, copy the
 files into a new version folder (`0.1.1`, or a prerelease like

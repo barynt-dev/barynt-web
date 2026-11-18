@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { devVersion, readDevPlugin } from "@/features/plugins/dev";
 import {
   fetchRelease,
   forgetSource,
@@ -25,6 +26,7 @@ import { activationScopeKey } from "@/lib/plugins/activation";
 import {
   isDevUrl,
   pluginDevBase,
+  pluginDevSources,
   pluginInternalHosts,
 } from "@/lib/plugins/dev";
 import type { PreviewFileName } from "@/lib/plugins/directory";
@@ -350,6 +352,82 @@ export async function installPlugin(input: {
   });
   done();
   return { ok: true, id: row.id, updatedFrom: previous };
+}
+
+/**
+ * A plugin from a local folder or dev server (BARY-221), development only:
+ * read and checked like a release, minus the hash, and installed as the
+ * active version — its row then follows the folder (`features/plugins/dev.ts`).
+ * Another dev install of the same plugin is replaced.
+ */
+export async function installDevPlugin(input: {
+  source: string;
+  capabilities: string[];
+}): Promise<PluginResult<{ id: string }>> {
+  const actorId = await requirePermission("plugin.manage", PLATFORM);
+  if (!pluginDevSources().includes(input.source))
+    return { error: "not_in_directory" };
+  const read = await readDevPlugin(input.source);
+  if (!read.ok) return { error: "invalid_manifest" };
+  const { manifest, files, fingerprint } = read;
+  if (!confirmsExactly(manifest.capabilities, input.capabilities))
+    return { error: "capabilities_not_confirmed" };
+  const blocked = await db.plugin.count({
+    where: { pluginId: manifest.id, status: "blocked" },
+  });
+  if (blocked > 0) return { error: "blocked" };
+
+  const row = await db.$transaction(async (tx) => {
+    await tx.plugin.deleteMany({
+      where: { pluginId: manifest.id, devSource: { not: null } },
+    });
+    await tx.plugin.updateMany({
+      where: { pluginId: manifest.id, status: "active" },
+      data: { status: "superseded" },
+    });
+    return tx.plugin.create({
+      data: {
+        pluginId: manifest.id,
+        version: devVersion(manifest),
+        kind: manifest.kind,
+        hash: fingerprint,
+        manifest: manifest as unknown as Prisma.InputJsonValue,
+        devSource: input.source,
+        installedById: actorId,
+        // Kept like a release's, though frames read the folder.
+        files: {
+          create: (["main.js", "styles.css"] as const).flatMap((name) => {
+            const content = files[name];
+            return content
+              ? [
+                  {
+                    name,
+                    content: Buffer.from(content),
+                    size: content.byteLength,
+                  },
+                ]
+              : [];
+          }),
+        },
+      },
+      select: { id: true },
+    });
+  });
+
+  await recordAudit({
+    action: "plugin.installed",
+    actorId,
+    target: { type: "plugin", id: manifest.id, label: manifest.name },
+    meta: {
+      version: devVersion(manifest),
+      kind: manifest.kind,
+      capabilities: manifest.capabilities,
+      network: manifest.network,
+      dev: input.source,
+    },
+  });
+  done();
+  return { ok: true, id: row.id };
 }
 
 /** The active version's manifest name, for audit labels. */

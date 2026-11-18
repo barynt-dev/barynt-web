@@ -73,5 +73,5 @@ setting, a personal token, `net.fetch`, comments, storage) and
 
 ## Trying it in Barynt
 
-For the real thing, release it locally and switch it on in your Barynt, as
-in [Your first plugin](plugins-first-plugin.md#4-a-local-release).
+For the real thing, load it from its folder and switch it on in your Barynt, as
+in [Your first plugin](plugins-first-plugin.md#4-load-it-from-its-folder).

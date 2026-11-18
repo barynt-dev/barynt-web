@@ -39,3 +39,29 @@ export function pluginInternalHosts(): string[] {
     .map((h) => h.trim().toLowerCase())
     .filter((h) => /^[a-z0-9.-]+(:\d{1,5})?$/.test(h));
 }
+
+/**
+ * Plugins loaded from a local folder or dev server (BARY-221), without a
+ * release: `PLUGIN_DEV_DIRS` is a comma-separated list of absolute paths
+ * and `http(s)://localhost` addresses, each holding a plugin's
+ * `manifest.json`, `main.js` and `styles.css` — its build output. Read
+ * again on every load. Development only, like the dev directory.
+ */
+export function pluginDevSources(): string[] {
+  if (process.env.NODE_ENV === "production") return [];
+  return (process.env.PLUGIN_DEV_DIRS ?? "")
+    .split(",")
+    .map((s) => s.trim().replace(/\/+$/, ""))
+    .filter((s) => {
+      if (s.startsWith("/")) return true;
+      try {
+        const url = new URL(s);
+        return (
+          (url.protocol === "http:" || url.protocol === "https:") &&
+          (url.hostname === "localhost" || url.hostname === "127.0.0.1")
+        );
+      } catch {
+        return false;
+      }
+    });
+}

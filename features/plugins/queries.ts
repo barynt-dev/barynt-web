@@ -25,6 +25,7 @@ import {
 } from "@/lib/plugins/lifecycle";
 import {
   type CredentialLevel,
+  type PluginKind,
   type PluginManifest,
   serviceAddressMode,
   validateManifest,
@@ -40,6 +41,7 @@ import {
   platformServiceUrl,
   serviceAddressOf,
 } from "@/lib/webhooks/plugin-targets";
+import { listDevPlugins } from "./dev";
 import { placeSettings } from "./settings-options";
 
 // What the plugin pages show (BARY-143). Every view checks its own
@@ -255,7 +257,27 @@ export interface StoreView {
   entries: StoreEntry[];
   /** Sources whose directory couldn't be read just now. */
   unreadable: { sourceId: string; error: string }[];
+  /** Plugins in local folders (`PLUGIN_DEV_DIRS`, BARY-221) — `null`
+   *  without any, and always in production. */
+  dev: DevListing[] | null;
 }
+
+/** A plugin in a local folder or dev server, as read just now. */
+export type DevListing = {
+  source: string;
+  /** Installed from here, and loaded from here. */
+  installed: boolean;
+} & (
+  | {
+      ok: true;
+      id: string;
+      name: string;
+      version: string;
+      kind: PluginKind;
+      capabilities: string[];
+    }
+  | { ok: false; errors: string[] }
+);
 
 /**
  * What the enabled sources list, by plugin id — the first source that lists
@@ -362,7 +384,36 @@ export async function getPluginStoreView(): Promise<StoreView | null> {
     });
   }
   entries.sort((a, b) => a.name.localeCompare(b.name));
-  return { sources: admin.sources, entries, unreadable };
+  return {
+    sources: admin.sources,
+    entries,
+    unreadable,
+    dev: await devListings(),
+  };
+}
+
+async function devListings(): Promise<DevListing[] | null> {
+  const read = await listDevPlugins();
+  if (read.length === 0) return null;
+  const rows = await db.plugin.findMany({
+    where: { status: "active", devSource: { in: read.map((r) => r.source) } },
+    select: { devSource: true },
+  });
+  return read.map((r) => {
+    const installed = rows.some((row) => row.devSource === r.source);
+    return r.ok
+      ? {
+          source: r.source,
+          installed,
+          ok: true,
+          id: r.manifest.id,
+          name: r.manifest.name,
+          version: r.manifest.version,
+          kind: r.manifest.kind,
+          capabilities: r.manifest.capabilities,
+        }
+      : { source: r.source, installed, ok: false, errors: r.errors };
+  });
 }
 
 /** A workspace, with where in it a plugin is switched on. */
