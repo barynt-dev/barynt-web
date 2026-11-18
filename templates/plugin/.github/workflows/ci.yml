@@ -16,13 +16,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           path: plugin
       # The SDK isn't on npm yet: it comes from Barynt's repository, next
       # to the plugin as package.json expects (`file:../barynt/…`). The
       # repository variable BARYNT_REF picks another branch or tag than main.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: barynt-dev/barynt-web
           ref: ${{ vars.BARYNT_REF || 'main' }}
