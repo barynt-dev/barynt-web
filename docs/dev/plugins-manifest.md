@@ -301,9 +301,11 @@ under **Plugins** — and the plugin reads them with
 | `multiselect` | a chip per option, any number chosen | a list of option `id`s |
 | `member` | a choice of the place's people — the project's members, or the workspace's | a user id |
 | `label` | a choice of the place's labels — the ones the project shows, or the workspace's own | a label id |
+| `status` | a choice of the workspace's statuses, in board order — in a project too | a status id |
 
-Barynt checks what's saved against these types — a `member` or `label`
-against the people and labels of that place, when it's saved. Something
+Barynt checks what's saved against these types — a `member`, `label` or
+`status` against the people, labels and statuses of that place, when it's
+saved. Something
 left empty isn't stored, so the plugin falls back to its default.
 
 ### Its own settings page

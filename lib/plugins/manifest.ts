@@ -497,7 +497,8 @@ export const manifestSchema = z
 
     const settings = m.contributes.settings ?? [];
     settings.forEach((s, i) => {
-      // `member` and `label` choose from the place's — Barynt fills those.
+      // `member`, `label` and `status` choose from the place's — Barynt fills
+      // those.
       const ownOptions = s.type === "select" || s.type === "multiselect";
       if (ownOptions && !(s.options && s.options.length > 0))
         add(

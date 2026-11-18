@@ -414,7 +414,8 @@ function Field({
   if (
     field.type === "select" ||
     field.type === "member" ||
-    field.type === "label"
+    field.type === "label" ||
+    field.type === "status"
   )
     return (
       <div className={styles.field}>
@@ -427,7 +428,8 @@ function Field({
           disabled={disabled}
           onChange={onChange}
           items={[
-            // A member or label is always optional: the place's may change.
+            // A member, label or status is always optional: the place's may
+            // change.
             ...(field.default === null || field.type !== "select"
               ? [{ value: "", label: "—" }]
               : []),

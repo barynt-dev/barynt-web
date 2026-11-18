@@ -220,6 +220,7 @@ describe("PluginSettings", () => {
           ]),
           field("assignee", "member", [{ id: "u1", label: "Ada Lovelace" }]),
           field("tag", "label", [{ id: "l1", label: "Bug" }]),
+          field("merged", "status", [{ id: "done", label: "Done" }]),
         ],
         values: { days: ["tue"], body: "Hello" },
       }),
@@ -230,6 +231,7 @@ describe("PluginSettings", () => {
     expect(html).toMatch(/aria-pressed="true"[^>]*>.*?Tue/);
     expect(html).toContain("Ada Lovelace");
     expect(html).toContain("Bug");
+    expect(html).toMatch(/<option value="done">Done<\/option>/);
   });
 
   it("puts a plugin's own page instead of the form, its section below it", () => {

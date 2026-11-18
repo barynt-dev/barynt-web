@@ -426,6 +426,7 @@ describe("more setting types and a settings section (BARY-204)", () => {
         },
         { key: "who", type: "member", label: "Who" },
         { key: "tag", type: "label", label: "Tag" },
+        { key: "merged", type: "status", label: "When merged" },
       ]),
     ).toEqual([]);
   });
