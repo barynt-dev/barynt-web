@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/atoms/Input/Input";
 import { useConfirm } from "@/components/ui/layout/ConfirmDialog/ConfirmDialog";
 import { PageHeader } from "@/components/ui/layout/PageHeader/PageHeader";
 import {
+  installDevPlugin,
   type PluginResult,
   refreshPluginSource,
   removePluginSource,
@@ -18,6 +19,7 @@ import {
   updatePluginSource,
 } from "@/features/plugins/actions";
 import type {
+  DevListing,
   PluginPlace,
   PluginSourceRow,
   StoreEntry,
@@ -80,6 +82,7 @@ export interface StoreActions {
   removeSource: (source: PluginSourceRow) => void;
   refreshSource: (source: PluginSourceRow) => void;
   toggleSource: (source: PluginSourceRow, enabled: boolean) => void;
+  installDev: (dev: DevListing & { ok: true }) => void;
 }
 
 type Filter = "all" | "installed" | "updates" | "blocked";
@@ -224,10 +227,29 @@ export function PluginStore({
     refreshSource: (source) => run(() => refreshPluginSource(source.id)),
     toggleSource: (source, enabled) =>
       run(() => updatePluginSource(source.id, { enabled })),
+    installDev: async (dev) => {
+      const ok = await confirm({
+        title: text.t("dev.installTitle", { name: dev.name }),
+        description: text.t("dev.installDesc", {
+          capabilities:
+            dev.capabilities.map(text.capability).join(", ") ||
+            text.t("dev.noCapabilities"),
+        }),
+        confirmLabel: text.t("dev.install"),
+        cancelLabel: t("actions.cancel"),
+      });
+      if (ok)
+        run(() =>
+          installDevPlugin({
+            source: dev.source,
+            capabilities: dev.capabilities,
+          }),
+        );
+    },
   };
 
-  // Nothing to show yet: no source, nothing installed.
-  if (view.sources.length === 0 && view.entries.length === 0)
+  // Nothing to show yet: no source, nothing installed, nothing local.
+  if (view.sources.length === 0 && view.entries.length === 0 && !view.dev)
     return (
       <>
         <PageHeader divider={false} title={text.t("adminTitle")} />
@@ -400,6 +422,7 @@ export function PluginStore({
               sources={view.sources}
               unreadable={view.unreadable}
               entries={view.entries}
+              dev={view.dev}
               actions={actions}
             />
           ) : (

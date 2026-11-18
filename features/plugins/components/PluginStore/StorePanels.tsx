@@ -24,11 +24,13 @@ export function SourcesPane({
   sources,
   unreadable,
   entries,
+  dev,
   actions,
 }: {
   sources: PluginSourceRow[];
   unreadable: StoreView["unreadable"];
   entries: StoreEntry[];
+  dev: StoreView["dev"];
   actions: StoreActions;
 }) {
   const text = usePluginText();
@@ -142,8 +144,83 @@ export function SourcesPane({
           </article>
         );
       })}
+      {dev && <DevPlugins dev={dev} actions={actions} />}
       <p className={styles.muted}>{text.t("sourcesNote")}</p>
     </section>
+  );
+}
+
+/** Plugins in local folders (BARY-221): installed straight from there,
+ *  read again on every load — development only. */
+function DevPlugins({
+  dev,
+  actions,
+}: {
+  dev: NonNullable<StoreView["dev"]>;
+  actions: StoreActions;
+}) {
+  const text = usePluginText();
+  return (
+    <>
+      <div className={styles.devHead}>
+        <h3 className={styles.sourceName}>{text.t("dev.title")}</h3>
+        <span className={styles.headMeta}>{text.t("dev.intro")}</span>
+      </div>
+      {dev.map((d) => (
+        <article
+          key={d.source}
+          className={styles.sourceCard}
+          data-dev
+          data-failing={!d.ok || undefined}
+        >
+          <div className={styles.sourceHead}>
+            <strong className={styles.sourceName}>
+              {d.ok ? d.name : text.t("dev.unreadable")}
+            </strong>
+            <Badge size="sm" mono={false}>
+              <Icon icon="lucide:folder-code" width={11} />{" "}
+              {text.t("dev.badge")}
+            </Badge>
+            {d.ok && <Badge size="sm">v{d.version}</Badge>}
+            <span className={styles.sourceActions}>
+              {d.installed ? (
+                <span className={styles.devLive}>
+                  <Icon icon="lucide:radio" width={14} aria-hidden />
+                  {text.t("dev.live")}
+                </span>
+              ) : (
+                d.ok && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<Icon icon="lucide:download" width={14} />}
+                    disabled={actions.pending}
+                    onClick={() => actions.installDev(d)}
+                  >
+                    {text.t("dev.install")}
+                  </Button>
+                )
+              )}
+            </span>
+          </div>
+          <div className={styles.sourceMeta}>
+            <code>{d.source}</code>
+            {d.ok && <span>{d.id}</span>}
+            {d.ok && <span>{text.kind(d.kind)}</span>}
+          </div>
+          {!d.ok && (
+            <ul className={styles.sourceError} role="alert">
+              {d.errors.map((e) => (
+                <li key={e}>
+                  <Icon icon="lucide:triangle-alert" width={16} aria-hidden />
+                  <code>{e}</code>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+      ))}
+    </>
   );
 }
 
