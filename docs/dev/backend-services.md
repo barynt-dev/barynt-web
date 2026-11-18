@@ -100,6 +100,17 @@ deliberately simple:
 3. `lib/realtime/localMutation.ts` keeps a per-tab watermark so a tab does not announce
    its **own** change to itself.
 
+Plugins' data on issues (BARY-225) has its own signal next to it: when a plugin's
+server writes or removes an entry (`PUT`/`DELETE /api/v1/issues/{id}/plugin-data/{key}`),
+`recordPluginDataChange(...)` remembers the plugin and the issue for two minutes.
+Boards, lists and open issue panels that show that plugin poll
+`GET /api/workspaces/[id]/plugin-data?since=…` (`usePluginDataChanges`, one poll per
+workspace for all of them, none on a page without a plugin's badges or panels) and,
+without a banner, ask the plugin again for those cards only and reload its panel. The
+banner's signal isn't used for this: badges come from the plugin's frame, so a refresh of
+the page wouldn't reach them, and a build's every step would announce "there are
+changes" to everyone.
+
 Why polling and not SSE or WebSockets: a short GET has nothing for a reverse proxy, CDN
 or tunnel to buffer or cut. Why in memory: one container, nothing needs to survive a
 restart, and a lost notice is repaired by the next change.

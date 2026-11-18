@@ -107,7 +107,9 @@ Needs `issues:read`. `api.issueData.list(issueIds)` — what the plugin's
 server keeps on issues (`PUT /api/v1/issues/{id}/plugin-data/{key}`, any
 JSON up to 16 KB), by issue id, for issues the person can see in the
 plugin's place. Up to 200 ids in one call, so a board's badges need one
-request; only the plugin's own entries, never another's.
+request; only the plugin's own entries, never another's. When its server
+writes or removes one, boards ask the plugin's badges again for that issue
+and an open issue reloads its panel, within about 15 seconds.
 
 ```ts
 const data = await api.issueData.list([issue.id]);

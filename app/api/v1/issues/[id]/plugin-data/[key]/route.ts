@@ -11,8 +11,21 @@ import {
   withRateLimitHeaders,
 } from "@/lib/api/respond";
 import { hasScope, resolveApiUser } from "@/lib/api-auth";
+import { recordPluginDataChange } from "@/lib/realtime/store";
 
 type Context = { params: Promise<{ id: string; key: string }> };
+
+/** Boards and open issues showing the plugin ask it again (BARY-225). */
+function changed(
+  plugin: { pluginId: string; workspaceId: string },
+  issue: { id: string; project: { id: string } },
+) {
+  recordPluginDataChange(plugin.workspaceId, {
+    pluginId: plugin.pluginId,
+    issueId: issue.id,
+    projectId: issue.project.id,
+  });
+}
 
 /** The calling plugin's entry under an issue, written by its server
  *  (BARY-216): `{ "value": … }`, at most 16 KB. */
@@ -48,6 +61,7 @@ export async function PUT(req: Request, { params }: Context) {
       NextResponse.json({ error: { code: result } }, { status: 422 }),
       info,
     );
+  changed(plugin, issue);
   return withRateLimitHeaders(
     NextResponse.json({ data: { key, value: body.value } }),
     info,
@@ -70,5 +84,6 @@ export async function DELETE(req: Request, { params }: Context) {
   if (!issue) return withRateLimitHeaders(notFoundJson(), info);
 
   await deleteIssueData(plugin.activationId, issue.id, key);
+  changed(plugin, issue);
   return withRateLimitHeaders(new NextResponse(null, { status: 204 }), info);
 }

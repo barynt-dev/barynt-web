@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { useLocale } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { takePanelFocus } from "@/features/plugins/components/PluginBadges/panelFocus";
+import { usePluginDataChanges } from "@/features/plugins/components/PluginBadges/usePluginDataChanges";
 import { PluginFrame } from "@/features/plugins/components/PluginFrame/PluginFrame";
 import { PluginTile } from "@/features/plugins/components/PluginStore/PluginTile";
 import type { IssueDetail, IssuePluginPanel } from "@/types/issue";
@@ -59,6 +60,17 @@ function PluginPanel({
   const locale = useLocale();
   const [open, setOpen] = useState(true);
   const section = useRef<HTMLElement>(null);
+  // Its server changed what it keeps on this issue (BARY-225): a fresh
+  // frame reads it again.
+  const [loaded, setLoaded] = useState(0);
+  usePluginDataChanges(workspaceId, (changes) => {
+    if (
+      changes.some(
+        (c) => c.pluginId === panel.pluginId && c.issueId === issue.id,
+      )
+    )
+      setLoaded((n) => n + 1);
+  });
   // Read after mounting: the server has no `localStorage`, and the first
   // render has to match its HTML. A badge row's click (BARY-208) opens it
   // whatever was stored, and brings it into view.
@@ -135,7 +147,7 @@ function PluginPanel({
         {open && (
           <PluginFrame
             // Another issue, another frame: the plugin reads its context once.
-            key={issue.id}
+            key={`${issue.id}:${loaded}`}
             pluginId={panel.pluginId}
             name={panel.pluginName}
             autoHeight={PANEL_HEIGHT}
