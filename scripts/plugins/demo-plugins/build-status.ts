@@ -4,7 +4,7 @@
 // an open issue reload this panel — no page refresh.
 
 import { type Badge, Plugin } from "@barynt/plugin-sdk";
-import { badge, card, keyValue } from "@barynt/plugin-sdk/ui";
+import { badge, card, keyValue, stack } from "@barynt/plugin-sdk/ui";
 
 interface Build {
   state: "running" | "passed";
@@ -52,27 +52,29 @@ export default class BuildStatus extends Plugin {
         if (!issueId) return;
         const b = (await this.builds([issueId]))[issueId];
         const look = b ? LOOK[b.state] : null;
-        const panel = card({
-          title: b ? `Build #${b.number}` : "No build yet",
-          description: b
-            ? undefined
-            : "Move the issue to another status to start one.",
-          actions: look ? [badge({ text: look.text, tone: look.tone })] : [],
-          children: b
-            ? [
-                keyValue({
-                  items: [
-                    { label: "State", value: look?.text ?? "" },
-                    {
-                      label: "Updated",
-                      value: new Date(b.at).toLocaleTimeString(),
-                    },
-                  ],
-                }),
-              ]
-            : [],
-        });
-        panel.style.margin = "0.75rem";
+        const panel = stack(
+          card({
+            title: b ? `Build #${b.number}` : "No build yet",
+            description: b
+              ? undefined
+              : "Move the issue to another status to start one.",
+            actions: look ? [badge({ text: look.text, tone: look.tone })] : [],
+            children: b
+              ? [
+                  keyValue({
+                    items: [
+                      { label: "State", value: look?.text ?? "" },
+                      {
+                        label: "Updated",
+                        value: new Date(b.at).toLocaleTimeString(),
+                      },
+                    ],
+                  }),
+                ]
+              : [],
+          }),
+        );
+        panel.style.padding = "0.75rem";
         el.replaceChildren(panel);
       },
     });
