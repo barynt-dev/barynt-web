@@ -205,13 +205,16 @@ function AddressForm({ service }: { service: PluginServiceView }) {
   const text = usePluginText();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  // Kept here: a form action resets the fields, and a refused address
+  // should stay to be corrected.
+  const [url, setUrl] = useState(service.url ?? "");
   const [isPending, startTransition] = useTransition();
 
-  const save = (form: FormData) =>
+  const save = () =>
     startTransition(async () => {
       const result = await setActivationServiceAddress({
         activationId: service.activationId,
-        url: String(form.get("url") ?? ""),
+        url,
       });
       setError("error" in result ? result.error : null);
       router.refresh();
@@ -223,7 +226,8 @@ function AddressForm({ service }: { service: PluginServiceView }) {
         name="url"
         variant="url"
         label={text.t("service.url")}
-        defaultValue={service.url ?? ""}
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
         placeholder="https://"
         hint={
           service.suggestion

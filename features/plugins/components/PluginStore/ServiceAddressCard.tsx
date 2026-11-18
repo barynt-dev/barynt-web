@@ -19,15 +19,18 @@ export function ServiceAddressCard({ plugin }: { plugin: InstalledPlugin }) {
   const text = usePluginText();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  // Kept here: a form action resets the fields, and a refused address
+  // should stay to be corrected.
+  const [url, setUrl] = useState(plugin.serviceAddress?.url ?? "");
   const [isPending, startTransition] = useTransition();
   const address = plugin.serviceAddress;
   if (!address) return null;
 
-  const save = (form: FormData) =>
+  const save = () =>
     startTransition(async () => {
       const result = await setPluginServiceAddress({
         pluginId: plugin.pluginId,
-        url: String(form.get("url") ?? ""),
+        url,
       });
       setError("error" in result ? result.error : null);
       router.refresh();
@@ -50,7 +53,8 @@ export function ServiceAddressCard({ plugin }: { plugin: InstalledPlugin }) {
             name="url"
             variant="url"
             label={text.t("serverAddress.label")}
-            defaultValue={address.url ?? ""}
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
             placeholder="http://"
             hint={
               plugin.service?.url
