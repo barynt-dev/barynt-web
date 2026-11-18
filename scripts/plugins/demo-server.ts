@@ -518,6 +518,12 @@ const DEMOS: Demo[] = [
           },
           { key: "label", type: "label", label: "Label" },
           {
+            key: "status",
+            type: "status",
+            label: "Status",
+            description: "Where a new issue starts.",
+          },
+          {
             key: "link",
             type: "url",
             label: "Agenda",
