@@ -607,6 +607,46 @@ const DEMOS: Demo[] = [
     code: "code-review",
   },
   {
+    // Its server keeps a build's state on the issue, its badge and panel
+    // show it — and follow along as the server writes (BARY-225).
+    entry: {
+      id: "demo-build-status",
+      name: "Demo Build Status",
+      author: "Barynt demo",
+      description:
+        "A build starts when an issue moves; its card and panel follow the build without a reload.",
+      repo: `${ORIGIN}/barynt-demo/build-status`,
+      levels: ["project"],
+      kind: "sandbox",
+      categories: ["development"],
+      added: "2026-11-18",
+    },
+    manifest: {
+      minBaryntVersion: "0.9.0",
+      license: "MIT",
+      network: [],
+      contributes: {
+        issueBadges: [{ id: "build", title: "Build" }],
+        issuePanels: [{ id: "build", title: "Build" }],
+      },
+    },
+    versions: {
+      "1.0.0": {
+        capabilities: [
+          "issues:read",
+          "events:issue",
+          "ui:issue-badge",
+          "ui:issue-panel",
+        ],
+        service: {
+          url: `${ORIGIN}/services/build`,
+          events: ["issue.status_changed"],
+        },
+      },
+    },
+    code: "build-status",
+  },
+  {
     // Every component of the SDK's UI kit and every design token (BARY-206).
     entry: {
       id: "demo-ui-kit",
@@ -895,6 +935,28 @@ notify.on("issue.status_changed", async (e, { barynt, app }) => {
   log("→ comment via API", "as its app", d.ref);
 });
 
+// Demo Build Status's server (BARY-225): a status change starts a "build"
+// that is running for a few seconds, then passes — each step written on
+// the issue, which the card and an open issue pick up on their own.
+const builds = createService({ baryntUrl: process.env.BARYNT_URL });
+let buildNumber = 2400;
+builds.on("issue.status_changed", async (e, { app }) => {
+  const d = e.data as { id: string; ref: string };
+  const number = ++buildNumber;
+  const write = (state: "running" | "passed") =>
+    app.issueData.set(d.id, "build", {
+      state,
+      number,
+      at: new Date().toISOString(),
+    });
+  await write("running");
+  log("→ build running", "as its app", `${d.ref} #${number}`);
+  setTimeout(async () => {
+    await write("passed").catch(() => {});
+    log("→ build passed", "as its app", `${d.ref} #${number}`);
+  }, 20_000);
+});
+
 function notifyPage(): Response {
   const rows = received
     .slice(-30)
@@ -917,6 +979,8 @@ Bun.serve({
     console.log(`${req.method} ${pathname}`);
     if (pathname === "/services/notify")
       return req.method === "GET" ? notifyPage() : notify.fetch(req);
+    if (pathname === "/services/build" && req.method === "POST")
+      return builds.fetch(req);
     if (pathname === "/plugins.json" || pathname === GITEA_DIRECTORY)
       return Response.json(directory);
     const m = pathname.match(RELEASE);

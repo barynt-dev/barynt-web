@@ -48,3 +48,53 @@ export function recordProjectChange(workspaceId: string, actorId: string) {
 export function getLastChange(workspaceId: string): LastChange | null {
   return changes.get(workspaceId) ?? null;
 }
+
+/** A plugin's server wrote or removed what it keeps on an issue (BARY-225). */
+export interface PluginDataChange {
+  pluginId: string;
+  issueId: string;
+  projectId: string;
+  at: number;
+}
+
+/** How long a plugin's change waits to be polled — several polls' worth. */
+export const PLUGIN_DATA_KEEP_MS = 120_000;
+/** A workspace's changes kept, at most — a busy CI shouldn't grow this. */
+export const PLUGIN_DATA_MAX = 500;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var realtimePluginData: Map<string, PluginDataChange[]> | undefined;
+}
+
+// Not the banner's signal above: badges and panels come from the plugin's
+// frames, not from the page, so a refresh wouldn't reach them — and a
+// build's every step would flag "there are changes" for everyone. Each
+// change names its plugin and issue, so a board asks that plugin again for
+// that card only. Same single-process store, same `global` bridge.
+const pluginData =
+  global.realtimePluginData ?? new Map<string, PluginDataChange[]>();
+global.realtimePluginData = pluginData;
+
+export function recordPluginDataChange(
+  workspaceId: string,
+  change: Omit<PluginDataChange, "at">,
+  now = Date.now(),
+) {
+  const kept = (pluginData.get(workspaceId) ?? []).filter(
+    (c) =>
+      c.at > now - PLUGIN_DATA_KEEP_MS &&
+      !(c.pluginId === change.pluginId && c.issueId === change.issueId),
+  );
+  kept.push({ ...change, at: now });
+  pluginData.set(workspaceId, kept.slice(-PLUGIN_DATA_MAX));
+}
+
+/** The changes from `since` on (inclusive: one seen twice is only asked
+ *  for again). */
+export function pluginDataChangesSince(
+  workspaceId: string,
+  since: number,
+): PluginDataChange[] {
+  return (pluginData.get(workspaceId) ?? []).filter((c) => c.at >= since);
+}
