@@ -111,3 +111,21 @@
   justify-content: flex-end;
   gap: 0.5rem;
 }
+
+/* Where it is, for a server run just here: the field and its button. */
+.address {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 36rem;
+}
+
+.missing {
+  color: var(--on-surface-variant);
+}
+
+.byWhom {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--on-surface-variant);
+}

@@ -497,7 +497,7 @@ curl "$BARYNT_URL/api/v1/issues/$ISSUE_ID/plugin-data" \
 
 Scope: `issues:read`
 
-Write the calling plugin's entry under an issue — any JSON up to 16 KB, replaced as a whole. The key is 1–100 characters of letters, digits and `_ . : -`. Only for a plugin's token, in the plugin's project or workspace.
+Write the calling plugin's entry under an issue — any JSON up to 16 KB, replaced as a whole. The key is 1–100 characters of letters, digits and `_ . : -`. Only for a plugin's token, in the plugin's project or workspace. Boards and open issues showing the plugin ask it again for this issue.
 
 **Path parameters**
 

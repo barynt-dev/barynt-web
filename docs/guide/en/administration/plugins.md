@@ -162,6 +162,8 @@ A switched-on plugin that has settings gets an entry under **Plugins** in the wo
 
 Some plugins also run on a server of their maker — to post to a chat, start a build or keep another tool in step. The store lists what such a plugin hears about (for example "Hear about issue changes"), and you confirm it like any other capability. Once it's switched on, Barynt sends the plugin's server those events, signed, and tries again when it's down — the same as a [webhook](../integrations/webhooks.md). It only hears about what its confirmed capabilities allow, never about a private project unless it was switched on there, and never about its own changes.
 
+Who runs that server is the plugin's maker's choice, and the store says which: the maker for every Barynt, **whoever runs this Barynt** — then a platform admin enters its address on the plugin's page under **Admin → Plugins** (or `PLUGIN_SERVICE_URLS` sets it) — or **whoever switches it on**, for that workspace or project alone, who enters the address in the plugin's settings. Until there's an address the plugin runs without its server. **Test connection** sends it its sign-up again.
+
 The plugin's settings show a **Server** card: the address, the events, how the last delivery went, and **Deliveries** with the log of the last seven days. When every delivery has failed for a day, Barynt **pauses** them — the plugin stays on, the pause lands in the activity log, and **Send again** resumes. Events from the pause aren't sent later.
 
 ### Webhooks from other services

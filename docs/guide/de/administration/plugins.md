@@ -161,6 +161,8 @@ Ein eingeschaltetes Plugin mit Einstellungen bekommt in den Einstellungen des Wo
 
 Manche Plugins laufen auch auf einem Server ihres Herstellers — um in einen Chat zu posten, einen Build zu starten oder ein anderes Werkzeug abzugleichen. Der Store zeigt, wovon so ein Plugin erfährt (zum Beispiel „Von Änderungen an Issues erfahren“), und du bestätigst das wie jede andere Fähigkeit. Sobald es eingeschaltet ist, schickt Barynt dem Server des Plugins diese Ereignisse, signiert, und versucht es erneut, wenn er nicht erreichbar ist — wie bei einem [Webhook](../integrations/webhooks.md). Es erfährt nur, was seine bestätigten Fähigkeiten erlauben, nie etwas aus einem privaten Projekt, außer es wurde dort eingeschaltet, und nie von seinen eigenen Änderungen.
 
+Wer diesen Server betreibt, legt der Hersteller des Plugins fest, und der Store zeigt es: der Hersteller für jedes Barynt, **wer dieses Barynt betreibt** — dann trägt ein Plattform-Admin die Adresse auf der Seite des Plugins unter **Admin → Plugins** ein (oder `PLUGIN_SERVICE_URLS` legt sie fest) — oder **wer es einschaltet**, nur für diesen Workspace oder dieses Projekt, und trägt die Adresse in den Einstellungen des Plugins ein. Solange keine Adresse da ist, läuft das Plugin ohne seinen Server. **Verbindung testen** schickt ihm seine Anmeldung erneut.
+
 Die Einstellungen des Plugins zeigen eine Karte **Server**: die Adresse, die Ereignisse, wie die letzte Zustellung lief, und **Zustellungen** mit dem Protokoll der letzten sieben Tage. Ist einen Tag lang jede Zustellung gescheitert, **hält** Barynt sie **an** — das Plugin bleibt an, die Pause steht in der Aktivität, und **Wieder senden** setzt sie fort. Ereignisse aus der Pause werden nicht nachgeschickt.
 
 ### Webhooks anderer Dienste

@@ -864,8 +864,8 @@ export const API_DOC_GROUPS: ApiDocGroup[] = [
         path: "/api/v1/issues/{id}/plugin-data/{key}",
         scope: "issues:read",
         desc: {
-          en: "Write the calling plugin's entry under an issue — any JSON up to 16 KB, replaced as a whole. The key is 1–100 characters of letters, digits and `_ . : -`. Only for a plugin's token, in the plugin's project or workspace.",
-          de: "Schreibt den Eintrag des aufrufenden Plugins unter einem Issue — beliebiges JSON bis 16 KB, als Ganzes ersetzt. Der Schlüssel hat 1–100 Zeichen aus Buchstaben, Ziffern und `_ . : -`. Nur mit dem Token eines Plugins, in seinem Projekt oder Workspace.",
+          en: "Write the calling plugin's entry under an issue — any JSON up to 16 KB, replaced as a whole. The key is 1–100 characters of letters, digits and `_ . : -`. Only for a plugin's token, in the plugin's project or workspace. Boards and open issues showing the plugin ask it again for this issue.",
+          de: "Schreibt den Eintrag des aufrufenden Plugins unter einem Issue — beliebiges JSON bis 16 KB, als Ganzes ersetzt. Der Schlüssel hat 1–100 Zeichen aus Buchstaben, Ziffern und `_ . : -`. Nur mit dem Token eines Plugins, in seinem Projekt oder Workspace. Boards und offene Issues, die das Plugin zeigen, fragen es für dieses Issue neu.",
         },
         pathParams: [
           idParam("issue"),

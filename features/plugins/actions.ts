@@ -22,7 +22,11 @@ import {
   requirePermission,
 } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
-import { isDevUrl } from "@/lib/plugins/dev";
+import {
+  isDevUrl,
+  pluginDevBase,
+  pluginInternalHosts,
+} from "@/lib/plugins/dev";
 import type { PreviewFileName } from "@/lib/plugins/directory";
 import {
   detectProvider,
@@ -37,10 +41,20 @@ import {
   rollbackTarget,
   unblockTarget,
 } from "@/lib/plugins/lifecycle";
-import { validateManifest } from "@/lib/plugins/manifest";
+import {
+  type PluginManifest,
+  serviceAddressMode,
+  validateManifest,
+} from "@/lib/plugins/manifest";
 import type { PluginActionEntry } from "@/lib/plugins/plugin-actions";
 import { credentialScopeKey } from "@/lib/plugins/proxy";
 import { compareSemver } from "@/lib/plugins/semver";
+import {
+  checkServiceAddress,
+  type ServiceAddressMode,
+  type ServiceSummary,
+  serviceSummary,
+} from "@/lib/plugins/service";
 import { checkSettings } from "@/lib/plugins/settings";
 import { sealSecret } from "@/lib/secret-box";
 import { sendLifecycle } from "@/lib/webhooks/deliver";
@@ -970,7 +984,7 @@ export interface ReleasePreview {
   capabilities: string[];
   network: string[];
   /** Its own server and what it hears about (BARY-212). */
-  service: { url: string; events: string[] } | null;
+  service: ServiceSummary | null;
   minBaryntVersion: string;
   hash: string;
   /** Size of the code, in bytes. */
@@ -1012,7 +1026,7 @@ export async function previewRelease(input: {
       levels: m.levels,
       capabilities: m.capabilities,
       network: m.network,
-      service: m.service ?? null,
+      service: m.service ? serviceSummary(m.service) : null,
       minBaryntVersion: m.minBaryntVersion,
       hash: release.hash,
       codeSize: release.files["main.js"]?.byteLength ?? 0,
@@ -1127,6 +1141,129 @@ export async function resumePluginService(
     workspaceId: activation.workspaceId,
     projectId: activation.projectId,
   });
+  done();
+  return { ok: true };
+}
+
+// ─── Where a plugin's server is (BARY-223) ──────────────────────────────────
+
+/** The active version's manifest, when it has a server reached `mode`'s way. */
+async function serviceManifest(pluginId: string, mode: ServiceAddressMode) {
+  const row = await db.plugin.findFirst({
+    where: { pluginId, status: "active" },
+    select: { manifest: true },
+  });
+  const parsed = row ? validateManifest(row.manifest) : null;
+  if (!parsed?.ok || !parsed.manifest.service) return null;
+  return serviceAddressMode(parsed.manifest.service) === mode
+    ? parsed.manifest
+    : null;
+}
+
+/** A server that moved hears it's on — with a new secret, so the one
+ *  before can't read what goes to the new one, and a new app token. */
+async function connectService(activationId: string, manifest: PluginManifest) {
+  if (await ensureServiceIdentity(activationId, manifest, { newSecret: true }))
+    void sendLifecycle(activationId, "app.installed");
+}
+
+/**
+ * The address of a `platform` plugin's server, which whoever runs this
+ * Barynt runs — a container beside it, say. Empty takes it away. Every
+ * place the plugin is on hears about it at once.
+ */
+export async function setPluginServiceAddress(input: {
+  pluginId: string;
+  url: string;
+}): Promise<PluginResult> {
+  const actorId = await requirePermission("plugin.manage", PLATFORM);
+  const manifest = await serviceManifest(input.pluginId, "platform");
+  if (!manifest) return { error: "not_found" };
+  let url: string | null = null;
+  if (input.url.trim()) {
+    // The operator's own: plain http to a container is fine.
+    const checked = checkServiceAddress(input.url, {
+      hosts: [],
+      local: true,
+      plain: true,
+    });
+    if (!checked.ok) return { error: checked.error };
+    url = checked.url;
+  }
+  if (url)
+    await db.pluginServiceAddress.upsert({
+      where: { pluginId: input.pluginId },
+      create: { pluginId: input.pluginId, url, updatedById: actorId },
+      update: { url, updatedById: actorId },
+    });
+  else
+    await db.pluginServiceAddress.deleteMany({
+      where: { pluginId: input.pluginId },
+    });
+
+  const activations = await db.pluginActivation.findMany({
+    where: { pluginId: input.pluginId, enabled: true },
+    select: { id: true },
+  });
+  if (url) for (const a of activations) await connectService(a.id, manifest);
+  await recordAudit({
+    action: "plugin.service.address",
+    actorId,
+    target: { type: "plugin", id: input.pluginId, label: manifest.name },
+    meta: { url },
+  });
+  done();
+  return { ok: true };
+}
+
+/**
+ * The address of an `activation` plugin's server, given where it's
+ * switched on — a server just for this workspace or project. Empty takes it
+ * away: the plugin keeps running in the browser, its server hears nothing.
+ */
+export async function setActivationServiceAddress(input: {
+  activationId: string;
+  url: string;
+}): Promise<PluginResult> {
+  const activation = await manageableActivation(input.activationId);
+  if (!activation) return { error: "not_activated" };
+  const manifest = await serviceManifest(activation.pluginId, "activation");
+  if (!manifest) return { error: "not_found" };
+  let url: string | null = null;
+  if (input.url.trim()) {
+    // Not the operator: plain http only to a host the operator let through.
+    const checked = checkServiceAddress(input.url, {
+      hosts: pluginInternalHosts(),
+      local: !!pluginDevBase(),
+    });
+    if (!checked.ok) return { error: checked.error };
+    url = checked.url;
+  }
+  await db.pluginActivation.update({
+    where: { id: activation.id },
+    data: { serviceUrl: url },
+  });
+  if (url) await connectService(activation.id, manifest);
+  await recordAudit({
+    action: "plugin.service.address",
+    actorId: activation.actorId,
+    target: { type: "plugin", id: activation.pluginId, label: manifest.name },
+    workspaceId: activation.workspaceId,
+    projectId: activation.projectId,
+    meta: { url },
+  });
+  done();
+  return { ok: true };
+}
+
+/** Sends `app.installed` again — to check the server answers, and so one
+ *  that lost its installations gets them back. */
+export async function testPluginService(
+  activationId: string,
+): Promise<PluginResult> {
+  const activation = await manageableActivation(activationId);
+  if (!activation) return { error: "not_activated" };
+  await sendLifecycle(activationId, "app.installed");
   done();
   return { ok: true };
 }

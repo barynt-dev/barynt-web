@@ -301,9 +301,11 @@ under **Plugins** — and the plugin reads them with
 | `multiselect` | a chip per option, any number chosen | a list of option `id`s |
 | `member` | a choice of the place's people — the project's members, or the workspace's | a user id |
 | `label` | a choice of the place's labels — the ones the project shows, or the workspace's own | a label id |
+| `status` | a choice of the workspace's statuses, in board order — in a project too | a status id |
 
-Barynt checks what's saved against these types — a `member` or `label`
-against the people and labels of that place, when it's saved. Something
+Barynt checks what's saved against these types — a `member`, `label` or
+`status` against the people, labels and statuses of that place, when it's
+saved. Something
 left empty isn't stored, so the plugin falls back to its default.
 
 ### Its own settings page
@@ -402,9 +404,27 @@ in the background — names its own server, and Barynt sends it events there:
 }
 ```
 
-- `url` is `https`, its host in `network`. Only `http://localhost` or
+- `address` says who runs the server and so who gives its address — your
+  choice as its maker:
+
+  | `address` | Who runs it | Where the address comes from |
+  | --- | --- | --- |
+  | `fixed` (default) | you, one server for every Barynt | `url`, its host in `network` |
+  | `platform` | whoever runs that Barynt — a container beside it, say | the platform admin, under **Admin → Plugins**, or `PLUGIN_SERVICE_URLS` |
+  | `activation` | whoever switches it on, for that workspace or project alone | its settings there |
+
+  For `platform` and `activation`, `url` is optional and only suggested in
+  the form; its host needn't be in `network`. Until someone gives an address
+  the plugin runs without its server — no `app.installed`, no events. A new
+  address gets `app.installed` with a new secret and token; the server
+  before stops being able to read anything. **Test connection** in the
+  plugin's settings sends `app.installed` again.
+- A `fixed` `url` is `https`, its host in `network`. Only `http://localhost` or
   `http://127.0.0.1` may be plain — for building on your own machine; Barynt
-  reaches it only in development (`PLUGIN_DEV_BASE`).
+  reaches it only in development (`PLUGIN_DEV_BASE`). An address given for
+  `activation` is `https` too, unless its host is in `PLUGIN_INTERNAL_HOSTS`;
+  one the operator gives (`platform`) may be plain `http` to a host on the
+  private network — they run both.
 - `events` are the [webhook events](../guide/en/api-reference/webhook-events.md)
   except `view.*`; each needs its capability (`issue.*` and `label.*` →
   `events:issue`, `comment.*` → `events:comment`, `project.*` →

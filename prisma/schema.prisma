@@ -201,6 +201,7 @@ model User {
   webhooksCreated         Webhook[]                      @relation("WebhookCreatedBy")
   pluginSourcesAdded      PluginSource[]                 @relation("PluginSourceAddedBy")
   pluginCredentials       PluginCredential[]             @relation("PluginCredentialUpdatedBy")
+  pluginServiceAddresses  PluginServiceAddress[]         @relation("PluginServiceAddressUpdatedBy")
   pluginsInstalled        Plugin[]                       @relation("PluginInstalledBy")
   pluginActivationsMade   PluginActivation[]             @relation("PluginActivatedBy")
   pluginBot               PluginActivation?              @relation("PluginBot")
@@ -2162,6 +2163,18 @@ model Plugin {
   @@index([sourceId])
 }
 
+/// Die Adresse des Servers eines Plugins, das der Betreiber dieser Instanz
+/// betreibt (`service.address: "platform"`, BARY-223) — einmal je Plugin,
+/// über alle Versionen. `PLUGIN_SERVICE_URLS` geht vor.
+model PluginServiceAddress {
+  pluginId    String   @id
+  url         String
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+
+  updatedBy User? @relation("PluginServiceAddressUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
 /// Ein Plugin ist in einem Workspace oder in einem Projekt eingeschaltet.
 /// `workspaceId` ist immer gesetzt (Löschen des Workspace räumt mit auf);
 /// `projectId` nur bei einer Projekt-Aktivierung. Zeigt auf `pluginId`, nicht
@@ -2202,6 +2215,9 @@ model PluginActivation {
   /// `app.installed` es bei jedem Versuch mitschicken kann. Geprüft wird über
   /// den Hash in `ApiKey`.
   serviceToken        String?
+  /// Die Adresse seines Servers, wenn sie der gibt, der es hier einschaltet
+  /// (`service.address: "activation"`, BARY-223).
+  serviceUrl          String?
 
   workspace    Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project      Project?            @relation(fields: [projectId], references: [id], onDelete: Cascade)

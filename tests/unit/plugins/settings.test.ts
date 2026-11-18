@@ -67,6 +67,7 @@ describe("checkSettings, the other types (BARY-204)", () => {
     },
     { key: "assignee", type: "member" as const, options: [{ id: "u1" }] },
     { key: "tag", type: "label" as const, options: [{ id: "l1" }] },
+    { key: "merged", type: "status" as const, options: [{ id: "done" }] },
   ];
 
   it("keeps them, typed", () => {
@@ -77,6 +78,7 @@ describe("checkSettings, the other types (BARY-204)", () => {
         days: ["tue", "mon", "tue"],
         assignee: "u1",
         tag: "l1",
+        merged: "done",
       }),
     ).toEqual({
       ok: true,
@@ -86,6 +88,7 @@ describe("checkSettings, the other types (BARY-204)", () => {
         days: ["tue", "mon"],
         assignee: "u1",
         tag: "l1",
+        merged: "done",
       },
     });
   });
@@ -101,11 +104,17 @@ describe("checkSettings, the other types (BARY-204)", () => {
 
   it("leaves empty ones out", () => {
     expect(
-      checkSettings(more, { link: " ", days: [], assignee: "", tag: "" }),
+      checkSettings(more, {
+        link: " ",
+        days: [],
+        assignee: "",
+        tag: "",
+        merged: "",
+      }),
     ).toEqual({ ok: true, values: {} });
   });
 
-  it("refuses what isn't an address, an option, a member or a label", () => {
+  it("refuses what isn't an address, an option, a member, a label or a status", () => {
     for (const [key, value] of [
       ["link", "javascript:alert(1)"],
       ["link", "not a url"],
@@ -113,6 +122,7 @@ describe("checkSettings, the other types (BARY-204)", () => {
       ["days", ["mon", "sun"]],
       ["assignee", "u2"],
       ["tag", "l2"],
+      ["merged", "in_review"],
     ] as const)
       expect(checkSettings(more, { [key]: value })).toEqual({
         ok: false,
