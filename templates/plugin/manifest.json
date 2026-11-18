@@ -1,0 +1,16 @@
+{
+  "id": "open-issues",
+  "name": "Open Issues",
+  "version": "0.1.0",
+  "minBaryntVersion": "1.0.0",
+  "author": "You",
+  "description": "The project's open issues at a glance.",
+  "license": "MIT",
+  "kind": "sandbox",
+  "levels": ["project"],
+  "capabilities": ["issues:read", "ui:project-view"],
+  "network": [],
+  "contributes": {
+    "projectViews": [{ "id": "open", "title": "Open issues" }]
+  }
+}
