@@ -29,5 +29,8 @@
   ],
   "scripts": {
     "build": "bun build src/index.ts src/testing.ts src/ui.ts --outdir dist --format esm --target browser && bun build src/service.ts --outdir dist --format esm --target node && tsc -p tsconfig.build.json"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
   }
 }

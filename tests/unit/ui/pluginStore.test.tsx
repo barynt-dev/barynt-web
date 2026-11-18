@@ -123,6 +123,7 @@ const view: StoreView = {
   ],
   entries: [notify, timeline],
   unreadable: [],
+  dev: null,
 };
 
 const render = (
@@ -214,6 +215,39 @@ describe("PluginStore", () => {
     expect(html).toContain('data-open="sources"');
   });
 
+  it("lists local plugins below the sources, with what's wrong (BARY-221)", () => {
+    const html = render({
+      sourcesOpen: true,
+      view: {
+        ...view,
+        dev: [
+          {
+            source: "/work/open-issues/dist",
+            installed: false,
+            ok: true,
+            id: "open-issues",
+            name: "Open Issues",
+            version: "0.1.0",
+            kind: "sandbox",
+            capabilities: ["issues:read"],
+          },
+          {
+            source: "/work/broken/dist",
+            installed: false,
+            ok: false,
+            errors: ["version: expected MAJOR.MINOR.PATCH"],
+          },
+        ],
+      },
+    });
+    expect(html).toContain("dev.title");
+    expect(html).toContain("Open Issues");
+    expect(html).toContain("dev.install");
+    expect(html).toContain("/work/broken/dist");
+    expect(html).toContain("version: expected MAJOR.MINOR.PATCH");
+    expect(render({ sourcesOpen: true })).not.toContain("dev.title");
+  });
+
   it("starts with the numbers, featured, newest and every plugin by category", () => {
     const featured = {
       ...notify,
@@ -265,7 +299,9 @@ describe("PluginStore", () => {
   });
 
   it("welcomes a first visit", () => {
-    const html = render({ view: { sources: [], entries: [], unreadable: [] } });
+    const html = render({
+      view: { sources: [], entries: [], unreadable: [], dev: null },
+    });
     expect(html).toContain("welcomeTitle");
     expect(html).toContain("stepSourceTitle");
   });

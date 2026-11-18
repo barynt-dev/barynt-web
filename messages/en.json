@@ -2951,6 +2951,17 @@
       "howtoGitlab": "In GitLab: project or group → Settings → Webhooks → Add new webhook. Paste the address as URL and the secret as Secret token, pick the triggers (merge requests, pipelines, pushes).",
       "howtoGithub": "In GitHub: repository or organization → Settings → Webhooks → Add webhook. Paste the address as Payload URL, choose application/json, paste the secret, pick the events.",
       "howtoGeneric": "Send JSON as a POST to the address, with X-Hub-Signature-256: sha256=<HMAC-SHA256 of the body with the secret>."
+    },
+    "dev": {
+      "title": "Local plugins",
+      "intro": "From PLUGIN_DEV_DIRS — development only. Barynt reads them again on every load, so a new build shows without a release; open frames reload by themselves.",
+      "badge": "Local",
+      "unreadable": "Can’t be loaded",
+      "install": "Install",
+      "live": "Installed · loads live",
+      "installTitle": "Install “{name}” from its folder?",
+      "installDesc": "No release, no hash: Barynt loads it from the folder on every load. It asks for: {capabilities}. If its manifest asks for more later, places that switched it on confirm again.",
+      "noCapabilities": "nothing"
     }
   }
 }
