@@ -207,9 +207,9 @@ const inboundHookSchema = z.strictObject({
   title,
   /** Who calls — decides how Barynt checks the call. */
   provider: z.enum(["gitlab", "github", "generic"]),
-  /** `forward` to the plugin's server — the only way for now; the field
-   *  stays so a later one doesn't break manifests. */
-  handle: z.literal("forward"),
+  /** `forward` to the plugin's server, or `link`: Barynt reads the call
+   *  itself and keeps what it says on the issues it names (BARY-226). */
+  handle: z.enum(["forward", "link"]),
 });
 
 const contributesSchema = z.strictObject({
@@ -384,6 +384,12 @@ export const manifestSchema = z
         add(
           ["contributes", "inboundHooks", i, "handle"],
           "forward needs a service to forward to",
+        );
+      // Barynt reads GitHub's calls; GitLab's come next.
+      if (hook.handle === "link" && hook.provider !== "github")
+        add(
+          ["contributes", "inboundHooks", i, "handle"],
+          `link reads github only, not ${hook.provider}`,
         );
     });
 

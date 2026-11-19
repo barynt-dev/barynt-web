@@ -28,6 +28,9 @@ mock.module("@/lib/db", () => ({
 mock.module("@/lib/webhooks/deliver", () => ({ sendToPlugin }));
 mock.module("@/lib/redis", () => ({ redisClient: { set: redisSet } }));
 mock.module("@/lib/api/rateLimit", () => ({ countRequest }));
+// Its own tests are in tests/unit/pluginIssueData — another process.
+const fileLink = mock(async () => []);
+mock.module("@/features/plugins/link", () => ({ fileLink }));
 
 const { receiveInbound } = await import("@/features/plugins/inbound");
 
@@ -82,6 +85,7 @@ function gitlab(token = SECRET, extra: Record<string, string> = {}) {
 beforeEach(() => {
   update.mockClear();
   sendToPlugin.mockClear();
+  fileLink.mockClear();
   redisSet.mockClear();
   redisSet.mockResolvedValue("OK");
   countRequest.mockResolvedValue({ ok: true, info: {} });
@@ -126,6 +130,30 @@ describe("receiveInbound()", () => {
       });
     expect((await receiveInbound("tok", signed("wrong"))).status).toBe(401);
     expect((await receiveInbound("tok", signed(SECRET))).status).toBe(202);
+  });
+
+  it("files a link hook's call itself, without a server (BARY-226)", async () => {
+    setup("github", "link");
+    const signed = new Request(
+      "https://barynt.acme.dev/api/plugins/hooks/tok",
+      {
+        method: "POST",
+        headers: {
+          "x-github-event": "pull_request",
+          "x-github-delivery": "d-2",
+          "x-hub-signature-256": `sha256=${createHmac("sha256", SECRET).update(body).digest("hex")}`,
+        },
+        body,
+      },
+    );
+    expect((await receiveInbound("tok", signed)).status).toBe(202);
+    expect(sendToPlugin).not.toHaveBeenCalled();
+    expect(fileLink.mock.calls[0]).toEqual([
+      expect.objectContaining({ id: "act-1", pluginId: "ci-bridge" }),
+      "github",
+      "pull_request",
+      JSON.parse(body),
+    ] as never);
   });
 
   it("refuses what's too large before reading it, and too many calls", async () => {

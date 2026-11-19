@@ -168,7 +168,7 @@ The plugin's settings show a **Server** card: the address, the events, how the l
 
 ### Webhooks from other services
 
-A plugin can ask to receive webhooks from another service — GitLab, GitHub — through Barynt ("Receive webhooks from other services"). Once it's switched on, its settings show each such webhook with an **address** and a **secret**, and how to enter them at GitLab or GitHub. Barynt checks every call against the secret and refuses the rest; the card shows when the last call came and how it went.
+A plugin can ask to receive webhooks from another service — GitLab, GitHub — through Barynt ("Receive webhooks from other services"). Once it's switched on, its settings show each such webhook with an **address** and a **secret**, and how to enter them at GitLab or GitHub. Barynt checks every call against the secret and refuses the rest; the card shows when the last call came and how it went. For GitHub, Barynt can also read the calls itself: pull requests, branches, commits and checks then appear on the issues they name (`WEB-42` in a branch, title or commit message), with no server of the plugin in between.
 
 ### Apps
 

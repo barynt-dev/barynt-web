@@ -2950,6 +2950,7 @@
       "last": "{date} · {event} · {status}",
       "howtoGitlab": "In GitLab: Projekt oder Gruppe → Einstellungen → Webhooks → Neuen Webhook hinzufügen. Füge die Adresse als URL und das Geheimnis als Secret Token ein und wähle die Auslöser (Merge Requests, Pipelines, Pushes).",
       "howtoGithub": "In GitHub: Repository oder Organisation → Settings → Webhooks → Add webhook. Füge die Adresse als Payload URL ein, wähle application/json, füge das Geheimnis ein und wähle die Ereignisse.",
+      "howtoGithubLink": "In GitHub: Repository oder Organisation → Settings → Webhooks → Add webhook. Füge die Adresse als Payload URL ein, wähle application/json, füge das Geheimnis ein und wähle unter „Let me select individual events“: Branch or tag creation, Branch or tag deletion, Check runs, Check suites, Pull requests, Pull request reviews und Pushes.",
       "howtoGeneric": "Sende JSON per POST an die Adresse, mit X-Hub-Signature-256: sha256=<HMAC-SHA256 des Bodys mit dem Geheimnis>."
     },
     "dev": {

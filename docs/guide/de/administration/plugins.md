@@ -167,7 +167,7 @@ Die Einstellungen des Plugins zeigen eine Karte **Server**: die Adresse, die Ere
 
 ### Webhooks anderer Dienste
 
-Ein Plugin kann Webhooks eines anderen Dienstes — GitLab, GitHub — über Barynt empfangen wollen („Webhooks anderer Dienste empfangen“). Ist es eingeschaltet, zeigen seine Einstellungen jeden solchen Webhook mit **Adresse** und **Geheimnis** und wie du sie bei GitLab oder GitHub einträgst. Barynt prüft jeden Aufruf gegen das Geheimnis und lehnt den Rest ab; die Karte zeigt, wann zuletzt etwas kam und wie es lief.
+Ein Plugin kann Webhooks eines anderen Dienstes — GitLab, GitHub — über Barynt empfangen wollen („Webhooks anderer Dienste empfangen“). Ist es eingeschaltet, zeigen seine Einstellungen jeden solchen Webhook mit **Adresse** und **Geheimnis** und wie du sie bei GitLab oder GitHub einträgst. Barynt prüft jeden Aufruf gegen das Geheimnis und lehnt den Rest ab; die Karte zeigt, wann zuletzt etwas kam und wie es lief. Bei GitHub kann Barynt die Aufrufe auch selbst lesen: Pull Requests, Branches, Commits und Checks erscheinen dann an den Issues, die sie nennen (`WEB-42` im Branch, Titel oder in der Commit-Nachricht), ohne einen Server des Plugins dazwischen.
 
 ### Apps
 
