@@ -29,8 +29,8 @@ mock.module("@/lib/webhooks/deliver", () => ({ sendToPlugin }));
 mock.module("@/lib/redis", () => ({ redisClient: { set: redisSet } }));
 mock.module("@/lib/api/rateLimit", () => ({ countRequest }));
 // Its own tests are in tests/unit/pluginIssueData — another process.
-const fileLink = mock(async () => []);
-mock.module("@/features/plugins/link", () => ({ fileLink }));
+const handleLink = mock(async () => {});
+mock.module("@/features/plugins/link", () => ({ handleLink }));
 
 const { receiveInbound } = await import("@/features/plugins/inbound");
 
@@ -85,7 +85,7 @@ function gitlab(token = SECRET, extra: Record<string, string> = {}) {
 beforeEach(() => {
   update.mockClear();
   sendToPlugin.mockClear();
-  fileLink.mockClear();
+  handleLink.mockClear();
   redisSet.mockClear();
   redisSet.mockResolvedValue("OK");
   countRequest.mockResolvedValue({ ok: true, info: {} });
@@ -148,9 +148,11 @@ describe("receiveInbound()", () => {
     );
     expect((await receiveInbound("tok", signed)).status).toBe(202);
     expect(sendToPlugin).not.toHaveBeenCalled();
-    expect(fileLink.mock.calls[0]).toEqual([
+    expect(handleLink.mock.calls[0]).toEqual([
       expect.objectContaining({ id: "act-1", pluginId: "ci-bridge" }),
-      "github",
+      { id: "ci-bridge", name: "CI Bridge" },
+      expect.objectContaining({ provider: "github", handle: "link" }),
+      undefined,
       "pull_request",
       JSON.parse(body),
     ] as never);

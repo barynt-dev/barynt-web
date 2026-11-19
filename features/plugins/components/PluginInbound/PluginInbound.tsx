@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { CopyField } from "@/components/ui/atoms/CopyField/CopyField";
 import type { PluginInboundView } from "@/features/plugins/queries";
 import { usePluginText } from "../shared";
+import { InboundRules } from "./InboundRules";
 import styles from "./pluginInbound.module.scss";
 
 /**
@@ -93,6 +94,7 @@ export function PluginInbound({ hooks }: { hooks: PluginInboundView[] }) {
                     : text.t("inbound.howtoGithub")
                   : text.t("inbound.howtoGeneric")}
             </p>
+            <InboundRules hook={hook} />
           </div>
         );
       })}

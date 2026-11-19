@@ -6,6 +6,7 @@ import {
   type PullRequestEntry,
   readLinkFindings,
 } from "@/lib/plugins/link";
+import { closingMentions } from "@/lib/plugins/link-rules";
 
 // What Barynt reads of GitHub's webhooks (BARY-226) — payloads cut down
 // from GitHub's own examples to what's read.
@@ -208,6 +209,36 @@ describe("keeping an entry", () => {
       state: "pending",
       runs: [{ name: "build" }],
     });
+  });
+});
+
+describe("what a pull request works on (BARY-227)", () => {
+  it("knows when it's opened, ready, or merged", () => {
+    const trigger = (action: string, over: Record<string, unknown> = {}) =>
+      read("pull_request", { action, pull_request: pr(over) })[0].trigger;
+    expect(trigger("opened")).toBe("pull_request.opened");
+    expect(trigger("opened", { draft: true })).toBeUndefined();
+    expect(trigger("ready_for_review")).toBe("pull_request.opened");
+    expect(trigger("closed", { state: "closed", merged: true })).toBe(
+      "pull_request.merged",
+    );
+    expect(trigger("closed", { state: "closed" })).toBeUndefined();
+    expect(trigger("synchronize")).toBeUndefined();
+  });
+
+  it("names what it closes: the branch, and what follows fixes/closes/resolves", () => {
+    expect(
+      closingMentions("Fixes WEB-42. Closes web-7, WEB-8 and WEB_9; see WEB-1"),
+    ).toEqual(["WEB-42", "web-7, WEB-8 and WEB_9"]);
+    expect(closingMentions("resolved: API-3")).toEqual(["API-3"]);
+    expect(closingMentions("prefix WEB-1 fixed later")).toEqual([]);
+    const [found] = read("pull_request", {
+      action: "opened",
+      pull_request: pr({ body: "Fixes WEB-42, mentions WEB-7" }),
+    });
+    expect(findIssueRefs(found.closes ?? [], ["WEB"])).toEqual([
+      { prefix: "WEB", key: 42 },
+    ]);
   });
 });
 

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { InboundProvider } from "./inbound";
+import { closingMentions, type LinkTrigger } from "./link-rules";
 
 // What a code host's webhook says about the issues it names (BARY-226):
 // pull requests, branches, commits and checks, read from GitHub's events
@@ -72,6 +73,11 @@ export interface LinkFinding {
   key: string;
   entry: LinkEntry;
   texts: string[];
+  /** A pull request's: what a rule may react to (BARY-227). */
+  trigger?: LinkTrigger;
+  /** Where a key means the pull request works on the issue — its branch
+   *  name, `Fixes WEB-42` — not just names it. */
+  closes?: string[];
 }
 
 /** Most commits one push files, and most check runs kept per branch. */
@@ -135,6 +141,7 @@ function pullRequest(
   pr: Json,
   at: string,
   review: PullRequestEntry["review"],
+  action: unknown = null,
 ): LinkFinding | null {
   const number = num(pr.number);
   if (number === null) return null;
@@ -148,6 +155,13 @@ function pullRequest(
           ? "draft"
           : "open";
   const title = str(pr.title) ?? "";
+  const description = str(pr.body, 4000) ?? "";
+  const trigger: LinkTrigger | undefined =
+    (action === "opened" && state === "open") || action === "ready_for_review"
+      ? "pull_request.opened"
+      : action === "closed" && state === "merged"
+        ? "pull_request.merged"
+        : undefined;
   return {
     key: linkKey.pullRequest(repo, number),
     entry: {
@@ -165,7 +179,13 @@ function pullRequest(
       deletions: num(pr.deletions),
       at,
     },
-    texts: [branch ?? "", title, str(pr.body, 4000) ?? ""],
+    texts: [branch ?? "", title, description],
+    ...(trigger && { trigger }),
+    closes: [
+      branch ?? "",
+      ...closingMentions(title),
+      ...closingMentions(description),
+    ],
   };
 }
 
@@ -174,7 +194,13 @@ function github(event: string, body: Json, at: string): LinkFinding[] {
   if (!repo) return [];
 
   if (event === "pull_request") {
-    const found = pullRequest(repo, obj(body.pull_request), at, null);
+    const found = pullRequest(
+      repo,
+      obj(body.pull_request),
+      at,
+      null,
+      body.action,
+    );
     return found ? [found] : [];
   }
 

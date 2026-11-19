@@ -327,6 +327,25 @@ export async function ensureServiceIdentity(
   return true;
 }
 
+/**
+ * The plugin's bot, made once — the identity a `link` hook's rules act as
+ * when the plugin has no server to get one with its token (BARY-227).
+ */
+export async function ensureBot(
+  activationId: string,
+  manifest: Manifest,
+): Promise<void> {
+  const row = await db.pluginActivation.findUnique({
+    where: { id: activationId },
+    select: { botUserId: true },
+  });
+  if (!row || row.botUserId) return;
+  await db.pluginActivation.update({
+    where: { id: activationId },
+    data: { botUserId: await createBot(manifest) },
+  });
+}
+
 /** A bot for a plugin: named like it — "GitLab (App)", so a comment or a
  *  change it made says so wherever it shows — no address, no way to sign
  *  in. */

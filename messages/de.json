@@ -1620,6 +1620,7 @@
       "webhookDisabled": "Webhook nach einem Tag fehlgeschlagener Zustellungen abgeschaltet",
       "pluginServicePaused": "Zustellung an den Server des Plugins nach einem Tag mit Fehlern angehalten",
       "pluginServiceResumed": "Zustellung an den Server des Plugins fortgesetzt",
+      "pluginInboundRules": "Regel eines Plugin-Webhooks geändert",
       "pluginServiceAddress": "Adresse des Plugin-Servers geändert"
     },
     "via": "über {plugin}"
@@ -2951,7 +2952,11 @@
       "howtoGitlab": "In GitLab: Projekt oder Gruppe → Einstellungen → Webhooks → Neuen Webhook hinzufügen. Füge die Adresse als URL und das Geheimnis als Secret Token ein und wähle die Auslöser (Merge Requests, Pipelines, Pushes).",
       "howtoGithub": "In GitHub: Repository oder Organisation → Settings → Webhooks → Add webhook. Füge die Adresse als Payload URL ein, wähle application/json, füge das Geheimnis ein und wähle die Ereignisse.",
       "howtoGithubLink": "In GitHub: Repository oder Organisation → Settings → Webhooks → Add webhook. Füge die Adresse als Payload URL ein, wähle application/json, füge das Geheimnis ein und wähle unter „Let me select individual events“: Branch or tag creation, Branch or tag deletion, Check runs, Check suites, Pull requests, Pull request reviews und Pushes.",
-      "howtoGeneric": "Sende JSON per POST an die Adresse, mit X-Hub-Signature-256: sha256=<HMAC-SHA256 des Bodys mit dem Geheimnis>."
+      "howtoGeneric": "Sende JSON per POST an die Adresse, mit X-Hub-Signature-256: sha256=<HMAC-SHA256 des Bodys mit dem Geheimnis>.",
+      "rulesTitle": "Regeln",
+      "rulesHint": "Was Barynt als App des Plugins tut, wenn ein Pull Request, der an einem Issue arbeitet (Schlüssel im Branch-Namen oder „Fixes KEY-1“), geöffnet oder gemergt wird. Ein Schlüssel, der nur woanders erwähnt wird, verknüpft den Pull Request und sonst nichts.",
+      "ruleOff": "— aus",
+      "ruleSet": "Status auf {status} setzen"
     },
     "dev": {
       "title": "Lokale Plugins",
