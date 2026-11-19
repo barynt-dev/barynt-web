@@ -15,7 +15,7 @@ import { type PluginManifest, validateManifest } from "@/lib/plugins/manifest";
 import { redisClient } from "@/lib/redis";
 import { openSecret, sealSecret } from "@/lib/secret-box";
 import { sendToPlugin } from "@/lib/webhooks/deliver";
-import { fileLink } from "./link";
+import { handleLink } from "./link";
 
 // Webhooks another service sends a plugin through Barynt (BARY-215): the
 // hooks a switched-on plugin gets, and what happens to a call. The checks
@@ -77,6 +77,7 @@ export async function receiveInbound(
       id: true,
       hookId: true,
       secret: true,
+      rules: true,
       activation: {
         select: {
           id: true,
@@ -84,6 +85,8 @@ export async function receiveInbound(
           enabled: true,
           workspaceId: true,
           projectId: true,
+          botUserId: true,
+          capabilities: true,
         },
       },
     },
@@ -188,7 +191,14 @@ export async function receiveInbound(
   if (entry.handle === "link" && event) {
     // Read and filed here, after the answer — a failure is the hook's last
     // error, GitHub's retry comes as a new call.
-    void fileLink(activation, entry.provider, event, data).catch((error) => {
+    void handleLink(
+      activation,
+      { id: activation.pluginId, name: parsed.manifest.name },
+      entry,
+      hook.rules,
+      event,
+      data,
+    ).catch((error) => {
       console.error("[plugin link]", error);
       void record(500, event, "Couldn't file this call");
     });

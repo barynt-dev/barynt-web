@@ -1620,6 +1620,7 @@
       "webhookDisabled": "Webhook turned off after a day of failed deliveries",
       "pluginServicePaused": "Deliveries to the plugin's server paused after a day of failures",
       "pluginServiceResumed": "Deliveries to the plugin's server resumed",
+      "pluginInboundRules": "Changed a rule of the plugin's webhook",
       "pluginServiceAddress": "Changed the address of the plugin's server"
     },
     "via": "via {plugin}"
@@ -2951,7 +2952,11 @@
       "howtoGitlab": "In GitLab: project or group → Settings → Webhooks → Add new webhook. Paste the address as URL and the secret as Secret token, pick the triggers (merge requests, pipelines, pushes).",
       "howtoGithub": "In GitHub: repository or organization → Settings → Webhooks → Add webhook. Paste the address as Payload URL, choose application/json, paste the secret, pick the events.",
       "howtoGithubLink": "In GitHub: repository or organization → Settings → Webhooks → Add webhook. Paste the address as the Payload URL, choose application/json, paste the secret, and under “Let me select individual events” choose: Branch or tag creation, Branch or tag deletion, Check runs, Check suites, Pull requests, Pull request reviews and Pushes.",
-      "howtoGeneric": "Send JSON as a POST to the address, with X-Hub-Signature-256: sha256=<HMAC-SHA256 of the body with the secret>."
+      "howtoGeneric": "Send JSON as a POST to the address, with X-Hub-Signature-256: sha256=<HMAC-SHA256 of the body with the secret>.",
+      "rulesTitle": "Rules",
+      "rulesHint": "What Barynt does, as the plugin's app, when a pull request that works on an issue — its key in the branch's name, or “Fixes KEY-1” — is opened or merged. A key only named elsewhere links the pull request and nothing more.",
+      "ruleOff": "— off",
+      "ruleSet": "Set status to {status}"
     },
     "dev": {
       "title": "Local plugins",

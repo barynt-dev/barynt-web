@@ -716,6 +716,32 @@ describe("webhooks from other services (BARY-215)", () => {
     );
   });
 
+  it("lets a link hook have rules, with issues:write (BARY-227)", () => {
+    const withRules = (capabilities: string[], handle = "link") => ({
+      ...base,
+      capabilities: [...base.capabilities, "webhooks:receive", ...capabilities],
+      contributes: {
+        ...base.contributes,
+        inboundHooks: [
+          {
+            ...hook(handle),
+            provider: "github",
+            rules: [
+              { id: "merged", title: "Merged", on: "pull_request.merged" },
+            ],
+          },
+        ],
+      },
+    });
+    expect(errors(withRules(["issues:write"]))).toEqual([]);
+    expect(errors(withRules([]))).toContain(
+      "contributes.inboundHooks.0.rules: needs the capability issues:write",
+    );
+    expect(errors(withRules(["issues:write"], "forward"))).toContain(
+      "contributes.inboundHooks.0.rules: only a link hook has rules",
+    );
+  });
+
   it("knows no other way to handle a call", () => {
     expect(
       errors({

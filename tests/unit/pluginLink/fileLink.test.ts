@@ -16,6 +16,27 @@ const upsert = mock(
   },
 );
 const issues: Record<string, string> = { "p-web|42": "i-42", "p-web|7": "i-7" };
+const updates: { userId: string; issueId: string; status: string }[] = [];
+const comments: { userId: string; issueId: string; body: string }[] = [];
+// Its own tests run elsewhere; here, what the rules ask it to do.
+mock.module("@/features/api-v1/mutations", () => ({
+  updateIssueForUser: async (
+    userId: string,
+    issueId: string,
+    input: { status: string },
+  ) => {
+    updates.push({ userId, issueId, status: input.status });
+    return { ok: true, data: { id: issueId } };
+  },
+  createCommentForUser: async (
+    userId: string,
+    issueId: string,
+    input: { body: string },
+  ) => {
+    comments.push({ userId, issueId, body: input.body });
+    return { ok: true, data: {} };
+  },
+}));
 
 mock.module("@/lib/db", () => ({
   db: {
@@ -31,6 +52,12 @@ mock.module("@/lib/db", () => ({
         return id ? { id } : null;
       },
     },
+    status: {
+      findMany: async () => [
+        { id: "in_review", name: "In Review" },
+        { id: "done", name: "Done" },
+      ],
+    },
     pluginIssueData: {
       findUnique: async (args: {
         where: { activationId_issueId_key: { issueId: string; key: string } };
@@ -44,7 +71,7 @@ mock.module("@/lib/db", () => ({
   },
 }));
 
-const { fileLink } = await import("@/features/plugins/link");
+const { fileLink, handleLink } = await import("@/features/plugins/link");
 const { pluginDataChangesSince } = await import("@/lib/realtime/store");
 
 const activation = {
@@ -68,6 +95,8 @@ const pullRequest = (over: Record<string, unknown> = {}) => ({
 beforeEach(() => {
   kept.clear();
   upsert.mockClear();
+  updates.length = 0;
+  comments.length = 0;
 });
 
 describe("fileLink()", () => {
@@ -118,5 +147,107 @@ describe("fileLink()", () => {
     });
     expect(reached).toEqual([]);
     expect(upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("handleLink(): the rules (BARY-227)", () => {
+  const rules = [
+    { id: "opened", on: "pull_request.opened" as const },
+    { id: "merged", on: "pull_request.merged" as const },
+  ];
+  const app = {
+    ...activation,
+    botUserId: "bot-1",
+    capabilities: [
+      "issues:read",
+      "issues:write",
+      "comments:write",
+      "webhooks:receive",
+    ],
+  };
+  const plugin = { id: "github", name: "GitHub" };
+  const hook = { provider: "github" as const, rules };
+  const merged = (body: string, branch = "fix") => ({
+    action: "closed",
+    repository,
+    pull_request: pullRequest({
+      state: "closed",
+      merged: true,
+      body,
+      head: { ref: branch },
+      html_url: "https://github.com/acme/web/pull/42",
+    }),
+  });
+
+  it("moves the issue a pull request closes, as the app, and says why", async () => {
+    await handleLink(
+      app,
+      plugin,
+      hook,
+      { merged: "done" },
+      "pull_request",
+      merged("Fixes WEB-42"),
+    );
+    expect(updates).toEqual([
+      { userId: "bot-1", issueId: "i-42", status: "done" },
+    ]);
+    expect(comments[0].body).toBe(
+      "Pull request [acme/web#42](https://github.com/acme/web/pull/42) was merged — status set to **Done**.",
+    );
+  });
+
+  it("counts the key in the branch's name, but not one only mentioned", async () => {
+    await handleLink(
+      app,
+      plugin,
+      hook,
+      { merged: "done" },
+      "pull_request",
+      merged("mentions WEB-7", "ada/web-42-cookie"),
+    );
+    expect(updates.map((u) => u.issueId)).toEqual(["i-42"]);
+    // WEB-7 still got the pull request filed.
+    expect(kept.has("i-7|pr:acme:web:42")).toBe(true);
+  });
+
+  it("does nothing with a rule off, without issues:write, or without a bot", async () => {
+    await handleLink(
+      app,
+      plugin,
+      hook,
+      { opened: "in_review" },
+      "pull_request",
+      merged("Fixes WEB-42"),
+    );
+    await handleLink(
+      { ...app, capabilities: ["issues:read", "webhooks:receive"] },
+      plugin,
+      hook,
+      { merged: "done" },
+      "pull_request",
+      merged("Fixes WEB-42"),
+    );
+    await handleLink(
+      { ...app, botUserId: null },
+      plugin,
+      hook,
+      { merged: "done" },
+      "pull_request",
+      merged("Fixes WEB-42"),
+    );
+    expect(updates).toEqual([]);
+  });
+
+  it("changes the status without a comment when it may not comment", async () => {
+    await handleLink(
+      { ...app, capabilities: ["issues:read", "issues:write"] },
+      plugin,
+      hook,
+      { merged: "done" },
+      "pull_request",
+      merged("Fixes WEB-42"),
+    );
+    expect(updates).toHaveLength(1);
+    expect(comments).toEqual([]);
   });
 });

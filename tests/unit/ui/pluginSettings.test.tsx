@@ -191,6 +191,49 @@ describe("PluginSettings", () => {
     expect(running).toContain("service.test");
   });
 
+  it("offers a link hook's rules, each with the status it sets (BARY-227)", () => {
+    const html = render(
+      view({
+        fields: [],
+        inbound: [
+          {
+            id: "row-1",
+            hookId: "github",
+            title: "GitHub repository",
+            provider: "github",
+            handle: "link",
+            url: "https://barynt.test/api/plugins/hooks/tok",
+            secret: "s",
+            last: null,
+            rules: [
+              {
+                id: "opened",
+                title: "When a pull request is opened",
+                on: "pull_request.opened",
+                status: null,
+              },
+              {
+                id: "merged",
+                title: "When a pull request is merged",
+                on: "pull_request.merged",
+                status: "done",
+              },
+            ],
+            statuses: [
+              { id: "in_review", label: "In Review" },
+              { id: "done", label: "Done" },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(html).toContain("inbound.howtoGithubLink");
+    expect(html).toContain("inbound.rulesTitle");
+    expect(html).toContain("When a pull request is merged");
+    expect(html).toMatch(/<option value="done" selected="">/);
+    expect(html).toContain('data-on="false"');
+  });
+
   it("asks again after an update wants more", () => {
     const html = render(view({ state: "needsConfirmation" }));
     expect(html).toContain("confirmAgainTitle");

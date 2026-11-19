@@ -10,6 +10,7 @@
 
 import { z } from "zod";
 import { pluginTemplateSchema } from "@/features/dashboard/widgets";
+import { LINK_TRIGGERS } from "./link-rules";
 import { compareSemver, isSemver } from "./semver";
 import {
   eventCapability,
@@ -210,6 +211,12 @@ const inboundHookSchema = z.strictObject({
   /** `forward` to the plugin's server, or `link`: Barynt reads the call
    *  itself and keeps what it says on the issues it names (BARY-226). */
   handle: z.enum(["forward", "link"]),
+  /** What a `link` hook may do with an issue (BARY-227): each project picks
+   *  the status to set, or leaves the rule off. */
+  rules: z
+    .array(z.strictObject({ id: localId, title, on: z.enum(LINK_TRIGGERS) }))
+    .max(10)
+    .optional(),
 });
 
 const contributesSchema = z.strictObject({
@@ -385,6 +392,23 @@ export const manifestSchema = z
           ["contributes", "inboundHooks", i, "handle"],
           "forward needs a service to forward to",
         );
+      if (hook.rules?.length) {
+        if (hook.handle !== "link")
+          add(
+            ["contributes", "inboundHooks", i, "rules"],
+            "only a link hook has rules",
+          );
+        if (new Set(hook.rules.map((r) => r.id)).size !== hook.rules.length)
+          add(
+            ["contributes", "inboundHooks", i, "rules"],
+            "ids must be unique",
+          );
+        if (!m.capabilities.includes("issues:write"))
+          add(
+            ["contributes", "inboundHooks", i, "rules"],
+            "needs the capability issues:write",
+          );
+      }
       // Barynt reads GitHub's calls; GitLab's come next.
       if (hook.handle === "link" && hook.provider !== "github")
         add(

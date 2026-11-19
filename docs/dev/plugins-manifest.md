@@ -548,6 +548,36 @@ request until another one decides; check runs gather by name until a new
 commit starts them over. `link` reads GitHub only so far — GitLab comes
 next.
 
+#### Rules
+
+A `link` hook can name rules — what Barynt may do with an issue when a pull
+request that works on it is opened or merged. Each project that switches
+the plugin on picks, per rule, the status to set (any of the workspace's),
+or leaves it off; Barynt sets it as the plugin's app and, with
+`comments:write`, comments why. Rules need `issues:write`.
+
+```json
+"capabilities": ["issues:read", "issues:write", "comments:write", "webhooks:receive"],
+"inboundHooks": [{
+  "id": "github", "title": "GitHub repository", "provider": "github", "handle": "link",
+  "rules": [
+    { "id": "opened", "title": "When a pull request is opened", "on": "pull_request.opened" },
+    { "id": "merged", "title": "When a pull request is merged", "on": "pull_request.merged" }
+  ]
+}]
+```
+
+| `on` | When |
+| --- | --- |
+| `pull_request.opened` | opened (not as a draft), or a draft marked ready |
+| `pull_request.merged` | merged |
+
+A rule moves an issue only when the pull request works on it: its key is
+in the branch's name, or follows *fixes*, *closes* or *resolves* in the
+title or description (`Fixes WEB-42`, `closes WEB-7, WEB-8 and WEB-9`). A
+key only named elsewhere links the pull request and nothing more. An issue
+already in the status stays as it is.
+
 ## Rules Barynt checks
 
 - Each contribution needs its capability (`projectViews` → `ui:project-view`,
