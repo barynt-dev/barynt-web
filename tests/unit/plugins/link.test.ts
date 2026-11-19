@@ -111,6 +111,11 @@ describe("reading GitHub's events", () => {
       deleted: false,
       url: "https://github.com/acme/web/tree/web-7-dark-mode",
     });
+    expect(
+      read("create", { ref: "ada/web-7 dark", ref_type: "branch" })[0].entry,
+    ).toMatchObject({
+      url: "https://github.com/acme/web/tree/ada/web-7%20dark",
+    });
     const gone = read("delete", { ref: "web-7-dark-mode", ref_type: "branch" });
     expect(gone[0].entry).toMatchObject({ deleted: true });
     expect(read("create", { ref: "v1.0", ref_type: "tag" })).toEqual([]);

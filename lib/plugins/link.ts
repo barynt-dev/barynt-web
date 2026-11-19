@@ -240,7 +240,8 @@ function github(event: string, body: Json, at: string): LinkFinding[] {
     if (body.ref_type !== "branch") return [];
     const name = str(body.ref, 300);
     if (!name) return [];
-    const url = `https://github.com/${repo}/tree/${encodeURIComponent(name)}`;
+    // `ada/web-42` stays a path: GitHub's tree page wants the slashes.
+    const url = `https://github.com/${repo}/tree/${name.split("/").map(encodeURIComponent).join("/")}`;
     return [
       {
         key: linkKey.branch(repo, name),
