@@ -87,7 +87,10 @@ export function PluginInbound({ hooks }: { hooks: PluginInboundView[] }) {
               {hook.provider === "gitlab"
                 ? text.t("inbound.howtoGitlab")
                 : hook.provider === "github"
-                  ? text.t("inbound.howtoGithub")
+                  ? // Barynt reads it itself: which events it reads (BARY-226).
+                    hook.handle === "link"
+                    ? text.t("inbound.howtoGithubLink")
+                    : text.t("inbound.howtoGithub")
                   : text.t("inbound.howtoGeneric")}
             </p>
           </div>

@@ -701,12 +701,27 @@ describe("webhooks from other services (BARY-215)", () => {
     );
   });
 
+  it("reads GitHub's calls itself with link, no server needed (BARY-226)", () => {
+    const linking = (provider: string) => ({
+      ...base,
+      capabilities: [...base.capabilities, "webhooks:receive"],
+      contributes: {
+        ...base.contributes,
+        inboundHooks: [{ ...hook("link"), provider }],
+      },
+    });
+    expect(errors(linking("github"))).toEqual([]);
+    expect(errors(linking("gitlab"))).toContain(
+      "contributes.inboundHooks.0.handle: link reads github only, not gitlab",
+    );
+  });
+
   it("knows no other way to handle a call", () => {
     expect(
       errors({
         ...withServer,
         capabilities: [...withServer.capabilities, "webhooks:receive"],
-        contributes: { ...base.contributes, inboundHooks: [hook("link")] },
+        contributes: { ...base.contributes, inboundHooks: [hook("store")] },
       }).some((e) => e.startsWith("contributes.inboundHooks.0.handle")),
     ).toBe(true);
   });

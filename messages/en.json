@@ -2950,6 +2950,7 @@
       "last": "{date} · {event} · {status}",
       "howtoGitlab": "In GitLab: project or group → Settings → Webhooks → Add new webhook. Paste the address as URL and the secret as Secret token, pick the triggers (merge requests, pipelines, pushes).",
       "howtoGithub": "In GitHub: repository or organization → Settings → Webhooks → Add webhook. Paste the address as Payload URL, choose application/json, paste the secret, pick the events.",
+      "howtoGithubLink": "In GitHub: repository or organization → Settings → Webhooks → Add webhook. Paste the address as the Payload URL, choose application/json, paste the secret, and under “Let me select individual events” choose: Branch or tag creation, Branch or tag deletion, Check runs, Check suites, Pull requests, Pull request reviews and Pushes.",
       "howtoGeneric": "Send JSON as a POST to the address, with X-Hub-Signature-256: sha256=<HMAC-SHA256 of the body with the secret>."
     },
     "dev": {

@@ -15,6 +15,7 @@ import { type PluginManifest, validateManifest } from "@/lib/plugins/manifest";
 import { redisClient } from "@/lib/redis";
 import { openSecret, sealSecret } from "@/lib/secret-box";
 import { sendToPlugin } from "@/lib/webhooks/deliver";
+import { fileLink } from "./link";
 
 // Webhooks another service sends a plugin through Barynt (BARY-215): the
 // hooks a switched-on plugin gets, and what happens to a call. The checks
@@ -62,8 +63,9 @@ const answer = (status: number, text: string) =>
 /**
  * A call to `/api/plugins/hooks/<token>`. Checked before anything is read
  * (size, rate), then the provider's proof, then a retry it already sent.
- * Answers 202 at once; what follows — forwarding to the plugin's server —
- * runs on, retried like any delivery.
+ * Answers 202 at once; what follows — forwarding to the plugin's server,
+ * retried like any delivery, or filing it on the issues it names (`link`)
+ * — runs on.
  */
 export async function receiveInbound(
   token: string,
@@ -181,6 +183,14 @@ export async function receiveInbound(
           body: data,
         },
       }),
+    });
+  }
+  if (entry.handle === "link" && event) {
+    // Read and filed here, after the answer — a failure is the hook's last
+    // error, GitHub's retry comes as a new call.
+    void fileLink(activation, entry.provider, event, data).catch((error) => {
+      console.error("[plugin link]", error);
+      void record(500, event, "Couldn't file this call");
     });
   }
   await record(202, event, null);
