@@ -2727,6 +2727,8 @@
     "nextPreview": "Next screenshot",
     "openPreview": "View “{title}” full screen",
     "closePreview": "Close full screen",
+    "share": "Share",
+    "linkCopied": "Link copied",
     "links": "Links",
     "link": {
       "homepage": "Website",

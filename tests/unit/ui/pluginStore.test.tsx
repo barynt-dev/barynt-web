@@ -173,6 +173,14 @@ describe("PluginStore", () => {
     expect(html).toContain('data-open="plugin"');
   });
 
+  it("has a share button, as an icon, for an installed and a listed plugin (BARY-237)", () => {
+    for (const selected of [timeline, notify]) {
+      const html = render({ selected });
+      expect(html).toContain('aria-label="share"');
+      expect(html).toContain('data-icon="lucide:share-2"');
+    }
+  });
+
   it("lays out the versions: available, active, the one to go back to, older ones", () => {
     const html = render({ selected: timeline, tab: "versions" });
     for (const kind of ["available", "active", "superseded", "listed"])

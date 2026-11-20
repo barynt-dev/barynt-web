@@ -28,6 +28,7 @@ import { PluginTile } from "./PluginTile";
 import { PreviewGallery } from "./PreviewGallery";
 import styles from "./pluginStore.module.scss";
 import { ServiceAddressCard } from "./ServiceAddressCard";
+import { ShareButton } from "./ShareButton";
 import { STORE_TABS, type StoreTab } from "./tabs";
 import { useRelease } from "./useRelease";
 
@@ -75,6 +76,7 @@ export function PluginDetail({
             <PluginBadges kind={entry.kind} levels={entry.levels} size="md" />
           </div>
           <div className={styles.headActions}>
+            <ShareButton name={entry.name} />
             {installed ? (
               <>
                 <Button
