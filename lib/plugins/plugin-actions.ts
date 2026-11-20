@@ -36,6 +36,28 @@ export interface ActionResult {
   refresh?: boolean;
   /** Open the issue at this one of the plugin's issue panels. */
   openPanel?: string;
+  /** Text Barynt puts on the clipboard — a branch's name (BARY-230). */
+  copy?: string;
+  /** An `https` address Barynt opens in a new tab (BARY-230). */
+  open?: string;
+}
+
+/** Most text an action may put on the clipboard. */
+export const ACTION_COPY_MAX = 500;
+/** Longest address an action may open. */
+export const ACTION_OPEN_MAX = 2000;
+
+/** An `https` address as an action may open it — else `null`. */
+function openable(raw: unknown): string | null {
+  if (typeof raw !== "string" || raw.length > ACTION_OPEN_MAX) return null;
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" && !url.username && !url.password
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 /** An action's icon, if Barynt has it in its bundle — else `null` (the
@@ -67,5 +89,9 @@ export function parseActionResult(input: unknown): ActionResult {
       /^[a-z][a-z0-9-]{0,39}$/.test(r.openPanel) && {
         openPanel: r.openPanel,
       }),
+    ...(typeof r.copy === "string" &&
+      r.copy &&
+      r.copy.length <= ACTION_COPY_MAX && { copy: r.copy }),
+    ...(openable(r.open) && { open: openable(r.open) as string }),
   };
 }

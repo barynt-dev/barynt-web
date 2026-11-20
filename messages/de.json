@@ -2504,6 +2504,7 @@
     "actionFailed": "{name}: {detail}",
     "actionTimeout": "Die Aktion hat nicht rechtzeitig geantwortet.",
     "actionDone": "„{name}“ ausgeführt.",
+    "actionCopied": "Kopiert.",
     "actionsTitle": "Plugins",
     "cap": {
       "issues:read": "Issues lesen",

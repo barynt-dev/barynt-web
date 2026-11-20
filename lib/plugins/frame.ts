@@ -212,11 +212,12 @@ ${input.css ? `<style>${styleSafe(input.css)}</style>` : ""}
 </html>`;
 }
 
-/** The frame's CSP: a sandbox with scripts only, its own inline runtime by
- *  nonce and the plugin's module from a blob; no network at all. */
+/** The frame's CSP: a sandbox with scripts — and new tabs for its links,
+ *  as pages of their own (BARY-230) — its own inline runtime by nonce and
+ *  the plugin's module from a blob; no network at all. */
 export function frameCsp(nonce: string): string {
   return [
-    "sandbox allow-scripts",
+    "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox",
     "default-src 'none'",
     `script-src 'nonce-${nonce}' blob:`,
     "style-src 'unsafe-inline'",

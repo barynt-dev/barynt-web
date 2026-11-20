@@ -11,7 +11,7 @@ the plugin's code and nothing of Barynt's.
 | **Barynt's session** | The frame has its own, empty origin: no cookies, no `localStorage`, no `sessionStorage`, no IndexedDB. Reading `document.cookie` throws. |
 | **The network** | `fetch`, `XMLHttpRequest`, WebSockets and `<img src="https://…">` are blocked. Barynt's data comes through the [host API](plugins-host-api.md); your own servers through [`net.fetch`](plugins-host-api.md#netfetch), for the hosts in your manifest. |
 | **Other code** | No scripts from anywhere: your `main.js` is all that runs. No `<script src>`, no CDN. Bundle what you need. |
-| **The page around it** | The frame can't reach Barynt's page, navigate it or open pop-ups. |
+| **The page around it** | The frame can't reach Barynt's page or navigate it. A link or button may open a **new tab** after a click (`target="_blank"`, `window.open`) — as a page of its own, without a way back to Barynt (`noopener`). A hidden frame (badges, actions) has no click to open one with: an action returns `open` or `copy` and Barynt does it. |
 | **Forms** | A `<form>` doesn't submit — not even to a `submit` listener. Handle the button's `click` (and Enter in a field) yourself, or use the [UI kit](plugins-sdk.md#the-ui-kit), which does. |
 
 What's left is plain DOM, CSS, timers, `requestAnimationFrame`, canvas, SVG,
