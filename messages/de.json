@@ -2725,6 +2725,8 @@
     "noPreviews": "Dieses Plugin bringt keine Vorschaubilder mit.",
     "previousPreview": "Vorige Vorschau",
     "nextPreview": "Nächste Vorschau",
+    "openPreview": "„{title}“ im Vollbild ansehen",
+    "closePreview": "Vollbild schließen",
     "capabilitiesIntro": "Ein Plugin kann nie mehr als die Person, in deren Sitzung es handelt. Workspaces und Projekte bestätigen diese Liste, wenn sie es einschalten.",
     "capGroup": {
       "data": "Daten",

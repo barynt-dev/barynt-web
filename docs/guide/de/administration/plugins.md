@@ -28,7 +28,7 @@ Ist kein Plugin gewählt, zeigt die rechte Seite die Startseite des Stores: wie 
 
    > [!NOTE]
    > Ein Git-Server in eurem internen Netz ist gesperrt, solange er nicht in `PLUGIN_INTERNAL_HOSTS` steht.
-2. Wähl ein Plugin unter **Im Verzeichnis**. Seine Seite zeigt die Screenshots, was es verlangt und woher der Code kommt. Wähl eine Version, wenn du nicht die neueste willst.
+2. Wähl ein Plugin unter **Im Verzeichnis**. Seine Seite zeigt sein Logo und die Screenshots, was es verlangt und woher der Code kommt, schon vor der Installation. Klick auf einen Screenshot, um ihn im Vollbild zu sehen; die Pfeile, die Pfeiltasten oder ein Wischen blättern weiter, <kbd>Esc</kbd> schließt. Wähl eine Version, wenn du nicht die neueste willst. Eine Version, die ein neueres Barynt braucht, erscheint mit einem Hinweis, lässt sich aber nicht installieren.
 3. Klicke auf **Installieren**. Barynt lädt diese Version und prüft sie: Die Dateien müssen zu dem passen, was das Verzeichnis angibt, und die Version muss auf deinem Barynt laufen. Passt etwas nicht, wird es nicht installiert.
 4. Der Dialog zeigt die Screenshots des Plugins, falls es welche hat, dann Autor, Herkunft des Codes, Art, wo es nutzbar ist, was es verlangt und welche anderen Server es aufrufen darf. Setz den Haken und installiere.
 
@@ -115,7 +115,7 @@ Ist kein Plugin gewählt, zeigt die rechte Seite die Startseite des Stores: wie 
 
    > [!NOTE]
    > Ein Git-Server in eurem internen Netz ist gesperrt, solange er nicht in `PLUGIN_INTERNAL_HOSTS` steht.
-2. Wähl ein Plugin unter **Im Verzeichnis**. Seine Seite zeigt die Screenshots, was es verlangt und woher der Code kommt. Wähl eine Version, wenn du nicht die neueste willst.
+2. Wähl ein Plugin unter **Im Verzeichnis**. Seine Seite zeigt sein Logo und die Screenshots, was es verlangt und woher der Code kommt, schon vor der Installation. Klick auf einen Screenshot, um ihn im Vollbild zu sehen; die Pfeile, die Pfeiltasten oder ein Wischen blättern weiter, <kbd>Esc</kbd> schließt. Wähl eine Version, wenn du nicht die neueste willst. Eine Version, die ein neueres Barynt braucht, erscheint mit einem Hinweis, lässt sich aber nicht installieren.
 3. Klicke auf **Installieren**. Barynt lädt diese Version und prüft sie: Die Dateien müssen zu dem passen, was das Verzeichnis angibt, und die Version muss auf deinem Barynt laufen. Passt etwas nicht, wird es nicht installiert.
 4. Der Dialog zeigt die Screenshots des Plugins, falls es welche hat, dann Autor, Herkunft des Codes, Art, wo es nutzbar ist, was es verlangt und welche anderen Server es aufrufen darf. Setz den Haken und installiere.
 
