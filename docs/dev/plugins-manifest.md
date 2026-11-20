@@ -51,7 +51,9 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `author` | yes | Up to 80 characters. |
 | `authorUrl` | no | An `http(s)` address, linked in the store. |
 | `description` | yes | One or two sentences, up to 300 characters, in English. |
-| `locales` | no | Texts in Barynt's other languages: `{ "de": { "description": "…" } }`. Barynt shows each person the description in their language, else `description`. |
+| `about` | no | The plugin's page in the store, see [Page text and links](#page-text-and-links). Up to 5000 characters of Markdown, in English. Without it the page shows `description`. |
+| `links` | no | Up to 10 addresses — homepage, docs, community — see [Page text and links](#page-text-and-links). |
+| `locales` | no | Texts in Barynt's other languages: `{ "de": { "description": "…", "about": "…" } }`. Barynt shows each person the texts in their language, else `description` and `about`. |
 | `logo` | no | `logo.png` or `logo.webp`, a file in the release: the plugin's picture in the store, the sidebar and its settings, see [Publishing](plugins-publishing.md#logo-and-screenshots). Without one, its first letter. |
 | `license` | yes | E.g. `MIT`, `Apache-2.0`, `Proprietary`. |
 | `kind` | yes | `declarative`, `sandbox` or `service`, see [Building plugins](plugins.md#the-three-kinds). |
@@ -61,6 +63,35 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `contributes` | no | What it adds, see below. |
 | `service` | no | Its own server and the events it hears about, see [Its server](#its-server). |
 | `previews` | no | Up to 6 screenshots for the store, see [Publishing](plugins-publishing.md#logo-and-screenshots). |
+
+## Page text and links
+
+`description` is the short line on tiles and in lists. `about` is the
+plugin's page in the store: what it does, how to set it up, what it needs.
+It's Markdown — paragraphs, headings, lists, quotes, code, **bold**,
+_italic_ — and Barynt shows it without links, images or HTML: a link's text
+stays, its address doesn't. Addresses go in `links`, which the store shows
+in a box of their own:
+
+```json
+"about": "## What it does\n\nCards show their pull request…\n\n## Setup\n\n1. Add the webhook…",
+"locales": { "de": { "about": "## Was es macht\n\n…" } },
+"links": [
+  { "kind": "docs", "url": "https://docs.acme.dev/gantt" },
+  { "kind": "issues", "url": "https://github.com/acme/gantt/issues" },
+  { "kind": "github", "url": "https://github.com/acme/gantt" },
+  { "kind": "discord", "url": "https://discord.gg/acme" }
+]
+```
+
+| `kind` | Shown as |
+| --- | --- |
+| `homepage`, `docs`, `changelog`, `issues`, `support`, `privacy`, `terms` | a row with a label (or your `title`, up to 60 characters) and the address's host |
+| `github`, `gitlab`, `discord`, `slack`, `matrix`, `mastodon`, `bluesky`, `x`, `youtube`, `linkedin` | an icon in a row below |
+
+`https` only, each address once. Both fields need Barynt 1.1.0-beta.5 or
+later — set `minBaryntVersion` accordingly, an older Barynt refuses the
+manifest.
 
 ## Capabilities
 

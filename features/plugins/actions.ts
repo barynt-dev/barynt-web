@@ -25,6 +25,7 @@ import {
   PLATFORM,
   requirePermission,
 } from "@/lib/permissions";
+import { aboutDoc } from "@/lib/plugins/about";
 import { activationScopeKey } from "@/lib/plugins/activation";
 import {
   isDevUrl,
@@ -48,7 +49,9 @@ import {
 } from "@/lib/plugins/lifecycle";
 import {
   isCompatible,
+  localizedAbout,
   localizedDescription,
+  type PluginLink,
   type PluginManifest,
   serviceAddressMode,
   validateManifest,
@@ -63,6 +66,7 @@ import {
   serviceSummary,
 } from "@/lib/plugins/service";
 import { checkSettings } from "@/lib/plugins/settings";
+import type { PMDoc } from "@/lib/richtext/types";
 import { sealSecret } from "@/lib/secret-box";
 import { sendLifecycle } from "@/lib/webhooks/deliver";
 import {
@@ -1070,6 +1074,9 @@ export interface ReleasePreview {
   /** The release's screenshots as data URLs — it isn't stored yet, so
    *  there's nowhere else to serve them from. */
   previews: { title: string; src: string }[];
+  /** Its page text, in the person's language (BARY-237). */
+  about: PMDoc | null;
+  links: PluginLink[];
 }
 
 /**
@@ -1092,6 +1099,7 @@ export async function previewRelease(input: {
   );
   if (!release.ok) return { error: release.error };
   const m = release.manifest;
+  const locale = await getLocale();
   return {
     ok: true,
     preview: {
@@ -1100,7 +1108,7 @@ export async function previewRelease(input: {
       version: m.version,
       author: m.author,
       authorUrl: m.authorUrl ?? null,
-      description: localizedDescription(m, await getLocale()),
+      description: localizedDescription(m, locale),
       license: m.license,
       kind: m.kind,
       levels: m.levels,
@@ -1111,6 +1119,8 @@ export async function previewRelease(input: {
       compatible: isCompatible(m, APP_VERSION),
       hash: release.hash,
       codeSize: release.files["main.js"]?.byteLength ?? 0,
+      about: aboutDoc(localizedAbout(m, locale)),
+      links: m.links ?? [],
       previews: (m.previews ?? []).map(({ file, title }) => ({
         title,
         src: `data:image/${file.endsWith(".png") ? "png" : "webp"};base64,${Buffer.from(

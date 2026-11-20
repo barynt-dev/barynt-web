@@ -2727,6 +2727,16 @@
     "nextPreview": "Nächste Vorschau",
     "openPreview": "„{title}“ im Vollbild ansehen",
     "closePreview": "Vollbild schließen",
+    "links": "Links",
+    "link": {
+      "homepage": "Website",
+      "docs": "Dokumentation",
+      "changelog": "Änderungen",
+      "issues": "Fehler melden",
+      "support": "Hilfe",
+      "privacy": "Datenschutz",
+      "terms": "Nutzungsbedingungen"
+    },
     "capabilitiesIntro": "Ein Plugin kann nie mehr als die Person, in deren Sitzung es handelt. Workspaces und Projekte bestätigen diese Liste, wenn sie es einschalten.",
     "capGroup": {
       "data": "Daten",

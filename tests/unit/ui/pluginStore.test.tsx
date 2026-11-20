@@ -57,6 +57,8 @@ const installed: InstalledPlugin = {
   capabilities: ["issues:read", "ui:project-view"],
   network: [],
   previews: [{ title: "Board", src: "/api/plugin-previews/r1/preview-1.png" }],
+  about: null,
+  links: [],
   version: "1.0.0",
   blocked: false,
   serviceAddress: null,

@@ -55,6 +55,8 @@ const view = (over: Partial<PluginSettingsView> = {}): PluginSettingsView => ({
     capabilities: ["issues:read"],
     network: [],
     previews: [],
+    about: null,
+    links: [],
     version: "1.0.0",
   },
   fields: [

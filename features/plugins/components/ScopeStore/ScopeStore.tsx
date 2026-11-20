@@ -21,6 +21,7 @@ import { Link } from "@/i18n/navigation";
 import { adminPath, pluginStorePath } from "@/lib/nav";
 import { PLUGIN_CATEGORIES } from "@/lib/plugins/directory";
 import { CapabilityCards } from "../PluginStore/capabilities";
+import { PluginAbout, PluginLinks } from "../PluginStore/PluginAbout";
 import { PluginTile } from "../PluginStore/PluginTile";
 import { PreviewGallery } from "../PluginStore/PreviewGallery";
 import store from "../PluginStore/pluginStore.module.scss";
@@ -481,10 +482,12 @@ function Detail({
       {tab === "overview" ? (
         <div className={scope.overview}>
           <PreviewGallery previews={plugin.previews} />
-          <section className={store.about}>
-            <h3>{text.t("aboutPlugin", { name: plugin.name })}</h3>
-            <p>{plugin.description}</p>
-          </section>
+          <PluginAbout
+            name={plugin.name}
+            description={plugin.description}
+            about={plugin.about}
+          />
+          <PluginLinks links={plugin.links} />
         </div>
       ) : (
         <div className={store.capabilities}>
