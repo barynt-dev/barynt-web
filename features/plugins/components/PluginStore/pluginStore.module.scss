@@ -308,8 +308,6 @@
   flex-direction: column;
   gap: 1rem;
   min-width: 0;
-  /* The tabs' divider measures itself against the column (`.tabs`). */
-  container-type: inline-size;
   /* Not the global `main`'s screen height: the grid row's. */
   height: auto;
   min-height: 0;
@@ -451,13 +449,9 @@
    topbar's (3rem), the tabs filling it. */
 .tabs {
   min-height: 3rem;
-  /* The divider runs across the whole column, 16px short of its edges —
-     past the content's 80rem cap (`.main > *`), measured against the column
-     (`cqw`, `.main` is the container). Its tabs stay in line with the
-     content. */
-  --bleed: calc((100cqw - 100%) / 2 + 2rem - 16px);
-  margin: 0.25rem calc(-1 * var(--bleed)) 0;
-  padding-inline: var(--bleed);
+  /* The divider runs across the whole pane, past the pane's padding. */
+  margin: 0.25rem -2rem 0;
+  padding-inline: 2rem;
   border-bottom: 1px solid var(--outline-variant);
 
   @include bp.phone {
