@@ -330,6 +330,16 @@ describe("installPlugin", () => {
     ]);
   });
 
+  it("shows a release that needs a newer Barynt, as such (BARY-236)", async () => {
+    release.mockResolvedValue({
+      ...okRelease,
+      manifest: { ...manifest, minBaryntVersion: "99.0.0" },
+    });
+    const result = await previewRelease(input);
+    expect(release.mock.calls[0][3]).toEqual({ anyBarynt: true });
+    expect("preview" in result && result.preview.compatible).toBe(false);
+  });
+
   it("is an update when another version is active", async () => {
     plugin.findMany.mockResolvedValue([{ version: "1.0.0", status: "active" }]);
     release.mockResolvedValue(okRelease);

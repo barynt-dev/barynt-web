@@ -6,6 +6,7 @@ import {
   DIRECTORY_MAX_BYTES,
   type DirectoryEntry,
   type DirectoryIssue,
+  type LogoFileName,
   loadRelease,
   parseDirectory,
   type ReleaseFetch,
@@ -22,6 +23,7 @@ import {
   resolvePluginRepo,
   sameInstance,
 } from "@/lib/plugins/git-hosts";
+import { compareSemver } from "@/lib/plugins/semver";
 import { fetchPublic } from "@/lib/public-fetch";
 import { openSecret, sealSecret } from "@/lib/secret-box";
 
@@ -250,12 +252,15 @@ function releaseFetch(
 
 /**
  * Loads `version` of plugin `pluginId` as the source lists it, checked end
- * to end (`loadRelease`) against this Barynt's version. Nothing is stored.
+ * to end (`loadRelease`) against this Barynt's version — or, with
+ * `anyBarynt`, whatever version it needs (to look at, not to install).
+ * Nothing is stored.
  */
 export async function fetchRelease(
   sourceId: string,
   pluginId: string,
   version: string,
+  { anyBarynt = false }: { anyBarynt?: boolean } = {},
 ): Promise<
   | ReleaseResult
   | { ok: false; error: "source" | "not_in_directory"; detail?: string }
@@ -274,6 +279,56 @@ export async function fetchRelease(
     entry,
     version,
     releaseFetch(repo, version, token),
-    APP_VERSION,
+    anyBarynt ? null : APP_VERSION,
   );
+}
+
+export type ListedLogo = { file: LogoFileName; content: Uint8Array };
+
+/** Logos of releases that aren't installed, by `source/plugin@version:hash`
+ *  — the promise, so tiles asking at once load the release only once. */
+const listedLogos = new Map<string, Promise<ListedLogo | null>>();
+const LISTED_LOGOS_MAX = 100;
+
+/**
+ * The logo of a plugin that isn't installed (BARY-236): from the newest
+ * version the first enabled source lists, loaded and checked like any
+ * release — whatever Barynt version it needs, it's only looked at. Kept for
+ * as long as the directory lists the same release.
+ */
+export async function listedLogo(pluginId: string): Promise<ListedLogo | null> {
+  const sources = await db.pluginSource.findMany({
+    where: { enabled: true },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  for (const source of sources) {
+    const read = await readSourceRecent(source.id);
+    const entry = read.ok && read.entries.find((e) => e.id === pluginId);
+    if (!entry) continue;
+    const [version] = Object.keys(entry.versions).sort((a, b) =>
+      compareSemver(b, a),
+    );
+    const key = `${source.id}/${pluginId}@${version}:${entry.versions[version]}`;
+    let logo = listedLogos.get(key);
+    if (!logo) {
+      logo = fetchRelease(source.id, pluginId, version, {
+        anyBarynt: true,
+      }).then((release) => {
+        // A release that didn't load is tried again next time, not kept.
+        if (!release.ok) {
+          listedLogos.delete(key);
+          return null;
+        }
+        const file = release.manifest.logo as LogoFileName | undefined;
+        const content = file && release.files[file];
+        return file && content ? { file, content } : null;
+      });
+      if (listedLogos.size >= LISTED_LOGOS_MAX)
+        listedLogos.delete(listedLogos.keys().next().value as string);
+      listedLogos.set(key, logo);
+    }
+    return logo;
+  }
+  return null;
 }

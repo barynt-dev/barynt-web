@@ -233,6 +233,17 @@ describe("loadRelease", () => {
     }
   });
 
+  it("leaves out the version check for a release only looked at (BARY-236)", async () => {
+    const files = release({ minBaryntVersion: "2.0.0" });
+    const result = await loadRelease(
+      entry(files),
+      "1.2.0",
+      serve(files).fetch,
+      null,
+    );
+    expect(result.ok).toBe(true);
+  });
+
   it("refuses a manifest that isn't JSON", async () => {
     const files = { ...release(), "manifest.json": encode("{nope") };
     const result = await loadRelease(

@@ -251,6 +251,9 @@ function Overview({
         {release.status === "error" && !installed && (
           <ErrorLine message={text.error(release.error)} />
         )}
+        {release.status === "ready" &&
+          !release.preview.compatible &&
+          !installed && <ErrorLine message={text.error("incompatible")} />}
         <section className={styles.about}>
           <h3>{text.t("aboutPlugin", { name: entry.name })}</h3>
           <p>{entry.description}</p>
