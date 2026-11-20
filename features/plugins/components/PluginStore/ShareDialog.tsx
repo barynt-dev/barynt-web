@@ -16,13 +16,15 @@ import {
 import { PluginDialog, usePluginText } from "../shared";
 import styles from "./pluginStore.module.scss";
 
+/** The networks' own logos in their colours. X is black, and XING's mark
+ *  has no coloured version here: both follow `.shareNetwork`'s colour. */
 const ICONS: Record<ShareNetwork, string> = {
-  linkedin: "mdi:linkedin",
+  linkedin: "logos:linkedin-icon",
   x: "logos:x",
-  facebook: "mdi:facebook",
-  whatsapp: "mdi:whatsapp",
-  telegram: "mdi:telegram",
-  reddit: "mdi:reddit",
+  facebook: "logos:facebook",
+  whatsapp: "logos:whatsapp-icon",
+  telegram: "logos:telegram",
+  reddit: "logos:reddit-icon",
   xing: "mdi:xing",
   bluesky: "logos:bluesky",
 };
@@ -30,7 +32,7 @@ const ICONS: Record<ShareNetwork, string> = {
 /**
  * What to take along when sharing a plugin (BARY-237): its address to
  * copy, HTML to put it on a website, and the eight networks a company
- * shares on. Where the browser has a share sheet of its own, it's offered
+ * shares on, as icon buttons in their colours. Where the browser has a share sheet of its own, it's offered
  * as well, for every app the list doesn't have.
  */
 export function ShareDialog({
@@ -53,12 +55,7 @@ export function ShareDialog({
   const t = useTranslations();
   const text = usePluginText();
   const message = shareText(name, description);
-  const html = embedHtml({
-    url,
-    name,
-    description,
-    cta: text.t("shareEmbedCta"),
-  });
+  const html = embedHtml({ url, name });
   const canShare =
     typeof navigator !== "undefined" && typeof navigator.share === "function";
 
@@ -130,18 +127,21 @@ export function ShareDialog({
             <li key={network}>
               <a
                 className={styles.shareNetwork}
+                data-network={network}
                 href={shareUrl(network, { url, text: message, title: name })}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label={text.t("shareOn", {
+                  network: SHARE_NAMES[network],
+                })}
                 title={text.t("shareOn", { network: SHARE_NAMES[network] })}
               >
                 <Icon
                   icon={ICONS[network]}
-                  width={22}
-                  height={22}
+                  width={24}
+                  height={24}
                   aria-hidden
                 />
-                <span>{SHARE_NAMES[network]}</span>
               </a>
             </li>
           ))}

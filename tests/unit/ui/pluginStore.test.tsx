@@ -332,30 +332,34 @@ describe("ShareDialog (BARY-237)", () => {
       />,
     );
 
-  it("offers the address, HTML for a website and eight networks", () => {
+  it("offers the address, HTML for a website and eight networks as icon buttons", () => {
     const html = render();
     expect(html).toContain("https://github.com/acme/gantt");
     expect(html).toContain("shareEmbed");
+    // The plain link, shown as text.
     expect(html).toContain(
-      "&lt;a href=&quot;https://github.com/acme/gantt&quot;",
+      "&lt;a href=&quot;https://github.com/acme/gantt&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;GitHub&lt;/a&gt;",
     );
-    for (const name of [
-      "LinkedIn",
-      "X",
-      "Facebook",
-      "WhatsApp",
-      "Telegram",
-      "Reddit",
-      "XING",
-      "Bluesky",
-    ])
-      expect(html).toContain(`<span>${name}</span>`);
     expect(html.match(/target="_blank"/g)).toHaveLength(8);
-    expect(html).toContain("https://www.linkedin.com/sharing/share-offsite/");
+    for (const part of [
+      "linkedin.com/sharing",
+      "x.com/intent",
+      "facebook.com/sharer",
+      "wa.me/",
+      "t.me/share",
+      "reddit.com/submit",
+      "xing.com/spi",
+      "bsky.app/intent",
+    ])
+      expect(html).toContain(part);
+    // Their logos in colour, and no words next to them.
+    expect(html).toContain('data-icon="logos:linkedin-icon"');
+    expect(html).toContain('data-icon="logos:whatsapp-icon"');
+    expect(html).not.toContain("<span>LinkedIn</span>");
   });
 
-  it("escapes the description in the HTML it offers", () => {
-    const html = render({ description: "<img src=x onerror=alert(1)>" });
+  it("escapes the name in the HTML it offers", () => {
+    const html = render({ name: "<img src=x onerror=alert(1)>" });
     expect(html).not.toContain("<img src=x");
     expect(html).toContain("&amp;lt;img src=x");
   });

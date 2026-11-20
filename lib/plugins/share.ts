@@ -65,29 +65,10 @@ export function shareUrl(
 }
 
 /**
- * A link card for a website: the plugin's name and description in a box
- * that opens `url`. Plain HTML with inline styles, nothing to load — no
- * script, no frame, no picture from Barynt (which only signed-in people
- * can reach). Everything that comes from a manifest is escaped.
+ * A plain link for a website: the plugin's name, opening `url` in a new
+ * tab. No styling — the site's own look applies — and nothing to load.
+ * Everything that comes from a manifest is escaped.
  */
-export function embedHtml({
-  url,
-  name,
-  description,
-  cta,
-}: {
-  url: string;
-  name: string;
-  description: string;
-  /** The line at the foot of the card: "View plugin". */
-  cta: string;
-}): string {
-  const font = "system-ui,-apple-system,'Segoe UI',Roboto,sans-serif";
-  return [
-    `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="display:block;max-width:420px;padding:16px 18px;border:1px solid #d0d5dd;border-radius:12px;background:#ffffff;color:#101828;font-family:${font};text-decoration:none">`,
-    `  <strong style="display:block;margin-bottom:4px;font-size:16px">${escapeHtml(name)}</strong>`,
-    `  <span style="display:block;font-size:14px;line-height:1.5;color:#475467">${escapeHtml(description)}</span>`,
-    `  <span style="display:block;margin-top:10px;font-size:13px;font-weight:600;color:#6941c6">${escapeHtml(cta)} →</span>`,
-    "</a>",
-  ].join("\n");
+export function embedHtml({ url, name }: { url: string; name: string }) {
+  return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(name)}</a>`;
 }

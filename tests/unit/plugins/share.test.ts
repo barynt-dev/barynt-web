@@ -67,37 +67,31 @@ describe("shareText", () => {
 });
 
 describe("embedHtml", () => {
-  const html = embedHtml({
-    url: "https://example.com/p",
-    name: "GitHub",
-    description: "Pull requests.",
-    cta: "View plugin",
+  const html = embedHtml({ url: "https://example.com/p", name: "GitHub" });
+
+  it("is one plain link that opens the address in a new tab, safely", () => {
+    expect(html).toBe(
+      '<a href="https://example.com/p" target="_blank" rel="noopener noreferrer">GitHub</a>',
+    );
   });
 
-  it("is one link that opens the address in a new tab, safely", () => {
-    expect(html).toStartWith('<a href="https://example.com/p"');
-    expect(html).toContain('target="_blank" rel="noopener noreferrer"');
-    expect(html).toEndWith("</a>");
-    expect(html).toContain("GitHub</strong>");
-    expect(html).toContain("View plugin →");
-  });
-
-  it("brings no script, frame or picture", () => {
-    expect(html).not.toMatch(/<(script|iframe|img|link|style)/i);
+  it("has no styling, script, frame or picture", () => {
+    expect(html).not.toMatch(/style=|<(script|iframe|img|link|style)/i);
   });
 
   it("escapes what comes from a manifest", () => {
     const evil = embedHtml({
       url: 'https://example.com/"><script>alert(1)</script>',
-      name: "<img src=x onerror=alert(1)>",
-      description: `"quoted" & <b>bold</b>`,
-      cta: "<go>",
+      name: '<img src=x onerror=alert(1)> & "q"',
     });
     expect(evil).not.toContain("<script");
     expect(evil).not.toContain("<img");
-    expect(evil).not.toContain("<b>");
-    expect(evil).toContain("&lt;img src=x onerror=alert(1)&gt;");
-    expect(evil).toContain("&quot;quoted&quot; &amp; &lt;b&gt;bold&lt;/b&gt;");
-    expect(evil).toContain("&lt;go&gt; →");
+    expect(evil).toContain(
+      "&lt;img src=x onerror=alert(1)&gt; &amp; &quot;q&quot;",
+    );
+    // The attribute can't be left early.
+    expect(evil).toContain(
+      'href="https://example.com/&quot;&gt;&lt;script&gt;',
+    );
   });
 });
