@@ -2725,6 +2725,8 @@
     "noPreviews": "This plugin brings no screenshots.",
     "previousPreview": "Previous screenshot",
     "nextPreview": "Next screenshot",
+    "openPreview": "View “{title}” full screen",
+    "closePreview": "Close full screen",
     "capabilitiesIntro": "A plugin can never do more than the person it acts for. Workspaces and projects confirm this list when they switch it on.",
     "capGroup": {
       "data": "Data",

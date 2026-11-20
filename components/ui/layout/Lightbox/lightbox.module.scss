@@ -1,0 +1,221 @@
+@use "breakpoints" as bp;
+
+/* Images over the whole screen (`Lightbox`): a bar on top (counter, title,
+   close), the image in the middle, thumbnails below. Always dark, whatever
+   the theme — pictures read best on black. */
+
+.lightbox {
+  --lb-fg: #f4f6f8;
+  --lb-muted: rgb(244 246 248 / 0.65);
+  --lb-button: rgb(255 255 255 / 0.1);
+  --lb-button-hover: rgb(255 255 255 / 0.2);
+
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: var(--safe-top, 0) var(--safe-right, 0) var(--safe-bottom, 0)
+    var(--safe-left, 0);
+  border: 0;
+  /* The page stays a blurred hint behind, not something to read. */
+  background: rgb(6 8 10 / 0.9);
+  backdrop-filter: blur(16px);
+  color: var(--lb-fg);
+  box-sizing: border-box;
+  overflow: hidden;
+
+  &[open] {
+    display: flex;
+    flex-direction: column;
+    animation: fade 160ms ease-out;
+  }
+
+  &::backdrop {
+    background: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &[open],
+    .image {
+      animation: none;
+    }
+  }
+}
+
+.bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0.75rem 0.5rem 1.25rem;
+}
+
+.counter {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: 0.75rem;
+  min-width: 0;
+  color: var(--lb-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.title {
+  overflow: hidden;
+  color: var(--lb-fg);
+  font-size: var(--text-md, 1rem);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.close,
+.arrow {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: max(2.75rem, var(--touch-min, 44px));
+  height: max(2.75rem, var(--touch-min, 44px));
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--lb-button);
+  color: var(--lb-fg);
+  cursor: pointer;
+  transition: background 120ms ease;
+
+  &:hover {
+    background: var(--lb-button-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--lb-fg);
+    outline-offset: 2px;
+  }
+}
+
+.stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 0.5rem 5rem;
+  /* Swipes are ours, not the browser's scrolling. */
+  touch-action: none;
+  user-select: none;
+
+  @include bp.phone {
+    padding: 0.5rem 0;
+  }
+}
+
+.image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 0.75rem;
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 0.5);
+  animation: appear 180ms ease-out;
+  transform: translate(var(--drag-x, 0), var(--drag-y, 0));
+  transition: transform 180ms ease-out;
+
+  .stage[data-dragging] & {
+    transition: none;
+  }
+
+  @include bp.phone {
+    border-radius: 0;
+  }
+}
+
+.arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+
+  &[data-side="prev"] {
+    left: 1rem;
+  }
+
+  &[data-side="next"] {
+    right: 1rem;
+  }
+
+  /* A finger swipes; the arrows would only cover the picture. */
+  @include bp.coarse {
+    @include bp.phone {
+      display: none;
+    }
+  }
+}
+
+.thumbs {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  @include bp.phone {
+    justify-content: flex-start;
+  }
+}
+
+.thumb {
+  flex: none;
+  width: 6rem;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 0.5rem;
+  background: none;
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    opacity 120ms ease,
+    border-color 120ms ease;
+
+  img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+  }
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  &[aria-current] {
+    border-color: var(--lb-fg);
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--lb-fg);
+    outline-offset: 2px;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    scale: 0.98;
+  }
+}

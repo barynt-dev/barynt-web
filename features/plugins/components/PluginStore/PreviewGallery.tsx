@@ -2,13 +2,15 @@
 
 import { Icon } from "@iconify/react";
 import { useState } from "react";
+import { Lightbox } from "@/components/ui/layout/Lightbox/Lightbox";
 import { usePluginText } from "../shared";
 import styles from "./pluginStore.module.scss";
 
 /**
  * A plugin's screenshots (BARY-199): one large, the others as thumbnails
  * below to pick from, arrows to step through. On a phone the thumbnails
- * are a row that scrolls sideways.
+ * are a row that scrolls sideways. A click on the large one shows them over
+ * the whole screen (BARY-236), on the same image.
  */
 export function PreviewGallery({
   previews,
@@ -17,6 +19,7 @@ export function PreviewGallery({
 }) {
   const text = usePluginText();
   const [index, setIndex] = useState(0);
+  const [full, setFull] = useState(false);
   if (previews.length === 0)
     return (
       <div className={styles.noPreviews}>
@@ -32,8 +35,18 @@ export function PreviewGallery({
   return (
     <section className={styles.gallery} aria-label={text.t("previews")}>
       <figure className={styles.stage}>
-        {/* biome-ignore lint/performance/noImgElement: stored or inline plugin images, nothing for next/image to optimize */}
-        <img src={current.src} alt={current.title} />
+        <button
+          type="button"
+          className={styles.stageOpen}
+          aria-label={text.t("openPreview", { title: current.title })}
+          onClick={() => setFull(true)}
+        >
+          {/* biome-ignore lint/performance/noImgElement: stored or inline plugin images, nothing for next/image to optimize */}
+          <img src={current.src} alt={current.title} />
+          <span className={styles.stageZoom} aria-hidden>
+            <Icon icon="lucide:maximize-2" width={16} />
+          </span>
+        </button>
         {previews.length > 1 && (
           <>
             <button
@@ -77,6 +90,20 @@ export function PreviewGallery({
             </button>
           ))}
         </div>
+      )}
+      {full && (
+        <Lightbox
+          images={previews}
+          index={at}
+          onIndex={setIndex}
+          onClose={() => setFull(false)}
+          labels={{
+            dialog: text.t("previews"),
+            close: text.t("closePreview"),
+            previous: text.t("previousPreview"),
+            next: text.t("nextPreview"),
+          }}
+        />
       )}
     </section>
   );

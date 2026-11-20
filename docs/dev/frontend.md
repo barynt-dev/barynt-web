@@ -91,6 +91,10 @@ The app has a browser-like **tab bar** (`components/ui/layout/TabBar`) that open
 issues and pages in tabs, and a modal system (`lib/context/ModalContext`) with three
 placements: `center` (dialog), `right` (side panel), `bottom` (phone sheet). A page
 can also give the floating action button on phones its own job (`lib/fab-action.ts`).
+Images over the whole screen — a plugin's screenshots, say — are a
+`components/ui/layout/Lightbox`: a native `<dialog>` (`showModal()`), controlled by
+the opener's index, with arrows, arrow keys, swipes, thumbnails, and Escape, the close
+button, a click beside the image or a swipe down to close.
 
 ## Rich text
 
