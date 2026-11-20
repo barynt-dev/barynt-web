@@ -98,7 +98,8 @@
     "sharp": "0.35.5",
     "source-map-js": "1.2.2",
     "hono": "4.13.5",
-    "@hono/node-server": "1.19.15"
+    "@hono/node-server": "1.19.15",
+    "effect": "3.22.1"
   },
   "trustedDependencies": [
     "@parcel/watcher",
