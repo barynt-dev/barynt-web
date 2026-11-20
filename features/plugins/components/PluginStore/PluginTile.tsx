@@ -31,8 +31,9 @@ export function PluginTile({
   id: string;
   name: string;
   /** `xl`: a plugin page's header, as tall as its name, author and
-   *  badges (BARY-237). */
-  size?: "sm" | "md" | "lg" | "xl";
+   *  badges (BARY-237). `hero`: a featured card's, large and glowing in the
+   *  plugin's colour. */
+  size?: "sm" | "md" | "lg" | "xl" | "hero";
 }) {
   const [logo, setLogo] = useState<"asking" | "shown" | "none">("none");
   useEffect(() => setLogo("asking"), []);

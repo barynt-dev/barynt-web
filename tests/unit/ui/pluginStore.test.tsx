@@ -39,6 +39,7 @@ mock.module("@/features/plugins/actions", () => pluginActionsMock());
 
 import { PluginStore } from "@/features/plugins/components/PluginStore/PluginStore";
 import { ShareDialog } from "@/features/plugins/components/PluginStore/ShareDialog";
+import { featurePreviewUrl } from "@/features/plugins/components/PluginStore/StoreHome";
 import type { StoreTab } from "@/features/plugins/components/PluginStore/tabs";
 import type {
   InstalledPlugin,
@@ -323,6 +324,60 @@ describe("PluginStore", () => {
     const featuredAt = html.indexOf("featuredTitle");
     expect(html.indexOf("Notify", featuredAt)).toBeGreaterThan(featuredAt);
     expect(html).toContain('id="all-plugins"');
+  });
+
+  it("shows a featured plugin on a card with a large logo, its version and a way in (BARY-237)", () => {
+    const featured = (id: string, versions: string[]) => ({
+      ...notify,
+      id,
+      name: id,
+      listing: { ...listing(versions), featured: true, added: "2026-11-01" },
+    });
+    const html = render({
+      view: {
+        ...view,
+        entries: [featured("alpha", ["2.1.0-beta.1", "2.0.0"]), timeline],
+      },
+    });
+    const section = html.slice(html.indexOf("featuredTitle"));
+    expect(section).toContain('data-size="hero"');
+    // The newest real release, not the newer beta.
+    expect(section).toContain("Acme · v2.0.0");
+    expect(section).not.toContain("v2.1.0-beta.1");
+    expect(section).toContain('data-icon="lucide:arrow-up-right"');
+  });
+
+  it("takes a featured card's screenshot from the installed version, else from the store's release", () => {
+    expect(featurePreviewUrl(timeline)).toBe(
+      "/api/plugin-previews/r1/preview-1.png",
+    );
+    expect(featurePreviewUrl(notify)).toBe(
+      "/api/plugin-listed-previews/notify",
+    );
+    // Installed, but without a screenshot of its own.
+    expect(
+      featurePreviewUrl({
+        ...timeline,
+        installed: { ...installed, previews: [] },
+      }),
+    ).toBe("/api/plugin-listed-previews/timeline");
+  });
+
+  it("shows an installed featured plugin with the version it runs", () => {
+    const html = render({
+      view: {
+        ...view,
+        entries: [
+          {
+            ...timeline,
+            listing: { ...listing(["1.1.0", "1.0.0"]), featured: true },
+          },
+        ],
+      },
+    });
+    expect(html.slice(html.indexOf("featuredTitle"))).toContain(
+      `Acme · v${installed.version}`,
+    );
   });
 
   it("leaves out featured and newest when the directory names none", () => {

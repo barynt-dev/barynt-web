@@ -84,7 +84,7 @@ anywhere on a web server — with one entry per plugin:
 | `levels`, `kind` | yes | Must match the release's manifest. |
 | `versions` | yes | Every version the directory vouches for, with its [release hash](#the-release-hash). |
 | `categories` | no | Up to three of `development`, `planning`, `communication`, `reports`, `time`, `automation`, `support`. |
-| `featured` | no | `true` for the store's "Featured" row. |
+| `featured` | no | `true` for the store's "Featured" row: a card with the plugin's logo, and its first screenshot fading in from the right. |
 | `added` | no | Since when it's listed, `YYYY-MM-DD`, for "New in the directory". |
 | `notes` | no | Release notes per version, up to 2000 characters each. Plain text; lines starting with `- ` become a list. |
 | `locales` | no | The description in Barynt's other languages, as in the [manifest](plugins-manifest.md#fields) — what the store shows before the plugin is installed. |

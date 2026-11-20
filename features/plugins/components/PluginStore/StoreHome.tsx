@@ -1,12 +1,13 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/atoms/Badge/Badge";
 import { Chip } from "@/components/ui/atoms/Chip/Chip";
 import type { StoreEntry, StoreView } from "@/features/plugins/queries";
 import { Link } from "@/i18n/navigation";
 import { PLUGIN_CATEGORIES } from "@/lib/plugins/directory";
+import { preferredVersion } from "@/lib/plugins/semver";
 import { PluginBadges, usePluginText } from "../shared";
 import { storeHref } from "./PluginStore";
 import { PluginTile, tileHue } from "./PluginTile";
@@ -140,31 +141,48 @@ export function StoreHome({
             <span>{text.t("featuredSub")}</span>
           </header>
           <div className={styles.featured}>
-            {featured.map((entry) => (
-              <Link
-                key={entry.id}
-                href={storeHref({ plugin: entry.id })}
-                className={styles.featureCard}
-                data-hue={tileHue(entry.id)}
-              >
-                <span className={styles.cardTop}>
-                  <PluginTile id={entry.id} name={entry.name} size="lg" />
-                  <span className={styles.itemText}>
-                    <span className={styles.featureName}>{entry.name}</span>
-                    <span className={styles.itemSub}>{entry.author}</span>
+            {featured.map((entry) => {
+              const version =
+                entry.installed?.version ??
+                preferredVersion(entry.listing?.versions ?? []);
+              return (
+                <Link
+                  key={entry.id}
+                  href={storeHref({ plugin: entry.id })}
+                  className={styles.featureCard}
+                  data-hue={tileHue(entry.id)}
+                >
+                  <FeaturePreview src={featurePreviewUrl(entry)} />
+                  <span className={styles.featureLogo}>
+                    <PluginTile id={entry.id} name={entry.name} size="hero" />
                   </span>
-                </span>
-                <span className={styles.featureText}>{entry.description}</span>
-                <span className={styles.cardFoot}>
-                  <PluginBadges
-                    kind={entry.kind}
-                    levels={entry.levels}
-                    size="md"
+                  <span className={styles.featureHead}>
+                    <span className={styles.featureName}>{entry.name}</span>
+                    <span className={styles.itemSub}>
+                      {entry.author}
+                      {version && ` · v${version}`}
+                    </span>
+                  </span>
+                  <span className={styles.featureText}>
+                    {entry.description}
+                  </span>
+                  <span className={styles.featureFoot}>
+                    <PluginBadges
+                      kind={entry.kind}
+                      levels={entry.levels}
+                      size="md"
+                    />
+                    <CardState entry={entry} />
+                  </span>
+                  <Icon
+                    icon="lucide:arrow-up-right"
+                    width={18}
+                    className={styles.featureGo}
+                    aria-hidden
                   />
-                  <CardState entry={entry} />
-                </span>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}
@@ -247,6 +265,40 @@ export function StoreHome({
 }
 
 /** Installed, update, blocked — or nothing for a plugin that's only listed. */
+/** Where a featured plugin's first screenshot comes from: its installed
+ *  version's, else the store's release (`/api/plugin-listed-previews`). */
+export function featurePreviewUrl(entry: StoreEntry): string {
+  return (
+    entry.installed?.previews[0]?.src ??
+    `/api/plugin-listed-previews/${encodeURIComponent(entry.id)}`
+  );
+}
+
+/**
+ * A featured plugin's first screenshot, fading in from the right of its
+ * card. Asked for once mounted, so the load is always seen; a plugin
+ * without a screenshot (a 404) leaves the card as it is.
+ */
+function FeaturePreview({ src }: { src: string }) {
+  const [state, setState] = useState<"idle" | "loading" | "shown" | "none">(
+    "idle",
+  );
+  useEffect(() => setState("loading"), []);
+  if (state === "idle" || state === "none") return null;
+  return (
+    // biome-ignore lint/performance/noImgElement: a picture Barynt serves itself, behind a card
+    <img
+      className={styles.featurePreview}
+      data-shown={state === "shown" || undefined}
+      src={src}
+      alt=""
+      decoding="async"
+      onLoad={() => setState("shown")}
+      onError={() => setState("none")}
+    />
+  );
+}
+
 function CardState({ entry }: { entry: StoreEntry }) {
   const text = usePluginText();
   const state = entry.installed?.blocked
