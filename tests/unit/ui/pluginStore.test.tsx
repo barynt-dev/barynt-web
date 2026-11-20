@@ -182,6 +182,32 @@ describe("PluginStore", () => {
     }
   });
 
+  it("starts a plugin that isn't installed on its newest release, not on a newer beta (BARY-237)", () => {
+    const html = render({
+      selected: {
+        ...notify,
+        listing: listing(["2.1.0-beta.1", "2.0.0", "1.9.0"]),
+      },
+    });
+    // The picker's button shows what the install button installs.
+    expect(html).toContain("v2.0.0");
+    expect(html).not.toContain("v2.1.0-beta.1");
+  });
+
+  it("starts on the newest beta when there is no release", () => {
+    const html = render({
+      selected: {
+        ...notify,
+        listing: listing(["0.1.0-beta.3", "0.1.0-beta.2"]),
+      },
+    });
+    expect(html).toContain("v0.1.0-beta.3");
+  });
+
+  it("has no picker for a plugin with one version", () => {
+    expect(render({ selected: notify })).not.toContain('title="version"');
+  });
+
   it("lays out the versions: available, active, the one to go back to, older ones", () => {
     const html = render({ selected: timeline, tab: "versions" });
     for (const kind of ["available", "active", "superseded", "listed"])

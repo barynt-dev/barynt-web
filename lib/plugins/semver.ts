@@ -66,3 +66,51 @@ export function compareSemver(a: string, b: string): number {
   if (pa.patch !== pb.patch) return pa.patch - pb.patch;
   return comparePrerelease(pa.prerelease, pb.prerelease);
 }
+
+/** A version with a `-prerelease` part: a beta, a release candidate, … */
+export function isPrerelease(version: string): boolean {
+  return parseSemver(version)?.prerelease != null;
+}
+
+const newestFirst = (versions: string[]) =>
+  [...versions].sort((a, b) => compareSemver(b, a));
+
+/**
+ * `versions` as the store's picker shows them: the real releases, then the
+ * betas, each newest first.
+ */
+export function splitVersions(versions: string[]): {
+  releases: string[];
+  prereleases: string[];
+} {
+  const sorted = newestFirst(versions);
+  return {
+    releases: sorted.filter((v) => !isPrerelease(v)),
+    prereleases: sorted.filter(isPrerelease),
+  };
+}
+
+/**
+ * The version to offer first: the newest real release, even when a newer
+ * beta exists — a beta only when there is no release at all.
+ */
+export function preferredVersion(versions: string[]): string | null {
+  const { releases, prereleases } = splitVersions(versions);
+  return releases[0] ?? prereleases[0] ?? null;
+}
+
+/**
+ * What an installed `current` should be offered as an update: the newest
+ * real release above it. A beta only to someone who is on a beta already —
+ * the newest above theirs; nobody on a release is pushed onto one.
+ */
+export function updateTarget(
+  versions: string[],
+  current: string,
+): string | null {
+  const { releases, prereleases } = splitVersions(
+    versions.filter((v) => compareSemver(v, current) > 0),
+  );
+  if (releases[0]) return releases[0];
+  return isPrerelease(current) ? (prereleases[0] ?? null) : null;
+}

@@ -5,7 +5,6 @@ import { useFormatter } from "next-intl";
 import { useState } from "react";
 import { Badge } from "@/components/ui/atoms/Badge/Badge";
 import { Button } from "@/components/ui/atoms/Button/Button";
-import { NativeSelect } from "@/components/ui/atoms/NativeSelect/NativeSelect";
 import { Tab, Tabs } from "@/components/ui/layout/Tabs/Tabs";
 import type {
   InstalledPlugin,
@@ -13,7 +12,7 @@ import type {
   StoreEntry,
 } from "@/features/plugins/queries";
 import { Link } from "@/i18n/navigation";
-import { compareSemver } from "@/lib/plugins/semver";
+import { compareSemver, preferredVersion } from "@/lib/plugins/semver";
 import { ErrorLine, PluginBadges, usePluginText } from "../shared";
 import {
   asksMore,
@@ -31,6 +30,7 @@ import { ServiceAddressCard } from "./ServiceAddressCard";
 import { ShareButton } from "./ShareButton";
 import { STORE_TABS, type StoreTab } from "./tabs";
 import { useRelease } from "./useRelease";
+import { VersionPicker } from "./VersionPicker";
 
 /** A plugin's page in the store: header with what can be done, then tabs. */
 export function PluginDetail({
@@ -52,7 +52,8 @@ export function PluginDetail({
     ? [...STORE_TABS]
     : ["overview", "capabilities"];
   const current = tabs.includes(tab) ? tab : "overview";
-  const [version, setVersion] = useState(listed[0] ?? null);
+  // The newest real release first, even when a newer beta is listed.
+  const [version, setVersion] = useState(preferredVersion(listed));
   // What isn't stored comes from the release itself: the one picked to
   // install, or the update an installed plugin could get.
   const release = useRelease(
@@ -134,17 +135,10 @@ export function PluginDetail({
               version && (
                 <>
                   {listed.length > 1 && (
-                    <NativeSelect
-                      label={text.t("version")}
+                    <VersionPicker
+                      versions={listed}
                       value={version}
-                      onChange={setVersion}
-                      items={listed.map((v, i) => ({
-                        value: v,
-                        label:
-                          i === 0
-                            ? text.t("versionNewest", { version: v })
-                            : `v${v}`,
-                      }))}
+                      onPick={setVersion}
                     />
                   )}
                   <Button

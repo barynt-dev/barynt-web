@@ -2705,7 +2705,9 @@
     "allPlugins": "All plugins",
     "detailTabs": "Sections",
     "install": "Install",
-    "versionNewest": "v{version} · newest",
+    "versionGroupReleases": "Releases",
+    "versionGroupBetas": "Betas",
+    "versionNewestHint": "newest",
     "tab": {
       "overview": "Overview",
       "capabilities": "Capabilities",

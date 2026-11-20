@@ -28,13 +28,13 @@ Ist kein Plugin gewählt, zeigt die rechte Seite die Startseite des Stores: wie 
 
    > [!NOTE]
    > Ein Git-Server in eurem internen Netz ist gesperrt, solange er nicht in `PLUGIN_INTERNAL_HOSTS` steht.
-2. Wähl ein Plugin unter **Im Verzeichnis**. Seine Seite zeigt sein Logo und die Screenshots, seine Beschreibung, Links zu Doku und Community, was es verlangt und woher der Code kommt, schon vor der Installation. Klick auf einen Screenshot, um ihn im Vollbild zu sehen; die Pfeile, die Pfeiltasten oder ein Wischen blättern weiter, <kbd>Esc</kbd> schließt. Wähl eine Version, wenn du nicht die neueste willst. Eine Version, die ein neueres Barynt braucht, erscheint mit einem Hinweis, lässt sich aber nicht installieren.
+2. Wähl ein Plugin unter **Im Verzeichnis**. Seine Seite zeigt sein Logo und die Screenshots, seine Beschreibung, Links zu Doku und Community, was es verlangt und woher der Code kommt, schon vor der Installation. Klick auf einen Screenshot, um ihn im Vollbild zu sehen; die Pfeile, die Pfeiltasten oder ein Wischen blättern weiter, <kbd>Esc</kbd> schließt. Vorausgewählt ist das neueste richtige Release, auch wenn es eine neuere Beta gibt; eine andere Version wählst du im Dropdown, in dem Releases und Betas unter eigenen Überschriften stehen. Eine Version, die ein neueres Barynt braucht, erscheint mit einem Hinweis, lässt sich aber nicht installieren.
 3. Klicke auf **Installieren**. Barynt lädt diese Version und prüft sie: Die Dateien müssen zu dem passen, was das Verzeichnis angibt, und die Version muss auf deinem Barynt laufen. Passt etwas nicht, wird es nicht installiert.
 4. Der Dialog zeigt die Screenshots des Plugins, falls es welche hat, dann Autor, Herkunft des Codes, Art, wo es nutzbar ist, was es verlangt und welche anderen Server es aufrufen darf. Setz den Haken und installiere.
 
 | Aktion | Was sie tut |
 | --- | --- |
-| **Aktualisieren** | Ein Plugin mit neuerer Version steht unter **Braucht Aufmerksamkeit** und zeigt **Auf … aktualisieren**. Workspaces und Projekte nutzen es weiter. Verlangt das Update mehr als vorher, müssen sie erneut bestätigen; bis dahin tut es nur, was bestätigt war. |
+| **Aktualisieren** | Ein Plugin mit neuerem Release steht unter **Braucht Aufmerksamkeit** und zeigt **Auf … aktualisieren**. Eine Beta wird nur einem Plugin als Update angeboten, das schon auf einer Beta läuft. Workspaces und Projekte nutzen es weiter. Verlangt das Update mehr als vorher, müssen sie erneut bestätigen; bis dahin tut es nur, was bestätigt war. |
 | **Zurück zu v…** | Geht zur vorigen Version zurück. Die neuere bleibt installiert. |
 | **Sperren** | Stoppt das Plugin sofort überall. Aktivierungen und Daten bleiben und gelten wieder, sobald du es entsperrst. |
 | **Deinstallieren** | Entfernt alle Versionen. Du wählst, ob seine Daten in Workspaces und Projekten mit gelöscht werden oder ausgeschaltet erhalten bleiben. |
@@ -117,13 +117,13 @@ Ist kein Plugin gewählt, zeigt die rechte Seite die Startseite des Stores: wie 
 
    > [!NOTE]
    > Ein Git-Server in eurem internen Netz ist gesperrt, solange er nicht in `PLUGIN_INTERNAL_HOSTS` steht.
-2. Wähl ein Plugin unter **Im Verzeichnis**. Seine Seite zeigt sein Logo und die Screenshots, seine Beschreibung, Links zu Doku und Community, was es verlangt und woher der Code kommt, schon vor der Installation. Klick auf einen Screenshot, um ihn im Vollbild zu sehen; die Pfeile, die Pfeiltasten oder ein Wischen blättern weiter, <kbd>Esc</kbd> schließt. Wähl eine Version, wenn du nicht die neueste willst. Eine Version, die ein neueres Barynt braucht, erscheint mit einem Hinweis, lässt sich aber nicht installieren.
+2. Wähl ein Plugin unter **Im Verzeichnis**. Seine Seite zeigt sein Logo und die Screenshots, seine Beschreibung, Links zu Doku und Community, was es verlangt und woher der Code kommt, schon vor der Installation. Klick auf einen Screenshot, um ihn im Vollbild zu sehen; die Pfeile, die Pfeiltasten oder ein Wischen blättern weiter, <kbd>Esc</kbd> schließt. Vorausgewählt ist das neueste richtige Release, auch wenn es eine neuere Beta gibt; eine andere Version wählst du im Dropdown, in dem Releases und Betas unter eigenen Überschriften stehen. Eine Version, die ein neueres Barynt braucht, erscheint mit einem Hinweis, lässt sich aber nicht installieren.
 3. Klicke auf **Installieren**. Barynt lädt diese Version und prüft sie: Die Dateien müssen zu dem passen, was das Verzeichnis angibt, und die Version muss auf deinem Barynt laufen. Passt etwas nicht, wird es nicht installiert.
 4. Der Dialog zeigt die Screenshots des Plugins, falls es welche hat, dann Autor, Herkunft des Codes, Art, wo es nutzbar ist, was es verlangt und welche anderen Server es aufrufen darf. Setz den Haken und installiere.
 
 | Aktion | Was sie tut |
 | --- | --- |
-| **Aktualisieren** | Ein Plugin mit neuerer Version steht unter **Braucht Aufmerksamkeit** und zeigt **Auf … aktualisieren**. Workspaces und Projekte nutzen es weiter. Verlangt das Update mehr als vorher, müssen sie erneut bestätigen; bis dahin tut es nur, was bestätigt war. |
+| **Aktualisieren** | Ein Plugin mit neuerem Release steht unter **Braucht Aufmerksamkeit** und zeigt **Auf … aktualisieren**. Eine Beta wird nur einem Plugin als Update angeboten, das schon auf einer Beta läuft. Workspaces und Projekte nutzen es weiter. Verlangt das Update mehr als vorher, müssen sie erneut bestätigen; bis dahin tut es nur, was bestätigt war. |
 | **Zurück zu v…** | Geht zur vorigen Version zurück. Die neuere bleibt installiert. |
 | **Sperren** | Stoppt das Plugin sofort überall. Aktivierungen und Daten bleiben und gelten wieder, sobald du es entsperrst. |
 | **Deinstallieren** | Entfernt alle Versionen. Du wählst, ob seine Daten in Workspaces und Projekten mit gelöscht werden oder ausgeschaltet erhalten bleiben. |

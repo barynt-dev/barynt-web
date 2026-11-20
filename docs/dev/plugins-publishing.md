@@ -137,7 +137,11 @@ plugin shows those of its own version.
 ## Updates
 
 Release the new version, add it with its hash to `versions`, and the
-platform admin sees **Update** in the store. If the new version asks for
+platform admin sees **Update** in the store. A real release comes first: the
+store preselects the newest one even when a newer beta is listed, and offers
+**Update** to a release; a beta (`1.2.0-beta.1`) only to a plugin that is on
+a beta already, and a plugin that has no release at all starts on its newest
+beta. The version picker lists releases and betas under their own headings. If the new version asks for
 **more capabilities**, it doesn't get them silently: wherever it's on, it
 keeps running with only the capabilities confirmed before — a call that
 needs a new one is refused with `capability_not_confirmed` — until someone

@@ -28,13 +28,13 @@ With no plugin picked, the right side is the store's start page: how many plugin
 
    > [!NOTE]
    > A Git server on your internal network is blocked unless your operator lists it in `PLUGIN_INTERNAL_HOSTS`.
-2. Pick a plugin from **In the directory**. Its page shows its logo and screenshots, its description, links to its docs and community, what it asks for and where the code comes from — before you install anything. Click a screenshot to see it full screen; the arrows, the arrow keys or a swipe step through them, <kbd>Esc</kbd> closes. Choose a version if you don't want the newest. A version that needs a newer Barynt is shown too, with a note, but can't be installed.
+2. Pick a plugin from **In the directory**. Its page shows its logo and screenshots, its description, links to its docs and community, what it asks for and where the code comes from — before you install anything. Click a screenshot to see it full screen; the arrows, the arrow keys or a swipe step through them, <kbd>Esc</kbd> closes. The newest real release is preselected, even when a newer beta exists; pick another version from the dropdown, where releases and betas are listed under their own headings. A version that needs a newer Barynt is shown too, with a note, but can't be installed.
 3. Click **Install**. Barynt loads that version and checks it: the files must match what the directory lists, and the version must run on your Barynt. If anything doesn't match, it is not installed.
 4. The dialog shows the plugin's screenshots, if it has any, then the author, where the code comes from, its kind, where it can be used, what it asks for and which other servers it may call. Tick the box and install.
 
 | Action | What it does |
 | --- | --- |
-| **Update** | A plugin with a newer version is under **Needs attention** and shows **Update to …**. Workspaces and projects keep using it. If the update asks for more than before, they have to confirm again; until then it only does what was confirmed. |
+| **Update** | A plugin with a newer release is under **Needs attention** and shows **Update to …**. A beta is only offered as an update to a plugin that's on a beta already. Workspaces and projects keep using it. If the update asks for more than before, they have to confirm again; until then it only does what was confirmed. |
 | **Back to v…** | Returns to the version before. The newer one stays installed. |
 | **Block** | Stops the plugin everywhere at once. Activations and data stay and apply again when you unblock it. |
 | **Uninstall** | Removes every version. You choose whether its data in workspaces and projects is deleted too, or kept switched off. |
@@ -117,13 +117,13 @@ With no plugin picked, the right side is the store's start page: how many plugin
 
    > [!NOTE]
    > A Git server on your internal network is blocked unless your operator lists it in `PLUGIN_INTERNAL_HOSTS`.
-2. Pick a plugin from **In the directory**. Its page shows its logo and screenshots, its description, links to its docs and community, what it asks for and where the code comes from — before you install anything. Click a screenshot to see it full screen; the arrows, the arrow keys or a swipe step through them, <kbd>Esc</kbd> closes. Choose a version if you don't want the newest. A version that needs a newer Barynt is shown too, with a note, but can't be installed.
+2. Pick a plugin from **In the directory**. Its page shows its logo and screenshots, its description, links to its docs and community, what it asks for and where the code comes from — before you install anything. Click a screenshot to see it full screen; the arrows, the arrow keys or a swipe step through them, <kbd>Esc</kbd> closes. The newest real release is preselected, even when a newer beta exists; pick another version from the dropdown, where releases and betas are listed under their own headings. A version that needs a newer Barynt is shown too, with a note, but can't be installed.
 3. Click **Install**. Barynt loads that version and checks it: the files must match what the directory lists, and the version must run on your Barynt. If anything doesn't match, it is not installed.
 4. The dialog shows the plugin's screenshots, if it has any, then the author, where the code comes from, its kind, where it can be used, what it asks for and which other servers it may call. Tick the box and install.
 
 | Action | What it does |
 | --- | --- |
-| **Update** | A plugin with a newer version is under **Needs attention** and shows **Update to …**. Workspaces and projects keep using it. If the update asks for more than before, they have to confirm again; until then it only does what was confirmed. |
+| **Update** | A plugin with a newer release is under **Needs attention** and shows **Update to …**. A beta is only offered as an update to a plugin that's on a beta already. Workspaces and projects keep using it. If the update asks for more than before, they have to confirm again; until then it only does what was confirmed. |
 | **Back to v…** | Returns to the version before. The newer one stays installed. |
 | **Block** | Stops the plugin everywhere at once. Activations and data stay and apply again when you unblock it. |
 | **Uninstall** | Removes every version. You choose whether its data in workspaces and projects is deleted too, or kept switched off. |
