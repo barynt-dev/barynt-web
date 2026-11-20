@@ -1,0 +1,111 @@
+name: Beta
+
+# Ein Vorab-Image zum Testen (BARY-233): von Hand starten (Actions → Beta →
+# Run workflow), mit dem Branch, der gebaut werden soll. Es landet in einem
+# eigenen Image, ghcr.io/<owner>/barynt-beta — mit der Version als Tag
+# (1.1.0-beta.3) und dem wandernden Tag `beta`. Das Release-Image
+# (ghcr.io/<owner>/barynt) und sein `latest` bleiben unberührt; es gibt kein
+# Git-Tag, kein GitHub-Release, keine Release Notes.
+#
+# Ohne Version: die nächste Minor-Version des Branches plus -beta.<Lauf>,
+# z. B. 1.0.2 → 1.1.0-beta.12. Die Version steht im Image (package.json), die
+# App meldet sich also als Beta, und Plugins mit minBaryntVersion ordnen sie
+# richtig ein.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, Tag oder Commit, der gebaut wird"
+        required: true
+        type: string
+        default: main
+      version:
+        description: "Version mit Vorab-Teil, z. B. 1.1.0-beta.1 (leer = nächste Minor + -beta.<Lauf>)"
+        required: false
+        type: string
+      platforms:
+        description: "Zielplattformen"
+        required: false
+        type: string
+        default: "linux/amd64,linux/arm64"
+
+concurrency:
+  group: beta
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Determine the beta's version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Version
+        id: version
+        env:
+          INPUT: ${{ inputs.version }}
+          RUN: ${{ github.run_number }}
+        run: |
+          version="${INPUT#v}"
+          if [ -z "$version" ]; then
+            current="$(jq -r .version package.json)"
+            IFS=. read -r major minor _ <<< "${current%%-*}"
+            version="$major.$((minor + 1)).0-beta.$RUN"
+          fi
+          # A beta always has a pre-release part: it must never look like —
+          # or sort as — the release it comes before.
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*$ ]]; then
+            echo "::error::'$version' is no pre-release version (expected e.g. 1.1.0-beta.1)"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  image:
+    name: Build ghcr.io/…/barynt-beta
+    needs: version
+    uses: ./.github/workflows/docker-build.yml
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+      id-token: write
+    with:
+      ref: ${{ inputs.ref }}
+      tag: ${{ needs.version.outputs.version }}
+      version: ${{ needs.version.outputs.version }}
+      channel: beta
+      platforms: ${{ inputs.platforms }}
+
+  summary:
+    name: How to test it
+    needs: [version, image]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          OWNER: ${{ github.repository_owner }}
+          REF: ${{ inputs.ref }}
+        run: |
+          image="ghcr.io/${OWNER,,}/barynt-beta"
+          {
+            echo "## Beta $VERSION"
+            echo
+            echo "Built from \`$REF\` into \`$image:$VERSION\` and \`$image:beta\`."
+            echo
+            echo "To test it on an installation (back up first — migrations only go forward):"
+            echo
+            echo '```bash'
+            echo "barynt backup"
+            echo "barynt config BARYNT_IMAGE=$image BARYNT_VERSION=$VERSION"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
