@@ -16,6 +16,7 @@ import { compareSemver, preferredVersion } from "@/lib/plugins/semver";
 import { ErrorLine, PluginBadges, usePluginText } from "../shared";
 import {
   asksMore,
+  CapabilitiesHead,
   CapabilityCards,
   ChangeRows,
   changesOf,
@@ -188,12 +189,7 @@ export function PluginDetail({
         <Overview entry={entry} version={version} release={release} />
       )}
       {current === "capabilities" && (
-        <Capabilities
-          entry={entry}
-          version={version}
-          release={release}
-          actions={actions}
-        />
+        <Capabilities entry={entry} release={release} actions={actions} />
       )}
       {current === "versions" && installed && (
         <Versions entry={entry} release={release} actions={actions} />
@@ -474,12 +470,10 @@ function UpdateChanges({
 
 function Capabilities({
   entry,
-  version,
   release,
   actions,
 }: {
   entry: StoreEntry;
-  version: string | null;
   release: Release;
   actions: StoreActions;
 }) {
@@ -496,7 +490,6 @@ function Capabilities({
     : release.status === "ready"
       ? release.preview
       : null;
-  const shownVersion = installed?.version ?? version;
 
   return (
     <div className={styles.capabilities}>
@@ -509,14 +502,7 @@ function Capabilities({
         />
       )}
 
-      <header className={styles.capHead}>
-        <h3>
-          {text.t(installed ? "capsOfInstalled" : "capsOfVersion", {
-            version: shownVersion ?? "",
-          })}
-        </h3>
-        <p>{text.t("capabilitiesIntro")}</p>
-      </header>
+      <CapabilitiesHead />
 
       {shown === null ? (
         release.status === "error" ? (

@@ -20,7 +20,7 @@ import type {
 import { Link } from "@/i18n/navigation";
 import { adminPath, pluginStorePath } from "@/lib/nav";
 import { PLUGIN_CATEGORIES } from "@/lib/plugins/directory";
-import { CapabilityCards } from "../PluginStore/capabilities";
+import { CapabilitiesHead, CapabilityCards } from "../PluginStore/capabilities";
 import { PluginAbout, PluginLinks } from "../PluginStore/PluginAbout";
 import { PluginTile } from "../PluginStore/PluginTile";
 import { PreviewGallery } from "../PluginStore/PreviewGallery";
@@ -498,12 +498,7 @@ function Detail({
         </div>
       ) : (
         <div className={store.capabilities}>
-          <header className={store.capHead}>
-            <h3>
-              {text.t("capsOfVersion", { version: plugin.version ?? "" })}
-            </h3>
-            <p>{text.t("capabilitiesIntro")}</p>
-          </header>
+          <CapabilitiesHead />
           <CapabilityCards
             capabilities={plugin.capabilities}
             service={plugin.service}

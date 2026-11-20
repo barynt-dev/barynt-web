@@ -2751,7 +2751,7 @@
       "privacy": "Datenschutz",
       "terms": "Nutzungsbedingungen"
     },
-    "capabilitiesIntro": "Ein Plugin kann nie mehr als die Person, in deren Sitzung es handelt. Workspaces und Projekte bestätigen diese Liste, wenn sie es einschalten.",
+    "capabilitiesIntro": "Ein Plugin kann nie mehr als die Person, in deren Sitzung es handelt.",
     "capGroup": {
       "data": "Daten",
       "ui": "Oberfläche",
@@ -2851,8 +2851,7 @@
     "updateSame": "Gleiche Fähigkeiten und Server wie v{version}.",
     "updateImpactMore": "{count, plural, =0 {Noch nirgends eingeschaltet – nach dem Update bestätigt jede neue Aktivierung die neue Liste.} one {# Aktivierung muss danach neu bestätigen; bis dahin läuft sie mit den alten Rechten.} other {# Aktivierungen müssen danach neu bestätigen; bis dahin laufen sie mit den alten Rechten.}}",
     "updateImpactSame": "Workspaces und Projekte müssen nichts neu bestätigen.",
-    "capsOfInstalled": "Was v{version} darf (installiert)",
-    "capsOfVersion": "Was v{version} darf",
+    "capsMay": "Was das Plugin darf",
     "notesMore": "{count, plural, one {+ # weitere Zeile} other {+ # weitere Zeilen}}",
     "notesLess": "Weniger anzeigen",
     "confirmHint": "Unten bestätigen, dann installieren.",

@@ -216,12 +216,25 @@ describe("PluginStore", () => {
     expect(html).toContain("installOlder");
   });
 
+  it("heads the capabilities with what the plugin may do, not its version, and a note (BARY-237)", () => {
+    for (const tab of ["capabilities"] as const)
+      for (const selected of [timeline, notify]) {
+        const html = render({ selected, tab });
+        expect(html).toContain("capsMay");
+        expect(html).not.toContain("capsOfVersion");
+        expect(html).not.toContain("capsOfInstalled");
+        // The one sentence, as a note with its icon.
+        expect(html).toMatch(/<p[^>]*role="note"[^>]*>.*capabilitiesIntro/);
+        expect(html).toContain('data-icon="lucide:info"');
+      }
+  });
+
   it("puts what the update changes above what the installed version may do", () => {
     const html = render({ selected: timeline, tab: "capabilities" });
     expect(html).toContain("updateChangesTitle");
-    expect(html).toContain("capsOfInstalled");
+    expect(html).toContain("capsMay");
     expect(html.indexOf("updateChangesTitle")).toBeLessThan(
-      html.indexOf("capsOfInstalled"),
+      html.indexOf("capsMay"),
     );
     // And no update card without an update.
     const current = { ...timeline, update: null };
