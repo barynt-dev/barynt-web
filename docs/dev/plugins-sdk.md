@@ -158,6 +158,8 @@ this.registerAction({
 | `tone` | `neutral`, `primary`, `info`, `success`, `warning`, `danger` |
 | `refresh` | load the page's data again — you changed something |
 | `openPanel` | open this one of your `issuePanels` in the issue |
+| `copy` | text Barynt puts on the clipboard, up to 500 characters — the hidden frame can't |
+| `open` | an `https` address Barynt opens in a new tab |
 
 What `run` throws shows as the plugin's error in a toast. In tests,
 `createTestHost({ context: { slot: { kind: "actions", id: "actions" } } })`

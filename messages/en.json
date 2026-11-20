@@ -2504,6 +2504,7 @@
     "actionFailed": "{name}: {detail}",
     "actionTimeout": "The action didn't answer in time.",
     "actionDone": "“{name}” done.",
+    "actionCopied": "Copied.",
     "actionsTitle": "Plugins",
     "cap": {
       "issues:read": "Read issues",

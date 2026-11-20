@@ -300,6 +300,22 @@ describe("callBridge (BARY-145)", () => {
     expect(recordAudit).not.toHaveBeenCalled();
   });
 
+  it('assigns the person whose page it is with assignee "me" (BARY-230)', async () => {
+    confirm("issues:write");
+    getIssueForUser.mockResolvedValue({ id: "i1", project: { id: "p1" } });
+    updateIssueForUser.mockResolvedValue({ ok: true, data: { id: "i1" } });
+    const res = await callBridge("u1", place, "issues.update", {
+      id: "WEB-1",
+      assignee: "me",
+      status: "in_progress",
+    });
+    expect(res.ok).toBe(true);
+    expect(updateIssueForUser.mock.calls.at(-1)?.[2]).toEqual({
+      assignee: "u1",
+      status: "in_progress",
+    });
+  });
+
   it("logs nothing for a read, or a refused write", async () => {
     confirm("issues:read", "issues:write");
     listIssuesForUser.mockResolvedValue({ rows: [], hasMore: false });

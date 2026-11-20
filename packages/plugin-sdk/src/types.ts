@@ -200,6 +200,11 @@ export interface ActionResult {
   refresh?: boolean;
   /** Open this one of your issue panels in the issue. */
   openPanel?: string;
+  /** Text Barynt puts on the clipboard, up to 500 characters — your frame
+   *  can't, it's hidden. */
+  copy?: string;
+  /** An `https` address Barynt opens in a new tab. */
+  open?: string;
 }
 
 /** The object Barynt hands a plugin's default export. */
@@ -302,6 +307,7 @@ export interface IssueInput {
   description?: string;
   status?: string;
   priority?: number;
+  /** A user id, `"me"` for the person whose page it is, or `null`. */
   assignee?: string | null;
   labels?: string[];
   type?: string;
