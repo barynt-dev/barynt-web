@@ -37,6 +37,12 @@ sha256sum manifest.json main.js styles.css preview-*.* | sort -k2 | sha256sum
 Leave out files the release doesn't have. If a single byte differs from
 what the directory says, Barynt refuses the install with "hash mismatch".
 
+A plugin started from the template (`templates/plugin/`, see
+[Your first plugin](plugins-first-plugin.md#1-the-project)) doesn't need
+this by hand: `bun run release` copies the files to `release/<version>/`,
+prints the hash and adds the version to `release/plugins.json`, and its CI
+creates the GitHub release when you push a tag with the version.
+
 ## The directory entry
 
 A directory is a `plugins.json` — in the root of a Git repository, or

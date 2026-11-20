@@ -18,6 +18,7 @@ import {
   THEME_TOKENS,
 } from "@/lib/plugins/bridge";
 import styles from "./pluginFrame.module.scss";
+import { useDevReload } from "./useDevReload";
 
 // The host side of a sandboxed plugin (BARY-144). It loads the plugin's
 // frame (`/api/plugins/frame`, a sandbox with an opaque origin), hands it a
@@ -105,8 +106,10 @@ export function PluginFrame({
   callbacks.current = { onBlockData, onBadges, onActionDone, onError };
   // Sends to the frame's channel — set while one is open.
   const send = useRef<((message: HostMessage) => void) | null>(null);
-  // A new frame on "Load again".
+  // A new frame on "Load again" — and, in development, whenever the
+  // plugin's files change (BARY-221).
   const [attempt, setAttempt] = useState(0);
+  useDevReload(pluginId, () => setAttempt((n) => n + 1));
   const { workspaceId, projectId, slot } = context;
   const onCard = ON_A_CARD.has(slot.kind);
 
@@ -283,7 +286,9 @@ export function PluginFrame({
         ref={frame}
         className={styles.frame}
         title={name}
-        sandbox="allow-scripts"
+        // Links and buttons may open a tab (BARY-230) — as its own page,
+        // not sandboxed, and without a way back to Barynt (`noopener`).
+        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
         // Writing only — a copy button (BARY-209); reading stays out.
         allow="clipboard-write"
         referrerPolicy="no-referrer"

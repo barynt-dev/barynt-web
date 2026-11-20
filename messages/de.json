@@ -1619,7 +1619,9 @@
       "pluginCredentialRemoved": "Plugin-Zugangsdaten entfernt",
       "webhookDisabled": "Webhook nach einem Tag fehlgeschlagener Zustellungen abgeschaltet",
       "pluginServicePaused": "Zustellung an den Server des Plugins nach einem Tag mit Fehlern angehalten",
-      "pluginServiceResumed": "Zustellung an den Server des Plugins fortgesetzt"
+      "pluginServiceResumed": "Zustellung an den Server des Plugins fortgesetzt",
+      "pluginInboundRules": "Regel eines Plugin-Webhooks geändert",
+      "pluginServiceAddress": "Adresse des Plugin-Servers geändert"
     },
     "via": "über {plugin}"
   },
@@ -2502,6 +2504,7 @@
     "actionFailed": "{name}: {detail}",
     "actionTimeout": "Die Aktion hat nicht rechtzeitig geantwortet.",
     "actionDone": "„{name}“ ausgeführt.",
+    "actionCopied": "Kopiert.",
     "actionsTitle": "Plugins",
     "cap": {
       "issues:read": "Issues lesen",
@@ -2733,6 +2736,8 @@
     "networkNote": "Andere Hosts sind gesperrt.",
     "serviceTitle": "Eigener Server",
     "serviceNote": "Dorthin schickt Barynt die abonnierten Ereignisse, signiert und nur so viel, wie die Fähigkeiten oben erlauben.",
+    "serviceByOperator": "Betrieben vom Betreiber dieses Barynt; der Plattform-Admin gibt die Adresse an.",
+    "serviceByActivation": "Betrieben von dem, der es einschaltet, nur für diesen Ort; dort wird die Adresse angegeben.",
     "capsConfirmedIn": "{count, plural, =0 {Noch nirgends bestätigt.} one {In # Aktivierung bestätigt.} other {In # Aktivierungen bestätigt.}}",
     "whereItsOn": "Wo es aktiv ist",
     "versionState": {
@@ -2901,6 +2906,17 @@
     "credentialReplace": "Neuen Wert eingeben, um ihn zu ersetzen",
     "credentialRemove": "Entfernen",
     "userPluginsTitle": "Plugins",
+    "serverAddress": {
+      "title": "Server",
+      "label": "Adresse seines Servers",
+      "save": "Speichern",
+      "hint": "Barynt schickt die Ereignisse dieses Plugins hierher, von jedem Ort, an dem es an ist. Ihr betreibt ihn selbst; einfaches http zu einem Container im selben Netz geht.",
+      "missing": "Den Server dieses Plugins betreibt, wer dieses Barynt betreibt. Bis er eine Adresse hat, läuft das Plugin ohne ihn.",
+      "fromEnv": "Festgelegt über PLUGIN_SERVICE_URLS; dort ändern.",
+      "invalid": "Gib eine vollständige Adresse ein, etwa http://barynt-github:8080/events.",
+      "failed": "Die Adresse konnte nicht gespeichert werden. Versuch es noch einmal.",
+      "suggested": "Das Plugin schlägt {url} vor."
+    },
     "service": {
       "title": "Server",
       "hint": "Das Plugin läuft auch auf einem eigenen Server. Barynt schickt ihm diese Ereignisse, signiert, und versucht es erneut, wenn er nicht erreichbar ist.",
@@ -2914,7 +2930,17 @@
       "pausedHint": "Barynt hat die Zustellung am {date} angehalten: einen Tag lang ist jede gescheitert. Ereignisse aus der Pause werden nicht nachgeschickt.",
       "log": "Zustellungen",
       "resume": "Wieder senden",
-      "resumeFailed": "Konnte nicht wieder senden. Versuch es noch einmal."
+      "resumeFailed": "Konnte nicht wieder senden. Versuch es noch einmal.",
+      "noAddress": "Noch keine Adresse",
+      "platformMissing": "Noch keine Adresse. Der Plattform-Admin trägt sie unter Admin → Plugins ein.",
+      "byOperator": "Betrieben von dem, der dieses Barynt betreibt",
+      "activationHint": "Den Server dieses Plugins betreibt ihr selbst, nur für diesen Ort. Barynt schickt ihm die Ereignisse, signiert.",
+      "test": "Verbindung testen",
+      "save": "Adresse speichern",
+      "notHttps": "Nutze https. Einfaches http geht nur zu Hosts, die der Betreiber freigegeben hat.",
+      "invalidUrl": "Gib eine vollständige Adresse ein, etwa https://ci.acme.dev/barynt.",
+      "saveFailed": "Die Adresse konnte nicht gespeichert werden. Versuch es noch einmal.",
+      "suggested": "Das Plugin schlägt {url} vor."
     },
     "inbound": {
       "title": "Webhooks anderer Dienste",
@@ -2926,7 +2952,23 @@
       "last": "{date} · {event} · {status}",
       "howtoGitlab": "In GitLab: Projekt oder Gruppe → Einstellungen → Webhooks → Neuen Webhook hinzufügen. Füge die Adresse als URL und das Geheimnis als Secret Token ein und wähle die Auslöser (Merge Requests, Pipelines, Pushes).",
       "howtoGithub": "In GitHub: Repository oder Organisation → Settings → Webhooks → Add webhook. Füge die Adresse als Payload URL ein, wähle application/json, füge das Geheimnis ein und wähle die Ereignisse.",
-      "howtoGeneric": "Sende JSON per POST an die Adresse, mit X-Hub-Signature-256: sha256=<HMAC-SHA256 des Bodys mit dem Geheimnis>."
+      "howtoGithubLink": "In GitHub: Repository oder Organisation → Settings → Webhooks → Add webhook. Füge die Adresse als Payload URL ein, wähle application/json, füge das Geheimnis ein und wähle unter „Let me select individual events“: Branch or tag creation, Branch or tag deletion, Check runs, Check suites, Pull requests, Pull request reviews und Pushes.",
+      "howtoGeneric": "Sende JSON per POST an die Adresse, mit X-Hub-Signature-256: sha256=<HMAC-SHA256 des Bodys mit dem Geheimnis>.",
+      "rulesTitle": "Regeln",
+      "rulesHint": "Was Barynt als App des Plugins tut, wenn ein Pull Request, der an einem Issue arbeitet (Schlüssel im Branch-Namen oder „Fixes KEY-1“), geöffnet oder gemergt wird. Ein Schlüssel, der nur woanders erwähnt wird, verknüpft den Pull Request und sonst nichts.",
+      "ruleOff": "— aus",
+      "ruleSet": "Status auf {status} setzen"
+    },
+    "dev": {
+      "title": "Lokale Plugins",
+      "intro": "Aus PLUGIN_DEV_DIRS, nur in der Entwicklung. Barynt liest sie bei jedem Laden neu, ein neuer Build ist also ohne Release da. Offene Frames laden von selbst neu.",
+      "badge": "Lokal",
+      "unreadable": "Lässt sich nicht laden",
+      "install": "Installieren",
+      "live": "Installiert · lädt live",
+      "installTitle": "„{name}“ aus seinem Ordner installieren?",
+      "installDesc": "Ohne Release und ohne Hash: Barynt lädt es bei jedem Laden aus dem Ordner. Es verlangt: {capabilities}. Verlangt sein Manifest später mehr, bestätigen die Orte, an denen es läuft, erneut.",
+      "noCapabilities": "nichts"
     }
   }
 }

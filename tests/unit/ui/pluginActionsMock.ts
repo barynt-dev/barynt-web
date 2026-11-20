@@ -9,6 +9,7 @@ export const pluginActionsMock = () => ({
   checkPluginSource: mock(),
   deactivatePlugin: mock(),
   deletePluginData: mock(),
+  installDevPlugin: mock(),
   installPlugin: mock(),
   listPluginDeliveries: mock(async () => []),
   listIssuePluginActions: mock(async () => null),
@@ -20,6 +21,10 @@ export const pluginActionsMock = () => ({
   savePluginSettings: mock(),
   setPluginBlocked: mock(),
   setPluginGrant: mock(),
+  setPluginServiceAddress: mock(async () => ({ ok: true })),
+  setActivationServiceAddress: mock(async () => ({ ok: true })),
+  setInboundRule: mock(async () => ({ ok: true })),
+  testPluginService: mock(async () => ({ ok: true })),
   uninstallPlugin: mock(),
   updatePluginSource: mock(),
 });

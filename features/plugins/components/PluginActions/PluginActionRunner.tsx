@@ -81,7 +81,17 @@ function ActionFrame({ job }: { job: ActionJob }) {
         if (seq !== job.key) return;
         if (!ok) return fail(String(raw));
         const result = parseActionResult(raw);
-        toast(result.message ?? t("actionDone", { name: entry.title }));
+        // Done here, not in its frame: a hidden, sandboxed frame can neither
+        // write the clipboard nor open a tab (BARY-230).
+        if (result.copy) void navigator.clipboard?.writeText(result.copy);
+        if (result.open)
+          window.open(result.open, "_blank", "noopener,noreferrer");
+        toast(
+          result.message ??
+            (result.copy
+              ? t("actionCopied")
+              : t("actionDone", { name: entry.title })),
+        );
         if (result.openPanel && job.issueId) {
           focusPanelNext({
             issueId: job.issueId,

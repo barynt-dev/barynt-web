@@ -426,6 +426,7 @@ describe("more setting types and a settings section (BARY-204)", () => {
         },
         { key: "who", type: "member", label: "Who" },
         { key: "tag", type: "label", label: "Tag" },
+        { key: "merged", type: "status", label: "When merged" },
       ]),
     ).toEqual([]);
   });
@@ -579,6 +580,37 @@ describe("a plugin's server (BARY-212)", () => {
     ).toEqual([]);
   });
 
+  it("lets the maker leave the address to the operator or the place (BARY-223)", () => {
+    const { url: _, ...withoutUrl } = service.service;
+    expect(
+      errors({
+        ...service,
+        network: [],
+        service: { ...withoutUrl, address: "platform" },
+      }),
+    ).toEqual([]);
+    expect(
+      errors({
+        ...service,
+        network: [],
+        service: {
+          ...service.service,
+          url: "http://localhost:8080/events",
+          address: "activation",
+        },
+      }),
+    ).toEqual([]);
+    expect(errors({ ...service, service: withoutUrl })).toContain(
+      "service.url: a fixed server needs its address",
+    );
+    expect(
+      errors({
+        ...service,
+        service: { ...withoutUrl, address: "anywhere" },
+      }).some((e) => e.startsWith("service.address")),
+    ).toBe(true);
+  });
+
   it("refuses plain http, a host outside network and a declarative one", () => {
     expect(
       errors({
@@ -669,12 +701,53 @@ describe("webhooks from other services (BARY-215)", () => {
     );
   });
 
+  it("reads GitHub's calls itself with link, no server needed (BARY-226)", () => {
+    const linking = (provider: string) => ({
+      ...base,
+      capabilities: [...base.capabilities, "webhooks:receive"],
+      contributes: {
+        ...base.contributes,
+        inboundHooks: [{ ...hook("link"), provider }],
+      },
+    });
+    expect(errors(linking("github"))).toEqual([]);
+    expect(errors(linking("gitlab"))).toContain(
+      "contributes.inboundHooks.0.handle: link reads github only, not gitlab",
+    );
+  });
+
+  it("lets a link hook have rules, with issues:write (BARY-227)", () => {
+    const withRules = (capabilities: string[], handle = "link") => ({
+      ...base,
+      capabilities: [...base.capabilities, "webhooks:receive", ...capabilities],
+      contributes: {
+        ...base.contributes,
+        inboundHooks: [
+          {
+            ...hook(handle),
+            provider: "github",
+            rules: [
+              { id: "merged", title: "Merged", on: "pull_request.merged" },
+            ],
+          },
+        ],
+      },
+    });
+    expect(errors(withRules(["issues:write"]))).toEqual([]);
+    expect(errors(withRules([]))).toContain(
+      "contributes.inboundHooks.0.rules: needs the capability issues:write",
+    );
+    expect(errors(withRules(["issues:write"], "forward"))).toContain(
+      "contributes.inboundHooks.0.rules: only a link hook has rules",
+    );
+  });
+
   it("knows no other way to handle a call", () => {
     expect(
       errors({
         ...withServer,
         capabilities: [...withServer.capabilities, "webhooks:receive"],
-        contributes: { ...base.contributes, inboundHooks: [hook("link")] },
+        contributes: { ...base.contributes, inboundHooks: [hook("store")] },
       }).some((e) => e.startsWith("contributes.inboundHooks.0.handle")),
     ).toBe(true);
   });

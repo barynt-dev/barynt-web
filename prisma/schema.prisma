@@ -201,6 +201,7 @@ model User {
   webhooksCreated         Webhook[]                      @relation("WebhookCreatedBy")
   pluginSourcesAdded      PluginSource[]                 @relation("PluginSourceAddedBy")
   pluginCredentials       PluginCredential[]             @relation("PluginCredentialUpdatedBy")
+  pluginServiceAddresses  PluginServiceAddress[]         @relation("PluginServiceAddressUpdatedBy")
   pluginsInstalled        Plugin[]                       @relation("PluginInstalledBy")
   pluginActivationsMade   PluginActivation[]             @relation("PluginActivatedBy")
   pluginBot               PluginActivation?              @relation("PluginBot")
@@ -452,6 +453,10 @@ model PluginInboundHook {
   lastEvent      String?
   lastStatus     Int?
   lastError      String?
+
+  /// Die eingeschalteten Regeln eines `link`-Hooks (BARY-227): Regel-ID aus
+  /// dem Manifest → Status, den Barynt als App des Plugins setzt.
+  rules Json?
 
   activation PluginActivation @relation(fields: [activationId], references: [id], onDelete: Cascade)
 
@@ -2152,6 +2157,10 @@ model Plugin {
   sourceId      String?
   installedById String?
   installedAt   DateTime @default(now())
+  /// Aus einem lokalen Ordner oder Dev-Server statt aus einem Release
+  /// (BARY-221, nur in der Entwicklung): Manifest und Code werden bei jedem
+  /// Laden von hier neu gelesen, `hash` ist der Stand vom letzten Lesen.
+  devSource     String?
 
   source      PluginSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
   installedBy User?         @relation("PluginInstalledBy", fields: [installedById], references: [id], onDelete: SetNull)
@@ -2160,6 +2169,18 @@ model Plugin {
   @@unique([pluginId, version])
   @@index([pluginId, status])
   @@index([sourceId])
+}
+
+/// Die Adresse des Servers eines Plugins, das der Betreiber dieser Instanz
+/// betreibt (`service.address: "platform"`, BARY-223) — einmal je Plugin,
+/// über alle Versionen. `PLUGIN_SERVICE_URLS` geht vor.
+model PluginServiceAddress {
+  pluginId    String   @id
+  url         String
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+
+  updatedBy User? @relation("PluginServiceAddressUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 }
 
 /// Ein Plugin ist in einem Workspace oder in einem Projekt eingeschaltet.
@@ -2202,6 +2223,9 @@ model PluginActivation {
   /// `app.installed` es bei jedem Versuch mitschicken kann. Geprüft wird über
   /// den Hash in `ApiKey`.
   serviceToken        String?
+  /// Die Adresse seines Servers, wenn sie der gibt, der es hier einschaltet
+  /// (`service.address: "activation"`, BARY-223).
+  serviceUrl          String?
 
   workspace    Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project      Project?            @relation(fields: [projectId], references: [id], onDelete: Cascade)

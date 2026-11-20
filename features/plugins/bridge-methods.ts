@@ -186,6 +186,9 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
     if (refused(issue)) return issue;
     if (touchesFields(plugin, p)) return no("capability_not_confirmed");
     const { id: _, ...patch } = p;
+    // "me": the person whose page this is (BARY-230) — a plugin doesn't
+    // know their id.
+    if (patch.assignee === "me") patch.assignee = userId;
     return fromMutation(
       await updateIssueForUser(
         userId,

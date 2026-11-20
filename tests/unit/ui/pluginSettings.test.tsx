@@ -111,6 +111,8 @@ describe("PluginSettings", () => {
     const service = {
       activationId: "act-1",
       url: "https://ci.acme.dev/barynt",
+      address: "fixed" as const,
+      suggestion: "https://ci.acme.dev/barynt",
       events: ["issue.status_changed", "member.added"],
       pausedAt: null,
       failingSince: null,
@@ -134,6 +136,102 @@ describe("PluginSettings", () => {
     expect(paused).toContain('data-state="paused"');
     expect(paused).toContain("service.pausedHint");
     expect(paused).toContain("service.resume");
+  });
+
+  it("asks for the address of a server run just here, and says when the operator's is missing (BARY-223)", () => {
+    const base = {
+      activationId: "act-1",
+      events: ["issue.created"],
+      pausedAt: null,
+      failingSince: null,
+      last: null,
+    };
+    const own = render(
+      view({
+        fields: [],
+        service: {
+          ...base,
+          url: null,
+          address: "activation" as const,
+          suggestion: "https://ci.example.dev/hook",
+        },
+      }),
+    );
+    expect(own).toContain('name="url"');
+    expect(own).toContain("service.suggested");
+    expect(own).toContain('data-state="noAddress"');
+    expect(own).not.toContain("service.test");
+
+    const operator = render(
+      view({
+        fields: [],
+        service: {
+          ...base,
+          url: null,
+          address: "platform" as const,
+          suggestion: null,
+        },
+      }),
+    );
+    expect(operator).toContain("service.platformMissing");
+    expect(operator).not.toContain('name="url"');
+
+    const running = render(
+      view({
+        fields: [],
+        service: {
+          ...base,
+          url: "http://barynt-github:8080/events",
+          address: "platform" as const,
+          suggestion: null,
+        },
+      }),
+    );
+    expect(running).toContain("service.byOperator");
+    expect(running).toContain("service.test");
+  });
+
+  it("offers a link hook's rules, each with the status it sets (BARY-227)", () => {
+    const html = render(
+      view({
+        fields: [],
+        inbound: [
+          {
+            id: "row-1",
+            hookId: "github",
+            title: "GitHub repository",
+            provider: "github",
+            handle: "link",
+            url: "https://barynt.test/api/plugins/hooks/tok",
+            secret: "s",
+            last: null,
+            rules: [
+              {
+                id: "opened",
+                title: "When a pull request is opened",
+                on: "pull_request.opened",
+                status: null,
+              },
+              {
+                id: "merged",
+                title: "When a pull request is merged",
+                on: "pull_request.merged",
+                status: "done",
+              },
+            ],
+            statuses: [
+              { id: "in_review", label: "In Review" },
+              { id: "done", label: "Done" },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(html).toContain("inbound.howtoGithubLink");
+    expect(html).toContain("inbound.rulesTitle");
+    expect(html).toContain("When a pull request is merged");
+    expect(html).toMatch(/<option value="done" selected="">/);
+    expect(html).toContain('data-on="false"');
   });
 
   it("asks again after an update wants more", () => {
@@ -165,6 +263,7 @@ describe("PluginSettings", () => {
           ]),
           field("assignee", "member", [{ id: "u1", label: "Ada Lovelace" }]),
           field("tag", "label", [{ id: "l1", label: "Bug" }]),
+          field("merged", "status", [{ id: "done", label: "Done" }]),
         ],
         values: { days: ["tue"], body: "Hello" },
       }),
@@ -175,6 +274,7 @@ describe("PluginSettings", () => {
     expect(html).toMatch(/aria-pressed="true"[^>]*>.*?Tue/);
     expect(html).toContain("Ada Lovelace");
     expect(html).toContain("Bug");
+    expect(html).toMatch(/<option value="done">Done<\/option>/);
   });
 
   it("puts a plugin's own page instead of the form, its section below it", () => {

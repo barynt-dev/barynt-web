@@ -17,6 +17,7 @@ import { type PluginManifest, validateManifest } from "@/lib/plugins/manifest";
 import { settingsSlotId, slotEntries } from "@/lib/plugins/slots";
 import { runAsPlugin } from "@/lib/webhooks/source";
 import { HANDLERS } from "./bridge-methods";
+import { syncDevPlugin } from "./dev";
 
 // Running a sandboxed plugin (BARY-144): which plugin may run where for
 // whom, the document its frame loads, and what its requests over the host
@@ -157,16 +158,31 @@ export async function getPluginFrame(
   place: PluginPlace,
   slot: FrameContext["slot"],
 ): Promise<{ html: string; csp: string } | null> {
+  // A plugin in development (BARY-221) is read from its folder first: its
+  // row then holds the manifest as it is now, and the frame its code.
+  const dev = await db.plugin.findFirst({
+    where: { pluginId: place.pluginId, status: "active" },
+    select: { id: true, pluginId: true, hash: true, devSource: true },
+  });
+  const fresh = dev?.devSource
+    ? await syncDevPlugin({ ...dev, devSource: dev.devSource })
+    : null;
+  if (fresh && !fresh.ok) return null;
   const plugin = await findRunningPlugin(userId, place);
   if (!plugin || plugin.manifest.kind !== "sandbox") return null;
   if (!slotEntry(plugin, slot)) return null;
-  const files = await db.pluginFile.findMany({
-    where: {
-      pluginRowId: plugin.rowId,
-      name: { in: ["main.js", "styles.css"] },
-    },
-    select: { name: true, content: true },
-  });
+  const files = fresh?.ok
+    ? Object.entries(fresh.files).map(([name, content]) => ({
+        name,
+        content: content as Uint8Array,
+      }))
+    : await db.pluginFile.findMany({
+        where: {
+          pluginRowId: plugin.rowId,
+          name: { in: ["main.js", "styles.css"] },
+        },
+        select: { name: true, content: true },
+      });
   const text = (name: string) => {
     const file = files.find((f) => f.name === name);
     return file ? new TextDecoder().decode(file.content) : null;

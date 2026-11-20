@@ -2,8 +2,9 @@ import "server-only";
 import { db } from "@/lib/db";
 import type { PluginManifest } from "@/lib/plugins/manifest";
 
-// The choices of a plugin's `member` and `label` settings (BARY-204): the
-// place's people and labels, not the manifest's. The form offers them, and
+// The choices of a plugin's `member`, `label` (BARY-204) and `status`
+// (BARY-224) settings: the place's people, labels and statuses, not the
+// manifest's. The form offers them, and
 // both ways of saving (`savePluginSettings`, `settings.set`) check against
 // the same list.
 
@@ -13,25 +14,28 @@ export type PlacedSetting = Omit<Setting, "options"> & {
   options?: { id: string; label: string; color?: string }[];
 };
 
-/** The manifest's settings with `member` and `label` given the place's
- *  options: in a project its members and the labels it shows, in the
- *  workspace its members and its own labels. */
+/** The manifest's settings with `member`, `label` and `status` given the
+ *  place's options: in a project its members and the labels it shows, in the
+ *  workspace its members and its own labels — the statuses are the
+ *  workspace's in both. */
 export async function placeSettings(
   scope: { workspaceId: string; projectId: string | null },
   settings: readonly Setting[],
 ): Promise<PlacedSetting[]> {
   const needs = (type: Setting["type"]) =>
     settings.some((s) => s.type === type);
-  const [members, labels] = await Promise.all([
+  const [members, labels, statuses] = await Promise.all([
     needs("member") ? placeMembers(scope) : [],
     needs("label") ? placeLabels(scope) : [],
+    needs("status") ? placeStatuses(scope.workspaceId) : [],
   ]);
+  const placed: Partial<Record<Setting["type"], PlacedSetting["options"]>> = {
+    member: members,
+    label: labels,
+    status: statuses,
+  };
   return settings.map((s) =>
-    s.type === "member"
-      ? { ...s, options: members }
-      : s.type === "label"
-        ? { ...s, options: labels }
-        : s,
+    placed[s.type] ? { ...s, options: placed[s.type] } : s,
   );
 }
 
@@ -73,4 +77,19 @@ async function placeLabels(scope: {
     orderBy: { name: "asc" },
   });
   return rows.map((l) => ({ id: l.id, label: l.name, color: l.color }));
+}
+
+/** The workspace's statuses in board order — also what a `link` hook's
+ *  rules pick from (BARY-227). */
+export async function placeStatuses(workspaceId: string) {
+  const rows = await db.workspaceStatus.findMany({
+    where: { workspaceId },
+    select: { status: { select: { id: true, name: true, color: true } } },
+    orderBy: { status: { position: "asc" } },
+  });
+  return rows.map(({ status: s }) => ({
+    id: s.id,
+    label: s.name,
+    color: s.color,
+  }));
 }

@@ -1,0 +1,19 @@
+{
+  "name": "open-issues",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun scripts/build.ts",
+    "dev": "bun scripts/build.ts --watch",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "release": "bun scripts/build.ts && bun scripts/release.ts",
+    "server": "bun server/index.ts"
+  },
+  "devDependencies": {
+    "@barynt/plugin-sdk": "file:../barynt/packages/plugin-sdk",
+    "@types/bun": "^1.4.4",
+    "happy-dom": "21.0.4",
+    "typescript": "7.0.2"
+  }
+}

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { devVersion, readDevPlugin } from "@/features/plugins/dev";
 import {
   fetchRelease,
   forgetSource,
@@ -9,6 +10,7 @@ import {
   sealSourceToken,
 } from "@/features/plugins/directory";
 import { ensureInboundHooks } from "@/features/plugins/inbound";
+import { linkRuleStatuses } from "@/features/plugins/link";
 import { getPluginIssueActions } from "@/features/plugins/slots";
 import { DELIVERY_SELECT } from "@/features/webhooks/deliveries";
 import type { WebhookDelivery } from "@/features/webhooks/types";
@@ -22,7 +24,12 @@ import {
   requirePermission,
 } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
-import { isDevUrl } from "@/lib/plugins/dev";
+import {
+  isDevUrl,
+  pluginDevBase,
+  pluginDevSources,
+  pluginInternalHosts,
+} from "@/lib/plugins/dev";
 import type { PreviewFileName } from "@/lib/plugins/directory";
 import {
   detectProvider,
@@ -37,14 +44,25 @@ import {
   rollbackTarget,
   unblockTarget,
 } from "@/lib/plugins/lifecycle";
-import { validateManifest } from "@/lib/plugins/manifest";
+import {
+  type PluginManifest,
+  serviceAddressMode,
+  validateManifest,
+} from "@/lib/plugins/manifest";
 import type { PluginActionEntry } from "@/lib/plugins/plugin-actions";
 import { credentialScopeKey } from "@/lib/plugins/proxy";
 import { compareSemver } from "@/lib/plugins/semver";
+import {
+  checkServiceAddress,
+  type ServiceAddressMode,
+  type ServiceSummary,
+  serviceSummary,
+} from "@/lib/plugins/service";
 import { checkSettings } from "@/lib/plugins/settings";
 import { sealSecret } from "@/lib/secret-box";
 import { sendLifecycle } from "@/lib/webhooks/deliver";
 import {
+  ensureBot,
   ensureServiceIdentity,
   revokeAppTokens,
 } from "@/lib/webhooks/plugin-targets";
@@ -338,6 +356,82 @@ export async function installPlugin(input: {
   return { ok: true, id: row.id, updatedFrom: previous };
 }
 
+/**
+ * A plugin from a local folder or dev server (BARY-221), development only:
+ * read and checked like a release, minus the hash, and installed as the
+ * active version — its row then follows the folder (`features/plugins/dev.ts`).
+ * Another dev install of the same plugin is replaced.
+ */
+export async function installDevPlugin(input: {
+  source: string;
+  capabilities: string[];
+}): Promise<PluginResult<{ id: string }>> {
+  const actorId = await requirePermission("plugin.manage", PLATFORM);
+  if (!pluginDevSources().includes(input.source))
+    return { error: "not_in_directory" };
+  const read = await readDevPlugin(input.source);
+  if (!read.ok) return { error: "invalid_manifest" };
+  const { manifest, files, fingerprint } = read;
+  if (!confirmsExactly(manifest.capabilities, input.capabilities))
+    return { error: "capabilities_not_confirmed" };
+  const blocked = await db.plugin.count({
+    where: { pluginId: manifest.id, status: "blocked" },
+  });
+  if (blocked > 0) return { error: "blocked" };
+
+  const row = await db.$transaction(async (tx) => {
+    await tx.plugin.deleteMany({
+      where: { pluginId: manifest.id, devSource: { not: null } },
+    });
+    await tx.plugin.updateMany({
+      where: { pluginId: manifest.id, status: "active" },
+      data: { status: "superseded" },
+    });
+    return tx.plugin.create({
+      data: {
+        pluginId: manifest.id,
+        version: devVersion(manifest),
+        kind: manifest.kind,
+        hash: fingerprint,
+        manifest: manifest as unknown as Prisma.InputJsonValue,
+        devSource: input.source,
+        installedById: actorId,
+        // Kept like a release's, though frames read the folder.
+        files: {
+          create: (["main.js", "styles.css"] as const).flatMap((name) => {
+            const content = files[name];
+            return content
+              ? [
+                  {
+                    name,
+                    content: Buffer.from(content),
+                    size: content.byteLength,
+                  },
+                ]
+              : [];
+          }),
+        },
+      },
+      select: { id: true },
+    });
+  });
+
+  await recordAudit({
+    action: "plugin.installed",
+    actorId,
+    target: { type: "plugin", id: manifest.id, label: manifest.name },
+    meta: {
+      version: devVersion(manifest),
+      kind: manifest.kind,
+      capabilities: manifest.capabilities,
+      network: manifest.network,
+      dev: input.source,
+    },
+  });
+  done();
+  return { ok: true, id: row.id };
+}
+
 /** The active version's manifest name, for audit labels. */
 async function pluginLabel(pluginId: string): Promise<string> {
   const row = await db.plugin.findFirst({
@@ -573,6 +667,9 @@ export async function activatePlugin(
   // each time it's switched on again.
   if (manifest.contributes.inboundHooks?.length)
     await ensureInboundHooks(activation.id, manifest);
+  // Rules of a `link` hook act as the plugin's app, server or not (BARY-227).
+  if (manifest.contributes.inboundHooks?.some((h) => h.rules?.length))
+    await ensureBot(activation.id, manifest);
   if (
     manifest.service &&
     (await ensureServiceIdentity(activation.id, manifest))
@@ -970,7 +1067,7 @@ export interface ReleasePreview {
   capabilities: string[];
   network: string[];
   /** Its own server and what it hears about (BARY-212). */
-  service: { url: string; events: string[] } | null;
+  service: ServiceSummary | null;
   minBaryntVersion: string;
   hash: string;
   /** Size of the code, in bytes. */
@@ -1012,7 +1109,7 @@ export async function previewRelease(input: {
       levels: m.levels,
       capabilities: m.capabilities,
       network: m.network,
-      service: m.service ?? null,
+      service: m.service ? serviceSummary(m.service) : null,
       minBaryntVersion: m.minBaryntVersion,
       hash: release.hash,
       codeSize: release.files["main.js"]?.byteLength ?? 0,
@@ -1092,6 +1189,64 @@ async function manageableActivation(activationId: string) {
   return { ...activation, actorId };
 }
 
+/**
+ * Switches one of a `link` hook's rules on, with the status it sets, or off
+ * (`status: null`) — for this project or workspace (BARY-227). The status
+ * is one of the workspace's; the rule one the plugin's manifest names.
+ */
+export async function setInboundRule(input: {
+  hookId: string;
+  ruleId: string;
+  status: string | null;
+}): Promise<PluginResult> {
+  const hook = await db.pluginInboundHook.findUnique({
+    where: { id: input.hookId },
+    select: { id: true, hookId: true, activationId: true, rules: true },
+  });
+  if (!hook) return { error: "not_activated" };
+  const activation = await manageableActivation(hook.activationId);
+  if (!activation) return { error: "not_activated" };
+  const row = await db.plugin.findFirst({
+    where: { pluginId: activation.pluginId, status: "active" },
+    select: { manifest: true },
+  });
+  const parsed = row ? validateManifest(row.manifest) : null;
+  if (!parsed?.ok) return { error: "not_activated" };
+  const rule = parsed.manifest.contributes.inboundHooks
+    ?.find((h) => h.id === hook.hookId)
+    ?.rules?.find((r) => r.id === input.ruleId);
+  if (!rule) return { error: "invalid_setting" };
+  if (input.status) {
+    const known = await db.workspaceStatus.count({
+      where: { workspaceId: activation.workspaceId, statusId: input.status },
+    });
+    if (known === 0) return { error: "invalid_setting" };
+  }
+
+  const rules = linkRuleStatuses(hook.rules);
+  if (input.status) rules[rule.id] = input.status;
+  else delete rules[rule.id];
+  await db.pluginInboundHook.update({
+    where: { id: hook.id },
+    data: { rules },
+  });
+  if (input.status) await ensureBot(activation.id, parsed.manifest);
+  await recordAudit({
+    action: "plugin.inbound.rules",
+    actorId: activation.actorId,
+    target: {
+      type: "plugin",
+      id: activation.pluginId,
+      label: parsed.manifest.name,
+    },
+    workspaceId: activation.workspaceId,
+    projectId: activation.projectId,
+    meta: { hook: hook.hookId, rule: rule.id, status: input.status },
+  });
+  done();
+  return { ok: true };
+}
+
 /** The latest deliveries to a plugin's server, newest first. */
 export async function listPluginDeliveries(
   activationId: string,
@@ -1127,6 +1282,129 @@ export async function resumePluginService(
     workspaceId: activation.workspaceId,
     projectId: activation.projectId,
   });
+  done();
+  return { ok: true };
+}
+
+// ─── Where a plugin's server is (BARY-223) ──────────────────────────────────
+
+/** The active version's manifest, when it has a server reached `mode`'s way. */
+async function serviceManifest(pluginId: string, mode: ServiceAddressMode) {
+  const row = await db.plugin.findFirst({
+    where: { pluginId, status: "active" },
+    select: { manifest: true },
+  });
+  const parsed = row ? validateManifest(row.manifest) : null;
+  if (!parsed?.ok || !parsed.manifest.service) return null;
+  return serviceAddressMode(parsed.manifest.service) === mode
+    ? parsed.manifest
+    : null;
+}
+
+/** A server that moved hears it's on — with a new secret, so the one
+ *  before can't read what goes to the new one, and a new app token. */
+async function connectService(activationId: string, manifest: PluginManifest) {
+  if (await ensureServiceIdentity(activationId, manifest, { newSecret: true }))
+    void sendLifecycle(activationId, "app.installed");
+}
+
+/**
+ * The address of a `platform` plugin's server, which whoever runs this
+ * Barynt runs — a container beside it, say. Empty takes it away. Every
+ * place the plugin is on hears about it at once.
+ */
+export async function setPluginServiceAddress(input: {
+  pluginId: string;
+  url: string;
+}): Promise<PluginResult> {
+  const actorId = await requirePermission("plugin.manage", PLATFORM);
+  const manifest = await serviceManifest(input.pluginId, "platform");
+  if (!manifest) return { error: "not_found" };
+  let url: string | null = null;
+  if (input.url.trim()) {
+    // The operator's own: plain http to a container is fine.
+    const checked = checkServiceAddress(input.url, {
+      hosts: [],
+      local: true,
+      plain: true,
+    });
+    if (!checked.ok) return { error: checked.error };
+    url = checked.url;
+  }
+  if (url)
+    await db.pluginServiceAddress.upsert({
+      where: { pluginId: input.pluginId },
+      create: { pluginId: input.pluginId, url, updatedById: actorId },
+      update: { url, updatedById: actorId },
+    });
+  else
+    await db.pluginServiceAddress.deleteMany({
+      where: { pluginId: input.pluginId },
+    });
+
+  const activations = await db.pluginActivation.findMany({
+    where: { pluginId: input.pluginId, enabled: true },
+    select: { id: true },
+  });
+  if (url) for (const a of activations) await connectService(a.id, manifest);
+  await recordAudit({
+    action: "plugin.service.address",
+    actorId,
+    target: { type: "plugin", id: input.pluginId, label: manifest.name },
+    meta: { url },
+  });
+  done();
+  return { ok: true };
+}
+
+/**
+ * The address of an `activation` plugin's server, given where it's
+ * switched on — a server just for this workspace or project. Empty takes it
+ * away: the plugin keeps running in the browser, its server hears nothing.
+ */
+export async function setActivationServiceAddress(input: {
+  activationId: string;
+  url: string;
+}): Promise<PluginResult> {
+  const activation = await manageableActivation(input.activationId);
+  if (!activation) return { error: "not_activated" };
+  const manifest = await serviceManifest(activation.pluginId, "activation");
+  if (!manifest) return { error: "not_found" };
+  let url: string | null = null;
+  if (input.url.trim()) {
+    // Not the operator: plain http only to a host the operator let through.
+    const checked = checkServiceAddress(input.url, {
+      hosts: pluginInternalHosts(),
+      local: !!pluginDevBase(),
+    });
+    if (!checked.ok) return { error: checked.error };
+    url = checked.url;
+  }
+  await db.pluginActivation.update({
+    where: { id: activation.id },
+    data: { serviceUrl: url },
+  });
+  if (url) await connectService(activation.id, manifest);
+  await recordAudit({
+    action: "plugin.service.address",
+    actorId: activation.actorId,
+    target: { type: "plugin", id: activation.pluginId, label: manifest.name },
+    workspaceId: activation.workspaceId,
+    projectId: activation.projectId,
+    meta: { url },
+  });
+  done();
+  return { ok: true };
+}
+
+/** Sends `app.installed` again — to check the server answers, and so one
+ *  that lost its installations gets them back. */
+export async function testPluginService(
+  activationId: string,
+): Promise<PluginResult> {
+  const activation = await manageableActivation(activationId);
+  if (!activation) return { error: "not_activated" };
+  await sendLifecycle(activationId, "app.installed");
   done();
   return { ok: true };
 }

@@ -1,0 +1,11 @@
+/* Barynt's tokens, so it fits light and dark mode. */
+.open-issues {
+  margin: 0;
+  padding: 1.25rem 1.5rem;
+  list-style: none;
+}
+
+.open-issues li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--outline-variant);
+}

@@ -346,6 +346,14 @@ export const AUDIT_ACTION_META = {
     icon: "lucide:circle-play",
     message: "pluginServiceResumed",
   },
+  "plugin.service.address": {
+    icon: "lucide:server",
+    message: "pluginServiceAddress",
+  },
+  "plugin.inbound.rules": {
+    icon: "lucide:workflow",
+    message: "pluginInboundRules",
+  },
   "webhook.disabled": {
     icon: "lucide:webhook-off",
     message: "webhookDisabled",

@@ -15,6 +15,8 @@ let pluginRows: { pluginId: string; manifest: unknown }[] = [];
 let projectVisibility = "public";
 let apiKeys: Row[] = [];
 let users: Row[] = [];
+/** The operator's address for a `platform` plugin's server (BARY-223). */
+let platformAddress: string | null = null;
 
 const mockWebhookFindMany = mock();
 const mockWebhookCount = mock();
@@ -116,6 +118,10 @@ mock.module("@/lib/db", () => ({
       },
     },
     plugin: { findMany: async () => pluginRows },
+    pluginServiceAddress: {
+      findUnique: async () =>
+        platformAddress ? { url: platformAddress } : null,
+    },
     apiKey: {
       updateMany: async ({ data }: { data: Record<string, unknown> }) => {
         for (const k of apiKeys) if (!k.revokedAt) Object.assign(k, data);
@@ -178,6 +184,8 @@ function reset() {
   pluginRows = [];
   apiKeys = [];
   users = [];
+  platformAddress = null;
+  delete process.env.PLUGIN_SERVICE_URLS;
   projectVisibility = "public";
   hook = {
     id: "wh-1",
@@ -756,6 +764,79 @@ describe("a plugin's identity (BARY-213)", () => {
     expect(apiKeys).toHaveLength(2);
     expect(apiKeys[0].revokedAt).toBeInstanceOf(Date);
     expect(apiKeys[1].revokedAt).toBeNull();
+  });
+});
+
+describe("where the server is (BARY-223)", () => {
+  beforeEach(() => {
+    reset();
+    mockWebhookFindMany.mockResolvedValue([]);
+  });
+
+  /** The plugin's server reached `address`'s way, the manifest's URL only
+   *  a suggestion. */
+  function elsewhere(
+    address: "platform" | "activation",
+    extra: Row | object = {},
+  ) {
+    servicePlugin(["issue.status_changed"], ["events:issue"], extra);
+    const manifest = pluginRows[0].manifest as {
+      network: string[];
+      service: Record<string, unknown>;
+    };
+    manifest.network = [];
+    manifest.service = { ...manifest.service, address };
+  }
+
+  it("sends to the address given where it's switched on", async () => {
+    elsewhere("activation", { serviceUrl: "https://team.acme.dev/hook" });
+    await deliverEvent(ISSUE);
+    expect(sent()[0].url).toBe("https://team.acme.dev/hook");
+  });
+
+  it("sends nowhere, and makes no identity, while nobody gave an address", async () => {
+    elsewhere("activation", {
+      serviceUrl: null,
+      serviceSecret: null,
+      botUserId: null,
+    });
+    const manifest = pluginRows[0].manifest as never;
+    expect(await ensureServiceIdentity("act-1", manifest)).toBe(false);
+    expect(users).toHaveLength(0);
+
+    elsewhere("platform");
+    await deliverEvent(ISSUE);
+    expect(mockPinnedPost).not.toHaveBeenCalled();
+  });
+
+  it("sends to the operator's container — the environment before what was saved", async () => {
+    elsewhere("platform");
+    platformAddress = "http://ci-bridge:8080/events";
+    await deliverEvent(ISSUE);
+    const [first] = mockPinnedPost.mock.calls as unknown as [
+      [{ url: string; internalHosts: string[] }],
+    ];
+    expect(first[0].url).toBe("http://ci-bridge:8080/events");
+    // The operator chose it: its host may be on the private network.
+    expect(first[0].internalHosts).toContain("ci-bridge:8080");
+
+    reset();
+    mockWebhookFindMany.mockResolvedValue([]);
+    elsewhere("platform");
+    platformAddress = "http://ci-bridge:8080/events";
+    process.env.PLUGIN_SERVICE_URLS = "ci-bridge=https://ci.ops.acme/barynt";
+    await deliverEvent(ISSUE);
+    expect(sent()[0].url).toBe("https://ci.ops.acme/barynt");
+  });
+
+  it("gives a server that moved a new secret", async () => {
+    elsewhere("activation", { serviceUrl: "https://team.acme.dev/hook" });
+    const manifest = pluginRows[0].manifest as never;
+    const before = activations[0].serviceSecret;
+    await ensureServiceIdentity("act-1", manifest);
+    expect(activations[0].serviceSecret).toBe(before);
+    await ensureServiceIdentity("act-1", manifest, { newSecret: true });
+    expect(activations[0].serviceSecret).not.toBe(before);
   });
 });
 

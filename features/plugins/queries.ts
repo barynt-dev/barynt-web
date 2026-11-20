@@ -23,14 +23,28 @@ import {
   pendingCapabilities,
   rollbackTarget,
 } from "@/lib/plugins/lifecycle";
+import type { LinkTrigger } from "@/lib/plugins/link-rules";
 import {
   type CredentialLevel,
+  type PluginKind,
   type PluginManifest,
+  serviceAddressMode,
   validateManifest,
 } from "@/lib/plugins/manifest";
 import { compareSemver } from "@/lib/plugins/semver";
+import {
+  type ServiceAddressMode,
+  type ServiceSummary,
+  serviceSummary,
+} from "@/lib/plugins/service";
 import type { SettingType, SettingValue } from "@/lib/plugins/settings";
-import { placeSettings } from "./settings-options";
+import {
+  platformServiceUrl,
+  serviceAddressOf,
+} from "@/lib/webhooks/plugin-targets";
+import { listDevPlugins } from "./dev";
+import { linkRuleStatuses } from "./link";
+import { placeSettings, placeStatuses } from "./settings-options";
 
 // What the plugin pages show (BARY-143). Every view checks its own
 // permission and answers `null` without it — the page then 404s; a hidden
@@ -47,7 +61,7 @@ export interface PluginSummary {
   capabilities: string[];
   network: string[];
   /** Its own server and what it hears about (BARY-212). */
-  service?: { url: string; events: string[] } | null;
+  service?: ServiceSummary | null;
   /** Screenshots, served from the installed version (BARY-199). */
   previews: { title: string; src: string }[];
 }
@@ -73,7 +87,7 @@ function summaryOf(
     levels: m.levels ?? [],
     capabilities: m.capabilities ?? [],
     network: m.network ?? [],
-    service: m.service ?? null,
+    service: m.service ? serviceSummary(m.service) : null,
     previews: rowId
       ? (m.previews ?? []).map(({ file, title }) => ({
           title,
@@ -132,6 +146,9 @@ export interface InstalledPlugin extends PluginSummary {
   rollbackTo: string | null;
   /** Where it's switched on. */
   activations: number;
+  /** For a server the operator runs (`platform`, BARY-223): its address,
+   *  and whether `PLUGIN_SERVICE_URLS` sets it. `null` for any other. */
+  serviceAddress: { url: string | null; fromEnv: boolean } | null;
 }
 
 export interface AdminPluginsView {
@@ -162,8 +179,8 @@ export async function getAdminPluginsView(): Promise<AdminPluginsView | null> {
       lastSyncAt: s.lastSyncAt,
       lastSyncError: s.lastSyncError,
     })),
-    installed: byPlugin(rows as Row[])
-      .map(({ versions, current }) => {
+    installed: await withServiceAddresses(
+      byPlugin(rows as Row[]).map(({ versions, current }) => {
         const shown = current ?? versions[0];
         return {
           ...summaryOf(shown.pluginId, shown.manifest, shown.id),
@@ -179,9 +196,27 @@ export async function getAdminPluginsView(): Promise<AdminPluginsView | null> {
           activations:
             counts.find((c) => c.pluginId === shown.pluginId)?._count._all ?? 0,
         };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name)),
+      }),
+    ).then((list) => list.sort((a, b) => a.name.localeCompare(b.name))),
   };
+}
+
+/** Adds where a `platform` plugin's server is — the admin gives it here. */
+async function withServiceAddresses(
+  plugins: Omit<InstalledPlugin, "serviceAddress">[],
+): Promise<InstalledPlugin[]> {
+  return Promise.all(
+    plugins.map(async (p) => ({
+      ...p,
+      serviceAddress:
+        p.service?.address === "platform"
+          ? ((await platformServiceUrl(p.pluginId)) ?? {
+              url: null,
+              fromEnv: false,
+            })
+          : null,
+    })),
+  );
 }
 
 // ─── The store (BARY-200) ───────────────────────────────────────────────────
@@ -224,7 +259,27 @@ export interface StoreView {
   entries: StoreEntry[];
   /** Sources whose directory couldn't be read just now. */
   unreadable: { sourceId: string; error: string }[];
+  /** Plugins in local folders (`PLUGIN_DEV_DIRS`, BARY-221) — `null`
+   *  without any, and always in production. */
+  dev: DevListing[] | null;
 }
+
+/** A plugin in a local folder or dev server, as read just now. */
+export type DevListing = {
+  source: string;
+  /** Installed from here, and loaded from here. */
+  installed: boolean;
+} & (
+  | {
+      ok: true;
+      id: string;
+      name: string;
+      version: string;
+      kind: PluginKind;
+      capabilities: string[];
+    }
+  | { ok: false; errors: string[] }
+);
 
 /**
  * What the enabled sources list, by plugin id — the first source that lists
@@ -331,7 +386,36 @@ export async function getPluginStoreView(): Promise<StoreView | null> {
     });
   }
   entries.sort((a, b) => a.name.localeCompare(b.name));
-  return { sources: admin.sources, entries, unreadable };
+  return {
+    sources: admin.sources,
+    entries,
+    unreadable,
+    dev: await devListings(),
+  };
+}
+
+async function devListings(): Promise<DevListing[] | null> {
+  const read = await listDevPlugins();
+  if (read.length === 0) return null;
+  const rows = await db.plugin.findMany({
+    where: { status: "active", devSource: { in: read.map((r) => r.source) } },
+    select: { devSource: true },
+  });
+  return read.map((r) => {
+    const installed = rows.some((row) => row.devSource === r.source);
+    return r.ok
+      ? {
+          source: r.source,
+          installed,
+          ok: true,
+          id: r.manifest.id,
+          name: r.manifest.name,
+          version: r.manifest.version,
+          kind: r.manifest.kind,
+          capabilities: r.manifest.capabilities,
+        }
+      : { source: r.source, installed, ok: false, errors: r.errors };
+  });
 }
 
 /** A workspace, with where in it a plugin is switched on. */
@@ -462,9 +546,18 @@ export interface ScopeStoreView {
   plugins: ScopeStorePlugin[];
 }
 
+/** Whether a plugin's settings page has something on it: a form, or the
+ *  cards of its server and of the webhooks other services send it — a
+ *  server run just for this place takes its address there (BARY-223). */
 const hasSettingsForm = (manifest: unknown) => {
   const parsed = validateManifest(manifest);
-  return parsed.ok && (parsed.manifest.contributes.settings?.length ?? 0) > 0;
+  if (!parsed.ok) return false;
+  const m = parsed.manifest;
+  return (
+    (m.contributes.settings?.length ?? 0) > 0 ||
+    !!m.service ||
+    (m.contributes.inboundHooks?.length ?? 0) > 0
+  );
 };
 
 /**
@@ -608,10 +701,12 @@ export interface PluginSettingsView {
 
 /** A hook another service calls, as its settings show it (BARY-215). */
 export interface PluginInboundView {
+  /** The hook's row — what a rule is saved on. */
+  id: string;
   hookId: string;
   title: string;
   provider: "gitlab" | "github" | "generic";
-  handle: "forward";
+  handle: "forward" | "link";
   /** The address to give the provider. */
   url: string;
   /** The secret to give it — shown to whoever may manage the plugin. */
@@ -622,12 +717,27 @@ export interface PluginInboundView {
     status: number | null;
     error: string | null;
   } | null;
+  /** A `link` hook's rules (BARY-227), each with the status it sets here —
+   *  `null` while it's off. */
+  rules: {
+    id: string;
+    title: string;
+    on: LinkTrigger;
+    status: string | null;
+  }[];
+  /** What a rule can set: the workspace's statuses. Empty without rules. */
+  statuses: { id: string; label: string; color?: string }[];
 }
 
 /** A plugin's server, as its settings show it (BARY-212). */
 export interface PluginServiceView {
   activationId: string;
-  url: string;
+  /** Where Barynt sends — `null` while nobody has given an address. */
+  url: string | null;
+  /** Who runs the server and gives its address (BARY-223). */
+  address: ServiceAddressMode;
+  /** The manifest's address, offered when one is to be given here. */
+  suggestion: string | null;
   events: string[];
   /** Set while Barynt has stopped delivering after a day of failures. */
   pausedAt: Date | null;
@@ -742,6 +852,9 @@ export async function getPluginSettingsView(
           where: { activationId: activation.id },
         })
       : [];
+  const ruleStatuses = hooks.some((h) => h.rules?.length)
+    ? await placeStatuses(scope.workspaceId)
+    : [];
   const lastDelivery =
     service && activation
       ? await db.eventDelivery.findFirst({
@@ -770,8 +883,10 @@ export async function getPluginSettingsView(
     inbound: hooks.flatMap((hook) => {
       const row = inboundRows.find((r) => r.hookId === hook.id);
       if (!row) return [];
+      const stored = linkRuleStatuses(row.rules);
       return [
         {
+          id: row.id,
           hookId: hook.id,
           title: hook.title,
           provider: hook.provider,
@@ -786,6 +901,11 @@ export async function getPluginSettingsView(
                 error: row.lastError,
               }
             : null,
+          rules: (hook.rules ?? []).map((r) => ({
+            ...r,
+            status: stored[r.id] ?? null,
+          })),
+          statuses: hook.rules?.length ? ruleStatuses : [],
         },
       ];
     }),
@@ -793,7 +913,11 @@ export async function getPluginSettingsView(
       service && activation?.enabled
         ? {
             activationId: activation.id,
-            url: service.url,
+            url:
+              (await serviceAddressOf(activation, parsed.manifest))?.url ??
+              null,
+            address: serviceAddressMode(service),
+            suggestion: service.url ?? null,
             events: service.events,
             pausedAt: activation.servicePausedAt,
             failingSince: activation.serviceFailingSince,

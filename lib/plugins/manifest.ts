@@ -10,8 +10,16 @@
 
 import { z } from "zod";
 import { pluginTemplateSchema } from "@/features/dashboard/widgets";
+import { LINK_TRIGGERS } from "./link-rules";
 import { compareSemver, isSemver } from "./semver";
-import { eventCapability, isLocalServiceUrl, PLUGIN_EVENTS } from "./service";
+import {
+  eventCapability,
+  isLocalServiceUrl,
+  PLUGIN_EVENTS,
+  SERVICE_ADDRESS_MODES,
+  SERVICE_URL_MAX,
+  type ServiceAddressMode,
+} from "./service";
 import { SETTING_TYPES } from "./settings";
 
 /** How a plugin runs. In-process code is Barynt's own and not a plugin kind. */
@@ -200,9 +208,15 @@ const inboundHookSchema = z.strictObject({
   title,
   /** Who calls — decides how Barynt checks the call. */
   provider: z.enum(["gitlab", "github", "generic"]),
-  /** `forward` to the plugin's server — the only way for now; the field
-   *  stays so a later one doesn't break manifests. */
-  handle: z.literal("forward"),
+  /** `forward` to the plugin's server, or `link`: Barynt reads the call
+   *  itself and keeps what it says on the issues it names (BARY-226). */
+  handle: z.enum(["forward", "link"]),
+  /** What a `link` hook may do with an issue (BARY-227): each project picks
+   *  the status to set, or leaves the rule off. */
+  rules: z
+    .array(z.strictObject({ id: localId, title, on: z.enum(LINK_TRIGGERS) }))
+    .max(10)
+    .optional(),
 });
 
 const contributesSchema = z.strictObject({
@@ -293,7 +307,14 @@ export const manifestSchema = z
      *  sends each event there, signed, and retries when it's down. */
     service: z
       .strictObject({
-        url: z.url({ protocol: /^https?$/ }).max(300),
+        /** Where it is: required for `fixed`; for the others only what the
+         *  form suggests. */
+        url: z
+          .url({ protocol: /^https?$/ })
+          .max(SERVICE_URL_MAX)
+          .optional(),
+        /** Who runs it and gives its address (BARY-223). */
+        address: z.enum(SERVICE_ADDRESS_MODES).optional(),
         events: z.array(z.enum(PLUGIN_EVENTS)).min(1).max(PLUGIN_EVENTS.length),
       })
       .optional(),
@@ -340,14 +361,22 @@ export const manifestSchema = z
       add(["previews"], "preview files must be unique");
 
     if (m.service) {
-      const url = new URL(m.service.url);
-      const local = isLocalServiceUrl(url);
       if (m.kind === "declarative")
         add(["service"], "a declarative plugin has no server");
-      if (url.protocol !== "https:" && !local)
-        add(["service", "url"], "a service must be reached over https");
-      if (!local && !m.network.includes(url.hostname))
-        add(["service", "url"], "the host must be in network");
+      // Only a server the maker runs is in the manifest for good; the
+      // others' address comes from whoever runs them.
+      if (serviceAddressMode(m.service) === "fixed") {
+        if (!m.service.url)
+          add(["service", "url"], "a fixed server needs its address");
+        else {
+          const url = new URL(m.service.url);
+          const local = isLocalServiceUrl(url);
+          if (url.protocol !== "https:" && !local)
+            add(["service", "url"], "a service must be reached over https");
+          if (!local && !m.network.includes(url.hostname))
+            add(["service", "url"], "the host must be in network");
+        }
+      }
       if (new Set(m.service.events).size !== m.service.events.length)
         add(["service", "events"], "events must be unique");
       m.service.events.forEach((event, i) => {
@@ -362,6 +391,29 @@ export const manifestSchema = z
         add(
           ["contributes", "inboundHooks", i, "handle"],
           "forward needs a service to forward to",
+        );
+      if (hook.rules?.length) {
+        if (hook.handle !== "link")
+          add(
+            ["contributes", "inboundHooks", i, "rules"],
+            "only a link hook has rules",
+          );
+        if (new Set(hook.rules.map((r) => r.id)).size !== hook.rules.length)
+          add(
+            ["contributes", "inboundHooks", i, "rules"],
+            "ids must be unique",
+          );
+        if (!m.capabilities.includes("issues:write"))
+          add(
+            ["contributes", "inboundHooks", i, "rules"],
+            "needs the capability issues:write",
+          );
+      }
+      // Barynt reads GitHub's calls; GitLab's come next.
+      if (hook.handle === "link" && hook.provider !== "github")
+        add(
+          ["contributes", "inboundHooks", i, "handle"],
+          `link reads github only, not ${hook.provider}`,
         );
     });
 
@@ -475,7 +527,8 @@ export const manifestSchema = z
 
     const settings = m.contributes.settings ?? [];
     settings.forEach((s, i) => {
-      // `member` and `label` choose from the place's — Barynt fills those.
+      // `member`, `label` and `status` choose from the place's — Barynt fills
+      // those.
       const ownOptions = s.type === "select" || s.type === "multiselect";
       if (ownOptions && !(s.options && s.options.length > 0))
         add(
@@ -540,3 +593,8 @@ export function isCompatible(
     return false;
   return true;
 }
+
+/** How a manifest's server is reached — `fixed` unless it says otherwise. */
+export const serviceAddressMode = (service: {
+  address?: ServiceAddressMode;
+}): ServiceAddressMode => service.address ?? "fixed";

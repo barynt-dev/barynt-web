@@ -25,6 +25,7 @@ import type { IssueDetail } from "@/types";
 import { PluginFrame } from "../PluginFrame/PluginFrame";
 import { focusPanelNext } from "./panelFocus";
 import styles from "./pluginBadges.module.scss";
+import { usePluginDataChanges } from "./usePluginDataChanges";
 
 // Plugins' badges on a project's board cards and list rows (BARY-151). The
 // project's layout provides them; the board or list says which issues it
@@ -136,26 +137,45 @@ function BadgeSource({
       out.push(all.slice(i, i + BADGE_BATCH));
     return out;
   }, [issues, prefix, provider.canRead]);
+  // Each request gets its own number: an answer to an older one is dropped.
+  const [seq, setSeq] = useState(0);
   const [step, setStep] = useState(0);
   const [found, setFound] = useState<Record<string, Badge[]>>({});
-  // New issues: start over, from a fresh sequence number.
-  const [base, setBase] = useState(0);
+  // Issues the plugin's server changed since (BARY-225), asked for again —
+  // only those — once the batches are through.
+  const [again, setAgain] = useState<BadgeIssue[][]>([]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new list of issues starts the batches over
   useEffect(() => {
     setStep(0);
     setFound({});
-    setBase((b) => b + 1000);
+    setAgain([]);
+    setSeq((n) => n + 1);
   }, [batches]);
+  usePluginDataChanges(workspaceId, (changes) => {
+    const ids = new Set(
+      changes
+        .filter((c) => c.pluginId === provider.pluginId)
+        .map((c) => c.issueId),
+    );
+    const shown = batches.flat().filter((i) => ids.has(i.id));
+    if (shown.length > 0) setAgain((queue) => [...queue, shown]);
+  });
   const declared = useMemo(
     () => new Set(provider.badges.map((b) => b.id)),
     [provider.badges],
   );
+  const inBatches = step < batches.length;
+  // The queue's head, not the queue: a change coming in meanwhile doesn't
+  // send the open request again.
+  const nextAgain = again[0];
   const request = useMemo(
     () =>
-      step < batches.length
-        ? { seq: base + step, issues: batches[step] }
-        : null,
-    [base, step, batches],
+      inBatches
+        ? { seq, issues: batches[step] }
+        : nextAgain
+          ? { seq, issues: nextAgain }
+          : null,
+    [seq, inBatches, step, batches, nextAgain],
   );
   return (
     <PluginFrame
@@ -172,10 +192,15 @@ function BadgeSource({
       onBadges={(seq, raw) => {
         if (!request || seq !== request.seq) return;
         const asked = new Set(request.issues.map((i) => i.id));
-        const next = { ...found, ...parseBadges(raw, asked, declared) };
+        const next = { ...found };
+        // Asked again: what it no longer answers is gone.
+        if (!inBatches) for (const id of asked) delete next[id];
+        Object.assign(next, parseBadges(raw, asked, declared));
         setFound(next);
         onBadges(next);
-        setStep((s) => s + 1);
+        setSeq((n) => n + 1);
+        if (inBatches) setStep((s) => s + 1);
+        else setAgain((queue) => queue.slice(1));
       }}
     />
   );

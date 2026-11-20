@@ -1324,6 +1324,43 @@
     flex: none;
     color: var(--warning);
   }
+
+  /* A local plugin's manifest errors: one per line. */
+  &:is(ul) {
+    flex-direction: column;
+    align-items: stretch;
+    list-style: none;
+
+    li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    code {
+      overflow-wrap: anywhere;
+    }
+  }
+}
+
+/* Local plugins (BARY-221) below the sources. */
+.devHead {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+}
+
+.sourceCard[data-dev] {
+  border-style: dashed;
+}
+
+.devLive {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: var(--text-sm);
+  color: var(--green);
 }
 
 // ─── Start page next to the list ────────────────────────────────────────────
@@ -1768,4 +1805,22 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* The address of a server the operator runs (BARY-223): field, then save. */
+.serverForm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+
+  & > :first-child {
+    align-self: stretch;
+  }
+}
+
+.formError {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--error);
 }

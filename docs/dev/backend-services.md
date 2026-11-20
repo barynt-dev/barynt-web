@@ -100,6 +100,17 @@ deliberately simple:
 3. `lib/realtime/localMutation.ts` keeps a per-tab watermark so a tab does not announce
    its **own** change to itself.
 
+Plugins' data on issues (BARY-225) has its own signal next to it: when a plugin's
+server writes or removes an entry (`PUT`/`DELETE /api/v1/issues/{id}/plugin-data/{key}`),
+`recordPluginDataChange(...)` remembers the plugin and the issue for two minutes.
+Boards, lists and open issue panels that show that plugin poll
+`GET /api/workspaces/[id]/plugin-data?since=…` (`usePluginDataChanges`, one poll per
+workspace for all of them, none on a page without a plugin's badges or panels) and,
+without a banner, ask the plugin again for those cards only and reload its panel. The
+banner's signal isn't used for this: badges come from the plugin's frame, so a refresh of
+the page wouldn't reach them, and a build's every step would announce "there are
+changes" to everyone.
+
 Why polling and not SSE or WebSockets: a short GET has nothing for a reverse proxy, CDN
 or tunnel to buffer or cut. Why in memory: one container, nothing needs to survive a
 restart, and a lost notice is repaired by the next change.
@@ -167,6 +178,14 @@ came through (`via`), and trims the body to what it may read (`eventForPlugin`,
 handed over in `app.installed` when it's switched on (`sendLifecycle`); `app.uninstalled` follows
 when it's switched off. A server failing for a day is paused (`servicePausedAt`, audit
 `plugin.service.paused`), not the plugin; `resumePluginService` sends again.
+
+Where the server is follows `service.address` (BARY-223, `serviceAddressOf`): the manifest's
+`url` (`fixed`), the operator's (`platform`: `PLUGIN_SERVICE_URLS`, else `PluginServiceAddress`,
+saved by `setPluginServiceAddress`; its host joins the delivery's internal hosts), or the
+activation's own `serviceUrl` (`activation`, `setActivationServiceAddress`). Without one,
+`ensureServiceIdentity` makes nothing and a delivery closes ("no address yet"). A new address
+calls it with `newSecret` and sends `app.installed` again; `checkServiceAddress`
+(`lib/plugins/service.ts`) decides what an address may be.
 
 Every delivery is a row in `EventDelivery` first — the queue and the log in one — and is tried
 at once (`attemptDelivery`). Each attempt goes through `pinnedPost` (`lib/net/pinned-fetch.ts`):

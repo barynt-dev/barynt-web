@@ -2,8 +2,9 @@
 // says what may be stored; this checks what a form sent against it. Pure,
 // so the action, a test and a plugin author's tooling read it the same way.
 
-/** The kinds of setting a manifest may declare. `member` and `label` pick
- *  from the place's people and labels (BARY-204). */
+/** The kinds of setting a manifest may declare. `member`, `label` and
+ *  `status` pick from the place's people, labels (BARY-204) and statuses
+ *  (BARY-224). */
 export const SETTING_TYPES = [
   "text",
   "textarea",
@@ -14,6 +15,7 @@ export const SETTING_TYPES = [
   "multiselect",
   "member",
   "label",
+  "status",
 ] as const;
 export type SettingType = (typeof SETTING_TYPES)[number];
 
@@ -99,6 +101,7 @@ export function checkSettings(
       case "select":
       case "member":
       case "label":
+      case "status":
         if (raw === "") break;
         if (!isOption(spec, raw)) return fail;
         values[spec.key] = raw as string;

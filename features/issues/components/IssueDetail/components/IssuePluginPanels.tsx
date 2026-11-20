@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { useLocale } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { takePanelFocus } from "@/features/plugins/components/PluginBadges/panelFocus";
+import { usePluginDataChanges } from "@/features/plugins/components/PluginBadges/usePluginDataChanges";
 import { PluginFrame } from "@/features/plugins/components/PluginFrame/PluginFrame";
 import { PluginTile } from "@/features/plugins/components/PluginStore/PluginTile";
 import type { IssueDetail, IssuePluginPanel } from "@/types/issue";
@@ -59,22 +60,39 @@ function PluginPanel({
   const locale = useLocale();
   const [open, setOpen] = useState(true);
   const section = useRef<HTMLElement>(null);
+  // Its server changed what it keeps on this issue (BARY-225): a fresh
+  // frame reads it again.
+  const [loaded, setLoaded] = useState(0);
+  usePluginDataChanges(workspaceId, (changes) => {
+    if (
+      changes.some(
+        (c) => c.pluginId === panel.pluginId && c.issueId === issue.id,
+      )
+    )
+      setLoaded((n) => n + 1);
+  });
   // Read after mounting: the server has no `localStorage`, and the first
   // render has to match its HTML. A badge row's click (BARY-208) opens it
   // whatever was stored, and brings it into view.
   // An action's answer can ask for it too, while the issue is open.
+  // Taking the focus and scrolling are apart: the issue often renders again
+  // right after it opens (a refresh, fresh data), and that mustn't cancel
+  // the scroll of a focus already taken.
+  const [focused, setFocused] = useState(0);
+  useEffect(() => {
+    if (focused === 0) return;
+    const timer = window.setTimeout(
+      () =>
+        section.current?.scrollIntoView({ block: "start", behavior: "smooth" }),
+      150,
+    );
+    return () => window.clearTimeout(timer);
+  }, [focused]);
   useEffect(() => {
     const onFocus = () => {
       if (!takePanelFocus(issue.id, panel.pluginId, panel.panelId)) return;
       setOpen(true);
-      window.setTimeout(
-        () =>
-          section.current?.scrollIntoView({
-            block: "start",
-            behavior: "smooth",
-          }),
-        150,
-      );
+      setFocused((n) => n + 1);
     };
     window.addEventListener("barynt:focus-panel", onFocus);
     return () => window.removeEventListener("barynt:focus-panel", onFocus);
@@ -82,20 +100,15 @@ function PluginPanel({
   useEffect(() => {
     if (takePanelFocus(issue.id, panel.pluginId, panel.panelId)) {
       setOpen(true);
-      const timer = window.setTimeout(
-        () =>
-          section.current?.scrollIntoView({
-            block: "start",
-            behavior: "smooth",
-          }),
-        150,
-      );
-      return () => window.clearTimeout(timer);
+      setFocused((n) => n + 1);
+      return;
     }
+    // Asked for once: a later render doesn't fold it away again.
+    if (focused > 0) return;
     try {
       if (localStorage.getItem(storageKey(panel)) === "closed") setOpen(false);
     } catch {}
-  }, [panel, issue.id]);
+  }, [panel, issue.id, focused]);
   const toggle = () => {
     const next = !open;
     setOpen(next);
@@ -135,7 +148,7 @@ function PluginPanel({
         {open && (
           <PluginFrame
             // Another issue, another frame: the plugin reads its context once.
-            key={issue.id}
+            key={`${issue.id}:${loaded}`}
             pluginId={panel.pluginId}
             name={panel.pluginName}
             autoHeight={PANEL_HEIGHT}
