@@ -161,6 +161,14 @@ export function PluginDetail({
           </div>
         </header>
 
+        {/* A version that needs a newer Barynt can't be installed: said up
+            here, between the title and the tabs, on every tab. */}
+        {!installed &&
+          release.status === "ready" &&
+          !release.preview.compatible && (
+            <ErrorLine message={text.error("incompatible")} />
+          )}
+
         <Tabs label={text.t("detailTabs")} className={styles.tabs}>
           {tabs.map((id) => (
             <Tab
@@ -279,9 +287,6 @@ function Overview({
         {release.status === "error" && !installed && (
           <ErrorLine message={text.error(release.error)} />
         )}
-        {release.status === "ready" &&
-          !release.preview.compatible &&
-          !installed && <ErrorLine message={text.error("incompatible")} />}
         <PluginAbout
           name={entry.name}
           description={entry.description}
