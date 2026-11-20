@@ -50,7 +50,9 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `maxBaryntVersion` | no | The highest version it was tested on. |
 | `author` | yes | Up to 80 characters. |
 | `authorUrl` | no | An `http(s)` address, linked in the store. |
-| `description` | yes | One or two sentences, up to 300 characters. |
+| `description` | yes | One or two sentences, up to 300 characters, in English. |
+| `locales` | no | Texts in Barynt's other languages: `{ "de": { "description": "…" } }`. Barynt shows each person the description in their language, else `description`. |
+| `logo` | no | `logo.png` or `logo.webp`, a file in the release: the plugin's picture in the store, the sidebar and its settings, see [Publishing](plugins-publishing.md#logo-and-screenshots). Without one, its first letter. |
 | `license` | yes | E.g. `MIT`, `Apache-2.0`, `Proprietary`. |
 | `kind` | yes | `declarative`, `sandbox` or `service`, see [Building plugins](plugins.md#the-three-kinds). |
 | `levels` | yes | Where it can be switched on: `workspace`, `project`, or both. |
@@ -58,7 +60,7 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `network` | yes | Host names it may call through Barynt with [`net.fetch`](plugins-host-api.md#netfetch), e.g. `api.acme.example`: no scheme, port or wildcard, at most 10. `[]` for none. People see them before they switch the plugin on. |
 | `contributes` | no | What it adds, see below. |
 | `service` | no | Its own server and the events it hears about, see [Its server](#its-server). |
-| `previews` | no | Up to 6 screenshots for the store, see [Publishing](plugins-publishing.md#screenshots). |
+| `previews` | no | Up to 6 screenshots for the store, see [Publishing](plugins-publishing.md#logo-and-screenshots). |
 
 ## Capabilities
 

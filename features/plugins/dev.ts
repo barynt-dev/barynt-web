@@ -6,7 +6,11 @@ import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { pluginDevSources } from "@/lib/plugins/dev";
 import {
+  isPreviewImage,
+  LOGO_MAX_BYTES,
+  PREVIEW_MAX_BYTES,
   RELEASE_FILES,
+  type ReleaseFileName,
   type ReleaseFiles,
   releaseHash,
   requiredFiles,
@@ -37,7 +41,8 @@ const NAMES = Object.keys(RELEASE_FILES) as (keyof typeof RELEASE_FILES)[];
 
 async function readOne(
   source: string,
-  name: keyof typeof RELEASE_FILES,
+  name: ReleaseFileName,
+  max: number = RELEASE_FILES[name as keyof typeof RELEASE_FILES],
 ): Promise<Uint8Array | null | "too_large"> {
   let bytes: Uint8Array;
   try {
@@ -56,7 +61,7 @@ async function readOne(
   } catch {
     return null;
   }
-  return bytes.byteLength > RELEASE_FILES[name] ? "too_large" : bytes;
+  return bytes.byteLength > max ? "too_large" : bytes;
 }
 
 /** A plugin's files from its folder or dev server, checked like a
@@ -84,6 +89,32 @@ export async function readDevPlugin(source: string): Promise<DevRead> {
       errors: parsed.errors.map((e) => `${e.path || "manifest"}: ${e.message}`),
     };
   const { manifest } = parsed;
+  // Its pictures too (BARY-235): the previews and the logo it names.
+  const pictures: [ReleaseFileName, number][] = [
+    ...(manifest.previews ?? []).map(
+      (p) =>
+        [p.file as ReleaseFileName, PREVIEW_MAX_BYTES] as [
+          ReleaseFileName,
+          number,
+        ],
+    ),
+    ...(manifest.logo
+      ? [
+          [manifest.logo as ReleaseFileName, LOGO_MAX_BYTES] as [
+            ReleaseFileName,
+            number,
+          ],
+        ]
+      : []),
+  ];
+  for (const [name, max] of pictures) {
+    const bytes = await readOne(source, name, max);
+    if (bytes === "too_large") errors.push(`${name}: too large`);
+    else if (!bytes) errors.push(`${name}: not found`);
+    else if (!isPreviewImage(name, bytes))
+      errors.push(`${name}: not a PNG or WebP`);
+    else files[name] = bytes;
+  }
   for (const name of requiredFiles(manifest.kind))
     if (!files[name]) errors.push(`${name}: not found`);
   if (!isCompatible(manifest, APP_VERSION))
@@ -135,6 +166,9 @@ export async function syncDevPlugin(row: {
         version: devVersion(read.manifest),
         kind: read.manifest.kind,
         hash: read.fingerprint,
+        // Its stored files too: what Barynt serves itself, the logo and
+        // the previews (BARY-235), shows the folder as it is now.
+        files: { deleteMany: {}, create: storedFiles(read.files) },
       },
     });
   return read;
@@ -159,4 +193,15 @@ export async function devFingerprints(): Promise<
     out[row.pluginId] = read.ok ? read.fingerprint : null;
   }
   return out;
+}
+
+/** A plugin's files as its row keeps them: all but the manifest, which is a
+ *  column of its own. */
+export function storedFiles(files: ReleaseFiles) {
+  return (Object.keys(files) as ReleaseFileName[]).flatMap((name) => {
+    const content = files[name];
+    return content && name !== "manifest.json"
+      ? [{ name, content: Buffer.from(content), size: content.byteLength }]
+      : [];
+  });
 }

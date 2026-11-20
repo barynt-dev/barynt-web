@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { devVersion, readDevPlugin } from "@/features/plugins/dev";
+import { getLocale } from "next-intl/server";
+import { devVersion, readDevPlugin, storedFiles } from "@/features/plugins/dev";
 import {
   fetchRelease,
   forgetSource,
@@ -45,6 +46,7 @@ import {
   unblockTarget,
 } from "@/lib/plugins/lifecycle";
 import {
+  localizedDescription,
   type PluginManifest,
   serviceAddressMode,
   validateManifest,
@@ -397,20 +399,7 @@ export async function installDevPlugin(input: {
         devSource: input.source,
         installedById: actorId,
         // Kept like a release's, though frames read the folder.
-        files: {
-          create: (["main.js", "styles.css"] as const).flatMap((name) => {
-            const content = files[name];
-            return content
-              ? [
-                  {
-                    name,
-                    content: Buffer.from(content),
-                    size: content.byteLength,
-                  },
-                ]
-              : [];
-          }),
-        },
+        files: { create: storedFiles(files) },
       },
       select: { id: true },
     });
@@ -1023,6 +1012,7 @@ export async function browseSource(
   sourceId: string,
 ): Promise<PluginResult<{ plugins: DirectoryPlugin[]; skipped: number }>> {
   await requirePermission("plugin.manage", PLATFORM);
+  const locale = await getLocale();
   const read = await readSource(sourceId);
   done();
   if (!read.ok) return { error: read.error };
@@ -1042,7 +1032,7 @@ export async function browseSource(
         id: e.id,
         name: e.name,
         author: e.author,
-        description: e.description,
+        description: localizedDescription(e, locale),
         repo: e.repo,
         kind: e.kind,
         levels: e.levels,
@@ -1103,7 +1093,7 @@ export async function previewRelease(input: {
       version: m.version,
       author: m.author,
       authorUrl: m.authorUrl ?? null,
-      description: m.description,
+      description: localizedDescription(m, await getLocale()),
       license: m.license,
       kind: m.kind,
       levels: m.levels,

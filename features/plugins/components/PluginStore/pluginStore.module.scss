@@ -245,6 +245,16 @@
   font-size: 1.125rem;
   font-weight: 750;
 
+  /* The logo over the letter, once it has loaded (BARY-235). */
+  position: relative;
+  overflow: hidden;
+
+  &[data-logo] {
+    border-color: var(--outline-variant);
+    background: var(--surface-container);
+    color: transparent;
+  }
+
   /* In a nav row, where an icon would stand. */
   &[data-size="sm"] {
     width: 1.125rem;
@@ -261,6 +271,19 @@
   }
 
   @include hues;
+}
+
+.tileLogo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+
+  [data-logo] > & {
+    opacity: 1;
+  }
 }
 
 // ─── The open plugin ────────────────────────────────────────────────────────

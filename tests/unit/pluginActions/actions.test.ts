@@ -16,6 +16,8 @@ const tx = {
   plugin: { updateMany: mock(), create: mock() },
 };
 
+// The person's language for a plugin's description (BARY-235).
+mock.module("next-intl/server", () => ({ getLocale: async () => "en" }));
 mock.module("@/lib/db", () => ({
   db: {
     plugin: {

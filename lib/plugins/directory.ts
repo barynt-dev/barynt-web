@@ -13,6 +13,8 @@ import { z } from "zod";
 import { GIT_PROVIDERS } from "./git-hosts";
 import {
   isCompatible,
+  LOGO_FILE_RE,
+  localesSchema,
   MAX_PREVIEWS,
   PLUGIN_KINDS,
   PLUGIN_LEVELS,
@@ -72,6 +74,9 @@ export const directoryEntrySchema = z.strictObject({
       z.string().trim().min(1).max(2000),
     )
     .optional(),
+  /** Its description in other languages, before it's installed
+   *  (BARY-235): `{ de: { description } }`. */
+  locales: localesSchema,
   levels: z.array(z.enum(PLUGIN_LEVELS)).min(1).max(2),
   kind: z.enum(PLUGIN_KINDS),
   versions: z
@@ -143,7 +148,15 @@ export const RELEASE_FILES = {
 } as const;
 /** A preview image (`preview-1.webp`); the manifest lists them. */
 export type PreviewFileName = `preview-${number}.${"webp" | "png"}`;
-export type ReleaseFileName = keyof typeof RELEASE_FILES | PreviewFileName;
+/** The plugin's logo (BARY-235); the manifest names it. */
+export type LogoFileName = `logo.${"webp" | "png"}`;
+export type ReleaseFileName =
+  | keyof typeof RELEASE_FILES
+  | PreviewFileName
+  | LogoFileName;
+
+/** A logo may be this big. */
+export const LOGO_MAX_BYTES = 128 * 1024;
 
 /** A preview image may be this big. */
 export const PREVIEW_MAX_BYTES = 512 * 1024;
@@ -180,6 +193,16 @@ export function previewFiles(manifestJson: unknown): PreviewFileName[] {
   return [...new Set(names)].slice(0, MAX_PREVIEWS);
 }
 
+/** The logo a manifest names, read before the manifest is checked — like
+ *  the previews. */
+export function logoFile(manifestJson: unknown): LogoFileName | null {
+  if (!manifestJson || typeof manifestJson !== "object") return null;
+  const logo = (manifestJson as { logo?: unknown }).logo;
+  return typeof logo === "string" && LOGO_FILE_RE.test(logo)
+    ? (logo as LogoFileName)
+    : null;
+}
+
 export type ReleaseFiles = Partial<Record<ReleaseFileName, Uint8Array>>;
 
 /** A directory may be this big. */
@@ -192,9 +215,10 @@ const sha256 = (data: Uint8Array | string) =>
  * The hash a directory lists for a release: SHA-256 over the `sha256sum`
  * lines of its files, sorted by name — what
  *
- *   sha256sum manifest.json main.js styles.css preview-*.* | sort -k2 | sha256sum
+ *   sha256sum manifest.json main.js styles.css preview-*.* logo.* | sort -k2 | sha256sum
  *
- * prints, for the files the release has (previews included, BARY-199).
+ * prints, for the files the release has (previews included, BARY-199, and
+ * the logo, BARY-235).
  */
 export function releaseHash(files: ReleaseFiles): string {
   const lines = (Object.keys(files) as ReleaseFileName[])
@@ -282,6 +306,13 @@ export async function loadRelease(
     if (!data) return { ok: false, error: "download_failed", detail: name };
     files[name] = data;
   }
+  // So does the logo it names (BARY-235).
+  const logo = logoFile(raw);
+  if (logo) {
+    const data = await fetchFile(logo, LOGO_MAX_BYTES);
+    if (!data) return { ok: false, error: "download_failed", detail: logo };
+    files[logo] = data;
+  }
 
   // The hash covers whatever arrived — an optional file that failed to
   // load makes it differ too, so nothing half-downloaded slips through.
@@ -312,8 +343,11 @@ export async function loadRelease(
     return { ok: false, error: "kind_mismatch" };
   if (!isCompatible(manifest, baryntVersion))
     return { ok: false, error: "incompatible" };
-  for (const { file } of manifest.previews ?? [])
-    if (!isPreviewImage(file, files[file as PreviewFileName] as Uint8Array))
+  for (const file of [
+    ...(manifest.previews ?? []).map((p) => p.file),
+    ...(manifest.logo ? [manifest.logo] : []),
+  ])
+    if (!isPreviewImage(file, files[file as ReleaseFileName] as Uint8Array))
       return {
         ok: false,
         error: "invalid_manifest",
