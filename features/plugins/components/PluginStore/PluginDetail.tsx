@@ -61,6 +61,18 @@ export function PluginDetail({
     installed ? entry.update : version,
   );
 
+  // What's shared: the plugin's own address — a homepage in its manifest,
+  // else its repository. Barynt's page for it only opens signed in.
+  const links = installed
+    ? installed.links
+    : release.status === "ready"
+      ? release.preview.links
+      : [];
+  const publicUrl =
+    links.find((l) => l.kind === "homepage")?.url ??
+    entry.listing?.repoUrl ??
+    null;
+
   return (
     <article className={styles.detail}>
       {/* Stays at the top while what's under the divider scrolls. */}
@@ -76,7 +88,6 @@ export function PluginDetail({
             <PluginBadges kind={entry.kind} levels={entry.levels} size="md" />
           </div>
           <div className={styles.headActions}>
-            <ShareButton name={entry.name} />
             {installed ? (
               <>
                 <Button
@@ -147,6 +158,11 @@ export function PluginDetail({
                 </>
               )
             )}
+            <ShareButton
+              name={entry.name}
+              description={entry.description}
+              publicUrl={publicUrl}
+            />
           </div>
         </header>
 

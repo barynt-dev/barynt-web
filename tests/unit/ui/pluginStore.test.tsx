@@ -38,6 +38,7 @@ mock.module("@/components/ui/layout/ConfirmDialog/ConfirmDialog", () => ({
 mock.module("@/features/plugins/actions", () => pluginActionsMock());
 
 import { PluginStore } from "@/features/plugins/components/PluginStore/PluginStore";
+import { ShareDialog } from "@/features/plugins/components/PluginStore/ShareDialog";
 import type { StoreTab } from "@/features/plugins/components/PluginStore/tabs";
 import type {
   InstalledPlugin,
@@ -314,5 +315,55 @@ describe("PluginStore", () => {
     });
     expect(html).toContain("welcomeTitle");
     expect(html).toContain("stepSourceTitle");
+  });
+});
+
+describe("ShareDialog (BARY-237)", () => {
+  const render = (over: Partial<Parameters<typeof ShareDialog>[0]> = {}) =>
+    renderToStaticMarkup(
+      <ShareDialog
+        name="GitHub"
+        description="Pull requests & checks."
+        url="https://github.com/acme/gantt"
+        isPublic
+        sheet={false}
+        close={() => {}}
+        {...over}
+      />,
+    );
+
+  it("offers the address, HTML for a website and eight networks", () => {
+    const html = render();
+    expect(html).toContain("https://github.com/acme/gantt");
+    expect(html).toContain("shareEmbed");
+    expect(html).toContain(
+      "&lt;a href=&quot;https://github.com/acme/gantt&quot;",
+    );
+    for (const name of [
+      "LinkedIn",
+      "X",
+      "Facebook",
+      "WhatsApp",
+      "Telegram",
+      "Reddit",
+      "XING",
+      "Bluesky",
+    ])
+      expect(html).toContain(`<span>${name}</span>`);
+    expect(html.match(/target="_blank"/g)).toHaveLength(8);
+    expect(html).toContain("https://www.linkedin.com/sharing/share-offsite/");
+  });
+
+  it("escapes the description in the HTML it offers", () => {
+    const html = render({ description: "<img src=x onerror=alert(1)>" });
+    expect(html).not.toContain("<img src=x");
+    expect(html).toContain("&amp;lt;img src=x");
+  });
+
+  it("says when the address only opens signed in", () => {
+    expect(render()).toContain("shareLinkPublic");
+    const page = render({ isPublic: false });
+    expect(page).toContain("shareLinkPage");
+    expect(page).toContain("data-warn");
   });
 });

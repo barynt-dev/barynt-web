@@ -1,60 +1,61 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
+import { useModal } from "@/lib/context";
+import { PHONE_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
 import { usePluginText } from "../shared";
+import { ShareDialog } from "./ShareDialog";
 
 /**
- * Shares a plugin's page (BARY-237) as an icon button: through the
- * browser's own share sheet where it has one (a phone, Safari), else the
- * address goes to the clipboard and the icon turns into a check for a
- * moment. The address is the page's own without its tab, so the person who
- * opens it lands on the overview.
+ * Opens the sharing dialog of a plugin's page (BARY-237), as an icon button.
+ * What's shared is the plugin's own address when it has one — a homepage
+ * or its repository — because Barynt's page for it only opens signed in;
+ * else this page's, without its tab.
  */
-export function ShareButton({ name }: { name: string }) {
+export function ShareButton({
+  name,
+  description,
+  publicUrl,
+}: {
+  name: string;
+  description: string;
+  /** The plugin's own address, if it has one. */
+  publicUrl: string | null;
+}) {
   const text = usePluginText();
-  const [copied, setCopied] = useState(false);
+  const { openModal } = useModal();
+  const isPhone = useMediaQuery(PHONE_QUERY);
 
-  useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 1600);
-    return () => clearTimeout(timer);
-  }, [copied]);
-
-  const share = async () => {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("tab");
-    url.hash = "";
-    if (typeof navigator.share === "function") {
-      try {
-        await navigator.share({ title: name, url: url.toString() });
-        return;
-      } catch (error) {
-        // Closing the sheet isn't a failure; anything else falls back to
-        // copying.
-        if (error instanceof DOMException && error.name === "AbortError")
-          return;
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(url.toString());
-      setCopied(true);
-    } catch {
-      // No clipboard without permission or over an insecure connection.
-    }
+  const open = () => {
+    const page = new URL(window.location.href);
+    page.searchParams.delete("tab");
+    page.hash = "";
+    openModal(
+      ({ close }) => (
+        <ShareDialog
+          name={name}
+          description={description}
+          url={publicUrl ?? page.toString()}
+          isPublic={publicUrl !== null}
+          sheet={isPhone}
+          close={close}
+        />
+      ),
+      {
+        ...(isPhone ? { placement: "bottom" as const } : {}),
+        label: text.t("shareTitle", { name }),
+      },
+    );
   };
 
-  const label = copied ? text.t("linkCopied") : text.t("share");
   return (
     <Button
       variant="text"
-      icon={
-        <Icon icon={copied ? "lucide:check" : "lucide:share-2"} width={16} />
-      }
-      aria-label={label}
-      title={label}
-      onClick={share}
+      icon={<Icon icon="lucide:share-2" width={16} />}
+      aria-label={text.t("share")}
+      title={text.t("share")}
+      onClick={open}
     />
   );
 }

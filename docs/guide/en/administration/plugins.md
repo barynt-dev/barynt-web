@@ -39,6 +39,8 @@ With no plugin picked, the right side is the store's start page: how many plugin
 | **Block** | Stops the plugin everywhere at once. Activations and data stay and apply again when you unblock it. |
 | **Uninstall** | Removes every version. You choose whether its data in workspaces and projects is deleted too, or kept switched off. |
 
+The icon button at the top right of a plugin's page shares it. The dialog has the plugin's address to copy, HTML for your website — a link card with its name and description — and buttons for LinkedIn, X, Facebook, WhatsApp, Telegram, Reddit, XING and Bluesky. It shares the plugin's own address, its homepage or its repository; a plugin without one shares the page in Barynt, which only opens for people who are signed in, and the dialog says so. Where your browser has a share sheet of its own, **More apps …** opens it.
+
 A plugin's page has four tabs:
 
 - **Overview:** screenshots, description, what it asks for and where it comes from.
@@ -125,6 +127,8 @@ With no plugin picked, the right side is the store's start page: how many plugin
 | **Back to v…** | Returns to the version before. The newer one stays installed. |
 | **Block** | Stops the plugin everywhere at once. Activations and data stay and apply again when you unblock it. |
 | **Uninstall** | Removes every version. You choose whether its data in workspaces and projects is deleted too, or kept switched off. |
+
+The icon button at the top right of a plugin's page shares it. The dialog has the plugin's address to copy, HTML for your website — a link card with its name and description — and buttons for LinkedIn, X, Facebook, WhatsApp, Telegram, Reddit, XING and Bluesky. It shares the plugin's own address, its homepage or its repository; a plugin without one shares the page in Barynt, which only opens for people who are signed in, and the dialog says so. Where your browser has a share sheet of its own, **More apps …** opens it.
 
 A plugin's page has four tabs:
 

@@ -39,6 +39,8 @@ Ist kein Plugin gewählt, zeigt die rechte Seite die Startseite des Stores: wie 
 | **Sperren** | Stoppt das Plugin sofort überall. Aktivierungen und Daten bleiben und gelten wieder, sobald du es entsperrst. |
 | **Deinstallieren** | Entfernt alle Versionen. Du wählst, ob seine Daten in Workspaces und Projekten mit gelöscht werden oder ausgeschaltet erhalten bleiben. |
 
+Der Icon-Button oben rechts auf der Seite eines Plugins teilt es. Der Dialog hat die Adresse des Plugins zum Kopieren, HTML für deine Website — einen Link-Kasten mit Name und Beschreibung — und Buttons für LinkedIn, X, Facebook, WhatsApp, Telegram, Reddit, XING und Bluesky. Geteilt wird die eigene Adresse des Plugins, seine Website oder sein Repository. Ein Plugin ohne eine solche teilt die Seite in Barynt, die sich nur für angemeldete Personen öffnet; der Dialog sagt das dazu. Hat dein Browser ein eigenes Teilen-Menü, öffnet **Weitere Apps …** es.
+
 Die Seite eines Plugins hat vier Tabs:
 
 - **Übersicht:** Screenshots, Beschreibung, was es verlangt und woher es kommt.
@@ -125,6 +127,8 @@ Ist kein Plugin gewählt, zeigt die rechte Seite die Startseite des Stores: wie 
 | **Zurück zu v…** | Geht zur vorigen Version zurück. Die neuere bleibt installiert. |
 | **Sperren** | Stoppt das Plugin sofort überall. Aktivierungen und Daten bleiben und gelten wieder, sobald du es entsperrst. |
 | **Deinstallieren** | Entfernt alle Versionen. Du wählst, ob seine Daten in Workspaces und Projekten mit gelöscht werden oder ausgeschaltet erhalten bleiben. |
+
+Der Icon-Button oben rechts auf der Seite eines Plugins teilt es. Der Dialog hat die Adresse des Plugins zum Kopieren, HTML für deine Website — einen Link-Kasten mit Name und Beschreibung — und Buttons für LinkedIn, X, Facebook, WhatsApp, Telegram, Reddit, XING und Bluesky. Geteilt wird die eigene Adresse des Plugins, seine Website oder sein Repository. Ein Plugin ohne eine solche teilt die Seite in Barynt, die sich nur für angemeldete Personen öffnet; der Dialog sagt das dazu. Hat dein Browser ein eigenes Teilen-Menü, öffnet **Weitere Apps …** es.
 
 Die Seite eines Plugins hat vier Tabs:
 
