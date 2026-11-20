@@ -80,14 +80,18 @@ const host = (url: string) => {
 
 /**
  * Where the plugin points to (BARY-237): its homepage, docs and the like as
- * a list, its community and code as a row of icons below. Nothing without
- * links.
+ * a list; its community and code as centered icon buttons below — or, one
+ * or two of them, in the list as well. Nothing without links.
  */
 export function PluginLinks({ links }: { links: PluginLink[] }) {
   const text = usePluginText();
   if (links.length === 0) return null;
-  const labelled = links.filter((l) => !(l.kind in BRANDS));
-  const brands = links.filter((l) => l.kind in BRANDS);
+  // Brands are a row of icon buttons — from three on. One or two are links
+  // in the list like the rest, with their name.
+  const brandCount = links.filter((l) => l.kind in BRANDS).length;
+  const asIcon = (l: PluginLink) => brandCount > 2 && l.kind in BRANDS;
+  const labelled = links.filter((l) => !asIcon(l));
+  const brands = links.filter(asIcon);
   const label = (l: PluginLink) =>
     l.title ?? BRANDS[l.kind] ?? text.t(`link.${l.kind}` as "link.homepage");
 
@@ -127,13 +131,14 @@ export function PluginLinks({ links }: { links: PluginLink[] }) {
           {brands.map((l) => (
             <li key={l.url}>
               <a
+                className={styles.brandLink}
                 href={l.url}
                 target="_blank"
                 rel="noopener noreferrer nofollow"
                 aria-label={label(l)}
                 title={`${label(l)} · ${host(l.url)}`}
               >
-                <Icon icon={ICONS[l.kind]} width={20} aria-hidden />
+                <Icon icon={ICONS[l.kind]} width={18} aria-hidden />
               </a>
             </li>
           ))}

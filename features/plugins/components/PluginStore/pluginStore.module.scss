@@ -525,6 +525,12 @@
 }
 
 /* Links (BARY-237): labelled ones as rows, brands as a row of icons. */
+
+/* A brand logo without a fill of its own (X) takes the text colour. */
+:is(.linkList, .brandLinks) svg {
+  flex: none;
+  fill: currentColor;
+}
 .linkList {
   display: flex;
   flex-direction: column;
@@ -591,39 +597,45 @@
 .brandLinks {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.375rem;
+  justify-content: center;
+  gap: 0.5rem;
   margin: 0;
-  padding: 0.5rem 0 0;
+  padding: 0.75rem 0 0;
   list-style: none;
 
   /* Only when there are labelled links above. */
   .linkList + & {
     border-top: 1px solid var(--outline-variant);
   }
+}
 
-  a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: max(2.5rem, var(--touch-min));
-    height: max(2.5rem, var(--touch-min));
-    border: 1px solid var(--outline-variant);
-    border-radius: var(--radius-pill);
-    background: var(--surface-container);
-    color: var(--on-surface);
-    transition:
-      background 120ms ease,
-      border-color 120ms ease;
+/* Drawn like an outline icon button (`Button variant="outline"`), but a
+   link: it leaves Barynt. */
+.brandLink {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: max(2.5rem, var(--touch-min));
+  height: max(2.5rem, var(--touch-min));
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--on-surface);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: background 120ms ease;
 
-    &:hover {
-      border-color: var(--outline);
-      background: var(--surface-container-high);
-    }
+  &:hover {
+    background: var(--surface-container-high);
+  }
 
-    /* Monochrome logos without a fill of their own take the text colour. */
-    svg {
-      fill: currentColor;
-    }
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
   }
 }
 
