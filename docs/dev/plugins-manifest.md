@@ -86,8 +86,8 @@ in a box of their own:
 
 | `kind` | Shown as |
 | --- | --- |
-| `homepage`, `docs`, `changelog`, `issues`, `support`, `privacy`, `terms` | a row with a label (or your `title`, up to 60 characters) and the address's host |
-| `github`, `gitlab`, `discord`, `slack`, `matrix`, `mastodon`, `bluesky`, `x`, `youtube`, `linkedin` | an icon in a row below |
+| `docs`, `changelog`, `issues`, then `homepage`, `support`, `privacy`, `terms` | a row each, always in this order, with a label (or your `title`, up to 60 characters) and the address's host. A kind you don't link isn't shown. |
+| `github`, `gitlab`, `discord`, `slack`, `matrix`, `mastodon`, `bluesky`, `x`, `youtube`, `linkedin` | below the rows, past a line: one as a row like the others, two or more as a centered row of icon buttons |
 
 `https` only, each address once. Both fields need Barynt 1.1.0-beta.5 or
 later — set `minBaryntVersion` accordingly, an older Barynt refuses the

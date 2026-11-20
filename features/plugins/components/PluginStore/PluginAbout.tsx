@@ -78,22 +78,52 @@ const host = (url: string) => {
   }
 };
 
+/** The order of the labelled links: docs, changelog and issue tracker
+ *  first, whatever order the manifest lists them in. */
+const ROW_ORDER: PluginLinkKind[] = [
+  "docs",
+  "changelog",
+  "issues",
+  "homepage",
+  "support",
+  "privacy",
+  "terms",
+];
+
 /**
- * Where the plugin points to (BARY-237): its homepage, docs and the like as
- * a list; its community and code as centered icon buttons below — or, one
- * or two of them, in the list as well. Nothing without links.
+ * Where the plugin points to (BARY-237). First its documentation, changes
+ * and issue tracker, then its homepage, support, privacy and terms — each
+ * only when the manifest links it. Below, its community and code: one as a
+ * row like the others, two or more as centered icon buttons. Nothing
+ * without links.
  */
 export function PluginLinks({ links }: { links: PluginLink[] }) {
   const text = usePluginText();
   if (links.length === 0) return null;
-  // Brands are a row of icon buttons — from three on. One or two are links
-  // in the list like the rest, with their name.
-  const brandCount = links.filter((l) => l.kind in BRANDS).length;
-  const asIcon = (l: PluginLink) => brandCount > 2 && l.kind in BRANDS;
-  const labelled = links.filter((l) => !asIcon(l));
-  const brands = links.filter(asIcon);
+  const rows = links
+    .filter((l) => !(l.kind in BRANDS))
+    .sort((a, b) => ROW_ORDER.indexOf(a.kind) - ROW_ORDER.indexOf(b.kind));
+  const social = links.filter((l) => l.kind in BRANDS);
   const label = (l: PluginLink) =>
     l.title ?? BRANDS[l.kind] ?? text.t(`link.${l.kind}` as "link.homepage");
+
+  const row = (l: PluginLink) => (
+    <li key={l.url}>
+      <a href={l.url} target="_blank" rel="noopener noreferrer nofollow">
+        <Icon icon={ICONS[l.kind]} width={16} aria-hidden />
+        <span className={styles.linkText}>
+          <span>{label(l)}</span>
+          <span className={styles.linkHost}>{host(l.url)}</span>
+        </span>
+        <Icon
+          icon="lucide:arrow-up-right"
+          width={14}
+          className={styles.linkOut}
+          aria-hidden
+        />
+      </a>
+    </li>
+  );
 
   return (
     <section className={styles.card}>
@@ -101,34 +131,13 @@ export function PluginLinks({ links }: { links: PluginLink[] }) {
         <Icon icon="lucide:link" width={14} aria-hidden />
         {text.t("links")}
       </h3>
-      {labelled.length > 0 && (
-        <ul className={styles.linkList}>
-          {labelled.map((l) => (
-            <li key={l.url}>
-              <a
-                href={l.url}
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-              >
-                <Icon icon={ICONS[l.kind]} width={16} aria-hidden />
-                <span className={styles.linkText}>
-                  <span>{label(l)}</span>
-                  <span className={styles.linkHost}>{host(l.url)}</span>
-                </span>
-                <Icon
-                  icon="lucide:arrow-up-right"
-                  width={14}
-                  className={styles.linkOut}
-                  aria-hidden
-                />
-              </a>
-            </li>
-          ))}
-        </ul>
+      {rows.length > 0 && <ul className={styles.linkList}>{rows.map(row)}</ul>}
+      {social.length === 1 && (
+        <ul className={styles.linkList}>{social.map(row)}</ul>
       )}
-      {brands.length > 0 && (
+      {social.length > 1 && (
         <ul className={styles.brandLinks}>
-          {brands.map((l) => (
+          {social.map((l) => (
             <li key={l.url}>
               <a
                 className={styles.brandLink}
@@ -138,7 +147,7 @@ export function PluginLinks({ links }: { links: PluginLink[] }) {
                 aria-label={label(l)}
                 title={`${label(l)} · ${host(l.url)}`}
               >
-                <Icon icon={ICONS[l.kind]} width={18} aria-hidden />
+                <Icon icon={ICONS[l.kind]} width={20} aria-hidden />
               </a>
             </li>
           ))}
