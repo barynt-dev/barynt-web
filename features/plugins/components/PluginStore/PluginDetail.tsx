@@ -166,7 +166,9 @@ export function PluginDetail({
         {!installed &&
           release.status === "ready" &&
           !release.preview.compatible && (
-            <ErrorLine message={text.error("incompatible")} />
+            <div className={styles.topNotice}>
+              <ErrorLine message={text.error("incompatible")} />
+            </div>
           )}
 
         <Tabs label={text.t("detailTabs")} className={styles.tabs}>

@@ -363,6 +363,12 @@
   }
 }
 
+/* A warning between the title and the tabs belongs to the tabs it sits on:
+   it hugs them, with the space under the title kept. */
+.topNotice {
+  margin-bottom: -1rem;
+}
+
 /* Up a level, left of the page title (see `PluginStore`): to the list on a
    phone that shows a plugin, else to the admin overview on a tablet or
    phone. Exactly one of the two shows. */
