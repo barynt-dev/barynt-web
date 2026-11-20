@@ -1,4 +1,5 @@
 import "server-only";
+import { getLocale } from "next-intl/server";
 import {
   pluginRepo,
   readSourceRecent,
@@ -26,6 +27,7 @@ import {
 import type { LinkTrigger } from "@/lib/plugins/link-rules";
 import {
   type CredentialLevel,
+  localizedDescription,
   type PluginKind,
   type PluginManifest,
   serviceAddressMode,
@@ -74,6 +76,9 @@ function summaryOf(
   pluginId: string,
   manifest: unknown,
   rowId?: string,
+  /** The person's language: the description in it, if the plugin has one
+   *  (BARY-235). */
+  locale = "en",
 ): PluginSummary {
   const parsed = validateManifest(manifest);
   const m: Partial<PluginManifest> = parsed.ok ? parsed.manifest : {};
@@ -82,7 +87,10 @@ function summaryOf(
     name: m.name ?? pluginId,
     author: m.author ?? "",
     authorUrl: m.authorUrl ?? null,
-    description: m.description ?? "",
+    description: localizedDescription(
+      { description: m.description ?? "", locales: m.locales },
+      locale,
+    ),
     kind: m.kind ?? "",
     levels: m.levels ?? [],
     capabilities: m.capabilities ?? [],
@@ -157,6 +165,7 @@ export interface AdminPluginsView {
 }
 
 export async function getAdminPluginsView(): Promise<AdminPluginsView | null> {
+  const locale = await getLocale();
   if (!(await hasPermission("plugin.manage", PLATFORM))) return null;
   const [sources, rows, counts] = await Promise.all([
     db.pluginSource.findMany({ orderBy: { createdAt: "asc" } }),
@@ -183,7 +192,7 @@ export async function getAdminPluginsView(): Promise<AdminPluginsView | null> {
       byPlugin(rows as Row[]).map(({ versions, current }) => {
         const shown = current ?? versions[0];
         return {
-          ...summaryOf(shown.pluginId, shown.manifest, shown.id),
+          ...summaryOf(shown.pluginId, shown.manifest, shown.id, locale),
           version: current?.version ?? null,
           blocked: current?.status === "blocked",
           versions: versions.map((v) => ({
@@ -344,6 +353,7 @@ async function readListings(): Promise<{
  * most one request per source every few minutes. `plugin.manage` only.
  */
 export async function getPluginStoreView(): Promise<StoreView | null> {
+  const locale = await getLocale();
   const admin = await getAdminPluginsView();
   if (!admin) return null;
   const { listings, unreadable } = await readListings();
@@ -377,7 +387,7 @@ export async function getPluginStoreView(): Promise<StoreView | null> {
       id,
       name: entry.name,
       author: entry.author,
-      description: entry.description,
+      description: localizedDescription(entry, locale),
       kind: entry.kind,
       levels: entry.levels,
       installed: null,
@@ -583,6 +593,7 @@ export async function getScopeStoreView(
   workspaceId: string,
   projects: ScopeStoreProject[],
 ): Promise<ScopeStoreView | null> {
+  const locale = await getLocale();
   if (!(await canUsePluginStore(workspaceId))) return null;
 
   const [rows, activations, grants, { listings }] = await Promise.all([
@@ -594,7 +605,12 @@ export async function getScopeStoreView(
   const plugins: ScopeStorePlugin[] = [];
   for (const { versions, current } of byPlugin(rows as Row[])) {
     if (!current) continue;
-    const summary = summaryOf(current.pluginId, current.manifest, current.id);
+    const summary = summaryOf(
+      current.pluginId,
+      current.manifest,
+      current.id,
+      locale,
+    );
     const parsed = validateManifest(current.manifest);
     const capabilities = parsed.ok ? parsed.manifest.capabilities : null;
     const settings = hasSettingsForm(current.manifest);
@@ -799,6 +815,7 @@ export async function getPluginSettingsView(
   scope: { workspaceId: string; projectId: string | null },
   pluginId: string,
 ): Promise<PluginSettingsView | null> {
+  const locale = await getLocale();
   const allowed = await hasPermission(
     "plugin.enable",
     scope.projectId
@@ -865,7 +882,7 @@ export async function getPluginSettingsView(
       : null;
   return {
     plugin: {
-      ...summaryOf(pluginId, active.manifest, active.id),
+      ...summaryOf(pluginId, active.manifest, active.id, locale),
       version: active.version,
     },
     fields: (await placeSettings(scope, settings)).map((f) => ({
@@ -1003,6 +1020,7 @@ export async function getUserCredentialsView(
   workspaceId: string,
   pluginId: string,
 ): Promise<UserCredentialsView | null> {
+  const locale = await getLocale();
   const userId = await currentUserId();
   if (!userId) return null;
   const nav = await getUserCredentialPluginsNav(workspaceId);
@@ -1013,7 +1031,7 @@ export async function getUserCredentialsView(
   if (!active) return null;
   return {
     plugin: {
-      ...summaryOf(pluginId, active.manifest, active.id),
+      ...summaryOf(pluginId, active.manifest, active.id, locale),
       version: active.version,
     },
     credentials: await credentialFields(

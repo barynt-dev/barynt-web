@@ -77,6 +77,34 @@ const ICON_RE = /^[a-z0-9-]+:[a-z0-9-]+$/;
 export const PREVIEW_FILE_RE = /^preview-[1-6]\.(webp|png)$/;
 /** How many preview images a plugin may show. */
 export const MAX_PREVIEWS = 6;
+/** A plugin's logo in a release (BARY-235): square, PNG or WebP. */
+export const LOGO_FILE_RE = /^logo\.(webp|png)$/;
+
+/** The languages a plugin can describe itself in — Barynt's own
+ *  (`i18n/routing.ts`). `description` is English; `locales` adds others. */
+export const PLUGIN_LOCALES = ["de", "en"] as const;
+export type PluginLocale = (typeof PLUGIN_LOCALES)[number];
+
+/** Texts in other languages (BARY-235): `{ de: { description } }`. */
+export const localesSchema = z
+  .partialRecord(
+    z.enum(PLUGIN_LOCALES),
+    z.strictObject({
+      description: z.string().trim().min(1).max(300).optional(),
+    }),
+  )
+  .optional();
+
+/** The description in the person's language, else the manifest's own. */
+export function localizedDescription(
+  plugin: {
+    description: string;
+    locales?: Partial<Record<string, { description?: string }>>;
+  },
+  locale: string,
+): string {
+  return plugin.locales?.[locale]?.description ?? plugin.description;
+}
 
 const localId = z
   .string()
@@ -319,6 +347,14 @@ export const manifestSchema = z
       })
       .optional(),
     /** Screenshots for the store, in the order they're shown (BARY-199). */
+    /** Its picture in Barynt — the store, the sidebar, its settings
+     *  (BARY-235). A file in the release, like the previews. */
+    logo: z
+      .string()
+      .regex(LOGO_FILE_RE, 'expected "logo.png" or "logo.webp"')
+      .optional(),
+    /** Its description in other languages (BARY-235). */
+    locales: localesSchema,
     previews: z
       .array(
         z.strictObject({

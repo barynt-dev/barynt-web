@@ -15,7 +15,8 @@ the release on GitHub, GitLab or Gitea, or in the tag on Bitbucket:
 | `manifest.json` | always — its `version` is the release's |
 | `main.js` | for a `sandbox` plugin: one ES module, everything bundled |
 | `styles.css` | optional |
-| `preview-1.webp` … `preview-6.png` | optional, see [Screenshots](#screenshots) |
+| `preview-1.webp` … `preview-6.png` | optional, see [Logo and screenshots](#logo-and-screenshots) |
+| `logo.png` or `logo.webp` | optional, the one the manifest names |
 
 On a plain web server, the files of version `1.2.0` of the entry's `repo`
 `https://plugins.acme.example/timeline` are at
@@ -27,11 +28,11 @@ For a fix, release a new version.
 ## The release hash
 
 The directory names, for each version, the SHA-256 of its files — all of
-them, previews included. It's the hash of the list of each file's own hash
+them, previews and logo included. It's the hash of the list of each file's own hash
 and name, sorted by name, exactly what this prints:
 
 ```bash
-sha256sum manifest.json main.js styles.css preview-*.* | sort -k2 | sha256sum
+sha256sum manifest.json main.js styles.css preview-*.* logo.* | sort -k2 | sha256sum
 ```
 
 Leave out files the release doesn't have. If a single byte differs from
@@ -65,6 +66,9 @@ anywhere on a web server — with one entry per plugin:
     "categories": ["planning"],
     "featured": true,
     "added": "2026-09-14",
+    "locales": {
+      "de": { "description": "Issues auf einer Zeitleiste, als Projektansicht." }
+    },
     "notes": {
       "1.2.0": "Bars can be dragged now.\n- Drag to reschedule\n- Weekends are shaded"
     }
@@ -83,8 +87,9 @@ anywhere on a web server — with one entry per plugin:
 | `featured` | no | `true` for the store's "Featured" row. |
 | `added` | no | Since when it's listed, `YYYY-MM-DD`, for "New in the directory". |
 | `notes` | no | Release notes per version, up to 2000 characters each. Plain text; lines starting with `- ` become a list. |
+| `locales` | no | The description in Barynt's other languages, as in the [manifest](plugins-manifest.md#fields) — what the store shows before the plugin is installed. |
 
-The last four change how the store shows a plugin, never what it may do. An
+The last five change how the store shows a plugin, never what it may do. An
 entry with a mistake is left out and reported; the others still load.
 
 ## Getting listed
@@ -95,9 +100,21 @@ entry with a mistake is left out and reported; the others still load.
 - **Someone else's**: ask its maintainers to add your entry. They vouch for
   the hashes they list.
 
-## Screenshots
+## Logo and screenshots
 
-Up to six images for the store, listed in the manifest in the order shown:
+A **logo** stands for the plugin wherever Barynt shows it — the store, the
+sidebar, its settings, its panels. Name it in the manifest and put the file
+in the release:
+
+```json
+"logo": "logo.png"
+```
+
+Square, WebP or PNG, at most 128 KB; 256 × 256 pixels is plenty. Without
+one, Barynt shows the plugin's first letter.
+
+Up to six **screenshots** for the store, listed in the manifest in the order
+shown:
 
 ```json
 "previews": [
@@ -107,8 +124,9 @@ Up to six images for the store, listed in the manifest in the order shown:
 ```
 
 WebP or PNG, at most 512 KB each, named `preview-1` to `preview-6`; 16:10
-looks best. They're part of the release and its hash, are checked to be real
-images, and Barynt serves them itself.
+looks best. Logo and screenshots are part of the release and its hash, are
+checked to be real images, and Barynt serves them itself — never from the
+plugin's Git host.
 
 ## Updates
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   CAPABILITIES,
   isCompatible,
+  localizedDescription,
   validateManifest,
 } from "@/lib/plugins/manifest";
 import { compareSemver, parseSemver } from "@/lib/plugins/semver";
@@ -750,5 +751,43 @@ describe("webhooks from other services (BARY-215)", () => {
         contributes: { ...base.contributes, inboundHooks: [hook("store")] },
       }).some((e) => e.startsWith("contributes.inboundHooks.0.handle")),
     ).toBe(true);
+  });
+});
+
+describe("a plugin's logo and languages (BARY-235)", () => {
+  it("names a PNG or WebP logo in the release", () => {
+    expect(errors({ ...base, logo: "logo.png" })).toEqual([]);
+    expect(errors({ ...base, logo: "logo.webp" })).toEqual([]);
+    expect(errors({ ...base, logo: "icon.svg" })[0]).toStartWith("logo:");
+  });
+
+  it("describes itself in Barynt's languages", () => {
+    expect(
+      errors({
+        ...base,
+        locales: { de: { description: "Issues auf einer Zeitleiste." } },
+      }),
+    ).toEqual([]);
+    expect(
+      errors({ ...base, locales: { fr: { description: "x" } } }).length,
+    ).toBeGreaterThan(0);
+    expect(
+      errors({ ...base, locales: { de: { description: "x", name: "y" } } })
+        .length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("picks the description in the person's language, else its own", () => {
+    const plugin = {
+      description: "Issues on a timeline.",
+      locales: { de: { description: "Issues auf einer Zeitleiste." } },
+    };
+    expect(localizedDescription(plugin, "de")).toBe(
+      "Issues auf einer Zeitleiste.",
+    );
+    expect(localizedDescription(plugin, "en")).toBe("Issues on a timeline.");
+    expect(localizedDescription({ description: "Only English" }, "de")).toBe(
+      "Only English",
+    );
   });
 });

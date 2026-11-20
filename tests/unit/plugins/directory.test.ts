@@ -4,6 +4,7 @@ import {
   type DirectoryEntry,
   isPreviewImage,
   loadRelease,
+  logoFile,
   parseDirectory,
   previewFiles,
   type ReleaseFileName,
@@ -112,6 +113,18 @@ describe("parseDirectory", () => {
       { featured: "yes" },
     ])
       expect(parseDirectory([{ ...good, ...bad }]).entries).toEqual([]);
+  });
+
+  it("takes its description in other languages (BARY-235)", () => {
+    const good = entry(release());
+    const locales = { de: { description: "Issues auf einer Zeitleiste." } };
+    expect(parseDirectory([{ ...good, locales }]).entries[0]).toMatchObject({
+      locales,
+    });
+    expect(
+      parseDirectory([{ ...good, locales: { xx: { description: "?" } } }])
+        .entries,
+    ).toEqual([]);
   });
 
   it("wants a repository address and a SHA-256 per version", () => {
@@ -299,5 +312,49 @@ describe("preview images (BARY-199)", () => {
         ],
       }),
     ).toEqual(["preview-1.png"]);
+  });
+});
+
+describe("a plugin's logo (BARY-235)", () => {
+  const png = new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7,
+  ]);
+  const withLogo = (logo: Uint8Array = png) => ({
+    ...release({ logo: "logo.png" }),
+    "logo.png": logo,
+  });
+
+  it("loads the logo the manifest names, and hashes it along", async () => {
+    const files = withLogo();
+    const { fetch, asked } = serve(files);
+    const result = await loadRelease(entry(files), "1.2.0", fetch, "1.0.0");
+    expect(result.ok).toBe(true);
+    expect(asked).toContain("logo.png");
+    if (result.ok) expect(result.files["logo.png"]).toEqual(png);
+    const { "logo.png": _, ...missing } = files;
+    expect(
+      await loadRelease(entry(files), "1.2.0", serve(missing).fetch, "1.0.0"),
+    ).toMatchObject({
+      ok: false,
+      error: "download_failed",
+      detail: "logo.png",
+    });
+  });
+
+  it("refuses a logo that isn't the image its name says", async () => {
+    const files = withLogo(encode("<svg onload=alert(1)>"));
+    expect(
+      await loadRelease(entry(files), "1.2.0", serve(files).fetch, "1.0.0"),
+    ).toMatchObject({
+      ok: false,
+      error: "invalid_manifest",
+      detail: "logo.png: not an image",
+    });
+  });
+
+  it("reads only a well-formed logo name before the check", () => {
+    expect(logoFile({ logo: "logo.webp" })).toBe("logo.webp");
+    expect(logoFile({ logo: "../main.js" })).toBeNull();
+    expect(logoFile(null)).toBeNull();
   });
 });
