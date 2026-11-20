@@ -10,6 +10,7 @@ import {
   sealSourceToken,
 } from "@/features/plugins/directory";
 import { ensureInboundHooks } from "@/features/plugins/inbound";
+import { linkRuleStatuses } from "@/features/plugins/link";
 import { getPluginIssueActions } from "@/features/plugins/slots";
 import { DELIVERY_SELECT } from "@/features/webhooks/deliveries";
 import type { WebhookDelivery } from "@/features/webhooks/types";
@@ -61,6 +62,7 @@ import { checkSettings } from "@/lib/plugins/settings";
 import { sealSecret } from "@/lib/secret-box";
 import { sendLifecycle } from "@/lib/webhooks/deliver";
 import {
+  ensureBot,
   ensureServiceIdentity,
   revokeAppTokens,
 } from "@/lib/webhooks/plugin-targets";
@@ -665,6 +667,9 @@ export async function activatePlugin(
   // each time it's switched on again.
   if (manifest.contributes.inboundHooks?.length)
     await ensureInboundHooks(activation.id, manifest);
+  // Rules of a `link` hook act as the plugin's app, server or not (BARY-227).
+  if (manifest.contributes.inboundHooks?.some((h) => h.rules?.length))
+    await ensureBot(activation.id, manifest);
   if (
     manifest.service &&
     (await ensureServiceIdentity(activation.id, manifest))
@@ -1182,6 +1187,64 @@ async function manageableActivation(activationId: string) {
       : { workspaceId: activation.workspaceId },
   );
   return { ...activation, actorId };
+}
+
+/**
+ * Switches one of a `link` hook's rules on, with the status it sets, or off
+ * (`status: null`) — for this project or workspace (BARY-227). The status
+ * is one of the workspace's; the rule one the plugin's manifest names.
+ */
+export async function setInboundRule(input: {
+  hookId: string;
+  ruleId: string;
+  status: string | null;
+}): Promise<PluginResult> {
+  const hook = await db.pluginInboundHook.findUnique({
+    where: { id: input.hookId },
+    select: { id: true, hookId: true, activationId: true, rules: true },
+  });
+  if (!hook) return { error: "not_activated" };
+  const activation = await manageableActivation(hook.activationId);
+  if (!activation) return { error: "not_activated" };
+  const row = await db.plugin.findFirst({
+    where: { pluginId: activation.pluginId, status: "active" },
+    select: { manifest: true },
+  });
+  const parsed = row ? validateManifest(row.manifest) : null;
+  if (!parsed?.ok) return { error: "not_activated" };
+  const rule = parsed.manifest.contributes.inboundHooks
+    ?.find((h) => h.id === hook.hookId)
+    ?.rules?.find((r) => r.id === input.ruleId);
+  if (!rule) return { error: "invalid_setting" };
+  if (input.status) {
+    const known = await db.workspaceStatus.count({
+      where: { workspaceId: activation.workspaceId, statusId: input.status },
+    });
+    if (known === 0) return { error: "invalid_setting" };
+  }
+
+  const rules = linkRuleStatuses(hook.rules);
+  if (input.status) rules[rule.id] = input.status;
+  else delete rules[rule.id];
+  await db.pluginInboundHook.update({
+    where: { id: hook.id },
+    data: { rules },
+  });
+  if (input.status) await ensureBot(activation.id, parsed.manifest);
+  await recordAudit({
+    action: "plugin.inbound.rules",
+    actorId: activation.actorId,
+    target: {
+      type: "plugin",
+      id: activation.pluginId,
+      label: parsed.manifest.name,
+    },
+    workspaceId: activation.workspaceId,
+    projectId: activation.projectId,
+    meta: { hook: hook.hookId, rule: rule.id, status: input.status },
+  });
+  done();
+  return { ok: true };
 }
 
 /** The latest deliveries to a plugin's server, newest first. */

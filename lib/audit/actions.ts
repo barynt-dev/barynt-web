@@ -126,6 +126,8 @@ export const AUDIT_ACTIONS = {
   // BARY-223: where a plugin's server is, given by the operator or where
   // it's switched on.
   "plugin.service.address": "Address of a plugin's server changed",
+  // BARY-227: a `link` hook's rule switched on (with its status) or off.
+  "plugin.inbound.rules": "Rule of a plugin's webhook changed",
 
   // ── Webhooks (BARY-211) ───────────────────────────────────────────────────
   //

@@ -454,6 +454,10 @@ model PluginInboundHook {
   lastStatus     Int?
   lastError      String?
 
+  /// Die eingeschalteten Regeln eines `link`-Hooks (BARY-227): Regel-ID aus
+  /// dem Manifest → Status, den Barynt als App des Plugins setzt.
+  rules Json?
+
   activation PluginActivation @relation(fields: [activationId], references: [id], onDelete: Cascade)
 
   @@unique([activationId, hookId])

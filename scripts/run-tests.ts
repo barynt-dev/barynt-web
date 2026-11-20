@@ -86,6 +86,8 @@ const SEGMENTS: string[][] = [
   // What plugins keep on issues (BARY-216): mocks `@/lib/db` and
   // `@/lib/permissions` — a process of its own.
   ["tests/unit/pluginIssueData"],
+  // Mocks `@/lib/db` its own way for `fileLink` (BARY-226).
+  ["tests/unit/pluginLink"],
   ["tests/unit/account"],
   // Mocks `@/lib/db`, `@/lib/permissions` and `@/lib/audit` — own process,
   // like the other action tests that replace `@/lib/permissions`.

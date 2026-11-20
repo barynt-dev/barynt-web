@@ -516,10 +516,67 @@ Barynt, without anyone pointing that service at the plugin's own server:
   the event `inbound.<id>` with `data: { hook, provider, providerEvent,
   deliveryId, headers, body }` — signed, retried and logged like any event.
   It needs `service`. The provider's secret is never passed on.
-- `forward` is the only `handle` for now. What a call means — which issue
-  a merge request belongs to — is the plugin's to work out; its server keeps
-  the result on the issue (`PUT /api/v1/issues/{id}/plugin-data/{key}`) and
-  its frames show it with [`api.issueData.list`](plugins-host-api.md#what-it-keeps-on-issues).
+- With `forward`, what a call means — which issue a merge request belongs
+  to — is the plugin's to work out; its server keeps the result on the issue
+  (`PUT /api/v1/issues/{id}/plugin-data/{key}`) and its frames show it with
+  [`api.issueData.list`](plugins-host-api.md#what-it-keeps-on-issues).
+
+### `handle: "link"` — Barynt reads the call
+
+For `provider: "github"`, Barynt can read the call itself, with no server:
+it finds the issue keys of the projects the plugin runs in (`WEB-42` in a
+branch name, a title, a description, a commit message — `web-42-fix` and
+`WEB_42` count too) and keeps one entry per pull request, branch, commit
+and checks on each of those issues, as the plugin's data. Boards and open
+issues showing the plugin ask it again on their own.
+
+```json
+"inboundHooks": [
+  { "id": "github", "title": "GitHub repository", "provider": "github", "handle": "link" }
+]
+```
+
+| GitHub event | Entry (`value.kind`) | Key |
+| --- | --- | --- |
+| `pull_request`, `pull_request_review` | `pull_request`: `repo`, `number`, `title`, `state` (`draft`/`open`/`merged`/`closed`), `review` (`approved`/`changes_requested`/`null`), `url`, `branch`, `base`, `author`, `additions`, `deletions` | `pr:<owner>:<repo>:<number>` |
+| `create`, `delete` (branches), `push` deleting one | `branch`: `repo`, `name`, `url`, `deleted` | `branch:<owner>:<repo>:<hash>` |
+| `push` | `commit`: `repo`, `sha`, `message` (first line), `url`, `author`, `branch` — the last 20 | `commit:<owner>:<repo>:<sha12>` |
+| `check_run`, `check_suite` | `checks`: `repo`, `branch`, `sha`, `state` (`pending`/`success`/`failure`/`neutral`), `runs` (`name`, `state`, `url`) | `checks:<owner>:<repo>:<hash>` |
+
+Every entry has `at`, the time of the call. A review is kept on its pull
+request until another one decides; check runs gather by name until a new
+commit starts them over. `link` reads GitHub only so far — GitLab comes
+next.
+
+#### Rules
+
+A `link` hook can name rules — what Barynt may do with an issue when a pull
+request that works on it is opened or merged. Each project that switches
+the plugin on picks, per rule, the status to set (any of the workspace's),
+or leaves it off; Barynt sets it as the plugin's app and, with
+`comments:write`, comments why. Rules need `issues:write`.
+
+```json
+"capabilities": ["issues:read", "issues:write", "comments:write", "webhooks:receive"],
+"inboundHooks": [{
+  "id": "github", "title": "GitHub repository", "provider": "github", "handle": "link",
+  "rules": [
+    { "id": "opened", "title": "When a pull request is opened", "on": "pull_request.opened" },
+    { "id": "merged", "title": "When a pull request is merged", "on": "pull_request.merged" }
+  ]
+}]
+```
+
+| `on` | When |
+| --- | --- |
+| `pull_request.opened` | opened (not as a draft), or a draft marked ready |
+| `pull_request.merged` | merged |
+
+A rule moves an issue only when the pull request works on it: its key is
+in the branch's name, or follows *fixes*, *closes* or *resolves* in the
+title or description (`Fixes WEB-42`, `closes WEB-7, WEB-8 and WEB-9`). A
+key only named elsewhere links the pull request and nothing more. An issue
+already in the status stays as it is.
 
 ## Rules Barynt checks
 

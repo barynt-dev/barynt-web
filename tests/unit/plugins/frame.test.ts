@@ -38,9 +38,18 @@ describe("buildFrameDocument", () => {
 describe("frameCsp", () => {
   const csp = frameCsp("abc");
 
-  it("is a sandbox with scripts and nothing else", () => {
-    expect(csp).toContain("sandbox allow-scripts");
-    expect(csp).not.toContain("allow-same-origin");
+  it("is a sandbox with scripts and new tabs, nothing else", () => {
+    expect(csp).toContain(
+      "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox;",
+    );
+    // Never Barynt's origin, never a form, never the page around it.
+    for (const flag of [
+      "allow-same-origin",
+      "allow-forms",
+      "allow-top-navigation",
+      "allow-modals",
+    ])
+      expect(csp).not.toContain(flag);
   });
 
   it("gives the plugin no network", () => {

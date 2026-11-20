@@ -79,7 +79,9 @@ async function placeLabels(scope: {
   return rows.map((l) => ({ id: l.id, label: l.name, color: l.color }));
 }
 
-async function placeStatuses(workspaceId: string) {
+/** The workspace's statuses in board order — also what a `link` hook's
+ *  rules pick from (BARY-227). */
+export async function placeStatuses(workspaceId: string) {
   const rows = await db.workspaceStatus.findMany({
     where: { workspaceId },
     select: { status: { select: { id: true, name: true, color: true } } },

@@ -37,6 +37,27 @@ describe("an action's answer", () => {
       expect(parseActionResult(input)).toEqual({});
   });
 
+  it("may ask Barynt to copy a text or open an https address (BARY-230)", () => {
+    expect(
+      parseActionResult({
+        copy: "ada/web-42-cookie",
+        open: "https://github.com/acme/web/compare/main...ada/web-42?expand=1",
+      }),
+    ).toEqual({
+      copy: "ada/web-42-cookie",
+      open: "https://github.com/acme/web/compare/main...ada/web-42?expand=1",
+    });
+    for (const open of [
+      "http://github.com/x",
+      "javascript:alert(1)",
+      "https://user:pw@github.com/",
+      `https://x.dev/${"a".repeat(2000)}`,
+    ])
+      expect(parseActionResult({ open })).toEqual({});
+    expect(parseActionResult({ copy: "x".repeat(501) })).toEqual({});
+    expect(parseActionResult({ copy: "" })).toEqual({});
+  });
+
   it("comes back with its run's number", () => {
     expect(
       parseFrameMessage({

@@ -23,6 +23,7 @@ import {
   pendingCapabilities,
   rollbackTarget,
 } from "@/lib/plugins/lifecycle";
+import type { LinkTrigger } from "@/lib/plugins/link-rules";
 import {
   type CredentialLevel,
   type PluginKind,
@@ -42,7 +43,8 @@ import {
   serviceAddressOf,
 } from "@/lib/webhooks/plugin-targets";
 import { listDevPlugins } from "./dev";
-import { placeSettings } from "./settings-options";
+import { linkRuleStatuses } from "./link";
+import { placeSettings, placeStatuses } from "./settings-options";
 
 // What the plugin pages show (BARY-143). Every view checks its own
 // permission and answers `null` without it — the page then 404s; a hidden
@@ -699,10 +701,12 @@ export interface PluginSettingsView {
 
 /** A hook another service calls, as its settings show it (BARY-215). */
 export interface PluginInboundView {
+  /** The hook's row — what a rule is saved on. */
+  id: string;
   hookId: string;
   title: string;
   provider: "gitlab" | "github" | "generic";
-  handle: "forward";
+  handle: "forward" | "link";
   /** The address to give the provider. */
   url: string;
   /** The secret to give it — shown to whoever may manage the plugin. */
@@ -713,6 +717,16 @@ export interface PluginInboundView {
     status: number | null;
     error: string | null;
   } | null;
+  /** A `link` hook's rules (BARY-227), each with the status it sets here —
+   *  `null` while it's off. */
+  rules: {
+    id: string;
+    title: string;
+    on: LinkTrigger;
+    status: string | null;
+  }[];
+  /** What a rule can set: the workspace's statuses. Empty without rules. */
+  statuses: { id: string; label: string; color?: string }[];
 }
 
 /** A plugin's server, as its settings show it (BARY-212). */
@@ -838,6 +852,9 @@ export async function getPluginSettingsView(
           where: { activationId: activation.id },
         })
       : [];
+  const ruleStatuses = hooks.some((h) => h.rules?.length)
+    ? await placeStatuses(scope.workspaceId)
+    : [];
   const lastDelivery =
     service && activation
       ? await db.eventDelivery.findFirst({
@@ -866,8 +883,10 @@ export async function getPluginSettingsView(
     inbound: hooks.flatMap((hook) => {
       const row = inboundRows.find((r) => r.hookId === hook.id);
       if (!row) return [];
+      const stored = linkRuleStatuses(row.rules);
       return [
         {
+          id: row.id,
           hookId: hook.id,
           title: hook.title,
           provider: hook.provider,
@@ -882,6 +901,11 @@ export async function getPluginSettingsView(
                 error: row.lastError,
               }
             : null,
+          rules: (hook.rules ?? []).map((r) => ({
+            ...r,
+            status: stored[r.id] ?? null,
+          })),
+          statuses: hook.rules?.length ? ruleStatuses : [],
         },
       ];
     }),

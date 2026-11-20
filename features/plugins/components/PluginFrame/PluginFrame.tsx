@@ -286,7 +286,9 @@ export function PluginFrame({
         ref={frame}
         className={styles.frame}
         title={name}
-        sandbox="allow-scripts"
+        // Links and buttons may open a tab (BARY-230) — as its own page,
+        // not sandboxed, and without a way back to Barynt (`noopener`).
+        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
         // Writing only — a copy button (BARY-209); reading stays out.
         allow="clipboard-write"
         referrerPolicy="no-referrer"

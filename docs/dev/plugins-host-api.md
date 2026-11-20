@@ -77,7 +77,9 @@ too. Returns the new `Issue`.
 ### `issues.update`
 
 Needs `issues:write`. `api.issues.update(id, patch)` — `patch` takes the
-fields of `PATCH /api/v1/issues/:id`. Returns `{ id }`.
+fields of `PATCH /api/v1/issues/:id`. Returns `{ id }`. `assignee: "me"`
+assigns the person whose page the frame is on — a plugin doesn't know
+their id.
 
 ## Comments
 
