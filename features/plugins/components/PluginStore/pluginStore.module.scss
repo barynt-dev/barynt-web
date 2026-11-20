@@ -501,10 +501,13 @@
   }
 }
 
-/* The page text (BARY-237): Markdown, read like an article — its own
-   headings smaller than the section's. */
+/* The page text (BARY-237): Markdown, as wide as the screenshots above it
+   (the store's column is capped already) — its own headings smaller than
+   the section's. */
 .aboutText {
-  max-width: 72ch;
+  p {
+    max-width: none;
+  }
 
   :is(h4, h5) {
     margin: 1.25rem 0 0.375rem;
