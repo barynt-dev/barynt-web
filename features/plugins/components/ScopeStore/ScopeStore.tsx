@@ -432,52 +432,59 @@ function Detail({
   const text = usePluginText();
   return (
     <article className={store.detail}>
-      <header className={store.detailHead}>
-        <PluginTile id={plugin.pluginId} name={plugin.name} size="xl" />
-        <div className={store.headText}>
-          <h2 className={store.detailName}>{plugin.name}</h2>
-          <span className={store.headMeta}>
-            {plugin.author}
-            {plugin.version && <> · v{plugin.version}</>}
-          </span>
-          <span className={store.categories}>
-            <PluginBadges kind={plugin.kind} levels={plugin.levels} size="md" />
-            {plugin.categories.map((c) => (
-              <Link
-                key={c}
-                href={href({ category: c })}
-                className={store.categoryLink}
-              >
-                {text.t(`category.${c}` as "category.planning")}
-              </Link>
-            ))}
-          </span>
-        </div>
-        <ReleaseActions
+      {/* Stays at the top while what's under the divider scrolls. */}
+      <div className={store.detailTop}>
+        <header className={store.detailHead}>
+          <PluginTile id={plugin.pluginId} name={plugin.name} size="xl" />
+          <div className={store.headText}>
+            <h2 className={store.detailName}>{plugin.name}</h2>
+            <span className={store.headMeta}>
+              {plugin.author}
+              {plugin.version && <> · v{plugin.version}</>}
+            </span>
+            <span className={store.categories}>
+              <PluginBadges
+                kind={plugin.kind}
+                levels={plugin.levels}
+                size="md"
+              />
+              {plugin.categories.map((c) => (
+                <Link
+                  key={c}
+                  href={href({ category: c })}
+                  className={store.categoryLink}
+                >
+                  {text.t(`category.${c}` as "category.planning")}
+                </Link>
+              ))}
+            </span>
+          </div>
+          <ReleaseActions
+            plugin={plugin}
+            view={view}
+            workspaceName={workspaceName}
+          />
+        </header>
+
+        <ReleaseSummary
           plugin={plugin}
           view={view}
           workspaceName={workspaceName}
         />
-      </header>
 
-      <ReleaseSummary
-        plugin={plugin}
-        view={view}
-        workspaceName={workspaceName}
-      />
-
-      <Tabs label={text.t("detailTabs")} className={store.tabs}>
-        {(["overview", "capabilities"] as const).map((id) => (
-          <Tab
-            key={id}
-            href={href({ plugin: plugin.pluginId, tab: id })}
-            active={tab === id}
-            icon={<Icon icon={TAB_ICONS[id]} width={15} />}
-          >
-            {text.t(`tab.${id}`)}
-          </Tab>
-        ))}
-      </Tabs>
+        <Tabs label={text.t("detailTabs")} className={store.tabs}>
+          {(["overview", "capabilities"] as const).map((id) => (
+            <Tab
+              key={id}
+              href={href({ plugin: plugin.pluginId, tab: id })}
+              active={tab === id}
+              icon={<Icon icon={TAB_ICONS[id]} width={15} />}
+            >
+              {text.t(`tab.${id}`)}
+            </Tab>
+          ))}
+        </Tabs>
+      </div>
 
       {tab === "overview" ? (
         <div className={scope.overview}>

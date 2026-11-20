@@ -62,108 +62,115 @@ export function PluginDetail({
 
   return (
     <article className={styles.detail}>
-      <header className={styles.detailHead}>
-        <PluginTile id={entry.id} name={entry.name} size="xl" />
-        <div className={styles.headText}>
-          <h2 className={styles.detailName}>{entry.name}</h2>
-          <span className={styles.headMeta}>
-            {entry.author}
-            {installed?.version && <> · v{installed.version}</>}
-          </span>
-          <PluginBadges kind={entry.kind} levels={entry.levels} size="md" />
-        </div>
-        <div className={styles.headActions}>
-          {installed ? (
-            <>
-              <Button
-                variant="outline"
-                icon={
-                  <Icon
-                    icon={
-                      installed.blocked
-                        ? "lucide:shield-check"
-                        : "lucide:shield-ban"
-                    }
-                    width={15}
-                  />
-                }
-                disabled={actions.pending}
-                onClick={() => actions.block(entry, !installed.blocked)}
-              >
-                {installed.blocked ? text.t("unblock") : text.t("block")}
-              </Button>
-              {entry.update && !installed.blocked && (
-                <Button
-                  variant="primary"
-                  icon={<Icon icon="lucide:package-check" width={15} />}
-                  disabled={actions.pending}
-                  onClick={() => actions.install(entry, entry.update as string)}
-                >
-                  {text.t("updateTo", { version: entry.update })}
-                </Button>
-              )}
-              <Button
-                variant="text"
-                className={styles.dangerIcon}
-                icon={<Icon icon="lucide:package-x" width={16} />}
-                aria-label={text.t("uninstall")}
-                title={text.t("uninstall")}
-                disabled={actions.pending}
-                onClick={() => actions.uninstall(entry)}
-              />
-            </>
-          ) : (
-            entry.listing &&
-            version && (
+      {/* Stays at the top while what's under the divider scrolls. */}
+      <div className={styles.detailTop}>
+        <header className={styles.detailHead}>
+          <PluginTile id={entry.id} name={entry.name} size="xl" />
+          <div className={styles.headText}>
+            <h2 className={styles.detailName}>{entry.name}</h2>
+            <span className={styles.headMeta}>
+              {entry.author}
+              {installed?.version && <> · v{installed.version}</>}
+            </span>
+            <PluginBadges kind={entry.kind} levels={entry.levels} size="md" />
+          </div>
+          <div className={styles.headActions}>
+            {installed ? (
               <>
-                {listed.length > 1 && (
-                  <NativeSelect
-                    label={text.t("version")}
-                    value={version}
-                    onChange={setVersion}
-                    items={listed.map((v, i) => ({
-                      value: v,
-                      label:
-                        i === 0
-                          ? text.t("versionNewest", { version: v })
-                          : `v${v}`,
-                    }))}
-                  />
+                <Button
+                  variant="outline"
+                  icon={
+                    <Icon
+                      icon={
+                        installed.blocked
+                          ? "lucide:shield-check"
+                          : "lucide:shield-ban"
+                      }
+                      width={15}
+                    />
+                  }
+                  disabled={actions.pending}
+                  onClick={() => actions.block(entry, !installed.blocked)}
+                >
+                  {installed.blocked ? text.t("unblock") : text.t("block")}
+                </Button>
+                {entry.update && !installed.blocked && (
+                  <Button
+                    variant="primary"
+                    icon={<Icon icon="lucide:package-check" width={15} />}
+                    disabled={actions.pending}
+                    onClick={() =>
+                      actions.install(entry, entry.update as string)
+                    }
+                  >
+                    {text.t("updateTo", { version: entry.update })}
+                  </Button>
                 )}
                 <Button
-                  variant="primary"
-                  icon={<Icon icon="lucide:plus" width={15} />}
+                  variant="text"
+                  className={styles.dangerIcon}
+                  icon={<Icon icon="lucide:package-x" width={16} />}
+                  aria-label={text.t("uninstall")}
+                  title={text.t("uninstall")}
                   disabled={actions.pending}
-                  onClick={() => actions.install(entry, version)}
-                >
-                  {text.t("install")}
-                </Button>
+                  onClick={() => actions.uninstall(entry)}
+                />
               </>
-            )
-          )}
-        </div>
-      </header>
+            ) : (
+              entry.listing &&
+              version && (
+                <>
+                  {listed.length > 1 && (
+                    <NativeSelect
+                      label={text.t("version")}
+                      value={version}
+                      onChange={setVersion}
+                      items={listed.map((v, i) => ({
+                        value: v,
+                        label:
+                          i === 0
+                            ? text.t("versionNewest", { version: v })
+                            : `v${v}`,
+                      }))}
+                    />
+                  )}
+                  <Button
+                    variant="primary"
+                    icon={<Icon icon="lucide:plus" width={15} />}
+                    disabled={actions.pending}
+                    onClick={() => actions.install(entry, version)}
+                  >
+                    {text.t("install")}
+                  </Button>
+                </>
+              )
+            )}
+          </div>
+        </header>
 
-      <Tabs label={text.t("detailTabs")} className={styles.tabs}>
-        {tabs.map((id) => (
-          <Tab
-            key={id}
-            href={storeHref({ plugin: entry.id, tab: id })}
-            active={current === id}
-            icon={<Icon icon={TAB_ICONS[id]} width={15} />}
-          >
-            {text.t(`tab.${id}`)}
-            {id === "capabilities" && installed && (
-              <Badge className={styles.tabCount}>
-                {installed.capabilities.length}
-              </Badge>
-            )}
-            {id === "places" && installed && (
-              <Badge className={styles.tabCount}>{installed.activations}</Badge>
-            )}
-          </Tab>
-        ))}
-      </Tabs>
+        <Tabs label={text.t("detailTabs")} className={styles.tabs}>
+          {tabs.map((id) => (
+            <Tab
+              key={id}
+              href={storeHref({ plugin: entry.id, tab: id })}
+              active={current === id}
+              icon={<Icon icon={TAB_ICONS[id]} width={15} />}
+            >
+              {text.t(`tab.${id}`)}
+              {id === "capabilities" && installed && (
+                <Badge className={styles.tabCount}>
+                  {installed.capabilities.length}
+                </Badge>
+              )}
+              {id === "places" && installed && (
+                <Badge className={styles.tabCount}>
+                  {installed.activations}
+                </Badge>
+              )}
+            </Tab>
+          ))}
+        </Tabs>
+      </div>
 
       {current === "overview" && (
         <Overview entry={entry} version={version} release={release} />

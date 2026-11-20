@@ -340,6 +340,29 @@
   min-width: 0;
 }
 
+/* A plugin page's top — header and tabs — stays put while what's under the
+   divider scrolls (the column, `.main`, is the scroller). It reaches over
+   the column's top padding so nothing shows above it. A phone scrolls the
+   whole screen: the top would take half of it. */
+.detailTop {
+  position: sticky;
+  /* Sticky counts from the column's padding: this sits it at the very top. */
+  top: -1.5rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: -1.5rem;
+  padding-top: 1.5rem;
+  background: var(--background);
+
+  @include bp.phone {
+    position: static;
+    margin-top: 0;
+    padding-top: 0;
+  }
+}
+
 /* Up a level, left of the page title (see `PluginStore`): to the list on a
    phone that shows a plugin, else to the admin overview on a tablet or
    phone. Exactly one of the two shows. */
