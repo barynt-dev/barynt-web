@@ -433,7 +433,7 @@ function Detail({
   return (
     <article className={store.detail}>
       <header className={store.detailHead}>
-        <PluginTile id={plugin.pluginId} name={plugin.name} size="lg" />
+        <PluginTile id={plugin.pluginId} name={plugin.name} size="xl" />
         <div className={store.headText}>
           <h2 className={store.detailName}>{plugin.name}</h2>
           <span className={store.headMeta}>

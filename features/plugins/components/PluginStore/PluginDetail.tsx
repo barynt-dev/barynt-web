@@ -63,7 +63,7 @@ export function PluginDetail({
   return (
     <article className={styles.detail}>
       <header className={styles.detailHead}>
-        <PluginTile id={entry.id} name={entry.name} size="lg" />
+        <PluginTile id={entry.id} name={entry.name} size="xl" />
         <div className={styles.headText}>
           <h2 className={styles.detailName}>{entry.name}</h2>
           <span className={styles.headMeta}>
