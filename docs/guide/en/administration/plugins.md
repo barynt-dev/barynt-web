@@ -28,7 +28,7 @@ With no plugin picked, the right side is the store's start page: how many plugin
 
    > [!NOTE]
    > A Git server on your internal network is blocked unless your operator lists it in `PLUGIN_INTERNAL_HOSTS`.
-2. Pick a plugin from **In the directory**. Its page shows its logo and screenshots, what it asks for and where the code comes from — before you install anything. Click a screenshot to see it full screen; the arrows, the arrow keys or a swipe step through them, <kbd>Esc</kbd> closes. Choose a version if you don't want the newest. A version that needs a newer Barynt is shown too, with a note, but can't be installed.
+2. Pick a plugin from **In the directory**. Its page shows its logo and screenshots, its description, links to its docs and community, what it asks for and where the code comes from — before you install anything. Click a screenshot to see it full screen; the arrows, the arrow keys or a swipe step through them, <kbd>Esc</kbd> closes. Choose a version if you don't want the newest. A version that needs a newer Barynt is shown too, with a note, but can't be installed.
 3. Click **Install**. Barynt loads that version and checks it: the files must match what the directory lists, and the version must run on your Barynt. If anything doesn't match, it is not installed.
 4. The dialog shows the plugin's screenshots, if it has any, then the author, where the code comes from, its kind, where it can be used, what it asks for and which other servers it may call. Tick the box and install.
 
@@ -115,7 +115,7 @@ With no plugin picked, the right side is the store's start page: how many plugin
 
    > [!NOTE]
    > A Git server on your internal network is blocked unless your operator lists it in `PLUGIN_INTERNAL_HOSTS`.
-2. Pick a plugin from **In the directory**. Its page shows its logo and screenshots, what it asks for and where the code comes from — before you install anything. Click a screenshot to see it full screen; the arrows, the arrow keys or a swipe step through them, <kbd>Esc</kbd> closes. Choose a version if you don't want the newest. A version that needs a newer Barynt is shown too, with a note, but can't be installed.
+2. Pick a plugin from **In the directory**. Its page shows its logo and screenshots, its description, links to its docs and community, what it asks for and where the code comes from — before you install anything. Click a screenshot to see it full screen; the arrows, the arrow keys or a swipe step through them, <kbd>Esc</kbd> closes. Choose a version if you don't want the newest. A version that needs a newer Barynt is shown too, with a note, but can't be installed.
 3. Click **Install**. Barynt loads that version and checks it: the files must match what the directory lists, and the version must run on your Barynt. If anything doesn't match, it is not installed.
 4. The dialog shows the plugin's screenshots, if it has any, then the author, where the code comes from, its kind, where it can be used, what it asks for and which other servers it may call. Tick the box and install.
 

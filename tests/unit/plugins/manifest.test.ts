@@ -1,8 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import {
+  ABOUT_MAX,
   CAPABILITIES,
   isCompatible,
+  localizedAbout,
   localizedDescription,
+  MAX_LINKS,
   validateManifest,
 } from "@/lib/plugins/manifest";
 import { compareSemver, parseSemver } from "@/lib/plugins/semver";
@@ -789,5 +792,47 @@ describe("a plugin's logo and languages (BARY-235)", () => {
     expect(localizedDescription({ description: "Only English" }, "de")).toBe(
       "Only English",
     );
+  });
+});
+
+describe("page text and links (BARY-237)", () => {
+  it("takes a long Markdown text, also per language", () => {
+    const about = `## Why\n\n${"Lots to say. ".repeat(300)}`;
+    const result = validateManifest({
+      ...base,
+      about,
+      locales: { de: { about: "Auf Deutsch." } },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(localizedAbout(result.manifest, "de")).toBe("Auf Deutsch.");
+      expect(localizedAbout(result.manifest, "en")).toBe(about.trim());
+    }
+    expect(
+      validateManifest({ ...base, about: "x".repeat(ABOUT_MAX + 1) }).ok,
+    ).toBe(false);
+  });
+
+  it("has no page text without one", () => {
+    expect(localizedAbout({ locales: { de: {} } }, "de")).toBeNull();
+  });
+
+  it("takes https links of known kinds, each once", () => {
+    const links = [
+      { kind: "docs", url: "https://docs.acme.dev" },
+      { kind: "github", url: "https://github.com/acme/gantt", title: "Code" },
+    ];
+    expect(validateManifest({ ...base, links }).ok).toBe(true);
+    for (const bad of [
+      [{ kind: "docs", url: "http://docs.acme.dev" }],
+      [{ kind: "docs", url: "javascript:alert(1)" }],
+      [{ kind: "myspace", url: "https://myspace.com/acme" }],
+      [links[0], { ...links[0], kind: "homepage" }],
+      Array.from({ length: MAX_LINKS + 1 }, (_, i) => ({
+        kind: "docs",
+        url: `https://acme.dev/${i}`,
+      })),
+    ])
+      expect(validateManifest({ ...base, links: bad }).ok).toBe(false);
   });
 });

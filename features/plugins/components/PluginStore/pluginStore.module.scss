@@ -501,6 +501,129 @@
   }
 }
 
+/* The page text (BARY-237): Markdown, read like an article — its own
+   headings smaller than the section's. */
+.aboutText {
+  max-width: 72ch;
+
+  :is(h4, h5) {
+    margin: 1.25rem 0 0.375rem;
+    font-size: var(--text-md, 1rem);
+    font-weight: 650;
+  }
+
+  h5 {
+    font-size: var(--text-sm);
+  }
+
+  & > div > :first-child {
+    margin-top: 0;
+  }
+}
+
+/* Links (BARY-237): labelled ones as rows, brands as a row of icons. */
+.linkList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  a {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 2.5rem;
+    padding: 0.375rem 0.5rem;
+    border-radius: var(--radius-md, 0.5rem);
+    color: var(--on-surface);
+    text-decoration: none;
+    transition: background 120ms ease;
+
+    &:hover {
+      background: var(--surface-container);
+    }
+
+    &:hover .linkOut {
+      opacity: 1;
+    }
+
+    @include bp.coarse {
+      min-height: var(--touch-min);
+    }
+  }
+}
+
+.linkText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  font-size: var(--text-sm);
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.linkHost {
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+}
+
+.linkOut {
+  flex: none;
+  color: var(--on-surface-variant);
+  opacity: 0;
+  transition: opacity 120ms ease;
+
+  @include bp.no-hover {
+    opacity: 1;
+  }
+}
+
+.brandLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0.5rem 0 0;
+  list-style: none;
+
+  /* Only when there are labelled links above. */
+  .linkList + & {
+    border-top: 1px solid var(--outline-variant);
+  }
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: max(2.5rem, var(--touch-min));
+    height: max(2.5rem, var(--touch-min));
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-pill);
+    background: var(--surface-container);
+    color: var(--on-surface);
+    transition:
+      background 120ms ease,
+      border-color 120ms ease;
+
+    &:hover {
+      border-color: var(--outline);
+      background: var(--surface-container-high);
+    }
+
+    /* Monochrome logos without a fill of their own take the text colour. */
+    svg {
+      fill: currentColor;
+    }
+  }
+}
+
 .facts {
   display: flex;
   flex-direction: column;

@@ -22,6 +22,7 @@ import {
   changesOf,
 } from "./capabilities";
 import { OriginLink } from "./dialogs";
+import { PluginAbout, PluginLinks } from "./PluginAbout";
 import { type StoreActions, storeHref } from "./PluginStore";
 import { PluginTile } from "./PluginTile";
 import { PreviewGallery } from "./PreviewGallery";
@@ -219,6 +220,18 @@ function Overview({
     : release.status === "ready"
       ? release.preview.network
       : [];
+  // The page text and links of what's shown: the installed version, else
+  // the release picked (BARY-237).
+  const about = installed
+    ? installed.about
+    : release.status === "ready"
+      ? release.preview.about
+      : null;
+  const links = installed
+    ? installed.links
+    : release.status === "ready"
+      ? release.preview.links
+      : [];
   const shownVersion = installed?.version ?? version;
 
   return (
@@ -254,14 +267,16 @@ function Overview({
         {release.status === "ready" &&
           !release.preview.compatible &&
           !installed && <ErrorLine message={text.error("incompatible")} />}
-        <section className={styles.about}>
-          <h3>{text.t("aboutPlugin", { name: entry.name })}</h3>
-          <p>{entry.description}</p>
-        </section>
+        <PluginAbout
+          name={entry.name}
+          description={entry.description}
+          about={about}
+        />
       </div>
 
       <aside className={styles.facts}>
         {installed?.serviceAddress && <ServiceAddressCard plugin={installed} />}
+        <PluginLinks links={links} />
         <section className={styles.card}>
           <h3 className={styles.cardTitle}>
             <Icon icon="lucide:key-round" width={14} aria-hidden />

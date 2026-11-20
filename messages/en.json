@@ -2727,6 +2727,16 @@
     "nextPreview": "Next screenshot",
     "openPreview": "View “{title}” full screen",
     "closePreview": "Close full screen",
+    "links": "Links",
+    "link": {
+      "homepage": "Website",
+      "docs": "Documentation",
+      "changelog": "Changelog",
+      "issues": "Report a problem",
+      "support": "Support",
+      "privacy": "Privacy",
+      "terms": "Terms"
+    },
     "capabilitiesIntro": "A plugin can never do more than the person it acts for. Workspaces and projects confirm this list when they switch it on.",
     "capGroup": {
       "data": "Data",

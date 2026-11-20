@@ -15,6 +15,7 @@ import {
   hasPermission,
   PLATFORM,
 } from "@/lib/permissions";
+import { aboutDoc } from "@/lib/plugins/about";
 import { activationScopeKey } from "@/lib/plugins/activation";
 import type { DirectoryEntry } from "@/lib/plugins/directory";
 import { releasePageUrl, repoUrl } from "@/lib/plugins/git-hosts";
@@ -27,8 +28,10 @@ import {
 import type { LinkTrigger } from "@/lib/plugins/link-rules";
 import {
   type CredentialLevel,
+  localizedAbout,
   localizedDescription,
   type PluginKind,
+  type PluginLink,
   type PluginManifest,
   serviceAddressMode,
   validateManifest,
@@ -40,6 +43,7 @@ import {
   serviceSummary,
 } from "@/lib/plugins/service";
 import type { SettingType, SettingValue } from "@/lib/plugins/settings";
+import type { PMDoc } from "@/lib/richtext/types";
 import {
   platformServiceUrl,
   serviceAddressOf,
@@ -66,6 +70,9 @@ export interface PluginSummary {
   service?: ServiceSummary | null;
   /** Screenshots, served from the installed version (BARY-199). */
   previews: { title: string; src: string }[];
+  /** Its page text, in the person's language (BARY-237). */
+  about: PMDoc | null;
+  links: PluginLink[];
 }
 
 /** Where an installed version's preview image is served. */
@@ -96,6 +103,8 @@ function summaryOf(
     capabilities: m.capabilities ?? [],
     network: m.network ?? [],
     service: m.service ? serviceSummary(m.service) : null,
+    about: aboutDoc(localizedAbout(m, locale)),
+    links: m.links ?? [],
     previews: rowId
       ? (m.previews ?? []).map(({ file, title }) => ({
           title,

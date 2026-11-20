@@ -95,6 +95,67 @@ export const localesSchema = z
   )
   .optional();
 
+/** How long a plugin's page text may be (BARY-237), per language. */
+export const ABOUT_MAX = 5000;
+
+/** A manifest's texts in other languages: the short description and the
+ *  page text (BARY-237). A directory entry only has the former. */
+const manifestLocalesSchema = z
+  .partialRecord(
+    z.enum(PLUGIN_LOCALES),
+    z.strictObject({
+      description: z.string().trim().min(1).max(300).optional(),
+      about: z.string().trim().min(1).max(ABOUT_MAX).optional(),
+    }),
+  )
+  .optional();
+
+/** The page text in the person's language, else the manifest's own. */
+export function localizedAbout(
+  plugin: {
+    about?: string;
+    locales?: Partial<Record<string, { about?: string }>>;
+  },
+  locale: string,
+): string | null {
+  return plugin.locales?.[locale]?.about ?? plugin.about ?? null;
+}
+
+/**
+ * Where a plugin points to (BARY-237). The first kinds are links with a
+ * label, listed in the store's "Links" box; the brands show as a row of
+ * icons below them.
+ */
+export const TEXT_LINK_KINDS = [
+  "homepage",
+  "docs",
+  "changelog",
+  "issues",
+  "support",
+  "privacy",
+  "terms",
+] as const;
+export const BRAND_LINK_KINDS = [
+  "github",
+  "gitlab",
+  "discord",
+  "slack",
+  "matrix",
+  "mastodon",
+  "bluesky",
+  "x",
+  "youtube",
+  "linkedin",
+] as const;
+export const PLUGIN_LINK_KINDS = [...TEXT_LINK_KINDS, ...BRAND_LINK_KINDS];
+export type PluginLinkKind = (typeof PLUGIN_LINK_KINDS)[number];
+export const MAX_LINKS = 10;
+export interface PluginLink {
+  kind: PluginLinkKind;
+  url: string;
+  title?: string;
+}
+
 /** The description in the person's language, else the manifest's own. */
 export function localizedDescription(
   plugin: {
@@ -353,8 +414,24 @@ export const manifestSchema = z
       .string()
       .regex(LOGO_FILE_RE, 'expected "logo.png" or "logo.webp"')
       .optional(),
-    /** Its description in other languages (BARY-235). */
-    locales: localesSchema,
+    /** Its description in other languages (BARY-235), and its page text
+     *  (BARY-237). */
+    locales: manifestLocalesSchema,
+    /** Its page in the store (BARY-237): Markdown, shown without links,
+     *  images or HTML — those go in `links`. */
+    about: z.string().trim().min(1).max(ABOUT_MAX).optional(),
+    /** Its homepage, docs, issue tracker, community (BARY-237). */
+    links: z
+      .array(
+        z.strictObject({
+          kind: z.enum(PLUGIN_LINK_KINDS),
+          url: z.url({ protocol: /^https$/ }).max(500),
+          /** A label of its own; else the kind's. */
+          title: title.optional(),
+        }),
+      )
+      .max(MAX_LINKS)
+      .optional(),
     previews: z
       .array(
         z.strictObject({
@@ -395,6 +472,8 @@ export const manifestSchema = z
       new Set(m.previews.map((p) => p.file)).size !== m.previews.length
     )
       add(["previews"], "preview files must be unique");
+    if (m.links && new Set(m.links.map((l) => l.url)).size !== m.links.length)
+      add(["links"], "link addresses must be unique");
 
     if (m.service) {
       if (m.kind === "declarative")
