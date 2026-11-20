@@ -308,8 +308,13 @@
   border-left: 1px solid var(--outline-variant);
   box-sizing: border-box;
 
+  /* Centered, and no wider than a large laptop: on a 2K or wider screen a
+     plugin's page would otherwise stretch its screenshots to half a metre. */
   & > * {
     flex: none;
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
   }
 
   @include bp.phone {
