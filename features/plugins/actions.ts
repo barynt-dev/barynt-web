@@ -15,6 +15,7 @@ import { linkRuleStatuses } from "@/features/plugins/link";
 import { getPluginIssueActions } from "@/features/plugins/slots";
 import { DELIVERY_SELECT } from "@/features/webhooks/deliveries";
 import type { WebhookDelivery } from "@/features/webhooks/types";
+import { APP_VERSION } from "@/lib/app-info";
 import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
@@ -46,6 +47,7 @@ import {
   unblockTarget,
 } from "@/lib/plugins/lifecycle";
 import {
+  isCompatible,
   localizedDescription,
   type PluginManifest,
   serviceAddressMode,
@@ -1059,6 +1061,9 @@ export interface ReleasePreview {
   /** Its own server and what it hears about (BARY-212). */
   service: ServiceSummary | null;
   minBaryntVersion: string;
+  /** Does it run on this Barynt? Shown either way (BARY-236), installed
+   *  only when it does. */
+  compatible: boolean;
   hash: string;
   /** Size of the code, in bytes. */
   codeSize: number;
@@ -1068,8 +1073,9 @@ export interface ReleasePreview {
 }
 
 /**
- * Loads and checks a release without installing it — what the install
- * dialog shows before anyone confirms. Installing loads it again: the
+ * Loads and checks a release without installing it — what the store and
+ * the install dialog show before anyone confirms, also for a version that
+ * doesn't run on this Barynt (`compatible`). Installing loads it again: the
  * server never trusts what a dialog was shown.
  */
 export async function previewRelease(input: {
@@ -1082,6 +1088,7 @@ export async function previewRelease(input: {
     input.sourceId,
     input.pluginId,
     input.version,
+    { anyBarynt: true },
   );
   if (!release.ok) return { error: release.error };
   const m = release.manifest;
@@ -1101,6 +1108,7 @@ export async function previewRelease(input: {
       network: m.network,
       service: m.service ? serviceSummary(m.service) : null,
       minBaryntVersion: m.minBaryntVersion,
+      compatible: isCompatible(m, APP_VERSION),
       hash: release.hash,
       codeSize: release.files["main.js"]?.byteLength ?? 0,
       previews: (m.previews ?? []).map(({ file, title }) => ({

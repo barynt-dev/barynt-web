@@ -128,6 +128,12 @@ looks best. Logo and screenshots are part of the release and its hash, are
 checked to be real images, and Barynt serves them itself — never from the
 plugin's Git host.
 
+Both show before anyone installs the plugin: the store loads the newest
+listed release, checks it against its hash like an install would, and
+shows its logo and screenshots — also when that version needs a newer
+Barynt, then with a note, and installing it stays refused. An installed
+plugin shows those of its own version.
+
 ## Updates
 
 Release the new version, add it with its hash to `versions`, and the

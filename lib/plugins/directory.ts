@@ -271,13 +271,14 @@ export type ReleaseResult =
  * directory lists the version; every required file arrives; the files hash
  * to what the directory lists; the manifest is valid and names this plugin,
  * this version, this kind and these levels; it runs on `baryntVersion`.
- * Only then are the files handed back.
+ * Only then are the files handed back. `baryntVersion: null` leaves out
+ * the last check — for looking at a release, not for installing it.
  */
 export async function loadRelease(
   entry: DirectoryEntry,
   version: string,
   fetchFile: ReleaseFetch,
-  baryntVersion: string,
+  baryntVersion: string | null,
 ): Promise<ReleaseResult> {
   const expected = entry.versions[version];
   if (!expected) return { ok: false, error: "not_listed" };
@@ -341,7 +342,7 @@ export async function loadRelease(
     [...manifest.levels].sort().join() !== [...entry.levels].sort().join()
   )
     return { ok: false, error: "kind_mismatch" };
-  if (!isCompatible(manifest, baryntVersion))
+  if (baryntVersion !== null && !isCompatible(manifest, baryntVersion))
     return { ok: false, error: "incompatible" };
   for (const file of [
     ...(manifest.previews ?? []).map((p) => p.file),

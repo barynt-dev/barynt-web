@@ -317,7 +317,9 @@ export function InstallDialog({
     }).then((result) =>
       "error" in result
         ? setError(text.error(result.error))
-        : setPreview(result.preview),
+        : result.preview.compatible
+          ? setPreview(result.preview)
+          : setError(text.error("incompatible")),
     );
   }, [target.sourceId, target.pluginId, version, text.error]);
 
