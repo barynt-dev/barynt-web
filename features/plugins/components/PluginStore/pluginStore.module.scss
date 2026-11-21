@@ -2182,7 +2182,7 @@
   margin-left: 0.25rem;
 }
 
-/* Newest: a compact list in columns. */
+/* Newest: compact cards in columns, the same frame as the grid below. */
 .newest {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
@@ -2196,13 +2196,16 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: var(--radius-lg);
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: 1.125rem;
+  background: var(--surface-container-low);
   color: var(--on-surface);
   text-decoration: none;
+  transition: border-color 120ms ease;
 
   &:hover {
-    background: var(--surface-container-low);
+    border-color: var(--outline);
   }
 }
 
