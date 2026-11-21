@@ -318,13 +318,24 @@ export function PluginStore({
           </>
         }
         actions={
-          <Button
-            variant="primary"
-            icon={<Icon icon="lucide:plus" width={15} />}
-            onClick={actions.addSource}
-          >
-            {text.t("addSource")}
-          </Button>
+          // On a phone just the icon, and not the page's primary action:
+          // there the list is what the screen is about.
+          isPhone ? (
+            <Button
+              icon={<Icon icon="lucide:plus" width={18} />}
+              onClick={actions.addSource}
+              aria-label={text.t("addSource")}
+              title={text.t("addSource")}
+            />
+          ) : (
+            <Button
+              variant="primary"
+              icon={<Icon icon="lucide:plus" width={15} />}
+              onClick={actions.addSource}
+            >
+              {text.t("addSource")}
+            </Button>
+          )
         }
       />
       <div className={styles.store} data-open={open}>
