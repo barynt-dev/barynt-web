@@ -68,6 +68,16 @@
 
 // ─── The list ───────────────────────────────────────────────────────────────
 
+/* The featured carousel above the list, on a phone only. */
+.phoneFeatured {
+  display: none;
+
+  @include bp.phone {
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+}
+
 .list {
   display: flex;
   flex-direction: column;
@@ -2379,8 +2389,46 @@
     display: flex;
   }
 
+  /* A tablet's narrower column: the large card's text under its logo, as a
+     lone featured plugin has it on a phone. */
+  @include bp.tablet-down {
+    .featuredTrack > [data-slot="lead"] {
+      --hero-size: 4.5rem;
+
+      grid-template-areas:
+        "logo head"
+        "text text"
+        "foot foot";
+      column-gap: 1rem;
+      padding: 1.25rem;
+    }
+  }
+
   @include bp.phone {
-    --small-size: 4.5rem;
+    --small-size: 3.5rem;
+
+    /* The small cards are just their logo, the large one keeps the room. */
+    .featuredTrack > [data-slot="side"] {
+      padding: 0.375rem;
+
+      .featureHead {
+        display: none;
+      }
+    }
+
+    .featuredTrack > [data-slot="lead"] {
+      --hero-size: 3.5rem;
+
+      .featureName {
+        font-size: var(--text-md);
+        overflow-wrap: anywhere;
+      }
+    }
+
+    /* A swipe and the indicator do it on a phone. */
+    .featuredArrow {
+      display: none;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
