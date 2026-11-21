@@ -26,17 +26,20 @@ function cardAt(track: Element, target: EventTarget): number {
  * The featured cards (BARY-237) under their heading. Up to three sit side by
  * side. With more they are a carousel like Material Design 3's hero
  * carousel: the card in focus is large — laid out like a lone featured
- * plugin, always the same width — and two small ones (logo and name) beside
- * it: both on the right at the start, both on the left at the end, one on
- * each side in between. The arrows at its sides, a click on a small card, a
- * swipe or tabbing into a card move on, animated. CSS does the sizes and the
- * slide; this holds the position.
+ * plugin, always the same width, in the middle — with one small card (logo
+ * and name) on each side that has a neighbour. The arrows at its sides, the
+ * indicator below, a click on a small card, a swipe or tabbing into a card
+ * move on, animated. CSS does the sizes and the slide; this holds the
+ * position.
  */
 export function FeaturedCarousel({
   head,
+  names,
   children,
 }: {
   head: ReactNode;
+  /** The cards' plugin names, for the indicator. */
+  names: string[];
   children: ReactNode;
 }) {
   const text = usePluginText();
@@ -48,9 +51,6 @@ export function FeaturedCarousel({
   const go = (to: number) => setAt(Math.min(Math.max(to, 0), last));
   const lead = Math.min(at, last);
   const carousel = cards.length > 3;
-  // The row starts at the card before the one in focus — or as far left or
-  // right as it goes, so there are always two small cards beside it.
-  const offset = Math.max(Math.min(lead - 1, last - 2), 0);
 
   return (
     <section
@@ -62,7 +62,7 @@ export function FeaturedCarousel({
         {/* biome-ignore lint/a11y/noStaticElementInteractions: a swipe is an extra way to the arrows' step; the cards themselves are links */}
         <div
           className={styles.featured}
-          style={{ "--offset": offset } as React.CSSProperties}
+          style={{ "--lead": lead } as React.CSSProperties}
           onPointerDown={(e) => {
             if (e.pointerType !== "mouse") swipe.current = { x: e.clientX };
           }}
@@ -134,6 +134,18 @@ export function FeaturedCarousel({
         >
           <Icon icon="lucide:chevron-right" width={20} />
         </button>
+      </div>
+      <div className={styles.featuredDots}>
+        {names.map((name, i) => (
+          <button
+            // biome-ignore lint/suspicious/noArrayIndexKey: the cards' order is their identity here
+            key={i}
+            type="button"
+            aria-label={text.t("featuredShow", { name })}
+            aria-current={i === lead ? "true" : undefined}
+            onClick={() => go(i)}
+          />
+        ))}
       </div>
     </section>
   );

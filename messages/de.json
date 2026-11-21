@@ -2821,6 +2821,7 @@
     "featuredSub": "Vom Verzeichnis hervorgehoben",
     "previousFeatured": "Vorheriges vorgestelltes Plugin",
     "nextFeatured": "Nächstes vorgestelltes Plugin",
+    "featuredShow": "{name} zeigen",
     "newestTitle": "Neu im Verzeichnis",
     "categoryAll": "Alle",
     "category": {

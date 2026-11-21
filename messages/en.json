@@ -2821,6 +2821,7 @@
     "featuredSub": "Put forward by the directory",
     "previousFeatured": "Previous featured plugin",
     "nextFeatured": "Next featured plugin",
+    "featuredShow": "Show {name}",
     "newestTitle": "New in the directory",
     "categoryAll": "All",
     "category": {

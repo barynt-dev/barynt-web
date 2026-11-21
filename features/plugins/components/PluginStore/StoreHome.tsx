@@ -137,6 +137,7 @@ export function StoreHome({
 
       {featured.length > 0 && (
         <FeaturedCarousel
+          names={featured.map((entry) => entry.name)}
           head={
             <>
               <h2>{text.t("featuredTitle")}</h2>

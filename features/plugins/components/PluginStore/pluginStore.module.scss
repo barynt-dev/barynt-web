@@ -1914,6 +1914,44 @@
   position: relative;
 }
 
+/* Where the carousel is: one short bar per card, the current one long. */
+.featuredDots {
+  display: none;
+  justify-content: center;
+  gap: 0.375rem;
+
+  button {
+    width: 1rem;
+    height: 0.375rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--outline-variant);
+    cursor: pointer;
+    transition:
+      width 400ms cubic-bezier(0.2, 0, 0, 1),
+      background-color 200ms ease;
+
+    &:hover {
+      background: var(--outline);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    &[aria-current] {
+      width: 2.25rem;
+      background: var(--primary);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+}
+
 /* The carousel's arrows, at its sides like the screenshots' (`.arrow`);
    gone at either end. */
 .featuredStage {
@@ -2218,10 +2256,12 @@
 }
 
 /* More than three: a carousel after Material Design 3's hero carousel. The
-   card in focus (`data-slot="lead"`) is large, always as wide, and looks
-   like a lone featured plugin; two small ones (`side`) beside it show logo
-   and name. The row starts where `FeaturedCarousel` says (`--offset`, in
-   small cards) and slides, the cards growing and shrinking with it. */
+   card in focus (`data-slot="lead"`) is large, always as wide and in the
+   middle, and looks like a lone featured plugin; the one before and the one
+   after wait small (`side`) with logo and name — the first card has room
+   to its left, the last to its right. The row slides by one small card per
+   step (`--lead`, set by `FeaturedCarousel`), the cards growing and
+   shrinking with it. */
 .featuredWrap[data-carousel] {
   --gap: 1rem;
   --small-size: 6rem;
@@ -2240,7 +2280,7 @@
   .featuredTrack {
     display: flex;
     gap: var(--gap);
-    translate: calc(var(--offset) * -1 * (var(--small-size) + var(--gap))) 0;
+    translate: calc((1 - var(--lead)) * (var(--small-size) + var(--gap))) 0;
     transition: translate 400ms cubic-bezier(0.2, 0, 0, 1);
 
     & > * {
@@ -2331,6 +2371,10 @@
 
   .featuredArrow {
     display: inline-flex;
+  }
+
+  .featuredDots {
+    display: flex;
   }
 
   @include bp.phone {
