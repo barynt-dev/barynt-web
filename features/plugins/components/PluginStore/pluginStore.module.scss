@@ -2035,7 +2035,7 @@
   }
 
   /* One on its own: a banner — the logo to the left over all three rows. */
-  &:is(:only-child, [data-slot]) {
+  &:is(:only-child, [data-slot="lead"]) {
     --hero-size: 6rem;
 
     grid-template-areas:
@@ -2068,7 +2068,7 @@
   }
 
   @include bp.phone {
-    &:is(:only-child, [data-slot]) {
+    &:is(:only-child, [data-slot="lead"]) {
       --hero-size: 4.5rem;
 
       grid-template-areas:
@@ -2137,7 +2137,7 @@
 }
 
 /* A banner keeps its text off the screenshot on the right. */
-.featureCard:is(:only-child, [data-slot]) {
+.featureCard:is(:only-child, [data-slot="lead"]) {
   .featureHead,
   .featureText,
   .featureFoot {
@@ -2194,20 +2194,19 @@
 }
 
 /* A banner's state sits by the badges, off the screenshot on the right. */
-.featureCard:is(:only-child, [data-slot]) .cardState {
+.featureCard:is(:only-child, [data-slot="lead"]) .cardState {
   margin-left: 0.25rem;
 }
 
 /* More than three: a carousel after Material Design 3's hero carousel. The
    card in focus (`data-slot="lead"`) is large and looks like a lone featured
-   plugin; the next waits small on its right (`side`), laid out the same but
-   masked down to its logo, its text faded — it doesn't reflow, it's cut off.
-   The row slides by one small card per step (`--offset`, set by
-   `FeaturedCarousel`), the sizes change with it. */
+   plugin; beside it small ones (`side`) with logo, name and kind. The row
+   starts at the card before the focused one (`--offset`), and the focused
+   one leaves room for one small card per neighbour (`--sides`) — both set by
+   `FeaturedCarousel`. */
 .featuredWrap[data-carousel] {
   --gap: 1rem;
-  /* The logo with the banner's left padding on either side. */
-  --small-size: 9.5rem;
+  --small-size: 9rem;
 
   .featured {
     /* Clipped sideways only: the shadows and the hover lift reach out above
@@ -2235,28 +2234,65 @@
         transform 160ms ease,
         box-shadow 200ms ease;
 
-      &[data-slot="lead"] {
-        flex-basis: calc(100% - var(--small-size) - var(--gap));
+      /* The content comes in once the card has its new size. */
+      & > :not(.featurePreview) {
+        animation: feature-in 320ms ease 140ms backwards;
       }
 
-      .featureHead,
-      .featureText,
-      .featureFoot,
-      .featurePreview[data-shown] {
-        transition: opacity 240ms ease 160ms;
+      &[data-slot="lead"] {
+        flex-basis: calc(
+          100% - var(--sides) * (var(--small-size) + var(--gap))
+        );
+        padding-right: 1.75rem;
+
+        & > :not(.featurePreview) {
+          animation-name: feature-in-lead;
+        }
       }
 
       &[data-slot="side"] {
-        grid-template-columns: var(--hero-size) 26rem;
+        --hero-size: 3.5rem;
+
+        grid-template-areas:
+          "logo"
+          "head"
+          "foot";
+        grid-template-columns: minmax(0, 1fr);
+        justify-items: center;
+        gap: 0.625rem;
+        padding: 1.25rem 0.75rem;
+        text-align: center;
         cursor: pointer;
 
-        .featureHead,
+        .featureHead {
+          align-items: center;
+        }
+
+        .featureName {
+          display: -webkit-box;
+          overflow: hidden;
+          font-size: var(--text-sm);
+          overflow-wrap: anywhere;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 2;
+          line-clamp: 2;
+        }
+
+        /* Only the kind: the levels and the state don't fit. */
+        .featureFoot {
+          justify-content: center;
+          align-self: center;
+
+          & > :not(:first-child),
+          & > :first-child > :not(:first-child) {
+            display: none;
+          }
+        }
+
         .featureText,
-        .featureFoot,
-        .featurePreview[data-shown] {
-          opacity: 0;
-          transition-delay: 0ms;
-          transition-duration: 120ms;
+        .featureHead .itemSub,
+        .featurePreview {
+          display: none;
         }
       }
     }
@@ -2267,17 +2303,39 @@
   }
 
   @include bp.phone {
-    --small-size: 7rem;
+    --small-size: 6rem;
+
+    .featuredTrack > [data-slot="side"] {
+      --hero-size: 2.75rem;
+
+      padding-inline: 0.5rem;
+
+      .featureFoot {
+        display: none;
+      }
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .featuredTrack,
     .featuredTrack > *,
-    .featuredTrack
-      > *
-      :is(.featureHead, .featureText, .featureFoot, .featurePreview) {
+    .featuredTrack > * > * {
       transition: none;
+      animation: none;
     }
+  }
+}
+
+@keyframes feature-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The same, by another name: a new name restarts it when a card changes. */
+@keyframes feature-in-lead {
+  from {
+    opacity: 0;
   }
 }
 
