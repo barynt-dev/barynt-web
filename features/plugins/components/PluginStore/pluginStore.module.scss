@@ -1914,100 +1914,6 @@
   position: relative;
 }
 
-/* More than three: a carousel after Material Design 3's hero carousel. The
-   card in front (`data-lead`) is large and looks like a lone featured plugin,
-   the rest are small, the next one peeking in. The row slides by one small
-   card per step (`--lead`); the sizes animate with it. Arrows for a mouse, a
-   a swipe on touch. */
-.featuredWrap:has(.featuredTrack > :nth-child(4)) {
-  --gap: 1rem;
-  --lead-size: 68%;
-  --small-size: 14%;
-
-  .featured {
-    /* Room for the hover lift and the shadow, which the clipping would cut. */
-    margin-block: -0.5rem;
-    padding-block: 0.5rem;
-    display: block;
-    overflow: hidden;
-    touch-action: pan-y;
-  }
-
-  /* The whole row slides; a percentage is the row's own width, which is the
-     visible width. */
-  .featuredTrack {
-    display: flex;
-    gap: var(--gap);
-    translate: calc((1 - var(--lead)) * (var(--small-size) + var(--gap))) 0;
-    transition: translate 360ms cubic-bezier(0.2, 0, 0, 1);
-
-    & > * {
-      flex: 0 0 var(--small-size);
-      min-width: 0;
-      min-height: 12.5rem;
-      transition:
-        flex-basis 360ms cubic-bezier(0.2, 0, 0, 1),
-        transform 160ms ease,
-        box-shadow 200ms ease;
-
-      &[data-lead] {
-        flex-basis: var(--lead-size);
-        /* Taller neighbours stretch it; its content stays together. */
-        align-content: center;
-      }
-
-      /* The ones beside it: a tall pill with the logo and the name. */
-      &:not([data-lead]) {
-        --hero-size: 4rem;
-
-        grid-template-areas:
-          "logo"
-          "head";
-        grid-template-columns: minmax(0, 1fr);
-        justify-items: center;
-        align-content: center;
-        padding: 1rem 0.5rem;
-        border-radius: 2rem;
-        text-align: center;
-        cursor: pointer;
-
-        .featureLogo {
-          justify-content: center;
-        }
-
-        .featureName {
-          font-size: var(--text-sm);
-          overflow-wrap: anywhere;
-        }
-
-        .featureText,
-        .featureFoot,
-        .featureHead .itemSub,
-        .featurePreview {
-          display: none;
-        }
-      }
-    }
-  }
-
-  @include bp.tablet-down {
-    --lead-size: 64%;
-    --small-size: 16%;
-  }
-
-  @include bp.phone {
-    --lead-size: 80%;
-    --small-size: 8%;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .featuredTrack,
-    .featuredTrack > * {
-      transition: none;
-    }
-  }
-}
-
 /* A featured plugin's first screenshot, fading in from the right of its card
    and out towards the text. Over the haze. */
 .featurePreview {
@@ -2282,6 +2188,100 @@
 /* A banner's state sits by the badges, off the screenshot on the right. */
 .featureCard:is(:only-child, [data-lead]) .cardState {
   margin-left: 0.25rem;
+}
+
+/* More than three: a carousel after Material Design 3's hero carousel. The
+   card in front (`data-lead`) is large and looks like a lone featured plugin,
+   the rest are small, the next one peeking in. The row slides by one small
+   card per step (`--lead`); the sizes animate with it. Arrows for a mouse, a
+   a swipe on touch. */
+.featuredWrap:has(.featuredTrack > :nth-child(4)) {
+  --gap: 1rem;
+  --lead-size: 68%;
+  --small-size: 14%;
+
+  .featured {
+    /* Room for the hover lift and the shadow, which the clipping would cut. */
+    margin-block: -0.5rem;
+    padding-block: 0.5rem;
+    display: block;
+    overflow: hidden;
+    touch-action: pan-y;
+  }
+
+  /* The whole row slides; a percentage is the row's own width, which is the
+     visible width. */
+  .featuredTrack {
+    display: flex;
+    gap: var(--gap);
+    translate: calc((1 - var(--lead)) * (var(--small-size) + var(--gap))) 0;
+    transition: translate 360ms cubic-bezier(0.2, 0, 0, 1);
+
+    & > * {
+      flex: 0 0 var(--small-size);
+      min-width: 0;
+      min-height: 12.5rem;
+      transition:
+        flex-basis 360ms cubic-bezier(0.2, 0, 0, 1),
+        transform 160ms ease,
+        box-shadow 200ms ease;
+
+      &[data-lead] {
+        flex-basis: var(--lead-size);
+        /* Taller neighbours stretch it; its content stays together. */
+        align-content: center;
+      }
+
+      /* The ones beside it: a tall pill with the logo and the name. */
+      &:not([data-lead]) {
+        --hero-size: 4rem;
+
+        grid-template-areas:
+          "logo"
+          "head";
+        grid-template-columns: minmax(0, 1fr);
+        justify-items: center;
+        align-content: center;
+        padding: 1rem 0.5rem;
+        border-radius: 2rem;
+        text-align: center;
+        cursor: pointer;
+
+        .featureLogo {
+          justify-content: center;
+        }
+
+        .featureName {
+          font-size: var(--text-sm);
+          overflow-wrap: anywhere;
+        }
+
+        .featureText,
+        .featureFoot,
+        .featureHead .itemSub,
+        .featurePreview {
+          display: none;
+        }
+      }
+    }
+  }
+
+  @include bp.tablet-down {
+    --lead-size: 64%;
+    --small-size: 16%;
+  }
+
+  @include bp.phone {
+    --lead-size: 80%;
+    --small-size: 8%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .featuredTrack,
+    .featuredTrack > * {
+      transition: none;
+    }
+  }
 }
 
 /* Newest: compact cards in columns, the same frame as the grid below. */
