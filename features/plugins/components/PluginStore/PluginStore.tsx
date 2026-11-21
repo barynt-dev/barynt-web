@@ -39,7 +39,7 @@ import {
 import { PluginDetail } from "./PluginDetail";
 import { PluginTile } from "./PluginTile";
 import styles from "./pluginStore.module.scss";
-import { FeaturedSection, StoreHome } from "./StoreHome";
+import { FeaturedSection, NewestSection, StoreHome } from "./StoreHome";
 import { SourcesPane, StoreWelcome } from "./StorePanels";
 import type { StoreTab } from "./tabs";
 
@@ -390,11 +390,13 @@ export function PluginStore({
             </Link>
           )}
 
-          {/* A phone has no start page: what's featured sits above the list,
+          {/* A phone has no start page: what's featured and what's new sit above
+              the list,
               while nothing narrows it. */}
           {!query && filter === "all" && !category && (
             <div className={styles.phoneFeatured}>
               <FeaturedSection entries={view.entries} />
+              <NewestSection entries={view.entries} />
             </div>
           )}
 

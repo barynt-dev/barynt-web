@@ -39,12 +39,6 @@ export function StoreHome({
   const on = installed.filter((e) => (e.installed?.activations ?? 0) > 0);
   const updates = entries.filter((e) => e.update);
   const listed = entries.filter((e) => !e.installed);
-  const newest = entries
-    .filter((e) => e.listing?.added)
-    .sort((a, b) =>
-      (b.listing?.added ?? "").localeCompare(a.listing?.added ?? ""),
-    )
-    .slice(0, 18);
   const used = PLUGIN_CATEGORIES.filter((c) =>
     entries.some((e) => e.listing?.categories.includes(c)),
   );
@@ -137,30 +131,7 @@ export function StoreHome({
 
       <FeaturedSection entries={entries} />
 
-      {newest.length > 0 && (
-        <section className={styles.homeSection}>
-          <header className={styles.homeHead}>
-            <h2>{text.t("newestTitle")}</h2>
-          </header>
-          <NewestRow>
-            {newest.map((entry) => (
-              <li key={entry.id}>
-                <Link
-                  href={storeHref({ plugin: entry.id })}
-                  className={styles.newestItem}
-                >
-                  <PluginTile id={entry.id} name={entry.name} />
-                  <span className={styles.itemText}>
-                    <span className={styles.itemName}>{entry.name}</span>
-                    <span className={styles.itemSub}>{entry.description}</span>
-                  </span>
-                  <CardState entry={entry} />
-                </Link>
-              </li>
-            ))}
-          </NewestRow>
-        </section>
-      )}
+      <NewestSection entries={entries} />
 
       <section className={styles.homeSection} id="all-plugins">
         <header className={styles.homeHead}>
@@ -221,6 +192,42 @@ export function featurePreviewUrl(entry: StoreEntry): string {
   return (
     entry.installed?.previews[0]?.src ??
     `/api/plugin-listed-previews/${encodeURIComponent(entry.id)}`
+  );
+}
+
+/** What's new in the directory (BARY-237): up to 18, newest first. */
+export function NewestSection({ entries }: { entries: StoreEntry[] }) {
+  const text = usePluginText();
+  const newest = entries
+    .filter((e) => e.listing?.added)
+    .sort((a, b) =>
+      (b.listing?.added ?? "").localeCompare(a.listing?.added ?? ""),
+    )
+    .slice(0, 18);
+  if (newest.length === 0) return null;
+  return (
+    <section className={styles.homeSection}>
+      <header className={styles.homeHead}>
+        <h2>{text.t("newestTitle")}</h2>
+      </header>
+      <NewestRow>
+        {newest.map((entry) => (
+          <li key={entry.id}>
+            <Link
+              href={storeHref({ plugin: entry.id })}
+              className={styles.newestItem}
+            >
+              <PluginTile id={entry.id} name={entry.name} />
+              <span className={styles.itemText}>
+                <span className={styles.itemName}>{entry.name}</span>
+                <span className={styles.itemSub}>{entry.description}</span>
+              </span>
+              <CardState entry={entry} />
+            </Link>
+          </li>
+        ))}
+      </NewestRow>
+    </section>
   );
 }
 
