@@ -2481,17 +2481,67 @@
   }
 }
 
-/* Newest: compact cards in columns, the same frame as the grid below. */
+/* Newest: compact cards, three to a column, the columns in a row that
+   scrolls sideways (`NewestRow`). Two columns across — and the next peeking
+   in when there are more — one on a tablet. */
 .newest {
+  --columns: 2;
+
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  grid-auto-flow: column;
+  grid-template-rows: repeat(3, auto);
+  grid-auto-columns: calc(
+    (100% - (var(--columns) - 1) * 1rem) / var(--columns)
+  );
   gap: 0.5rem 1rem;
-  margin: 0;
-  padding: 0;
+  margin: -0.25rem 0;
+  padding: 0.25rem 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
   list-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &:has(> :nth-child(7)) {
+    --columns: 2.15;
+  }
+
+  @include bp.tablet-down {
+    --columns: 1;
+
+    &:has(> :nth-child(4)) {
+      --columns: 1.12;
+    }
+  }
+}
+
+/* Arrows beside a row that scrolls, while there's more that way. */
+.rowArrow {
+  z-index: 1;
+
+  &[data-side="prev"] {
+    left: -1.25rem;
+  }
+
+  &[data-side="next"] {
+    right: -1.25rem;
+  }
+
+  &:disabled {
+    display: none;
+  }
+
+  @include bp.coarse {
+    display: none;
+  }
 }
 
 .newestItem {
+  scroll-snap-align: start;
   display: flex;
   align-items: center;
   gap: 0.75rem;

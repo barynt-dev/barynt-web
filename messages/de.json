@@ -2822,6 +2822,8 @@
     "previousFeatured": "Vorheriges vorgestelltes Plugin",
     "nextFeatured": "Nächstes vorgestelltes Plugin",
     "featuredShow": "{name} zeigen",
+    "previousNewest": "Vorherige neue Plugins",
+    "nextNewest": "Weitere neue Plugins",
     "newestTitle": "Neu im Verzeichnis",
     "categoryAll": "Alle",
     "category": {

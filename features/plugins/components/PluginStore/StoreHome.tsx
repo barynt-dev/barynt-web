@@ -10,6 +10,7 @@ import { PLUGIN_CATEGORIES } from "@/lib/plugins/directory";
 import { preferredVersion } from "@/lib/plugins/semver";
 import { PluginBadges, usePluginText } from "../shared";
 import { FeaturedCarousel } from "./FeaturedCarousel";
+import { NewestRow } from "./NewestRow";
 import { storeHref } from "./PluginStore";
 import { PluginTile, tileHue } from "./PluginTile";
 import styles from "./pluginStore.module.scss";
@@ -43,7 +44,7 @@ export function StoreHome({
     .sort((a, b) =>
       (b.listing?.added ?? "").localeCompare(a.listing?.added ?? ""),
     )
-    .slice(0, 4);
+    .slice(0, 18);
   const used = PLUGIN_CATEGORIES.filter((c) =>
     entries.some((e) => e.listing?.categories.includes(c)),
   );
@@ -141,7 +142,7 @@ export function StoreHome({
           <header className={styles.homeHead}>
             <h2>{text.t("newestTitle")}</h2>
           </header>
-          <ul className={styles.newest}>
+          <NewestRow>
             {newest.map((entry) => (
               <li key={entry.id}>
                 <Link
@@ -157,7 +158,7 @@ export function StoreHome({
                 </Link>
               </li>
             ))}
-          </ul>
+          </NewestRow>
         </section>
       )}
 
