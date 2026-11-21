@@ -2560,6 +2560,22 @@
       --columns: 1.08;
     }
   }
+
+  /* Endless (`NewestRow`): one row of columns, each of up to three cards. */
+  &[data-loop] {
+    grid-auto-flow: column;
+    grid-template-rows: none;
+    grid-template-columns: none;
+  }
+}
+
+.newestColumn {
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  min-width: 0;
+  scroll-snap-align: start;
 }
 
 /* Arrows beside a row that scrolls, while there's more that way. */

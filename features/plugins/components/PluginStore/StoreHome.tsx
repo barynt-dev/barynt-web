@@ -210,23 +210,22 @@ export function NewestSection({ entries }: { entries: StoreEntry[] }) {
       <header className={styles.homeHead}>
         <h2>{text.t("newestTitle")}</h2>
       </header>
-      <NewestRow>
-        {newest.map((entry) => (
-          <li key={entry.id}>
-            <Link
-              href={storeHref({ plugin: entry.id })}
-              className={styles.newestItem}
-            >
-              <PluginTile id={entry.id} name={entry.name} />
-              <span className={styles.itemText}>
-                <span className={styles.itemName}>{entry.name}</span>
-                <span className={styles.itemSub}>{entry.description}</span>
-              </span>
-              <CardState entry={entry} />
-            </Link>
-          </li>
+      <NewestRow
+        cards={newest.map((entry) => (
+          <Link
+            key={entry.id}
+            href={storeHref({ plugin: entry.id })}
+            className={styles.newestItem}
+          >
+            <PluginTile id={entry.id} name={entry.name} />
+            <span className={styles.itemText}>
+              <span className={styles.itemName}>{entry.name}</span>
+              <span className={styles.itemSub}>{entry.description}</span>
+            </span>
+            <CardState entry={entry} />
+          </Link>
         ))}
-      </NewestRow>
+      />
     </section>
   );
 }
