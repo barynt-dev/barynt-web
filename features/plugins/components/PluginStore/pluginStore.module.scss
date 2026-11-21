@@ -2218,11 +2218,10 @@
 }
 
 /* More than three: a carousel after Material Design 3's hero carousel. The
-   card in focus (`data-slot="lead"`) is large and looks like a lone featured
-   plugin; beside it small ones (`side`) with logo, name and kind. The row
-   starts at the card before the focused one (`--offset`), and the focused
-   one leaves room for one small card per neighbour (`--sides`) — both set by
-   `FeaturedCarousel`. */
+   card in focus (`data-slot="lead"`) is large, always as wide, and looks
+   like a lone featured plugin; two small ones (`side`) beside it show logo
+   and name. The row starts where `FeaturedCarousel` says (`--offset`, in
+   small cards) and slides, the cards growing and shrinking with it. */
 .featuredWrap[data-carousel] {
   --gap: 1rem;
   --small-size: 6rem;
@@ -2258,10 +2257,17 @@
         animation: feature-in 320ms ease 140ms backwards;
       }
 
+      /* The logo grows and shrinks with its card. */
+      .featureLogo > * {
+        transition:
+          width 400ms cubic-bezier(0.2, 0, 0, 1),
+          height 400ms cubic-bezier(0.2, 0, 0, 1),
+          font-size 400ms cubic-bezier(0.2, 0, 0, 1),
+          border-radius 400ms cubic-bezier(0.2, 0, 0, 1);
+      }
+
       &[data-slot="lead"] {
-        flex-basis: calc(
-          100% - var(--sides) * (var(--small-size) + var(--gap))
-        );
+        flex-basis: calc(100% - 2 * (var(--small-size) + var(--gap)));
         padding-right: 1.75rem;
 
         & > :not(.featurePreview) {
@@ -2347,10 +2353,12 @@
   }
 }
 
-/* The same, by another name: a new name restarts it when a card changes. */
+/* The large card's, by another name — a new name restarts it when a card
+   changes size — with its text rising a little into place. */
 @keyframes feature-in-lead {
   from {
     opacity: 0;
+    transform: translateY(0.375rem);
   }
 }
 

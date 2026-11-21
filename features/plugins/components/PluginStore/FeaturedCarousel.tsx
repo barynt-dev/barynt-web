@@ -26,10 +26,11 @@ function cardAt(track: Element, target: EventTarget): number {
  * The featured cards (BARY-237) under their heading. Up to three sit side by
  * side. With more they are a carousel like Material Design 3's hero
  * carousel: the card in focus is large — laid out like a lone featured
- * plugin — with a small one beside it showing logo, name and kind: on the
- * right at the start, on the left at the end, on both sides in between. The
- * arrows at its sides (as on the screenshots), a click on a small card, a swipe or tabbing into a
- * card move on. CSS does the sizes and the slide; this holds the position.
+ * plugin, always the same width — and two small ones (logo and name) beside
+ * it: both on the right at the start, both on the left at the end, one on
+ * each side in between. The arrows at its sides, a click on a small card, a
+ * swipe or tabbing into a card move on, animated. CSS does the sizes and the
+ * slide; this holds the position.
  */
 export function FeaturedCarousel({
   head,
@@ -47,10 +48,9 @@ export function FeaturedCarousel({
   const go = (to: number) => setAt(Math.min(Math.max(to, 0), last));
   const lead = Math.min(at, last);
   const carousel = cards.length > 3;
-  // The row starts at the card before the one in focus, and the focused
-  // card leaves room for a small one on each side that has one.
-  const offset = Math.max(lead - 1, 0);
-  const sides = (lead > 0 ? 1 : 0) + (lead < last ? 1 : 0);
+  // The row starts at the card before the one in focus — or as far left or
+  // right as it goes, so there are always two small cards beside it.
+  const offset = Math.max(Math.min(lead - 1, last - 2), 0);
 
   return (
     <section
@@ -62,9 +62,7 @@ export function FeaturedCarousel({
         {/* biome-ignore lint/a11y/noStaticElementInteractions: a swipe is an extra way to the arrows' step; the cards themselves are links */}
         <div
           className={styles.featured}
-          style={
-            { "--offset": offset, "--sides": sides } as React.CSSProperties
-          }
+          style={{ "--offset": offset } as React.CSSProperties}
           onPointerDown={(e) => {
             if (e.pointerType !== "mouse") swipe.current = { x: e.clientX };
           }}
