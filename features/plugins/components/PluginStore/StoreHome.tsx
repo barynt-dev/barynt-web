@@ -136,50 +136,49 @@ export function StoreHome({
       </div>
 
       {featured.length > 0 && (
-        <section className={styles.homeSection}>
-          <header className={styles.homeHead}>
-            <h2>{text.t("featuredTitle")}</h2>
-            <span>{text.t("featuredSub")}</span>
-          </header>
-          <FeaturedCarousel>
-            {featured.map((entry) => {
-              const version =
-                entry.installed?.version ??
-                preferredVersion(entry.listing?.versions ?? []);
-              return (
-                <Link
-                  key={entry.id}
-                  href={storeHref({ plugin: entry.id })}
-                  className={styles.featureCard}
-                  data-hue={tileHue(entry.id)}
-                >
-                  <FeaturePreview src={featurePreviewUrl(entry)} />
-                  <span className={styles.featureLogo}>
-                    <PluginTile id={entry.id} name={entry.name} size="hero" />
+        <FeaturedCarousel
+          head={
+            <>
+              <h2>{text.t("featuredTitle")}</h2>
+              <span>{text.t("featuredSub")}</span>
+            </>
+          }
+        >
+          {featured.map((entry) => {
+            const version =
+              entry.installed?.version ??
+              preferredVersion(entry.listing?.versions ?? []);
+            return (
+              <Link
+                key={entry.id}
+                href={storeHref({ plugin: entry.id })}
+                className={styles.featureCard}
+                data-hue={tileHue(entry.id)}
+              >
+                <FeaturePreview src={featurePreviewUrl(entry)} />
+                <span className={styles.featureLogo}>
+                  <PluginTile id={entry.id} name={entry.name} size="hero" />
+                </span>
+                <span className={styles.featureHead}>
+                  <span className={styles.featureName}>{entry.name}</span>
+                  <span className={styles.itemSub}>
+                    {entry.author}
+                    {version && ` · v${version}`}
                   </span>
-                  <span className={styles.featureHead}>
-                    <span className={styles.featureName}>{entry.name}</span>
-                    <span className={styles.itemSub}>
-                      {entry.author}
-                      {version && ` · v${version}`}
-                    </span>
-                  </span>
-                  <span className={styles.featureText}>
-                    {entry.description}
-                  </span>
-                  <span className={styles.featureFoot}>
-                    <PluginBadges
-                      kind={entry.kind}
-                      levels={entry.levels}
-                      size="md"
-                    />
-                    <CardState entry={entry} />
-                  </span>
-                </Link>
-              );
-            })}
-          </FeaturedCarousel>
-        </section>
+                </span>
+                <span className={styles.featureText}>{entry.description}</span>
+                <span className={styles.featureFoot}>
+                  <PluginBadges
+                    kind={entry.kind}
+                    levels={entry.levels}
+                    size="md"
+                  />
+                  <CardState entry={entry} />
+                </span>
+              </Link>
+            );
+          })}
+        </FeaturedCarousel>
       )}
 
       {newest.length > 0 && (

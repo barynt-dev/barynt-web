@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@iconify/react";
 import {
   Children,
   cloneElement,
@@ -9,28 +10,36 @@ import {
   useRef,
   useState,
 } from "react";
+import { Button } from "@/components/ui/atoms/Button/Button";
+import { usePluginText } from "../shared";
 import styles from "./pluginStore.module.scss";
 
 const SWIPE_PX = 40;
 
 /** The index of the card holding `target`, -1 for none. */
-function cardAt(root: HTMLElement, target: EventTarget): number {
-  const track = root.firstElementChild;
-  if (!track) return -1;
+function cardAt(track: Element, target: EventTarget): number {
   return Array.from(track.children).findIndex((card) =>
     card.contains(target as Node),
   );
 }
 
 /**
- * The featured cards (BARY-237). Up to three sit side by side. With more
- * they are a carousel like Material Design 3's hero carousel: the card in
- * front is large — laid out like a lone featured plugin — the ones behind it
- * small, the next peeking in. A step (a click on a small card, a swipe,
- * tabbing into a card) hands the large size on. CSS decides between the two by the number of
- * cards; the sizes and the slide are CSS too, this holds the position.
+ * The featured cards (BARY-237) under their heading. Up to three sit side by
+ * side. With more they are a carousel like Material Design 3's hero
+ * carousel: the card in focus is large — laid out like a lone featured
+ * plugin — and the next one waits small on its right, masked down to its
+ * logo; on the last card the one before waits on the left. The arrows in
+ * the heading, a click on the small card, a swipe or tabbing into a card
+ * move on. CSS does the sizes and the slide; this holds the position.
  */
-export function FeaturedCarousel({ children }: { children: ReactNode }) {
+export function FeaturedCarousel({
+  head,
+  children,
+}: {
+  head: ReactNode;
+  children: ReactNode;
+}) {
+  const text = usePluginText();
   const cards = Children.toArray(children);
   const [at, setAt] = useState(0);
   const swipe = useRef<{ x: number } | null>(null);
@@ -38,13 +47,40 @@ export function FeaturedCarousel({ children }: { children: ReactNode }) {
   const last = Math.max(cards.length - 1, 0);
   const go = (to: number) => setAt(Math.min(Math.max(to, 0), last));
   const lead = Math.min(at, last);
+  const carousel = cards.length > 3;
+  // The row's offset in small cards: the one before shows only on the last.
+  const offset = Math.max(Math.min(lead, last - 1), 0);
 
   return (
-    <div className={styles.featuredWrap}>
+    <section
+      className={`${styles.homeSection} ${styles.featuredWrap}`}
+      data-carousel={carousel ? "" : undefined}
+    >
+      <header className={styles.homeHead}>
+        {head}
+        <div className={styles.featuredNav}>
+          <Button
+            variant="outline"
+            size="sm"
+            icon={<Icon icon="lucide:chevron-left" width={16} />}
+            aria-label={text.t("previousFeatured")}
+            disabled={lead === 0}
+            onClick={() => go(lead - 1)}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            icon={<Icon icon="lucide:chevron-right" width={16} />}
+            aria-label={text.t("nextFeatured")}
+            disabled={lead === last}
+            onClick={() => go(lead + 1)}
+          />
+        </div>
+      </header>
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a swipe is an extra way to the arrows' step; the cards themselves are links */}
       <div
         className={styles.featured}
-        style={{ "--lead": lead } as React.CSSProperties}
+        style={{ "--offset": offset } as React.CSSProperties}
         onPointerDown={(e) => {
           if (e.pointerType !== "mouse") swipe.current = { x: e.clientX };
         }}
@@ -58,10 +94,16 @@ export function FeaturedCarousel({ children }: { children: ReactNode }) {
             go(lead + (dx < 0 ? 1 : -1));
           }
         }}
+        onPointerCancel={() => {
+          swipe.current = null;
+        }}
         onClickCapture={(e) => {
           // A swipe that ended on a card is not a click on it, and a click on
           // a small card brings it to the front instead of opening it.
-          const i = cardAt(e.currentTarget, e.target);
+          const i = cardAt(
+            e.currentTarget.firstElementChild ?? e.currentTarget,
+            e.target,
+          );
           if (swiped.current || (i >= 0 && i !== lead)) {
             e.preventDefault();
             e.stopPropagation();
@@ -69,27 +111,27 @@ export function FeaturedCarousel({ children }: { children: ReactNode }) {
           }
           swiped.current = false;
         }}
-        onPointerCancel={() => {
-          swipe.current = null;
-        }}
         onFocus={(e) => {
           // Only a keyboard's focus: a click focuses too, and must still
           // find the card it hit as it was.
           if (!(e.target as HTMLElement).matches(":focus-visible")) return;
-          const i = cardAt(e.currentTarget, e.target);
+          const i = cardAt(
+            e.currentTarget.firstElementChild ?? e.currentTarget,
+            e.target,
+          );
           if (i >= 0 && i !== lead) go(i);
         }}
       >
         <div className={styles.featuredTrack}>
           {cards.map((card, i) =>
-            isValidElement(card)
+            carousel && isValidElement(card)
               ? cloneElement(card as ReactElement<Record<string, unknown>>, {
-                  "data-lead": i === lead ? "" : undefined,
+                  "data-slot": i === lead ? "lead" : "side",
                 })
               : card,
           )}
         </div>
       </div>
-    </div>
+    </section>
   );
 }
