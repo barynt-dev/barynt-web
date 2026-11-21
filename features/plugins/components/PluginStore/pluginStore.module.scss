@@ -2342,6 +2342,10 @@
         padding: 0.5rem 0.5rem 0.625rem;
         cursor: pointer;
 
+        .featureLogo {
+          justify-self: center;
+        }
+
         .featureLogo > * {
           border-radius: 1rem;
         }
@@ -2410,6 +2414,9 @@
     /* The small cards: the logo over their width, the name running up the
        rest of the pill, as on a book's spine. */
     .featuredTrack > [data-slot="side"] {
+      /* The logo exactly the card's width less its padding. */
+      --hero-size: calc(var(--small-size) - 0.75rem);
+
       padding: 0.375rem 0.375rem 0.75rem;
 
       .featureHead {
