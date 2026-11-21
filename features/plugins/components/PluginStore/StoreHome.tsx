@@ -174,12 +174,6 @@ export function StoreHome({
                     />
                     <CardState entry={entry} />
                   </span>
-                  <Icon
-                    icon="lucide:arrow-up-right"
-                    width={18}
-                    className={styles.featureGo}
-                    aria-hidden
-                  />
                 </Link>
               );
             })}

@@ -344,7 +344,7 @@ describe("PluginStore", () => {
     // The newest real release, not the newer beta.
     expect(section).toContain("Acme · v2.0.0");
     expect(section).not.toContain("v2.1.0-beta.1");
-    expect(section).toContain('data-icon="lucide:arrow-up-right"');
+    expect(section).not.toContain("arrow-up-right");
   });
 
   it("takes a featured card's screenshot from the installed version, else from the store's release", () => {

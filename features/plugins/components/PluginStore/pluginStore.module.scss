@@ -1907,7 +1907,7 @@
 }
 
 /* A featured plugin's first screenshot, fading in from the right of its card
-   and out towards the text. Under the texture, over the haze. */
+   and out towards the text. Over the haze. */
 .featurePreview {
   position: absolute;
   z-index: -2;
@@ -1939,8 +1939,7 @@
 }
 
 /* A featured plugin: its logo large and glowing in its colour, a haze of the
-   same colour in the corner, a fine dotted texture fading out from it. One
-   card on its own spreads out as a banner. */
+   same colour in the corner. One card on its own spreads out as a banner. */
 .featureCard {
   @include hues;
 
@@ -1992,20 +1991,6 @@
     transition:
       opacity 240ms ease,
       transform 320ms ease;
-  }
-
-  /* The texture. */
-  &::after {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    inset: 0;
-    background-image: radial-gradient(
-      color-mix(in srgb, white 9%, transparent) 1px,
-      transparent 1.5px
-    );
-    background-size: 14px 14px;
-    mask-image: linear-gradient(to left, black, transparent 65%);
   }
 
   &:hover,
@@ -2156,39 +2141,6 @@
     .featureFoot {
       max-width: none;
     }
-  }
-}
-
-/* The way in: a round arrow that appears on hover. */
-.featureGo {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  box-sizing: content-box;
-  padding: 0.375rem;
-  border: 1px solid color-mix(in oklab, var(--hue) 40%, var(--outline-variant));
-  border-radius: 50%;
-  background: color-mix(in oklab, var(--hue) 18%, var(--surface));
-  color: var(--on-surface);
-  opacity: 0;
-  transform: translate(-0.25rem, 0.25rem);
-  transition:
-    opacity 160ms ease,
-    transform 200ms ease;
-
-  .featureCard:is(:hover, :focus-visible) & {
-    opacity: 1;
-    transform: none;
-  }
-
-  /* Without a hover there's nothing to wait for. */
-  @include bp.no-hover {
-    opacity: 1;
-    transform: none;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
   }
 }
 
