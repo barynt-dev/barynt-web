@@ -9,6 +9,7 @@ import { Link } from "@/i18n/navigation";
 import { PLUGIN_CATEGORIES } from "@/lib/plugins/directory";
 import { preferredVersion } from "@/lib/plugins/semver";
 import { PluginBadges, usePluginText } from "../shared";
+import { FeaturedCarousel } from "./FeaturedCarousel";
 import { storeHref } from "./PluginStore";
 import { PluginTile, tileHue } from "./PluginTile";
 import styles from "./pluginStore.module.scss";
@@ -37,7 +38,7 @@ export function StoreHome({
   const on = installed.filter((e) => (e.installed?.activations ?? 0) > 0);
   const updates = entries.filter((e) => e.update);
   const listed = entries.filter((e) => !e.installed);
-  const featured = entries.filter((e) => e.listing?.featured).slice(0, 3);
+  const featured = entries.filter((e) => e.listing?.featured).slice(0, 12);
   const newest = entries
     .filter((e) => e.listing?.added)
     .sort((a, b) =>
@@ -140,7 +141,7 @@ export function StoreHome({
             <h2>{text.t("featuredTitle")}</h2>
             <span>{text.t("featuredSub")}</span>
           </header>
-          <div className={styles.featured}>
+          <FeaturedCarousel>
             {featured.map((entry) => {
               const version =
                 entry.installed?.version ??
@@ -177,7 +178,7 @@ export function StoreHome({
                 </Link>
               );
             })}
-          </div>
+          </FeaturedCarousel>
         </section>
       )}
 

@@ -1906,6 +1906,88 @@
   gap: 1rem;
 }
 
+.featuredWrap {
+  position: relative;
+}
+
+.featuredArrow {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--surface) 88%, transparent);
+  color: var(--on-surface);
+  cursor: pointer;
+  transform: translateY(-50%);
+
+  &[data-side="prev"] {
+    left: -0.75rem;
+  }
+
+  &[data-side="next"] {
+    right: -0.75rem;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--surface-container-high);
+  }
+
+  &:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* More than three: a carousel. The cards keep a width that lets the next
+   one peek in, and snap into place; arrows for a mouse, a swipe does it on
+   touch. */
+.featuredWrap:has(.featured > :nth-child(4)) {
+  .featured {
+    display: flex;
+    /* Room for the hover lift and the shadow, which scrolling would clip. */
+    margin-block: -0.5rem;
+    padding-block: 0.5rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    & > * {
+      flex: 0 0 calc((100% - 2rem) / 2.7);
+      scroll-snap-align: start;
+    }
+
+    @include bp.tablet-down {
+      & > * {
+        flex-basis: 70%;
+      }
+    }
+
+    @include bp.phone {
+      & > * {
+        flex-basis: 85%;
+      }
+    }
+  }
+
+  .featuredArrow {
+    display: inline-flex;
+
+    @include bp.coarse {
+      display: none;
+    }
+  }
+}
+
 /* A featured plugin's first screenshot, fading in from the right of its card
    and out towards the text. Over the haze. */
 .featurePreview {
