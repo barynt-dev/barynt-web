@@ -2250,16 +2250,15 @@
         }
       }
 
-      /* Narrow: the logo fills the top, the name below it, the state in
-         the bottom right corner. */
+      /* Narrow: the logo fills the top, the name below it, cut off where it
+         runs out of room. */
       &[data-slot="side"] {
         --hero-size: calc(var(--small-size) - 1rem);
 
         grid-template-areas:
           "logo"
-          "head"
-          "foot";
-        grid-template-rows: auto 1fr auto;
+          "head";
+        grid-template-rows: auto minmax(0, 1fr);
         grid-template-columns: minmax(0, 1fr);
         align-content: stretch;
         gap: 0.5rem;
@@ -2275,30 +2274,22 @@
           padding-inline: 0.125rem;
         }
 
-        .featureName {
-          display: -webkit-box;
+        /* The name takes what room is left and adds none: a long one is cut
+           off instead of making the row taller. */
+        .featureHead {
+          align-self: stretch;
           overflow: hidden;
-          font-size: var(--text-xs);
-          overflow-wrap: anywhere;
-          -webkit-box-orient: vertical;
-          -webkit-line-clamp: 3;
-          line-clamp: 3;
+          contain: size;
         }
 
-        /* Only the state (installed, update), not the badges. */
-        .featureFoot {
-          justify-content: flex-end;
-
-          & > :first-child {
-            display: none;
-          }
-
-          .cardState {
-            margin: 0;
-          }
+        .featureName {
+          font-size: var(--text-md);
+          line-height: 1.25;
+          overflow-wrap: anywhere;
         }
 
         .featureText,
+        .featureFoot,
         .featureHead .itemSub,
         .featurePreview {
           display: none;
@@ -2313,12 +2304,6 @@
 
   @include bp.phone {
     --small-size: 4.5rem;
-
-    .featuredTrack > [data-slot="side"] {
-      .featureFoot {
-        display: none;
-      }
-    }
   }
 
   @media (prefers-reduced-motion: reduce) {
