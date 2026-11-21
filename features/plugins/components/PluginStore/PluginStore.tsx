@@ -287,7 +287,9 @@ export function PluginStore({
     <>
       <PageHeader
         divider={false}
-        title={text.t("adminTitle")}
+        // On a phone the plugin is the whole screen: its name on top, the
+        // arrow back to the list beside it.
+        title={isPhone && selected ? selected.name : text.t("adminTitle")}
         leading={
           // Up a level, as an arrow like everywhere on a phone or tablet,
           // whose admin menu sits behind the hamburger: on a phone from a
