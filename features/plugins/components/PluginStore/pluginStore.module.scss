@@ -2206,7 +2206,7 @@
    `FeaturedCarousel`. */
 .featuredWrap[data-carousel] {
   --gap: 1rem;
-  --small-size: 7.5rem;
+  --small-size: 6rem;
 
   .featured {
     /* Clipped sideways only: the shadows and the hover lift reach out above
@@ -2250,38 +2250,44 @@
         }
       }
 
+      /* Narrow: the logo fills the top, the name below it, the state in
+         the bottom right corner. */
       &[data-slot="side"] {
-        --hero-size: 3.5rem;
+        --hero-size: calc(var(--small-size) - 1rem);
 
         grid-template-areas:
           "logo"
           "head"
           "foot";
+        grid-template-rows: auto 1fr auto;
         grid-template-columns: minmax(0, 1fr);
-        justify-items: center;
+        align-content: stretch;
         gap: 0.5rem;
-        padding: 1.25rem 0.5rem;
-        text-align: center;
+        padding: 0.5rem 0.5rem 0.625rem;
         cursor: pointer;
 
+        .featureLogo > * {
+          border-radius: 1rem;
+        }
+
         .featureHead {
-          align-items: center;
+          align-self: start;
+          padding-inline: 0.125rem;
         }
 
         .featureName {
           display: -webkit-box;
           overflow: hidden;
-          font-size: var(--text-sm);
+          font-size: var(--text-xs);
           overflow-wrap: anywhere;
           -webkit-box-orient: vertical;
-          -webkit-line-clamp: 2;
-          line-clamp: 2;
+          -webkit-line-clamp: 3;
+          line-clamp: 3;
         }
 
         /* Only the state (installed, update), not the badges. */
         .featureFoot {
-          justify-content: center;
-          align-self: center;
+          justify-content: flex-end;
 
           & > :first-child {
             display: none;
@@ -2306,13 +2312,9 @@
   }
 
   @include bp.phone {
-    --small-size: 5.5rem;
+    --small-size: 4.5rem;
 
     .featuredTrack > [data-slot="side"] {
-      --hero-size: 2.75rem;
-
-      padding-inline: 0.5rem;
-
       .featureFoot {
         display: none;
       }
