@@ -2256,12 +2256,12 @@
 }
 
 /* More than three: a carousel after Material Design 3's hero carousel. The
-   card in focus (`data-slot="lead"`) is large, always as wide and in the
-   middle, and looks like a lone featured plugin; the one before and the one
-   after wait small (`side`) with logo and name — the first card has room
-   to its left, the last to its right. The row slides by one small card per
-   step (`--lead`, set by `FeaturedCarousel`), the cards growing and
-   shrinking with it. */
+   card in focus (`data-slot="lead"`) is large and looks like a lone featured
+   plugin; the one before and the one after wait small (`side`) with logo and
+   name. At either end the large card takes the missing neighbour's room
+   (`--sides`). The row starts at the card before the focused one
+   (`--offset`) and slides, the cards growing and shrinking with it — both
+   set by `FeaturedCarousel`. */
 .featuredWrap[data-carousel] {
   --gap: 1rem;
   --small-size: 6rem;
@@ -2280,7 +2280,7 @@
   .featuredTrack {
     display: flex;
     gap: var(--gap);
-    translate: calc((1 - var(--lead)) * (var(--small-size) + var(--gap))) 0;
+    translate: calc(var(--offset) * -1 * (var(--small-size) + var(--gap))) 0;
     transition: translate 400ms cubic-bezier(0.2, 0, 0, 1);
 
     & > * {
@@ -2307,7 +2307,9 @@
       }
 
       &[data-slot="lead"] {
-        flex-basis: calc(100% - 2 * (var(--small-size) + var(--gap)));
+        flex-basis: calc(
+          100% - var(--sides) * (var(--small-size) + var(--gap))
+        );
         padding-right: 1.75rem;
 
         & > :not(.featurePreview) {

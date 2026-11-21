@@ -26,8 +26,8 @@ function cardAt(track: Element, target: EventTarget): number {
  * The featured cards (BARY-237) under their heading. Up to three sit side by
  * side. With more they are a carousel like Material Design 3's hero
  * carousel: the card in focus is large — laid out like a lone featured
- * plugin, always the same width, in the middle — with one small card (logo
- * and name) on each side that has a neighbour. The arrows at its sides, the
+ * plugin — with one small card (logo and name) on each side that has a
+ * neighbour; at either end it takes the missing one's room. The arrows at its sides, the
  * indicator below, a click on a small card, a swipe or tabbing into a card
  * move on, animated. CSS does the sizes and the slide; this holds the
  * position.
@@ -51,6 +51,10 @@ export function FeaturedCarousel({
   const go = (to: number) => setAt(Math.min(Math.max(to, 0), last));
   const lead = Math.min(at, last);
   const carousel = cards.length > 3;
+  // The row starts at the card before the one in focus, and the focused card
+  // takes the room of a neighbour it doesn't have (at either end).
+  const offset = Math.max(lead - 1, 0);
+  const sides = (lead > 0 ? 1 : 0) + (lead < last ? 1 : 0);
 
   return (
     <section
@@ -62,7 +66,9 @@ export function FeaturedCarousel({
         {/* biome-ignore lint/a11y/noStaticElementInteractions: a swipe is an extra way to the arrows' step; the cards themselves are links */}
         <div
           className={styles.featured}
-          style={{ "--lead": lead } as React.CSSProperties}
+          style={
+            { "--offset": offset, "--sides": sides } as React.CSSProperties
+          }
           onPointerDown={(e) => {
             if (e.pointerType !== "mouse") swipe.current = { x: e.clientX };
           }}
