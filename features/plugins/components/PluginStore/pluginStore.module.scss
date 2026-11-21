@@ -2394,8 +2394,10 @@
   }
 
   /* A tablet's narrower column: the large card's text under its logo, as a
-     lone featured plugin has it on a phone. */
+     lone featured plugin has it on a phone, and slim small cards. */
   @include bp.tablet-down {
+    --small-size: 4.5rem;
+
     .featuredTrack > [data-slot="lead"] {
       --hero-size: 4.5rem;
 
@@ -2406,10 +2408,6 @@
       column-gap: 1rem;
       padding: 1.25rem;
     }
-  }
-
-  @include bp.phone {
-    --small-size: 3.5rem;
 
     /* The small cards: the logo over their width, the name running up the
        rest of the pill, as on a book's spine. */
@@ -2438,6 +2436,10 @@
         line-clamp: none;
       }
     }
+  }
+
+  @include bp.phone {
+    --small-size: 3.5rem;
 
     .featuredTrack > [data-slot="lead"] {
       --hero-size: 3.5rem;
