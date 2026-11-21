@@ -84,7 +84,7 @@ anywhere on a web server — with one entry per plugin:
 | `levels`, `kind` | yes | Must match the release's manifest. |
 | `versions` | yes | Every version the directory vouches for, with its [release hash](#the-release-hash). |
 | `categories` | no | Up to three of `development`, `planning`, `communication`, `reports`, `time`, `automation`, `support`. |
-| `featured` | no | `true` for the store's "Featured" row. |
+| `featured` | no | `true` for the store's "Featured" row: a card with the plugin's logo, and its first screenshot fading in from the right. More than three become a carousel, one large card at a time; on a phone the row sits above the list. |
 | `added` | no | Since when it's listed, `YYYY-MM-DD`, for "New in the directory". |
 | `notes` | no | Release notes per version, up to 2000 characters each. Plain text; lines starting with `- ` become a list. |
 | `locales` | no | The description in Barynt's other languages, as in the [manifest](plugins-manifest.md#fields) — what the store shows before the plugin is installed. |
@@ -137,7 +137,11 @@ plugin shows those of its own version.
 ## Updates
 
 Release the new version, add it with its hash to `versions`, and the
-platform admin sees **Update** in the store. If the new version asks for
+platform admin sees **Update** in the store. A real release comes first: the
+store preselects the newest one even when a newer beta is listed, and offers
+**Update** to a release; a beta (`1.2.0-beta.1`) only to a plugin that is on
+a beta already, and a plugin that has no release at all starts on its newest
+beta. The version picker lists releases and betas under their own headings. If the new version asks for
 **more capabilities**, it doesn't get them silently: wherever it's on, it
 keeps running with only the capabilities confirmed before — a call that
 needs a new one is refused with `capability_not_confirmed` — until someone

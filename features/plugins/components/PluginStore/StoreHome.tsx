@@ -1,13 +1,16 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/atoms/Badge/Badge";
 import { Chip } from "@/components/ui/atoms/Chip/Chip";
 import type { StoreEntry, StoreView } from "@/features/plugins/queries";
 import { Link } from "@/i18n/navigation";
 import { PLUGIN_CATEGORIES } from "@/lib/plugins/directory";
+import { preferredVersion } from "@/lib/plugins/semver";
 import { PluginBadges, usePluginText } from "../shared";
+import { FeaturedCarousel } from "./FeaturedCarousel";
+import { NewestRow } from "./NewestRow";
 import { storeHref } from "./PluginStore";
 import { PluginTile, tileHue } from "./PluginTile";
 import styles from "./pluginStore.module.scss";
@@ -36,13 +39,6 @@ export function StoreHome({
   const on = installed.filter((e) => (e.installed?.activations ?? 0) > 0);
   const updates = entries.filter((e) => e.update);
   const listed = entries.filter((e) => !e.installed);
-  const featured = entries.filter((e) => e.listing?.featured).slice(0, 3);
-  const newest = entries
-    .filter((e) => e.listing?.added)
-    .sort((a, b) =>
-      (b.listing?.added ?? "").localeCompare(a.listing?.added ?? ""),
-    )
-    .slice(0, 4);
   const used = PLUGIN_CATEGORIES.filter((c) =>
     entries.some((e) => e.listing?.categories.includes(c)),
   );
@@ -133,66 +129,9 @@ export function StoreHome({
         </Link>
       </div>
 
-      {featured.length > 0 && (
-        <section className={styles.homeSection}>
-          <header className={styles.homeHead}>
-            <h2>{text.t("featuredTitle")}</h2>
-            <span>{text.t("featuredSub")}</span>
-          </header>
-          <div className={styles.featured}>
-            {featured.map((entry) => (
-              <Link
-                key={entry.id}
-                href={storeHref({ plugin: entry.id })}
-                className={styles.featureCard}
-                data-hue={tileHue(entry.id)}
-              >
-                <span className={styles.cardTop}>
-                  <PluginTile id={entry.id} name={entry.name} size="lg" />
-                  <span className={styles.itemText}>
-                    <span className={styles.featureName}>{entry.name}</span>
-                    <span className={styles.itemSub}>{entry.author}</span>
-                  </span>
-                </span>
-                <span className={styles.featureText}>{entry.description}</span>
-                <span className={styles.cardFoot}>
-                  <PluginBadges
-                    kind={entry.kind}
-                    levels={entry.levels}
-                    size="md"
-                  />
-                  <CardState entry={entry} />
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      <FeaturedSection entries={entries} />
 
-      {newest.length > 0 && (
-        <section className={styles.homeSection}>
-          <header className={styles.homeHead}>
-            <h2>{text.t("newestTitle")}</h2>
-          </header>
-          <ul className={styles.newest}>
-            {newest.map((entry) => (
-              <li key={entry.id}>
-                <Link
-                  href={storeHref({ plugin: entry.id })}
-                  className={styles.newestItem}
-                >
-                  <PluginTile id={entry.id} name={entry.name} />
-                  <span className={styles.itemText}>
-                    <span className={styles.itemName}>{entry.name}</span>
-                    <span className={styles.itemSub}>{entry.description}</span>
-                  </span>
-                  <CardState entry={entry} />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <NewestSection entries={entries} />
 
       <section className={styles.homeSection} id="all-plugins">
         <header className={styles.homeHead}>
@@ -247,6 +186,127 @@ export function StoreHome({
 }
 
 /** Installed, update, blocked — or nothing for a plugin that's only listed. */
+/** Where a featured plugin's first screenshot comes from: its installed
+ *  version's, else the store's release (`/api/plugin-listed-previews`). */
+export function featurePreviewUrl(entry: StoreEntry): string {
+  return (
+    entry.installed?.previews[0]?.src ??
+    `/api/plugin-listed-previews/${encodeURIComponent(entry.id)}`
+  );
+}
+
+/** What's new in the directory (BARY-237): up to 18, newest first. */
+export function NewestSection({ entries }: { entries: StoreEntry[] }) {
+  const text = usePluginText();
+  const newest = entries
+    .filter((e) => e.listing?.added)
+    .sort((a, b) =>
+      (b.listing?.added ?? "").localeCompare(a.listing?.added ?? ""),
+    )
+    .slice(0, 18);
+  if (newest.length === 0) return null;
+  return (
+    <section className={styles.homeSection}>
+      <header className={styles.homeHead}>
+        <h2>{text.t("newestTitle")}</h2>
+      </header>
+      <NewestRow
+        cards={newest.map((entry) => (
+          <Link
+            key={entry.id}
+            href={storeHref({ plugin: entry.id })}
+            className={styles.newestItem}
+          >
+            <PluginTile id={entry.id} name={entry.name} />
+            <span className={styles.itemText}>
+              <span className={styles.itemName}>{entry.name}</span>
+              <span className={styles.itemSub}>{entry.description}</span>
+            </span>
+            <CardState entry={entry} />
+          </Link>
+        ))}
+      />
+    </section>
+  );
+}
+
+/**
+ * What the directory puts forward (BARY-237): the store's start page, and on
+ * a phone — which has no start page — above the list.
+ */
+export function FeaturedSection({ entries }: { entries: StoreEntry[] }) {
+  const text = usePluginText();
+  const featured = entries.filter((e) => e.listing?.featured).slice(0, 12);
+  if (featured.length === 0) return null;
+  return (
+    <FeaturedCarousel
+      names={featured.map((entry) => entry.name)}
+      head={
+        <>
+          <h2>{text.t("featuredTitle")}</h2>
+          <span>{text.t("featuredSub")}</span>
+        </>
+      }
+    >
+      {featured.map((entry) => {
+        const version =
+          entry.installed?.version ??
+          preferredVersion(entry.listing?.versions ?? []);
+        return (
+          <Link
+            key={entry.id}
+            href={storeHref({ plugin: entry.id })}
+            className={styles.featureCard}
+            data-hue={tileHue(entry.id)}
+          >
+            <FeaturePreview src={featurePreviewUrl(entry)} />
+            <span className={styles.featureLogo}>
+              <PluginTile id={entry.id} name={entry.name} size="hero" />
+            </span>
+            <span className={styles.featureHead}>
+              <span className={styles.featureName}>{entry.name}</span>
+              <span className={styles.itemSub}>
+                {entry.author}
+                {version && ` · v${version}`}
+              </span>
+            </span>
+            <span className={styles.featureText}>{entry.description}</span>
+            <span className={styles.featureFoot}>
+              <PluginBadges kind={entry.kind} levels={entry.levels} size="md" />
+              <CardState entry={entry} />
+            </span>
+          </Link>
+        );
+      })}
+    </FeaturedCarousel>
+  );
+}
+
+/**
+ * A featured plugin's first screenshot, fading in from the right of its
+ * card. Asked for once mounted, so the load is always seen; a plugin
+ * without a screenshot (a 404) leaves the card as it is.
+ */
+function FeaturePreview({ src }: { src: string }) {
+  const [state, setState] = useState<"idle" | "loading" | "shown" | "none">(
+    "idle",
+  );
+  useEffect(() => setState("loading"), []);
+  if (state === "idle" || state === "none") return null;
+  return (
+    // biome-ignore lint/performance/noImgElement: a picture Barynt serves itself, behind a card
+    <img
+      className={styles.featurePreview}
+      data-shown={state === "shown" || undefined}
+      src={src}
+      alt=""
+      decoding="async"
+      onLoad={() => setState("shown")}
+      onError={() => setState("none")}
+    />
+  );
+}
+
 function CardState({ entry }: { entry: StoreEntry }) {
   const text = usePluginText();
   const state = entry.installed?.blocked

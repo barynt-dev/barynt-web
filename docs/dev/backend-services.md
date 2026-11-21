@@ -316,7 +316,11 @@ minutes, per server process; `refreshPluginSource` and every source change forge
 What's open is in the address (`?plugin=`, `?tab=overview|capabilities|versions|places`,
 `?view=sources`); "where it's on" comes from `getPluginPlaces`, only for that tab. The
 start page uses the directory's optional `categories`, `featured` and `added`
-([directory format](plugins-publishing.md#the-directory-entry)). The install dialog shows
+([directory format](plugins-publishing.md#the-directory-entry)). A featured card shows the
+plugin's first screenshot: the installed version's (`/api/plugin-previews`), else the store's
+release's (`/api/plugin-listed-previews/<id>`, loaded and checked like an install, kept in
+memory per release, `plugin.manage` only; `listedPictures` in `features/plugins/directory.ts`
+also serves the logo of a plugin that isn't installed). The install dialog shows
 `previewRelease` (loaded and checked, not stored); installing loads the release once more,
 so the server never trusts what a dialog was shown.
 

@@ -5,7 +5,6 @@ import { useFormatter } from "next-intl";
 import { useState } from "react";
 import { Badge } from "@/components/ui/atoms/Badge/Badge";
 import { Button } from "@/components/ui/atoms/Button/Button";
-import { NativeSelect } from "@/components/ui/atoms/NativeSelect/NativeSelect";
 import { Tab, Tabs } from "@/components/ui/layout/Tabs/Tabs";
 import type {
   InstalledPlugin,
@@ -13,10 +12,11 @@ import type {
   StoreEntry,
 } from "@/features/plugins/queries";
 import { Link } from "@/i18n/navigation";
-import { compareSemver } from "@/lib/plugins/semver";
+import { compareSemver, preferredVersion } from "@/lib/plugins/semver";
 import { ErrorLine, PluginBadges, usePluginText } from "../shared";
 import {
   asksMore,
+  CapabilitiesHead,
   CapabilityCards,
   ChangeRows,
   changesOf,
@@ -28,8 +28,10 @@ import { PluginTile } from "./PluginTile";
 import { PreviewGallery } from "./PreviewGallery";
 import styles from "./pluginStore.module.scss";
 import { ServiceAddressCard } from "./ServiceAddressCard";
+import { ShareButton } from "./ShareButton";
 import { STORE_TABS, type StoreTab } from "./tabs";
 import { useRelease } from "./useRelease";
+import { VersionPicker } from "./VersionPicker";
 
 /** A plugin's page in the store: header with what can be done, then tabs. */
 export function PluginDetail({
@@ -51,7 +53,8 @@ export function PluginDetail({
     ? [...STORE_TABS]
     : ["overview", "capabilities"];
   const current = tabs.includes(tab) ? tab : "overview";
-  const [version, setVersion] = useState(listed[0] ?? null);
+  // The newest real release first, even when a newer beta is listed.
+  const [version, setVersion] = useState(preferredVersion(listed));
   // What isn't stored comes from the release itself: the one picked to
   // install, or the update an installed plugin could get.
   const release = useRelease(
@@ -60,121 +63,143 @@ export function PluginDetail({
     installed ? entry.update : version,
   );
 
+  // What's shared: the plugin's own address — a homepage in its manifest,
+  // else its repository. Barynt's page for it only opens signed in.
+  const links = installed
+    ? installed.links
+    : release.status === "ready"
+      ? release.preview.links
+      : [];
+  const publicUrl =
+    links.find((l) => l.kind === "homepage")?.url ??
+    entry.listing?.repoUrl ??
+    null;
+
   return (
     <article className={styles.detail}>
-      <header className={styles.detailHead}>
-        <PluginTile id={entry.id} name={entry.name} size="lg" />
-        <div className={styles.headText}>
-          <h2 className={styles.detailName}>{entry.name}</h2>
-          <span className={styles.headMeta}>
-            {entry.author}
-            {installed?.version && <> · v{installed.version}</>}
-          </span>
-          <PluginBadges kind={entry.kind} levels={entry.levels} size="md" />
-        </div>
-        <div className={styles.headActions}>
-          {installed ? (
-            <>
-              <Button
-                variant="outline"
-                icon={
-                  <Icon
-                    icon={
-                      installed.blocked
-                        ? "lucide:shield-check"
-                        : "lucide:shield-ban"
-                    }
-                    width={15}
-                  />
-                }
-                disabled={actions.pending}
-                onClick={() => actions.block(entry, !installed.blocked)}
-              >
-                {installed.blocked ? text.t("unblock") : text.t("block")}
-              </Button>
-              {entry.update && !installed.blocked && (
-                <Button
-                  variant="primary"
-                  icon={<Icon icon="lucide:package-check" width={15} />}
-                  disabled={actions.pending}
-                  onClick={() => actions.install(entry, entry.update as string)}
-                >
-                  {text.t("updateTo", { version: entry.update })}
-                </Button>
-              )}
-              <Button
-                variant="text"
-                className={styles.dangerIcon}
-                icon={<Icon icon="lucide:package-x" width={16} />}
-                aria-label={text.t("uninstall")}
-                title={text.t("uninstall")}
-                disabled={actions.pending}
-                onClick={() => actions.uninstall(entry)}
-              />
-            </>
-          ) : (
-            entry.listing &&
-            version && (
+      {/* Stays at the top while what's under the divider scrolls. */}
+      <div className={styles.detailTop}>
+        <header className={styles.detailHead}>
+          <PluginTile id={entry.id} name={entry.name} size="xl" />
+          <div className={styles.headText}>
+            <h2 className={styles.detailName}>{entry.name}</h2>
+            <span className={styles.headMeta}>
+              {entry.author}
+              {installed?.version && <> · v{installed.version}</>}
+            </span>
+            <PluginBadges kind={entry.kind} levels={entry.levels} size="md" />
+          </div>
+          <div className={styles.headActions}>
+            {installed ? (
               <>
-                {listed.length > 1 && (
-                  <NativeSelect
-                    label={text.t("version")}
-                    value={version}
-                    onChange={setVersion}
-                    items={listed.map((v, i) => ({
-                      value: v,
-                      label:
-                        i === 0
-                          ? text.t("versionNewest", { version: v })
-                          : `v${v}`,
-                    }))}
-                  />
+                <Button
+                  variant="outline"
+                  icon={
+                    <Icon
+                      icon={
+                        installed.blocked
+                          ? "lucide:shield-check"
+                          : "lucide:shield-ban"
+                      }
+                      width={15}
+                    />
+                  }
+                  disabled={actions.pending}
+                  onClick={() => actions.block(entry, !installed.blocked)}
+                >
+                  {installed.blocked ? text.t("unblock") : text.t("block")}
+                </Button>
+                {entry.update && !installed.blocked && (
+                  <Button
+                    variant="primary"
+                    icon={<Icon icon="lucide:package-check" width={15} />}
+                    disabled={actions.pending}
+                    onClick={() =>
+                      actions.install(entry, entry.update as string)
+                    }
+                  >
+                    {text.t("updateTo", { version: entry.update })}
+                  </Button>
                 )}
                 <Button
-                  variant="primary"
-                  icon={<Icon icon="lucide:plus" width={15} />}
+                  variant="text"
+                  className={styles.dangerIcon}
+                  icon={<Icon icon="lucide:package-x" width={16} />}
+                  aria-label={text.t("uninstall")}
+                  title={text.t("uninstall")}
                   disabled={actions.pending}
-                  onClick={() => actions.install(entry, version)}
-                >
-                  {text.t("install")}
-                </Button>
+                  onClick={() => actions.uninstall(entry)}
+                />
               </>
-            )
-          )}
-        </div>
-      </header>
+            ) : (
+              entry.listing &&
+              version && (
+                <>
+                  {listed.length > 1 && (
+                    <VersionPicker
+                      versions={listed}
+                      value={version}
+                      onPick={setVersion}
+                    />
+                  )}
+                  <Button
+                    variant="primary"
+                    icon={<Icon icon="lucide:plus" width={15} />}
+                    disabled={actions.pending}
+                    onClick={() => actions.install(entry, version)}
+                  >
+                    {text.t("install")}
+                  </Button>
+                </>
+              )
+            )}
+            <ShareButton
+              name={entry.name}
+              description={entry.description}
+              publicUrl={publicUrl}
+            />
+          </div>
+        </header>
 
-      <Tabs label={text.t("detailTabs")} className={styles.tabs}>
-        {tabs.map((id) => (
-          <Tab
-            key={id}
-            href={storeHref({ plugin: entry.id, tab: id })}
-            active={current === id}
-            icon={<Icon icon={TAB_ICONS[id]} width={15} />}
-          >
-            {text.t(`tab.${id}`)}
-            {id === "capabilities" && installed && (
-              <Badge className={styles.tabCount}>
-                {installed.capabilities.length}
-              </Badge>
-            )}
-            {id === "places" && installed && (
-              <Badge className={styles.tabCount}>{installed.activations}</Badge>
-            )}
-          </Tab>
-        ))}
-      </Tabs>
+        {/* A version that needs a newer Barynt can't be installed: said up
+            here, between the title and the tabs, on every tab. */}
+        {!installed &&
+          release.status === "ready" &&
+          !release.preview.compatible && (
+            <div className={styles.topNotice}>
+              <ErrorLine message={text.error("incompatible")} />
+            </div>
+          )}
+
+        <Tabs label={text.t("detailTabs")} className={styles.tabs}>
+          {tabs.map((id) => (
+            <Tab
+              key={id}
+              href={storeHref({ plugin: entry.id, tab: id })}
+              active={current === id}
+              icon={<Icon icon={TAB_ICONS[id]} width={15} />}
+            >
+              {text.t(`tab.${id}`)}
+              {id === "capabilities" && installed && (
+                <Badge className={styles.tabCount}>
+                  {installed.capabilities.length}
+                </Badge>
+              )}
+              {id === "places" && installed && (
+                <Badge className={styles.tabCount}>
+                  {installed.activations}
+                </Badge>
+              )}
+            </Tab>
+          ))}
+        </Tabs>
+      </div>
 
       {current === "overview" && (
         <Overview entry={entry} version={version} release={release} />
       )}
       {current === "capabilities" && (
-        <Capabilities
-          entry={entry}
-          version={version}
-          release={release}
-          actions={actions}
-        />
+        <Capabilities entry={entry} release={release} actions={actions} />
       )}
       {current === "versions" && installed && (
         <Versions entry={entry} release={release} actions={actions} />
@@ -264,9 +289,6 @@ function Overview({
         {release.status === "error" && !installed && (
           <ErrorLine message={text.error(release.error)} />
         )}
-        {release.status === "ready" &&
-          !release.preview.compatible &&
-          !installed && <ErrorLine message={text.error("incompatible")} />}
         <PluginAbout
           name={entry.name}
           description={entry.description}
@@ -455,12 +477,10 @@ function UpdateChanges({
 
 function Capabilities({
   entry,
-  version,
   release,
   actions,
 }: {
   entry: StoreEntry;
-  version: string | null;
   release: Release;
   actions: StoreActions;
 }) {
@@ -477,7 +497,6 @@ function Capabilities({
     : release.status === "ready"
       ? release.preview
       : null;
-  const shownVersion = installed?.version ?? version;
 
   return (
     <div className={styles.capabilities}>
@@ -490,14 +509,7 @@ function Capabilities({
         />
       )}
 
-      <header className={styles.capHead}>
-        <h3>
-          {text.t(installed ? "capsOfInstalled" : "capsOfVersion", {
-            version: shownVersion ?? "",
-          })}
-        </h3>
-        <p>{text.t("capabilitiesIntro")}</p>
-      </header>
+      <CapabilitiesHead />
 
       {shown === null ? (
         release.status === "error" ? (

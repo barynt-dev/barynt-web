@@ -36,7 +36,7 @@ import {
   serviceAddressMode,
   validateManifest,
 } from "@/lib/plugins/manifest";
-import { compareSemver } from "@/lib/plugins/semver";
+import { compareSemver, updateTarget } from "@/lib/plugins/semver";
 import {
   type ServiceAddressMode,
   type ServiceSummary,
@@ -268,7 +268,7 @@ export interface StoreEntry {
   levels: string[];
   installed: InstalledPlugin | null;
   listing: StoreListing | null;
-  /** The newest listed version above the installed one, if any. */
+  /** The release to update to, if there is one (`updateTarget`). */
   update: string | null;
 }
 
@@ -371,7 +371,6 @@ export async function getPluginStoreView(): Promise<StoreView | null> {
   for (const installed of admin.installed) {
     const found = listings.get(installed.pluginId);
     const { entry: _, ...listing } = found ?? { entry: null };
-    const newest = found?.versions[0] ?? null;
     entries.push({
       id: installed.pluginId,
       name: installed.name,
@@ -381,11 +380,10 @@ export async function getPluginStoreView(): Promise<StoreView | null> {
       levels: installed.levels,
       installed,
       listing: found ? (listing as StoreListing) : null,
+      // A real release first: a beta is only offered to someone on a beta.
       update:
-        newest &&
-        installed.version &&
-        compareSemver(newest, installed.version) > 0
-          ? newest
+        found && installed.version
+          ? updateTarget(found.versions, installed.version)
           : null,
     });
   }

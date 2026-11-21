@@ -31,6 +31,7 @@ import {
 } from "../shared";
 import {
   asksMore,
+  CapabilitiesHead,
   CapabilityCards,
   ChangeRows,
   type Changes,
@@ -472,10 +473,7 @@ export function InstallDialog({
               )}
             </dd>
           </dl>
-          <header className={store.capHead}>
-            <h3>{text.t("capsOfVersion", { version })}</h3>
-            <p>{text.t("capabilitiesIntro")}</p>
-          </header>
+          <CapabilitiesHead />
           <CapabilityCards
             capabilities={preview.capabilities}
             network={preview.network}

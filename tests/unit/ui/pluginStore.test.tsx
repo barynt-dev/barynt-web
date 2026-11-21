@@ -38,6 +38,8 @@ mock.module("@/components/ui/layout/ConfirmDialog/ConfirmDialog", () => ({
 mock.module("@/features/plugins/actions", () => pluginActionsMock());
 
 import { PluginStore } from "@/features/plugins/components/PluginStore/PluginStore";
+import { ShareDialog } from "@/features/plugins/components/PluginStore/ShareDialog";
+import { featurePreviewUrl } from "@/features/plugins/components/PluginStore/StoreHome";
 import type { StoreTab } from "@/features/plugins/components/PluginStore/tabs";
 import type {
   InstalledPlugin,
@@ -173,6 +175,40 @@ describe("PluginStore", () => {
     expect(html).toContain('data-open="plugin"');
   });
 
+  it("has a share button, as an icon, for an installed and a listed plugin (BARY-237)", () => {
+    for (const selected of [timeline, notify]) {
+      const html = render({ selected });
+      expect(html).toContain('aria-label="share"');
+      expect(html).toContain('data-icon="lucide:share-2"');
+    }
+  });
+
+  it("starts a plugin that isn't installed on its newest release, not on a newer beta (BARY-237)", () => {
+    const html = render({
+      selected: {
+        ...notify,
+        listing: listing(["2.1.0-beta.1", "2.0.0", "1.9.0"]),
+      },
+    });
+    // The picker's button shows what the install button installs.
+    expect(html).toContain("v2.0.0");
+    expect(html).not.toContain("v2.1.0-beta.1");
+  });
+
+  it("starts on the newest beta when there is no release", () => {
+    const html = render({
+      selected: {
+        ...notify,
+        listing: listing(["0.1.0-beta.3", "0.1.0-beta.2"]),
+      },
+    });
+    expect(html).toContain("v0.1.0-beta.3");
+  });
+
+  it("has no picker for a plugin with one version", () => {
+    expect(render({ selected: notify })).not.toContain('title="version"');
+  });
+
   it("lays out the versions: available, active, the one to go back to, older ones", () => {
     const html = render({ selected: timeline, tab: "versions" });
     for (const kind of ["available", "active", "superseded", "listed"])
@@ -181,12 +217,25 @@ describe("PluginStore", () => {
     expect(html).toContain("installOlder");
   });
 
+  it("heads the capabilities with what the plugin may do, not its version, and a note (BARY-237)", () => {
+    for (const tab of ["capabilities"] as const)
+      for (const selected of [timeline, notify]) {
+        const html = render({ selected, tab });
+        expect(html).toContain("capsMay");
+        expect(html).not.toContain("capsOfVersion");
+        expect(html).not.toContain("capsOfInstalled");
+        // The one sentence, as a note with its icon.
+        expect(html).toMatch(/<p[^>]*role="note"[^>]*>.*capabilitiesIntro/);
+        expect(html).toContain('data-icon="lucide:info"');
+      }
+  });
+
   it("puts what the update changes above what the installed version may do", () => {
     const html = render({ selected: timeline, tab: "capabilities" });
     expect(html).toContain("updateChangesTitle");
-    expect(html).toContain("capsOfInstalled");
+    expect(html).toContain("capsMay");
     expect(html.indexOf("updateChangesTitle")).toBeLessThan(
-      html.indexOf("capsOfInstalled"),
+      html.indexOf("capsMay"),
     );
     // And no update card without an update.
     const current = { ...timeline, update: null };
@@ -277,6 +326,60 @@ describe("PluginStore", () => {
     expect(html).toContain('id="all-plugins"');
   });
 
+  it("shows a featured plugin on a card with a large logo, its version and a way in (BARY-237)", () => {
+    const featured = (id: string, versions: string[]) => ({
+      ...notify,
+      id,
+      name: id,
+      listing: { ...listing(versions), featured: true, added: "2026-11-01" },
+    });
+    const html = render({
+      view: {
+        ...view,
+        entries: [featured("alpha", ["2.1.0-beta.1", "2.0.0"]), timeline],
+      },
+    });
+    const section = html.slice(html.indexOf("featuredTitle"));
+    expect(section).toContain('data-size="hero"');
+    // The newest real release, not the newer beta.
+    expect(section).toContain("Acme · v2.0.0");
+    expect(section).not.toContain("v2.1.0-beta.1");
+    expect(section).not.toContain("arrow-up-right");
+  });
+
+  it("takes a featured card's screenshot from the installed version, else from the store's release", () => {
+    expect(featurePreviewUrl(timeline)).toBe(
+      "/api/plugin-previews/r1/preview-1.png",
+    );
+    expect(featurePreviewUrl(notify)).toBe(
+      "/api/plugin-listed-previews/notify",
+    );
+    // Installed, but without a screenshot of its own.
+    expect(
+      featurePreviewUrl({
+        ...timeline,
+        installed: { ...installed, previews: [] },
+      }),
+    ).toBe("/api/plugin-listed-previews/timeline");
+  });
+
+  it("shows an installed featured plugin with the version it runs", () => {
+    const html = render({
+      view: {
+        ...view,
+        entries: [
+          {
+            ...timeline,
+            listing: { ...listing(["1.1.0", "1.0.0"]), featured: true },
+          },
+        ],
+      },
+    });
+    expect(html.slice(html.indexOf("featuredTitle"))).toContain(
+      `Acme · v${installed.version}`,
+    );
+  });
+
   it("leaves out featured and newest when the directory names none", () => {
     const html = render();
     expect(html).not.toContain("featuredTitle");
@@ -306,5 +409,59 @@ describe("PluginStore", () => {
     });
     expect(html).toContain("welcomeTitle");
     expect(html).toContain("stepSourceTitle");
+  });
+});
+
+describe("ShareDialog (BARY-237)", () => {
+  const render = (over: Partial<Parameters<typeof ShareDialog>[0]> = {}) =>
+    renderToStaticMarkup(
+      <ShareDialog
+        name="GitHub"
+        description="Pull requests & checks."
+        url="https://github.com/acme/gantt"
+        isPublic
+        sheet={false}
+        close={() => {}}
+        {...over}
+      />,
+    );
+
+  it("offers the address, HTML for a website and eight networks as icon buttons", () => {
+    const html = render();
+    expect(html).toContain("https://github.com/acme/gantt");
+    expect(html).toContain("shareEmbed");
+    // The plain link, shown as text.
+    expect(html).toContain(
+      "&lt;a href=&quot;https://github.com/acme/gantt&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;GitHub&lt;/a&gt;",
+    );
+    expect(html.match(/target="_blank"/g)).toHaveLength(8);
+    for (const part of [
+      "linkedin.com/sharing",
+      "x.com/intent",
+      "facebook.com/sharer",
+      "wa.me/",
+      "t.me/share",
+      "reddit.com/submit",
+      "xing.com/spi",
+      "bsky.app/intent",
+    ])
+      expect(html).toContain(part);
+    // Their logos in colour, and no words next to them.
+    expect(html).toContain('data-icon="logos:linkedin-icon"');
+    expect(html).toContain('data-icon="logos:whatsapp-icon"');
+    expect(html).not.toContain("<span>LinkedIn</span>");
+  });
+
+  it("escapes the name in the HTML it offers", () => {
+    const html = render({ name: "<img src=x onerror=alert(1)>" });
+    expect(html).not.toContain("<img src=x");
+    expect(html).toContain("&amp;lt;img src=x");
+  });
+
+  it("says when the address only opens signed in", () => {
+    expect(render()).toContain("shareLinkPublic");
+    const page = render({ isPublic: false });
+    expect(page).toContain("shareLinkPage");
+    expect(page).toContain("data-warn");
   });
 });

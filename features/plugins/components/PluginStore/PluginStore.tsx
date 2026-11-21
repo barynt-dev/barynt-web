@@ -39,7 +39,7 @@ import {
 import { PluginDetail } from "./PluginDetail";
 import { PluginTile } from "./PluginTile";
 import styles from "./pluginStore.module.scss";
-import { StoreHome } from "./StoreHome";
+import { FeaturedSection, NewestSection, StoreHome } from "./StoreHome";
 import { SourcesPane, StoreWelcome } from "./StorePanels";
 import type { StoreTab } from "./tabs";
 
@@ -287,7 +287,9 @@ export function PluginStore({
     <>
       <PageHeader
         divider={false}
-        title={text.t("adminTitle")}
+        // On a phone the plugin is the whole screen: its name on top, the
+        // arrow back to the list beside it.
+        title={isPhone && selected ? selected.name : text.t("adminTitle")}
         leading={
           // Up a level, as an arrow like everywhere on a phone or tablet,
           // whose admin menu sits behind the hamburger: on a phone from a
@@ -318,13 +320,24 @@ export function PluginStore({
           </>
         }
         actions={
-          <Button
-            variant="primary"
-            icon={<Icon icon="lucide:plus" width={15} />}
-            onClick={actions.addSource}
-          >
-            {text.t("addSource")}
-          </Button>
+          // On a phone just the icon, and not the page's primary action:
+          // there the list is what the screen is about.
+          isPhone ? (
+            <Button
+              icon={<Icon icon="lucide:plus" width={18} />}
+              onClick={actions.addSource}
+              aria-label={text.t("addSource")}
+              title={text.t("addSource")}
+            />
+          ) : (
+            <Button
+              variant="primary"
+              icon={<Icon icon="lucide:plus" width={15} />}
+              onClick={actions.addSource}
+            >
+              {text.t("addSource")}
+            </Button>
+          )
         }
       />
       <div className={styles.store} data-open={open}>
@@ -375,6 +388,16 @@ export function PluginStore({
               </span>
               <Icon icon="lucide:chevron-right" width={16} aria-hidden />
             </Link>
+          )}
+
+          {/* A phone has no start page: what's featured and what's new sit above
+              the list,
+              while nothing narrows it. */}
+          {!query && filter === "all" && !category && (
+            <div className={styles.phoneFeatured}>
+              <FeaturedSection entries={view.entries} />
+              <NewestSection entries={view.entries} />
+            </div>
           )}
 
           {shown.length === 0 && (

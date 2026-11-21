@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/atoms/Input/Input";
 import { SelectEmpty } from "./atoms/SelectAction";
 import SelectItem from "./atoms/SelectItem";
@@ -11,6 +11,11 @@ export interface ISelectItem {
   label: string;
   icon?: React.ReactNode;
   hint?: string;
+  /**
+   * A heading above this item and the ones after it, until another one
+   * names a different group. Items of one group belong together in `items`.
+   */
+  group?: string;
 }
 
 interface SelectMenuProps {
@@ -152,16 +157,22 @@ export function SelectMenu({
         role="listbox"
         aria-multiselectable={multi}
       >
-        {filtered.map((it) => (
-          <SelectItem
-            key={String(it.value)}
-            it={it}
-            isSel={isSel}
-            onPick={onPick}
-            onClose={onClose}
-            multi={multi}
-            checkMark={checkMark}
-          />
+        {filtered.map((it, i) => (
+          <Fragment key={String(it.value)}>
+            {it.group && it.group !== filtered[i - 1]?.group && (
+              <div className={styles.group} role="presentation">
+                {it.group}
+              </div>
+            )}
+            <SelectItem
+              it={it}
+              isSel={isSel}
+              onPick={onPick}
+              onClose={onClose}
+              multi={multi}
+              checkMark={checkMark}
+            />
+          </Fragment>
         ))}
         {filtered.length === 0 &&
           !(createAction && q.trim() !== "") &&
