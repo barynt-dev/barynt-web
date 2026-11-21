@@ -10,7 +10,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { Button } from "@/components/ui/atoms/Button/Button";
 import { usePluginText } from "../shared";
 import styles from "./pluginStore.module.scss";
 
@@ -29,7 +28,7 @@ function cardAt(track: Element, target: EventTarget): number {
  * carousel: the card in focus is large — laid out like a lone featured
  * plugin — with a small one beside it showing logo, name and kind: on the
  * right at the start, on the left at the end, on both sides in between. The
- * arrows in the heading, a click on a small card, a swipe or tabbing into a
+ * arrows at its sides (as on the screenshots), a click on a small card, a swipe or tabbing into a
  * card move on. CSS does the sizes and the slide; this holds the position.
  */
 export function FeaturedCarousel({
@@ -58,81 +57,85 @@ export function FeaturedCarousel({
       className={`${styles.homeSection} ${styles.featuredWrap}`}
       data-carousel={carousel ? "" : undefined}
     >
-      <header className={styles.homeHead}>
-        {head}
-        <div className={styles.featuredNav}>
-          <Button
-            variant="outline"
-            size="sm"
-            icon={<Icon icon="lucide:chevron-left" width={16} />}
-            aria-label={text.t("previousFeatured")}
-            disabled={lead === 0}
-            onClick={() => go(lead - 1)}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            icon={<Icon icon="lucide:chevron-right" width={16} />}
-            aria-label={text.t("nextFeatured")}
-            disabled={lead === last}
-            onClick={() => go(lead + 1)}
-          />
-        </div>
-      </header>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: a swipe is an extra way to the arrows' step; the cards themselves are links */}
-      <div
-        className={styles.featured}
-        style={{ "--offset": offset, "--sides": sides } as React.CSSProperties}
-        onPointerDown={(e) => {
-          if (e.pointerType !== "mouse") swipe.current = { x: e.clientX };
-        }}
-        onPointerUp={(e) => {
-          const start = swipe.current;
-          swipe.current = null;
-          if (!start) return;
-          const dx = e.clientX - start.x;
-          if (Math.abs(dx) >= SWIPE_PX) {
-            swiped.current = true;
-            go(lead + (dx < 0 ? 1 : -1));
+      <header className={styles.homeHead}>{head}</header>
+      <div className={styles.featuredStage}>
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: a swipe is an extra way to the arrows' step; the cards themselves are links */}
+        <div
+          className={styles.featured}
+          style={
+            { "--offset": offset, "--sides": sides } as React.CSSProperties
           }
-        }}
-        onPointerCancel={() => {
-          swipe.current = null;
-        }}
-        onClickCapture={(e) => {
-          // A swipe that ended on a card is not a click on it, and a click on
-          // a small card brings it to the front instead of opening it.
-          const i = cardAt(
-            e.currentTarget.firstElementChild ?? e.currentTarget,
-            e.target,
-          );
-          if (swiped.current || (i >= 0 && i !== lead)) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!swiped.current) go(i);
-          }
-          swiped.current = false;
-        }}
-        onFocus={(e) => {
-          // Only a keyboard's focus: a click focuses too, and must still
-          // find the card it hit as it was.
-          if (!(e.target as HTMLElement).matches(":focus-visible")) return;
-          const i = cardAt(
-            e.currentTarget.firstElementChild ?? e.currentTarget,
-            e.target,
-          );
-          if (i >= 0 && i !== lead) go(i);
-        }}
-      >
-        <div className={styles.featuredTrack}>
-          {cards.map((card, i) =>
-            carousel && isValidElement(card)
-              ? cloneElement(card as ReactElement<Record<string, unknown>>, {
-                  "data-slot": i === lead ? "lead" : "side",
-                })
-              : card,
-          )}
+          onPointerDown={(e) => {
+            if (e.pointerType !== "mouse") swipe.current = { x: e.clientX };
+          }}
+          onPointerUp={(e) => {
+            const start = swipe.current;
+            swipe.current = null;
+            if (!start) return;
+            const dx = e.clientX - start.x;
+            if (Math.abs(dx) >= SWIPE_PX) {
+              swiped.current = true;
+              go(lead + (dx < 0 ? 1 : -1));
+            }
+          }}
+          onPointerCancel={() => {
+            swipe.current = null;
+          }}
+          onClickCapture={(e) => {
+            // A swipe that ended on a card is not a click on it, and a click on
+            // a small card brings it to the front instead of opening it.
+            const i = cardAt(
+              e.currentTarget.firstElementChild ?? e.currentTarget,
+              e.target,
+            );
+            if (swiped.current || (i >= 0 && i !== lead)) {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!swiped.current) go(i);
+            }
+            swiped.current = false;
+          }}
+          onFocus={(e) => {
+            // Only a keyboard's focus: a click focuses too, and must still
+            // find the card it hit as it was.
+            if (!(e.target as HTMLElement).matches(":focus-visible")) return;
+            const i = cardAt(
+              e.currentTarget.firstElementChild ?? e.currentTarget,
+              e.target,
+            );
+            if (i >= 0 && i !== lead) go(i);
+          }}
+        >
+          <div className={styles.featuredTrack}>
+            {cards.map((card, i) =>
+              carousel && isValidElement(card)
+                ? cloneElement(card as ReactElement<Record<string, unknown>>, {
+                    "data-slot": i === lead ? "lead" : "side",
+                  })
+                : card,
+            )}
+          </div>
         </div>
+        <button
+          type="button"
+          className={`${styles.arrow} ${styles.featuredArrow}`}
+          data-side="prev"
+          aria-label={text.t("previousFeatured")}
+          disabled={lead === 0}
+          onClick={() => go(lead - 1)}
+        >
+          <Icon icon="lucide:chevron-left" width={20} />
+        </button>
+        <button
+          type="button"
+          className={`${styles.arrow} ${styles.featuredArrow}`}
+          data-side="next"
+          aria-label={text.t("nextFeatured")}
+          disabled={lead === last}
+          onClick={() => go(lead + 1)}
+        >
+          <Icon icon="lucide:chevron-right" width={20} />
+        </button>
       </div>
     </section>
   );

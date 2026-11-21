@@ -1914,12 +1914,31 @@
   position: relative;
 }
 
-/* The carousel's arrows, at the end of the heading. */
-.featuredNav {
+/* The carousel's arrows, at its sides like the screenshots' (`.arrow`);
+   gone at either end. */
+.featuredStage {
+  position: relative;
+}
+
+.featuredArrow {
+  z-index: 1;
   display: none;
-  align-self: center;
-  gap: 0.375rem;
-  margin-left: auto;
+
+  /* On the edge, half outside: the small card under it stays readable. */
+  &[data-side="prev"] {
+    left: -1.25rem;
+  }
+
+  &[data-side="next"] {
+    right: -1.25rem;
+  }
+
+  transition: opacity 160ms ease;
+
+  &:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 
 /* A featured plugin's first screenshot, fading in from the right of its card
@@ -2288,6 +2307,7 @@
           font-size: var(--text-sm);
           line-height: 1.25;
           overflow-wrap: anywhere;
+          hyphens: auto;
           -webkit-box-orient: vertical;
           -webkit-line-clamp: 3;
           line-clamp: 3;
@@ -2303,8 +2323,8 @@
     }
   }
 
-  .featuredNav {
-    display: flex;
+  .featuredArrow {
+    display: inline-flex;
   }
 
   @include bp.phone {
