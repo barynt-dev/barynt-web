@@ -2250,8 +2250,8 @@
         }
       }
 
-      /* Narrow: the logo fills the top, the name below it, cut off where it
-         runs out of room. */
+      /* Narrow: the logo fills the top, the name below it in at most three
+         lines. */
       &[data-slot="side"] {
         --hero-size: calc(var(--small-size) - 1rem);
 
@@ -2283,9 +2283,14 @@
         }
 
         .featureName {
-          font-size: var(--text-md);
+          display: -webkit-box;
+          overflow: hidden;
+          font-size: var(--text-sm);
           line-height: 1.25;
           overflow-wrap: anywhere;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 3;
+          line-clamp: 3;
         }
 
         .featureText,
