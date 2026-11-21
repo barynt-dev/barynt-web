@@ -2206,7 +2206,7 @@
    `FeaturedCarousel`. */
 .featuredWrap[data-carousel] {
   --gap: 1rem;
-  --small-size: 9rem;
+  --small-size: 7.5rem;
 
   .featured {
     /* Clipped sideways only: the shadows and the hover lift reach out above
@@ -2259,8 +2259,8 @@
           "foot";
         grid-template-columns: minmax(0, 1fr);
         justify-items: center;
-        gap: 0.625rem;
-        padding: 1.25rem 0.75rem;
+        gap: 0.5rem;
+        padding: 1.25rem 0.5rem;
         text-align: center;
         cursor: pointer;
 
@@ -2278,14 +2278,17 @@
           line-clamp: 2;
         }
 
-        /* Only the kind: the levels and the state don't fit. */
+        /* Only the state (installed, update), not the badges. */
         .featureFoot {
           justify-content: center;
           align-self: center;
 
-          & > :not(:first-child),
-          & > :first-child > :not(:first-child) {
+          & > :first-child {
             display: none;
+          }
+
+          .cardState {
+            margin: 0;
           }
         }
 
@@ -2303,7 +2306,7 @@
   }
 
   @include bp.phone {
-    --small-size: 6rem;
+    --small-size: 5.5rem;
 
     .featuredTrack > [data-slot="side"] {
       --hero-size: 2.75rem;
