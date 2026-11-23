@@ -397,10 +397,18 @@ describe("PluginStore", () => {
     const html = render({ category: "communication" });
     // Neither plugin is in it: the list says so, with a way back.
     expect(html).toContain("noMatches");
-    expect(html).toContain("clearCategory");
+    expect(html).toContain('aria-label="facets.remove"');
+    // The filter at the search field counts it.
+    expect(html).toContain('<span class="filterCount">1</span>');
     expect(render({ category: "planning" })).toContain(
       'href="/admin/plugins?plugin=timeline"',
     );
+  });
+
+  it("puts a filter at the end of the search field", () => {
+    const html = render();
+    expect(html).toContain('aria-label="facets.title"');
+    expect(html).not.toContain("filterCount");
   });
 
   it("welcomes a first visit", () => {

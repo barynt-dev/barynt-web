@@ -2689,6 +2689,16 @@
     },
     "storeList": "Plugins",
     "searchPlugins": "Search plugins",
+    "facets": {
+      "title": "Filter",
+      "category": "Category",
+      "kind": "Kind",
+      "level": "Usable in",
+      "source": "Source",
+      "reset": "Clear all filters",
+      "remove": "Remove {name}",
+      "none": "Nothing to filter by yet."
+    },
     "filter": {
       "all": "All · {count}",
       "installed": "Installed · {count}",

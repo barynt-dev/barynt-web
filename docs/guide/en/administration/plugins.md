@@ -16,7 +16,7 @@ Plugins add to Barynt: a project view, a dashboard widget, a sync with another t
 
 ## Installing (platform administrators)
 
-Open **Admin → Plugins**. On the left is every plugin: what **needs attention** (an update, a blocked plugin), what's **installed** and what your sources offer **in the directory**, with a search and filters. On the right is the plugin you picked.
+Open **Admin → Plugins**. On the left is every plugin: what **needs attention** (an update, a blocked plugin), what's **installed** and what your sources offer **in the directory**, with a search and filters. The button at the end of the search field narrows the list by category, kind, where a plugin is usable and source. On the right is the plugin you picked.
 
 ![The plugin store: the list on the left, a plugin with its screenshots on the right](../../assets/en/plugins-store.webp)
 
@@ -105,7 +105,7 @@ Barynt keeps the value encrypted and adds it to the plugin's requests to that se
 
 ## Installing (platform administrators)
 
-Open **Admin → Plugins**. On the left is every plugin: what **needs attention** (an update, a blocked plugin), what's **installed** and what your sources offer **in the directory**, with a search and filters. On the right is the plugin you picked.
+Open **Admin → Plugins**. On the left is every plugin: what **needs attention** (an update, a blocked plugin), what's **installed** and what your sources offer **in the directory**, with a search and filters. The button at the end of the search field narrows the list by category, kind, where a plugin is usable and source. On the right is the plugin you picked.
 
 ![The plugin store: the list on the left, a plugin with its screenshots on the right](../../assets/en/plugins-store.webp)
 

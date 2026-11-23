@@ -2689,6 +2689,16 @@
     },
     "storeList": "Plugins",
     "searchPlugins": "Plugins suchen",
+    "facets": {
+      "title": "Filtern",
+      "category": "Kategorie",
+      "kind": "Art",
+      "level": "Nutzbar in",
+      "source": "Quelle",
+      "reset": "Alle Filter zurücksetzen",
+      "remove": "{name} entfernen",
+      "none": "Es gibt noch nichts zum Filtern."
+    },
     "filter": {
       "all": "Alle · {count}",
       "installed": "Installiert · {count}",

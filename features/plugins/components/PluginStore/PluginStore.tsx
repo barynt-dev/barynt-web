@@ -39,6 +39,15 @@ import {
 import { PluginDetail } from "./PluginDetail";
 import { PluginTile } from "./PluginTile";
 import styles from "./pluginStore.module.scss";
+import {
+  ActiveFacets,
+  activeFacets,
+  matchesFacets,
+  NO_FACETS,
+  type StoreFacet,
+  type StoreFacets,
+  StoreFilterButton,
+} from "./StoreFilter";
 import { FeaturedSection, NewestSection, StoreHome } from "./StoreHome";
 import { SourcesPane, StoreWelcome } from "./StorePanels";
 import type { StoreTab } from "./tabs";
@@ -113,6 +122,25 @@ export function PluginStore({
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const fromAddress = (c: string | null): StoreFacets => ({
+    ...NO_FACETS,
+    category: c ? [c] : [],
+  });
+  const [facets, setFacets] = useState(() => fromAddress(category));
+  // A new `?category=` (a category link) starts the filter afresh.
+  const [addressCategory, setAddressCategory] = useState(category);
+  if (category !== addressCategory) {
+    setAddressCategory(category);
+    setFacets(fromAddress(category));
+  }
+  const removeFacet = (facet: StoreFacet, value: string) => {
+    setFacets((f) => ({ ...f, [facet]: f[facet].filter((v) => v !== value) }));
+    // Off the address too, without wiping the other picks on the way.
+    if (facet === "category" && value === category) {
+      setAddressCategory(null);
+      router.push(storeHref({}));
+    }
+  };
   const modal = isPhone ? { placement: "bottom" as const } : {};
   const refresh = () => router.refresh();
 
@@ -266,7 +294,7 @@ export function PluginStore({
       )
     )
       return false;
-    if (category && !e.listing?.categories.includes(category)) return false;
+    if (!matchesFacets(e, facets)) return false;
     if (filter === "installed") return !!e.installed;
     if (filter === "updates") return !!e.update;
     if (filter === "blocked") return !!e.installed?.blocked;
@@ -348,6 +376,19 @@ export function PluginStore({
             aria-label={text.t("searchPlugins")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            iconRight={
+              <StoreFilterButton
+                entries={view.entries}
+                facets={facets}
+                onChange={(next) => {
+                  if (category && !next.category.includes(category)) {
+                    setAddressCategory(null);
+                    router.push(storeHref({}));
+                  }
+                  setFacets(next);
+                }}
+              />
+            }
           />
           <div className={styles.filters}>
             {(["all", "installed", "updates", "blocked"] as const).map((f) => (
@@ -361,19 +402,7 @@ export function PluginStore({
               </Chip>
             ))}
           </div>
-          {category && (
-            <div className={styles.filters}>
-              <Chip
-                type="input"
-                selected
-                icon={<Icon icon="lucide:tag" width={14} />}
-                onRemove={() => router.push(storeHref({}))}
-                removeLabel={text.t("clearCategory")}
-              >
-                {text.t(`category.${category}` as "category.planning")}
-              </Chip>
-            </div>
-          )}
+          <ActiveFacets facets={facets} onRemove={removeFacet} />
 
           {view.unreadable.length > 0 && (
             <Link
@@ -393,7 +422,7 @@ export function PluginStore({
           {/* A phone has no start page: what's featured and what's new sit above
               the list,
               while nothing narrows it. */}
-          {!query && filter === "all" && !category && (
+          {!query && filter === "all" && activeFacets(facets) === 0 && (
             <div className={styles.phoneFeatured}>
               <FeaturedSection entries={view.entries} />
               <NewestSection entries={view.entries} />

@@ -16,7 +16,7 @@ Plugins erweitern Barynt: eine Projektansicht, ein Dashboard-Widget, ein Abgleic
 
 ## Installieren (Plattform-Admins)
 
-Öffne **Admin → Plugins**. Links stehen alle Plugins: was **Aufmerksamkeit braucht** (ein Update, ein gesperrtes Plugin), was **installiert** ist und was deine Quellen **im Verzeichnis** anbieten, mit Suche und Filtern. Rechts steht das Plugin, das du gewählt hast.
+Öffne **Admin → Plugins**. Links stehen alle Plugins: was **Aufmerksamkeit braucht** (ein Update, ein gesperrtes Plugin), was **installiert** ist und was deine Quellen **im Verzeichnis** anbieten, mit Suche und Filtern. Der Button am Ende des Suchfelds grenzt die Liste nach Kategorie, Art, Ebene und Quelle ein. Rechts steht das Plugin, das du gewählt hast.
 
 ![Der Plugin-Store: links die Liste, rechts ein Plugin mit seinen Screenshots](../../assets/de/plugins-store.webp)
 
@@ -105,7 +105,7 @@ Barynt speichert den Wert verschlüsselt und hängt ihn selbst an die Anfragen d
 
 ## Installieren (Plattform-Admins)
 
-Öffne **Admin → Plugins**. Links stehen alle Plugins: was **Aufmerksamkeit braucht** (ein Update, ein gesperrtes Plugin), was **installiert** ist und was deine Quellen **im Verzeichnis** anbieten, mit Suche und Filtern. Rechts steht das Plugin, das du gewählt hast.
+Öffne **Admin → Plugins**. Links stehen alle Plugins: was **Aufmerksamkeit braucht** (ein Update, ein gesperrtes Plugin), was **installiert** ist und was deine Quellen **im Verzeichnis** anbieten, mit Suche und Filtern. Der Button am Ende des Suchfelds grenzt die Liste nach Kategorie, Art, Ebene und Quelle ein. Rechts steht das Plugin, das du gewählt hast.
 
 ![Der Plugin-Store: links die Liste, rechts ein Plugin mit seinen Screenshots](../../assets/de/plugins-store.webp)
 
