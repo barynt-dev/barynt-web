@@ -2897,13 +2897,12 @@
     "scopeFilter": {
       "all": "Alle · {count}",
       "on": "Freigeschaltet · {count}",
-      "available": "Verfügbar · {count}"
+      "available": "Verfügbar · {count}",
+      "waiting": "Bestätigen · {count}"
     },
     "groupOnHere": "Freigeschaltet",
     "groupAvailable": "Verfügbar",
     "stateConfirm": "Bestätigen",
-    "scopeStoreIntroTitle": "Plugins für diesen Workspace",
-    "scopeStoreIntro": "Was hier steht, hat ein Plattform-Admin installiert und geprüft. Schalte ein Plugin für den Workspace frei – danach erscheint es in den Projekteinstellungen, und jedes Projekt schaltet es selbst ein.",
     "openInStore": "Im Plugin Store",
     "settingsSaved": "Gespeichert",
     "offInProject": "In diesem Projekt ausschalten",
@@ -3018,6 +3017,19 @@
       "installTitle": "„{name}“ aus seinem Ordner installieren?",
       "installDesc": "Ohne Release und ohne Hash: Barynt lädt es bei jedem Laden aus dem Ordner. Es verlangt: {capabilities}. Verlangt sein Manifest später mehr, bestätigen die Orte, an denen es läuft, erneut.",
       "noCapabilities": "nichts"
-    }
+    },
+    "scopeKpi": {
+      "released": "Freigeschaltet",
+      "waiting": "Wartet auf Bestätigung",
+      "available": "Verfügbar",
+      "projects": "Projekte"
+    },
+    "scopeKpiReleasedSub": "von {count, plural, one {# installierten Plugin} other {# installierten Plugins}}",
+    "scopeKpiNothingWaits": "nichts wartet",
+    "scopeKpiAvailableSub": "noch nicht freigeschaltet · {count, plural, =0 {ohne Kategorien} one {# Kategorie} other {# Kategorien}}",
+    "scopeKpiProjectsSub": "mit mindestens einem Plugin an",
+    "scopeActiveIn": "{count, plural, =0 {In keinem Projekt} one {In # Projekt} other {In # Projekten}}",
+    "scopeProvenanceNote": "Ein Plattform-Admin hat es installiert; Hash und Manifest wurden dabei geprüft.",
+    "scopeNewestTitle": "Neu hinzugefügt"
   }
 }
