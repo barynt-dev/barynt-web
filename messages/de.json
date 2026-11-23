@@ -2696,8 +2696,7 @@
       "level": "Nutzbar in",
       "source": "Quelle",
       "reset": "Alle Filter zurücksetzen",
-      "remove": "{name} entfernen",
-      "none": "Es gibt noch nichts zum Filtern."
+      "remove": "{name} entfernen"
     },
     "filter": {
       "all": "Alle · {count}",
