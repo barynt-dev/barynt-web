@@ -3058,7 +3058,9 @@
       "failed": "GitHub didn't answer for {accounts}",
       "reposTitle": "Repositories and projects",
       "noneLinked": "No repository is linked to a project yet. That's done in the project's plugin settings.",
-      "unlinked": "{count, plural, one {# repository without a project} other {# repositories without a project}}"
+      "unlinked": "{count, plural, one {# repository without a project} other {# repositories without a project}}",
+      "refresh": "Reload",
+      "broken": "GitHub doesn't answer – disconnect and connect again"
     },
     "githubApp": {
       "title": "GitHub App",
@@ -3067,7 +3069,7 @@
       "orgLabel": "GitHub organization (optional)",
       "orgHint": "Who owns the app on GitHub, e.g. your company. Leave empty and it belongs to your GitHub account. Both work the same.",
       "create": "Create on GitHub",
-      "recreate": "Create a new one",
+      "recreate": "Create a new one (disconnects every connection)",
       "ready": "Set up. Workspaces and projects can connect GitHub now.",
       "owner": "Owned by {owner} on GitHub",
       "fromEnv": "Set by GITHUB_APP_*; change it there.",

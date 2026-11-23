@@ -126,6 +126,11 @@
 .meta {
   color: var(--on-surface-variant);
   font-size: var(--text-xs);
+
+  &[data-broken] {
+    color: var(--warning);
+    font-weight: 600;
+  }
 }
 
 .itemActions {

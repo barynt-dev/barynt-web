@@ -18,12 +18,9 @@ import { pluginSettingsPath } from "@/lib/nav";
 import { currentUserId } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
 import type { PluginManifest } from "@/lib/plugins/manifest";
+import type { GitHubRepository } from "./app";
 import { getGitHubApp } from "./app";
-import {
-  chosenRepositories,
-  placeConnections,
-  placeRepositories,
-} from "./connections";
+import { chosenRepositories, placeRepositories } from "./connections";
 
 // What the GitHub parts of the plugin pages show (BARY-238).
 
@@ -47,6 +44,9 @@ export interface PluginConnectionView {
     /** The workspace's, seen from a project — taken off there. */
     inherited: boolean;
     manageUrl: string;
+    /** GitHub gives no token for it any more: uninstalled, or the app was
+     *  created anew — connect again. */
+    broken: boolean;
   }[];
   /** After signing in at GitHub: the installations the person may connect
    *  here and hasn't yet. */
@@ -72,12 +72,13 @@ export async function getConnectionView(
     (c) => c.provider === "github",
   );
   if (!declared) return null;
-  const [app, connections, userId, store] = await Promise.all([
+  const [app, reach, userId, store] = await Promise.all([
     getGitHubApp(),
-    placeConnections(pluginId, place),
+    placeRepositories(pluginId, place),
     currentUserId(),
     cookies(),
   ]);
+  const { connections } = reach;
   const picked = openChoice(store.get(CHOICE_COOKIE)?.value);
   const choice =
     picked &&
@@ -103,11 +104,17 @@ export async function getConnectionView(
       avatar: c.avatar,
       inherited: c.inherited,
       manageUrl: manageInstallationUrl(c),
+      broken: reach.failed.includes(c.account),
     })),
     choice,
     repositories:
       place.projectId === null && connections.length > 0
-        ? await workspaceRepositories(pluginId, manifest, place.workspaceId)
+        ? await workspaceRepositories(
+            pluginId,
+            manifest,
+            place.workspaceId,
+            reach.repositories,
+          )
         : null,
     connectHref: `/api/github/connect?${query}`,
     installHref: `/api/github/connect?${query}&mode=install`,
@@ -119,20 +126,18 @@ async function workspaceRepositories(
   pluginId: string,
   manifest: PluginManifest,
   workspaceId: string,
+  reached: GitHubRepository[],
 ): Promise<ConnectionRepository[]> {
-  const [reach, activations] = await Promise.all([
-    placeRepositories(pluginId, { workspaceId, projectId: null }),
-    db.pluginActivation.findMany({
-      where: { pluginId, workspaceId, enabled: true, projectId: { not: null } },
-      select: { projectId: true, settings: { select: { values: true } } },
-    }),
-  ]);
+  const activations = await db.pluginActivation.findMany({
+    where: { pluginId, workspaceId, enabled: true, projectId: { not: null } },
+    select: { projectId: true, settings: { select: { values: true } } },
+  });
   const projects = await db.project.findMany({
     where: { id: { in: activations.flatMap((a) => a.projectId ?? []) } },
     select: { id: true, name: true, slug: true, color: true },
   });
   const rows = new Map<string, ConnectionRepository>();
-  for (const r of reach.repositories)
+  for (const r of reached)
     rows.set(r.fullName.toLowerCase(), {
       fullName: r.fullName,
       private: r.private,

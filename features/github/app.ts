@@ -153,11 +153,22 @@ export async function createAppFromCode(
     webhookSecretCipher: sealSecret(d.webhook_secret, PURPOSE),
     createdById,
   };
-  await db.gitHubApp.upsert({
+  const before = await db.gitHubApp.findUnique({
     where: { id: "github" },
-    create: data,
-    update: data,
+    select: { appId: true },
   });
+  await db.$transaction([
+    db.gitHubApp.upsert({
+      where: { id: "github" },
+      create: data,
+      update: data,
+    }),
+    // Installations belong to an app: those of the one before can't be
+    // reached with the new one, so their connections go — connect again.
+    ...(before && before.appId !== data.appId
+      ? [db.pluginConnection.deleteMany({ where: { provider: "github" } })]
+      : []),
+  ]);
   tokens.clear();
   repoCache.clear();
   return { ok: true, name: data.name };

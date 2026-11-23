@@ -6,7 +6,9 @@ import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { CHOICE_COOKIE, openChoice } from "@/lib/github/state";
 import { currentUserId } from "@/lib/permissions";
+import { forgetInstallation } from "./app";
 import { connectTarget, saveConnection } from "./connect";
+import { placeConnections } from "./connections";
 
 // What the GitHub connection card does (BARY-238): connect one of the
 // installations GitHub just listed for the person, or take a connection
@@ -81,6 +83,21 @@ export async function removePluginConnection(
     ...(target.projectId && { projectId: target.projectId }),
     meta: { provider: "github", account: row.account },
   });
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Asks GitHub again: forgets what's kept of this place's installations
+ *  (tokens, repository lists) — after repositories were added on GitHub. */
+export async function refreshGitHubConnections(
+  input: PlaceInput,
+): Promise<Result> {
+  const userId = await currentUserId();
+  if (!userId) return { error: "forbidden" };
+  const target = await connectTarget(userId, input);
+  if (!target) return { error: "forbidden" };
+  for (const c of await placeConnections(target.pluginId, input))
+    forgetInstallation(c.id);
   revalidatePath("/", "layout");
   return { ok: true };
 }

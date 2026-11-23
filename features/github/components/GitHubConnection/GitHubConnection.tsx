@@ -8,6 +8,7 @@ import buttonStyles from "@/components/ui/atoms/Button/button.module.scss";
 import {
   connectGitHubInstallation,
   dismissGitHubChoice,
+  refreshGitHubConnections,
   removePluginConnection,
 } from "@/features/github/actions";
 import type { PluginConnectionView } from "@/features/github/queries";
@@ -156,11 +157,18 @@ export function GitHubConnection({
               <Account
                 account={c.account}
                 avatar={c.avatar}
-                meta={`${text.t(c.accountType === "Organization" ? "github.org" : "github.user")} · ${
-                  c.inherited
-                    ? text.t("github.fromWorkspace")
-                    : text.t("github.connectedHere")
+                meta={`${text.t(
+                  c.accountType === "Organization"
+                    ? "github.org"
+                    : "github.user",
+                )} · ${
+                  c.broken
+                    ? text.t("github.broken")
+                    : c.inherited
+                      ? text.t("github.fromWorkspace")
+                      : text.t("github.connectedHere")
                 }`}
+                broken={c.broken}
               />
               <div className={styles.itemActions}>
                 <a
@@ -196,7 +204,9 @@ export function GitHubConnection({
         </ul>
       )}
 
-      {view.repositories && (
+      {/* Only what a working connection reaches — a broken one says so on
+          its own row. */}
+      {view.repositories && view.connections.some((c) => !c.broken) && (
         <RepositoryLinks repositories={view.repositories} />
       )}
 
@@ -212,6 +222,18 @@ export function GitHubConnection({
                 ? text.t("github.connectOwn")
                 : text.t("github.connect")}
           </a>
+          {view.connections.length > 0 && (
+            <Button
+              variant="outline"
+              icon={<Icon icon="lucide:refresh-cw" width={15} />}
+              disabled={isPending}
+              onClick={() =>
+                run(() => refreshGitHubConnections({ pluginId, ...scope }))
+              }
+            >
+              {text.t("github.refresh")}
+            </Button>
+          )}
         </div>
       )}
     </section>
@@ -222,10 +244,12 @@ function Account({
   account,
   avatar,
   meta,
+  broken = false,
 }: {
   account: string;
   avatar: string | null;
   meta: string;
+  broken?: boolean;
 }) {
   return (
     <span className={styles.account}>
@@ -240,7 +264,9 @@ function Account({
       )}
       <span className={styles.accountText}>
         <span className={styles.accountName}>{account}</span>
-        <span className={styles.meta}>{meta}</span>
+        <span className={styles.meta} data-broken={broken || undefined}>
+          {meta}
+        </span>
       </span>
     </span>
   );

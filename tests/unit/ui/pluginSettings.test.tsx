@@ -23,6 +23,7 @@ mock.module("next/navigation", () => ({
 mock.module("@/features/github/actions", () => ({
   connectGitHubInstallation: async () => ({ ok: true }),
   dismissGitHubChoice: async () => ({ ok: true }),
+  refreshGitHubConnections: async () => ({ ok: true }),
   removePluginConnection: async () => ({ ok: true }),
 }));
 mock.module("@/i18n/navigation", () => ({
@@ -144,6 +145,7 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
               accountType: "Organization",
               avatar: null,
               inherited: true,
+              broken: false,
               manageUrl:
                 "https://github.com/organizations/acme/settings/installations/7",
             },
