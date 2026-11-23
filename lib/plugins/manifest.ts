@@ -351,6 +351,15 @@ const fieldSchema = z.strictObject({
   options: z.array(optionSchema).max(50).optional(),
 });
 
+/** A value a `text` setting offers: `label` names it, `hint` shows what
+ *  it gives (an example). */
+const suggestionSchema = z.strictObject({
+  id: localId,
+  value: z.string().trim().min(1).max(500),
+  label: title,
+  hint: z.string().trim().max(120).optional(),
+});
+
 const settingSchema = z.strictObject({
   key: z.string().regex(/^[a-z][a-zA-Z0-9_]{0,39}$/),
   type: z.enum(SETTING_TYPES),
@@ -365,6 +374,9 @@ const settingSchema = z.strictObject({
     ])
     .optional(),
   options: z.array(optionSchema).max(50).optional(),
+  /** A `text` setting's ready-made values, offered in a menu beside the
+   *  field — still free to type over. */
+  suggestions: z.array(suggestionSchema).max(10).optional(),
 });
 
 /** A building block for custom widgets (BARY-205): Barynt draws the data
@@ -812,6 +824,19 @@ export const manifestSchema = z
         add(
           ["contributes", "settings", i, "options"],
           "only select and multiselect settings have options",
+        );
+      if (s.suggestions && s.type !== "text")
+        add(
+          ["contributes", "settings", i, "suggestions"],
+          "only text settings have suggestions",
+        );
+      if (
+        s.suggestions &&
+        new Set(s.suggestions.map((x) => x.id)).size !== s.suggestions.length
+      )
+        add(
+          ["contributes", "settings", i, "suggestions"],
+          "suggestion ids must be unique",
         );
       if (s.type === "repositories" && connections.length === 0)
         add(

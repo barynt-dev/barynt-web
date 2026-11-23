@@ -143,8 +143,9 @@ contributions and previews, **by id**:
 - Under `contributes`, a list of the manifest (`actions`, `settings` …) maps
   an item's `id` — a setting's or credential's `key` — to its texts.
 - A string translates the item's main text: its `title`, else its `label`.
-  An object names them: `title`, `label`, `description`, and `options` or
-  `rules` — those by their `id` again, the same way.
+  An object names them: `title`, `label`, `description`, `hint`, and
+  `options`, `rules` or `suggestions` — those by their `id` again, the same
+  way.
 - `previews` maps a file to its caption.
 - Anything left out stays English, so a language can grow bit by bit.
 - `fields` can't be translated: a custom field becomes the project's own,
@@ -388,6 +389,7 @@ under **Plugins** — and the plugin reads them with
 | `description` | Optional, up to 300 characters, shown under the field. |
 | `default` | Optional: a string, number or boolean — for `select` an option's `id`, for `multiselect` a list of them. |
 | `options` | For `select` and `multiselect` only, and required there: `{ id, label }`, up to 50. |
+| `suggestions` | For `text` only: ready-made values, up to 10 — `{ id, value, label, hint? }`. Barynt shows them in a menu beside the field (**Suggestions**); picking one fills it in, and the field stays free to type. `hint` (up to 120 characters) says what the value gives, an example works best. |
 
 | Type | Barynt draws | The plugin gets |
 | --- | --- | --- |

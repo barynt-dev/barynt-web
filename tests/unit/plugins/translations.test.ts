@@ -26,6 +26,15 @@ const plugin = {
     settings: [
       { key: "rate", type: "number", label: "Rate", description: "Per hour." },
       {
+        key: "pattern",
+        type: "text",
+        label: "Pattern",
+        suggestions: [
+          { id: "short", value: "{key}", label: "Short", hint: "web-42" },
+          { id: "long", value: "{key}-{title}", label: "Long" },
+        ],
+      },
+      {
         key: "mode",
         type: "select",
         label: "Mode",
@@ -52,6 +61,9 @@ const plugin = {
         issuePanels: { time: { title: "Zeit" } },
         settings: {
           rate: { label: "Satz", description: "Pro Stunde." },
+          pattern: {
+            suggestions: { short: { label: "Kurz", hint: "web-42 – kurz" } },
+          },
           mode: { label: "Modus", options: { fast: "Schnell" } },
         },
         credentials: { token: "Schlüssel" },
@@ -81,15 +93,19 @@ describe("manifest translations", () => {
       label: "Satz",
       description: "Pro Stunde.",
     });
-    expect(c.settings?.[1]?.label).toBe("Modus");
-    expect(c.settings?.[1]?.options?.map((o) => o.label)).toEqual([
+    expect(c.settings?.[2]?.label).toBe("Modus");
+    expect(c.settings?.[2]?.options?.map((o) => o.label)).toEqual([
       "Schnell",
       "Slow",
+    ]);
+    expect(c.settings?.[1]?.suggestions).toEqual([
+      { id: "short", value: "{key}", label: "Kurz", hint: "web-42 – kurz" },
+      { id: "long", value: "{key}-{title}", label: "Long" },
     ]);
     expect(c.credentials?.[0]?.label).toBe("Schlüssel");
     expect(r.manifest.previews?.[0]?.title).toBe("Das Panel");
     // Ids and the rest stay as they are.
-    expect(c.settings?.[1]?.options?.[0]?.id).toBe("fast");
+    expect(c.settings?.[2]?.options?.[0]?.id).toBe("fast");
     expect(c.settings?.[0]?.type).toBe("number");
   });
 
@@ -139,6 +155,39 @@ describe("manifest translations", () => {
     expect(found).toContain('"fields" has no texts to translate');
     expect(found).toContain("at most 60 characters");
     expect(found).toContain('no preview "preview-2.webp"');
+  });
+
+  it("offers suggestions on text settings only, each id once", () => {
+    const settings = (extra: object) => ({
+      ...plugin,
+      locales: undefined,
+      contributes: {
+        ...plugin.contributes,
+        settings: [
+          {
+            key: "x",
+            type: "number",
+            label: "X",
+            suggestions: [{ id: "a", value: "1", label: "A" }],
+            ...extra,
+          },
+        ],
+      },
+    });
+    expect(issues(settings({})).join()).toContain(
+      "only text settings have suggestions",
+    );
+    expect(
+      issues(
+        settings({
+          type: "text",
+          suggestions: [
+            { id: "a", value: "1", label: "A" },
+            { id: "a", value: "2", label: "B" },
+          ],
+        }),
+      ).join(),
+    ).toContain("suggestion ids must be unique");
   });
 
   it("still takes a language with only its description", () => {

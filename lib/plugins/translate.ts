@@ -12,7 +12,8 @@
 //   } }
 //
 // A string translates an item's main text (`title`, else `label`); an object
-// names the texts. Anything left out stays English. Pure: no manifest
+// names the texts (`title`, `label`, `description`, `hint`; `options`,
+// `rules` and `suggestions` by id again). Anything left out stays English. Pure: no manifest
 // import, so `manifest.ts` can use the check below.
 
 /** The contributions whose texts can be translated. Custom `fields` can't:
@@ -37,10 +38,11 @@ const TEXT_MAX: Record<string, number> = {
   title: 60,
   label: 60,
   description: 300,
+  hint: 120,
 };
 
 /** Lists inside an item whose entries are translated by id. */
-const NESTED = ["options", "rules"] as const;
+const NESTED = ["options", "rules", "suggestions"] as const;
 
 type Item = Record<string, unknown>;
 /** An item's translation: its main text, or its texts by name. */
@@ -177,7 +179,10 @@ export function translationIssues(
           else checkItem(entry, sub, [...at, id]);
         }
       } else
-        add(at, "only title, label, description, options and rules translate");
+        add(
+          at,
+          "only title, label, description, hint, options, rules and suggestions translate",
+        );
     }
   };
 

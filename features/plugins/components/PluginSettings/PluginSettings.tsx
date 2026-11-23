@@ -37,6 +37,7 @@ import { PluginService } from "../PluginService/PluginService";
 import { CapabilityCards } from "../PluginStore/capabilities";
 import { PluginTile } from "../PluginStore/PluginTile";
 import shared from "../plugins.module.scss";
+import { SuggestedText } from "../SuggestedText/SuggestedText";
 import { ErrorLine, usePluginText } from "../shared";
 import styles from "./pluginSettings.module.scss";
 
@@ -466,6 +467,15 @@ function Field({
           <span className={styles.hint}>{field.description}</span>
         )}
       </div>
+    );
+  if (field.type === "text" && field.suggestions?.length)
+    return (
+      <SuggestedText
+        field={field}
+        value={String(value)}
+        disabled={disabled}
+        onChange={onChange}
+      />
     );
   if (field.type === "textarea")
     return (

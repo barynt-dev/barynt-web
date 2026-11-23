@@ -522,6 +522,40 @@ describe("PluginSettings", () => {
     expect(html).toMatch(/<option value="done">Done<\/option>/);
   });
 
+  it("offers a text setting's suggestions beside its field", () => {
+    const html = render(
+      view({
+        fields: [
+          {
+            key: "branchPattern",
+            type: "text",
+            label: "Branch name",
+            description: "Keep {key}.",
+            default: "{type}/{key}-{title}",
+            options: [],
+            suggestions: [
+              {
+                id: "type-key-title",
+                value: "{type}/{key}-{title}",
+                label: "Type, key and title",
+                hint: "feature/web-42-keep",
+              },
+            ],
+          },
+        ],
+        values: { branchPattern: "{key}" },
+      }),
+    );
+    // Free to type: the field holds what's saved.
+    expect(html).toMatch(
+      /<input[^>]*id="setting-branchPattern"[^>]*value="\{key\}"/,
+    );
+    expect(html).toContain(">Branch name</label>");
+    // The menu opens on a click; its button is there.
+    expect(html).toContain("suggestions");
+    expect(html).toContain("Keep {key}.");
+  });
+
   it("puts a plugin's own page instead of the form, its section below it", () => {
     const page = render(
       view({

@@ -3091,6 +3091,9 @@
         "app_failed": "GitHub hat die Schlüssel der App nicht übergeben. Versuch es noch einmal."
       },
       "local": "Barynt läuft hier lokal, GitHub kann es nicht erreichen. Die App kommt deshalb ohne Webhook: Verbinden und Repos auswählen geht, Pull Requests und Checks kommen erst mit einer öffentlichen Adresse an."
-    }
+    },
+    "suggestions": "Vorschläge",
+    "suggestionsTitle": "Vorschlag übernehmen",
+    "suggestionCurrent": "Aktuell"
   }
 }

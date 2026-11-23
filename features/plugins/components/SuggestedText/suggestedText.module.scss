@@ -1,0 +1,129 @@
+/* A text setting with suggestions: the field and a menu beside it, in the
+   settings form's own look. */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: 550;
+}
+
+.row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+  }
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 2.5rem;
+  padding: 0 0.75rem;
+  color: var(--on-surface);
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-sm);
+  outline: none;
+
+  &:focus {
+    border-color: var(--primary);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+.description {
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  max-height: 22rem;
+  margin: 0;
+  padding: 0.375rem;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--on-surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--surface-container-high);
+    outline: none;
+  }
+}
+
+.check {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1rem;
+  height: 1.25rem;
+  color: var(--primary);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+  min-width: 0;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--text-sm);
+  font-weight: 550;
+}
+
+.current {
+  padding: 0 0.4375rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--primary);
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+.value {
+  color: var(--on-surface);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+.hint {
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}

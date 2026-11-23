@@ -701,6 +701,13 @@ export interface PluginSettingField {
    *  the accounts GitHub didn't answer for. */
   connected?: boolean;
   failed?: string[];
+  /** `text`: ready-made values to pick from a menu beside the field. */
+  suggestions?: {
+    id: string;
+    value: string;
+    label: string;
+    hint: string | null;
+  }[];
 }
 
 /** The settings nav's "Plugins" group. In a project: every plugin its
@@ -1022,6 +1029,14 @@ export async function getPluginSettingsView(
       ...(f.type === "repositories" && {
         connected: f.connected ?? false,
         failed: f.failed ?? [],
+      }),
+      ...(f.suggestions?.length && {
+        suggestions: f.suggestions.map((x) => ({
+          id: x.id,
+          value: x.value,
+          label: x.label,
+          hint: x.hint ?? null,
+        })),
       }),
     })),
     inbound: hooks.flatMap((hook) => {
