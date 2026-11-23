@@ -188,6 +188,18 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
         fields: [],
         connection: {
           ...connection,
+          connections: [
+            {
+              rowId: "c1",
+              account: "acme",
+              accountType: "Organization",
+              avatar: null,
+              inherited: false,
+              broken: false,
+              manageUrl:
+                "https://github.com/organizations/acme/settings/installations/7",
+            },
+          ],
           repositories: [
             {
               fullName: "acme/web",
@@ -219,6 +231,35 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
     );
     expect(html).toContain("Web App");
     expect(html).toContain("github.unlinked");
+  });
+
+  it("marks a connection GitHub no longer answers for, without a repository list", () => {
+    const html = render(
+      view({
+        state: "off",
+        fields: [],
+        connection: {
+          ...connection,
+          connections: [
+            {
+              rowId: "c1",
+              account: "acme",
+              accountType: "Organization",
+              avatar: null,
+              inherited: false,
+              broken: true,
+              manageUrl:
+                "https://github.com/organizations/acme/settings/installations/7",
+            },
+          ],
+          repositories: [],
+        },
+      }),
+      { workspaceId: "ws-1", projectId: null },
+    );
+    expect(html).toContain("github.broken");
+    expect(html).toContain("github.refresh");
+    expect(html).not.toContain("github.reposTitle");
   });
 
   it("says when the instance has no GitHub App", () => {
