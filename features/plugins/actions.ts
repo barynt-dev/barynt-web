@@ -325,23 +325,8 @@ export async function installPlugin(input: {
         manifest: manifest as unknown as Prisma.InputJsonValue,
         sourceId: input.sourceId,
         installedById: actorId,
-        files: {
-          // Code, styles and preview images; the manifest is a column.
-          create: (Object.keys(files) as (keyof typeof files)[]).flatMap(
-            (name) => {
-              const content = name === "manifest.json" ? null : files[name];
-              return content
-                ? [
-                    {
-                      name,
-                      content: Buffer.from(content),
-                      size: content.byteLength,
-                    },
-                  ]
-                : [];
-            },
-          ),
-        },
+        // Code, styles and pictures; the manifest is a column.
+        files: { create: storedFiles(files) },
       },
       select: { id: true },
     });

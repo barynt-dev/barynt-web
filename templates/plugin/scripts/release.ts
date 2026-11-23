@@ -16,7 +16,9 @@ const names = (await readdir("dist"))
   .filter(
     (name) =>
       ["manifest.json", "main.js", "styles.css"].includes(name) ||
-      /^preview-[1-6]\.(webp|png)$/.test(name),
+      /^preview-[1-6]\.(webp|png)$/.test(name) ||
+      /^logo\.(webp|png)$/.test(name) ||
+      /^about(\.[a-z]{2})?\.md$/.test(name),
   )
   .sort();
 
@@ -48,7 +50,11 @@ const entry = {
   id: manifest.id,
   name: manifest.name,
   author: manifest.author,
-  description: manifest.description,
+  // The directory lists the short text; the page text is in the release.
+  description:
+    typeof manifest.description === "string"
+      ? manifest.description
+      : manifest.description.short,
   repo:
     process.env.PLUGIN_REPO ??
     previous?.repo ??

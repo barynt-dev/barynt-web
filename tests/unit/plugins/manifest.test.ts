@@ -1,12 +1,14 @@
 import { describe, expect, it } from "bun:test";
 import {
   ABOUT_MAX,
+  aboutFiles,
   CAPABILITIES,
   isCompatible,
   localizedAbout,
   localizedDescription,
   MAX_LINKS,
   validateManifest,
+  withAboutFiles,
 } from "@/lib/plugins/manifest";
 import { compareSemver, parseSemver } from "@/lib/plugins/semver";
 
@@ -811,6 +813,73 @@ describe("page text and links (BARY-237)", () => {
     expect(
       validateManifest({ ...base, about: "x".repeat(ABOUT_MAX + 1) }).ok,
     ).toBe(false);
+  });
+
+  it("takes the short text and the page text together, also per language", () => {
+    const result = validateManifest({
+      ...base,
+      description: {
+        short: "Issues on a timeline.",
+        about: "## Why\n\nBecause.",
+      },
+      locales: {
+        de: {
+          description: { short: "Auf einer Zeitleiste.", about: "about.de.md" },
+        },
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(localizedDescription(result.manifest, "en")).toBe(
+      "Issues on a timeline.",
+    );
+    expect(localizedDescription(result.manifest, "de")).toBe(
+      "Auf einer Zeitleiste.",
+    );
+    expect(localizedAbout(result.manifest, "en")).toBe("## Why\n\nBecause.");
+    // A file name nobody resolved is never shown as the text.
+    expect(localizedAbout(result.manifest, "de")).toBeNull();
+    expect(aboutFiles(result.manifest)).toEqual(["about.de.md"]);
+  });
+
+  it("wants a short text, and the page text in one place", () => {
+    for (const description of [{ about: "x" }, { short: "x", more: 1 }, 5])
+      expect(validateManifest({ ...base, description }).ok).toBe(false);
+    expect(
+      validateManifest({
+        ...base,
+        description: { short: "x", about: "y" },
+        about: "z",
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("puts a file's text in its place, refusing what isn't text", () => {
+    const result = validateManifest({
+      ...base,
+      description: { short: "x", about: "about.md" },
+    });
+    if (!result.ok) throw new Error("invalid");
+    const enc = new TextEncoder();
+    const done = withAboutFiles(result.manifest, {
+      "about.md": enc.encode("\uFEFF**Hi**\n"),
+    });
+    expect(done.ok && done.manifest.description).toEqual({
+      short: "x",
+      about: "**Hi**",
+    });
+    // The manifest it was given stays as it was.
+    expect(result.manifest.description).toEqual({
+      short: "x",
+      about: "about.md",
+    });
+    expect(withAboutFiles(result.manifest, {})).toEqual({
+      ok: false,
+      detail: "about.md: not found",
+    });
+    expect(
+      withAboutFiles(result.manifest, { "about.md": enc.encode("  ") }),
+    ).toEqual({ ok: false, detail: "about.md: empty" });
   });
 
   it("has no page text without one", () => {

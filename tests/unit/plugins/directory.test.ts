@@ -369,3 +369,73 @@ describe("a plugin's logo (BARY-235)", () => {
     expect(logoFile(null)).toBeNull();
   });
 });
+
+describe("page text files (BARY-237)", () => {
+  const withAbout = (text: string | Uint8Array = "## Why\n\nBecause.") => ({
+    ...release({
+      description: { short: "Issues on a time line.", about: "about.md" },
+      locales: {
+        de: {
+          description: { short: "Auf einer Zeitleiste.", about: "about.de.md" },
+        },
+      },
+    }),
+    "about.md": typeof text === "string" ? encode(text) : text,
+    "about.de.md": encode("Auf Deutsch."),
+  });
+
+  it("loads the files the manifest names, hashes them and puts their text in place", async () => {
+    const files = withAbout();
+    const { fetch, asked } = serve(files);
+    const result = await loadRelease(entry(files), "1.2.0", fetch, "1.0.0");
+    expect(asked).toContain("about.md");
+    expect(asked).toContain("about.de.md");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.manifest.description).toEqual({
+      short: "Issues on a time line.",
+      about: "## Why\n\nBecause.",
+    });
+    expect(result.manifest.locales?.de?.description).toEqual({
+      short: "Auf einer Zeitleiste.",
+      about: "Auf Deutsch.",
+    });
+  });
+
+  it("refuses a release whose file is missing, changed or not text", async () => {
+    const files = withAbout();
+    const { "about.md": _, ...missing } = files;
+    expect(
+      await loadRelease(entry(files), "1.2.0", serve(missing).fetch, "1.0.0"),
+    ).toEqual({ ok: false, error: "download_failed", detail: "about.md" });
+    expect(
+      await loadRelease(
+        entry(files),
+        "1.2.0",
+        serve({ ...files, "about.md": encode("Other.") }).fetch,
+        "1.0.0",
+      ),
+    ).toEqual({ ok: false, error: "hash_mismatch" });
+    const binary = withAbout(new Uint8Array([0xff, 0xfe, 0x00]));
+    expect(
+      await loadRelease(entry(binary), "1.2.0", serve(binary).fetch, "1.0.0"),
+    ).toEqual({
+      ok: false,
+      error: "invalid_manifest",
+      detail: "about.md: not UTF-8 text",
+    });
+    const long = withAbout("x".repeat(5001));
+    expect(
+      await loadRelease(entry(long), "1.2.0", serve(long).fetch, "1.0.0"),
+    ).toMatchObject({ ok: false, error: "invalid_manifest" });
+  });
+
+  it("never asks for a file outside the about names", async () => {
+    const files = release({
+      description: { short: "x", about: "../main.js" },
+    });
+    const { fetch, asked } = serve(files);
+    await loadRelease(entry(files), "1.2.0", fetch, "1.0.0");
+    expect(asked).not.toContain("../main.js");
+  });
+});

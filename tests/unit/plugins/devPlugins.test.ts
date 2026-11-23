@@ -90,6 +90,23 @@ describe("readDevPlugin", () => {
       errors: ["manifest.json: not found"],
     });
   });
+
+  it("puts the page text file in its place (BARY-237)", async () => {
+    const m = manifest({ description: { short: "Open.", about: "about.md" } });
+    write(m);
+    rmSync(join(dir, "about.md"), { force: true });
+    expect(await readDevPlugin(dir)).toEqual({
+      ok: false,
+      errors: ["about.md: not found"],
+    });
+    writeFileSync(join(dir, "about.md"), "## Why\n\nBecause.\n");
+    const read = await readDevPlugin(dir);
+    expect(read.ok && read.manifest.description).toEqual({
+      short: "Open.",
+      about: "## Why\n\nBecause.",
+    });
+    rmSync(join(dir, "about.md"));
+  });
 });
 
 describe("syncDevPlugin", () => {

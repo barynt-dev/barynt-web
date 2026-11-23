@@ -21,7 +21,10 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
   "minBaryntVersion": "1.0.0",
   "author": "Acme GmbH",
   "authorUrl": "https://acme.example",
-  "description": "Issues on a time line, as a project view.",
+  "description": {
+    "short": "Issues on a time line, as a project view.",
+    "about": "about.md"
+  },
   "license": "MIT",
   "kind": "sandbox",
   "levels": ["project"],
@@ -50,10 +53,9 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `maxBaryntVersion` | no | The highest version it was tested on. |
 | `author` | yes | Up to 80 characters. |
 | `authorUrl` | no | An `http(s)` address, linked in the store. |
-| `description` | yes | One or two sentences, up to 300 characters, in English. |
-| `about` | no | The plugin's page in the store, see [Page text and links](#page-text-and-links). Up to 5000 characters of Markdown, in English. Without it the page shows `description`. |
+| `description` | yes | In English: `short`, one or two sentences up to 300 characters, and optionally `about`, the plugin's page in the store — see [Page text and links](#page-text-and-links). A plain string is the short text alone. |
 | `links` | no | Up to 10 addresses — homepage, docs, community — see [Page text and links](#page-text-and-links). |
-| `locales` | no | Texts in Barynt's other languages: `{ "de": { "description": "…", "about": "…" } }`. Barynt shows each person the texts in their language, else `description` and `about`. |
+| `locales` | no | Texts in Barynt's other languages: `{ "de": { "description": { "short": "…", "about": "…" } } }`. Barynt shows each person the texts in their language, else the English ones. |
 | `logo` | no | `logo.png` or `logo.webp`, a file in the release: the plugin's picture in the store, the sidebar and its settings, see [Publishing](plugins-publishing.md#logo-and-screenshots). Without one, its first letter. |
 | `license` | yes | E.g. `MIT`, `Apache-2.0`, `Proprietary`. |
 | `kind` | yes | `declarative`, `sandbox` or `service`, see [Building plugins](plugins.md#the-three-kinds). |
@@ -66,16 +68,34 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 
 ## Page text and links
 
-`description` is the short line on tiles and in lists. `about` is the
-plugin's page in the store: what it does, how to set it up, what it needs.
-It's Markdown — paragraphs, headings, lists, quotes, code, **bold**,
-_italic_ — and Barynt shows it without links, images or HTML: a link's text
-stays, its address doesn't. Addresses go in `links`, which the store shows
-in a box of their own:
+`description.short` is the short line on tiles and in lists.
+`description.about` is the plugin's page in the store: what it does, how to
+set it up, what it needs. Without it the page shows the short text.
+
+`about` is Markdown, up to 5000 characters — written in the manifest, or,
+easier to keep, in a file of the release: `about.md`, and `about.de.md` for
+another language. Barynt loads the file with the release (it's part of the
+[release hash](plugins-publishing.md#the-release-hash)), checks that it's
+UTF-8 text and short enough, and keeps its text with the manifest.
+
+Either way it's shown the same: paragraphs, headings, lists, quotes, code,
+**bold**, _italic_ — never links, images or HTML. A link's text stays, its
+address doesn't; an image or HTML is left out. Addresses go in `links`,
+which the store shows in a box of their own:
 
 ```json
-"about": "## What it does\n\nCards show their pull request…\n\n## Setup\n\n1. Add the webhook…",
-"locales": { "de": { "about": "## Was es macht\n\n…" } },
+"description": {
+  "short": "Pull requests and checks on their issues.",
+  "about": "about.md"
+},
+"locales": {
+  "de": {
+    "description": {
+      "short": "Pull Requests und Checks an ihren Issues.",
+      "about": "about.de.md"
+    }
+  }
+},
 "links": [
   { "kind": "docs", "url": "https://docs.acme.dev/gantt" },
   { "kind": "issues", "url": "https://github.com/acme/gantt/issues" },
@@ -91,7 +111,10 @@ in a box of their own:
 
 `https` only, each address once. Both fields need Barynt 1.1.0-beta.5 or
 later — set `minBaryntVersion` accordingly, an older Barynt refuses the
-manifest.
+manifest. `description` as `{ short, about }` and the `about.md` files need
+a Barynt released after 1.1.0-beta.5; before, the page text was a field of
+its own — `"about": "…"` beside `description`, and in `locales` — which
+Barynt still reads.
 
 ## Capabilities
 

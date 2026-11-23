@@ -17,6 +17,7 @@ the release on GitHub, GitLab or Gitea, or in the tag on Bitbucket:
 | `styles.css` | optional |
 | `preview-1.webp` … `preview-6.png` | optional, see [Logo and screenshots](#logo-and-screenshots) |
 | `logo.png` or `logo.webp` | optional, the one the manifest names |
+| `about.md`, `about.de.md` | optional, the page text the manifest names, see [Page text and links](plugins-manifest.md#page-text-and-links) |
 
 On a plain web server, the files of version `1.2.0` of the entry's `repo`
 `https://plugins.acme.example/timeline` are at
@@ -28,11 +29,11 @@ For a fix, release a new version.
 ## The release hash
 
 The directory names, for each version, the SHA-256 of its files — all of
-them, previews and logo included. It's the hash of the list of each file's own hash
+them, previews, logo and page text included. It's the hash of the list of each file's own hash
 and name, sorted by name, exactly what this prints:
 
 ```bash
-sha256sum manifest.json main.js styles.css preview-*.* logo.* | sort -k2 | sha256sum
+sha256sum manifest.json main.js styles.css preview-*.* logo.* about*.md | sort -k2 | sha256sum
 ```
 
 Leave out files the release doesn't have. If a single byte differs from

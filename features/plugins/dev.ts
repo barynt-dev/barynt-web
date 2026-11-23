@@ -16,9 +16,13 @@ import {
   requiredFiles,
 } from "@/lib/plugins/directory";
 import {
+  ABOUT_FILE_MAX_BYTES,
+  ABOUT_FILE_RE,
+  aboutFiles,
   isCompatible,
   type PluginManifest,
   validateManifest,
+  withAboutFiles,
 } from "@/lib/plugins/manifest";
 
 // A plugin in development (BARY-221): its build output in a local folder
@@ -115,12 +119,25 @@ export async function readDevPlugin(source: string): Promise<DevRead> {
       errors.push(`${name}: not a PNG or WebP`);
     else files[name] = bytes;
   }
+  // And its page text files (`about.md`, BARY-237), put in their place.
+  for (const name of aboutFiles(manifest)) {
+    const bytes = await readOne(source, name, ABOUT_FILE_MAX_BYTES);
+    if (bytes === "too_large") errors.push(`${name}: too large`);
+    else if (bytes) files[name] = bytes;
+  }
+  const texts = withAboutFiles(manifest, files);
+  if (!texts.ok) errors.push(texts.detail);
   for (const name of requiredFiles(manifest.kind))
     if (!files[name]) errors.push(`${name}: not found`);
   if (!isCompatible(manifest, APP_VERSION))
     errors.push(`minBaryntVersion: needs another Barynt than ${APP_VERSION}`);
-  if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, manifest, files, fingerprint: releaseHash(files) };
+  if (errors.length > 0 || !texts.ok) return { ok: false, errors };
+  return {
+    ok: true,
+    manifest: texts.manifest,
+    files,
+    fingerprint: releaseHash(files),
+  };
 }
 
 /** Each source of `PLUGIN_DEV_DIRS`, read — for the admin's list. */
@@ -196,11 +213,11 @@ export async function devFingerprints(): Promise<
 }
 
 /** A plugin's files as its row keeps them: all but the manifest, which is a
- *  column of its own. */
+ *  column of its own, and the page text files, whose text is in it. */
 export function storedFiles(files: ReleaseFiles) {
   return (Object.keys(files) as ReleaseFileName[]).flatMap((name) => {
     const content = files[name];
-    return content && name !== "manifest.json"
+    return content && name !== "manifest.json" && !ABOUT_FILE_RE.test(name)
       ? [{ name, content: Buffer.from(content), size: content.byteLength }]
       : [];
   });
