@@ -523,26 +523,25 @@ describe("PluginSettings", () => {
   });
 
   it("offers a text setting's suggestions beside its field", () => {
+    const field: PluginSettingsView["fields"][number] = {
+      key: "branchPattern",
+      type: "text",
+      label: "Branch name",
+      description: "Keep {key}.",
+      default: "{type}/{key}-{title}",
+      options: [],
+      suggestions: [
+        {
+          id: "type-key-title",
+          value: "{type}/{key}-{title}",
+          label: "Type, key and title",
+          hint: "feature/web-42-keep",
+        },
+      ],
+    };
     const html = render(
       view({
-        fields: [
-          {
-            key: "branchPattern",
-            type: "text",
-            label: "Branch name",
-            description: "Keep {key}.",
-            default: "{type}/{key}-{title}",
-            options: [],
-            suggestions: [
-              {
-                id: "type-key-title",
-                value: "{type}/{key}-{title}",
-                label: "Type, key and title",
-                hint: "feature/web-42-keep",
-              },
-            ],
-          },
-        ],
+        fields: [field],
         values: { branchPattern: "{key}" },
       }),
     );
@@ -553,7 +552,18 @@ describe("PluginSettings", () => {
     expect(html).toContain(">Branch name</label>");
     // The menu opens on a click; its button is there.
     expect(html).toContain("suggestions");
+    // A pattern of one's own keeps the description …
     expect(html).toContain("Keep {key}.");
+    // … a suggestion's shows its example instead.
+    const picked = render(
+      view({
+        fields: [field],
+        values: { branchPattern: "{type}/{key}-{title}" },
+      }),
+    );
+    expect(picked).toContain("suggestionExample");
+    expect(picked).toContain("feature/web-42-keep");
+    expect(picked).not.toContain("Keep {key}.");
   });
 
   it("puts a plugin's own page instead of the form, its section below it", () => {

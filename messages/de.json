@@ -3094,6 +3094,7 @@
     },
     "suggestions": "Vorschläge",
     "suggestionsTitle": "Vorschlag übernehmen",
-    "suggestionCurrent": "Aktuell"
+    "suggestionCurrent": "Aktuell",
+    "suggestionExample": "Beispiel:"
   }
 }

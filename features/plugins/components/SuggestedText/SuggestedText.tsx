@@ -10,7 +10,7 @@ import styles from "./suggestedText.module.scss";
 // A `text` setting with ready-made values (`suggestions` in the manifest):
 // the field, free to type in, and beside it a menu of the suggestions —
 // each with its name, the value and what it gives. Picking one fills the
-// field; the one it holds is marked.
+// field; the one it holds is marked, and under the field its example.
 
 export function SuggestedText({
   field,
@@ -26,6 +26,9 @@ export function SuggestedText({
   const text = usePluginText();
   const id = `setting-${field.key}`;
   const suggestions = field.suggestions ?? [];
+  // Under the field: what the chosen suggestion gives, as an example — a
+  // pattern of one's own keeps the setting's description.
+  const chosen = suggestions.find((s) => s.value === value.trim());
 
   return (
     <div className={styles.field}>
@@ -49,6 +52,7 @@ export function SuggestedText({
             <Button
               type="button"
               variant="outline"
+              className={styles.trigger}
               disabled={disabled}
               icon={<Icon icon="lucide:sparkles" width={15} />}
               iconRight={<Icon icon="lucide:chevron-down" width={14} />}
@@ -97,8 +101,15 @@ export function SuggestedText({
           )}
         </InlinePicker>
       </div>
-      {field.description && (
-        <span className={styles.description}>{field.description}</span>
+      {chosen?.hint ? (
+        <span className={styles.description}>
+          {text.t("suggestionExample")}{" "}
+          <code className={styles.example}>{chosen.hint}</code>
+        </span>
+      ) : (
+        field.description && (
+          <span className={styles.description}>{field.description}</span>
+        )
       )}
     </div>
   );

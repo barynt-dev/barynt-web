@@ -389,7 +389,7 @@ under **Plugins** — and the plugin reads them with
 | `description` | Optional, up to 300 characters, shown under the field. |
 | `default` | Optional: a string, number or boolean — for `select` an option's `id`, for `multiselect` a list of them. |
 | `options` | For `select` and `multiselect` only, and required there: `{ id, label }`, up to 50. |
-| `suggestions` | For `text` only: ready-made values, up to 10 — `{ id, value, label, hint? }`. Barynt shows them in a menu beside the field (**Suggestions**); picking one fills it in, and the field stays free to type. `hint` (up to 120 characters) says what the value gives, an example works best. |
+| `suggestions` | For `text` only: ready-made values, up to 10 — `{ id, value, label, hint? }`. Barynt shows them in a menu beside the field (**Suggestions**); picking one fills it in, and the field stays free to type. `hint` (up to 120 characters) is an example of what the value gives: the menu shows it, and while the field holds that value, Barynt shows it under the field as **Example:** instead of the description. |
 
 | Type | Barynt draws | The plugin gets |
 | --- | --- | --- |

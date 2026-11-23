@@ -46,6 +46,17 @@
   }
 }
 
+/* As tall as the field beside it. */
+.row .trigger.trigger {
+  height: auto;
+  min-height: 2.5rem;
+}
+
+.example {
+  color: var(--on-surface);
+  font-family: var(--font-mono);
+}
+
 .description {
   color: var(--on-surface-variant);
   font-size: var(--text-xs);
