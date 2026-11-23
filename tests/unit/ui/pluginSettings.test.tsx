@@ -111,8 +111,13 @@ const repos = {
   description: null,
   default: null,
   options: [
-    { id: "acme/api", label: "acme/api", private: true },
-    { id: "acme/web", label: "acme/web" },
+    {
+      id: "acme/api",
+      label: "acme/api",
+      private: true,
+      url: "https://github.com/acme/api",
+    },
+    { id: "acme/web", label: "acme/web", url: "https://github.com/acme/web" },
   ],
   connected: true,
   failed: [],
@@ -203,7 +208,11 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
           repositories: [
             {
               fullName: "acme/web",
-              private: true,
+              visibility: "private",
+              archived: false,
+              fork: false,
+              description: "The web app",
+              url: "https://github.com/acme/web",
               unreachable: false,
               projects: [
                 {
@@ -215,7 +224,11 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
             },
             {
               fullName: "acme/docs",
-              private: false,
+              visibility: "public",
+              archived: true,
+              fork: true,
+              description: null,
+              url: "https://github.com/acme/docs",
               unreachable: false,
               projects: [],
             },
@@ -231,6 +244,12 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
     );
     expect(html).toContain("Web App");
     expect(html).toContain("github.unlinked");
+    // Links to GitHub, and what each repository is.
+    expect(html).toContain('href="https://github.com/acme/web"');
+    expect(html).toContain("The web app");
+    expect(html).toContain("github.archived");
+    expect(html).toContain("github.fork");
+    expect(html).toContain("github.public");
   });
 
   it("marks a connection GitHub no longer answers for, without a repository list", () => {
@@ -278,12 +297,16 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
         connection,
       }),
     );
-    expect(html).toMatch(
-      /checked=""[^>]*\/?>(<i[^>]*><\/i>)?<span[^>]*>gone\/repo/,
-    );
-    expect(html).toContain("github.unreachable");
+    // Chosen but out of reach: still there, ticked, to untick.
+    const gone = html.slice(html.indexOf("gone/"));
+    expect(
+      html.lastIndexOf('checked=""', html.indexOf("gone/")),
+    ).toBeGreaterThan(-1);
+    expect(gone).toContain("github.unreachable");
     expect(html).toContain("github.private");
-    expect(html).toContain("acme/api");
+    expect(html).toContain(">api<");
+    // Each reachable one opens on GitHub, beside its row.
+    expect(html).toContain('href="https://github.com/acme/web"');
   });
 
   it("falls back to typing them without a connection", () => {

@@ -686,7 +686,16 @@ export interface PluginSettingField {
   default: SettingValue | null;
   /** A choice's options — for `member` and `label` the place's (BARY-204),
    *  for `repositories` what the place's connections reach (BARY-238). */
-  options: { id: string; label: string; color?: string; private?: boolean }[];
+  options: {
+    id: string;
+    label: string;
+    color?: string;
+    private?: boolean;
+    archived?: boolean;
+    fork?: boolean;
+    /** A repository's page on GitHub. */
+    url?: string;
+  }[];
   /** `repositories`: whether there's a connection to list them from, and
    *  the accounts GitHub didn't answer for. */
   connected?: boolean;
@@ -976,6 +985,9 @@ export async function getPluginSettingsView(
         label: o.label,
         ...(o.color && { color: o.color }),
         ...(o.private && { private: true }),
+        ...(o.archived && { archived: true }),
+        ...(o.fork && { fork: true }),
+        ...(o.url && { url: o.url }),
       })),
       ...(f.type === "repositories" && {
         connected: f.connected ?? false,

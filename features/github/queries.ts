@@ -26,7 +26,11 @@ import { chosenRepositories, placeRepositories } from "./connections";
 
 export interface ConnectionRepository {
   fullName: string;
-  private: boolean;
+  visibility: "public" | "private" | "internal";
+  archived: boolean;
+  fork: boolean;
+  description: string | null;
+  url: string;
   /** Chosen by a project, but no connection reaches it (any more). */
   unreachable: boolean;
   projects: { name: string; color: string; href: string }[];
@@ -140,7 +144,11 @@ async function workspaceRepositories(
   for (const r of reached)
     rows.set(r.fullName.toLowerCase(), {
       fullName: r.fullName,
-      private: r.private,
+      visibility: r.visibility,
+      archived: r.archived,
+      fork: r.fork,
+      description: r.description,
+      url: r.url,
       unreachable: false,
       projects: [],
     });
@@ -151,7 +159,11 @@ async function workspaceRepositories(
       const key = name.toLowerCase();
       const row = rows.get(key) ?? {
         fullName: name,
-        private: false,
+        visibility: "public" as const,
+        archived: false,
+        fork: false,
+        description: null,
+        url: `https://github.com/${name}`,
         unreachable: true,
         projects: [],
       };

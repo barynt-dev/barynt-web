@@ -12,7 +12,15 @@ import type { PluginManifest } from "@/lib/plugins/manifest";
 type Setting = NonNullable<PluginManifest["contributes"]["settings"]>[number];
 
 export type PlacedSetting = Omit<Setting, "options"> & {
-  options?: { id: string; label: string; color?: string; private?: boolean }[];
+  options?: {
+    id: string;
+    label: string;
+    color?: string;
+    private?: boolean;
+    archived?: boolean;
+    fork?: boolean;
+    url?: string;
+  }[];
   /** A `repositories` setting: whether the place has a connection to list
    *  them from, and the accounts GitHub didn't answer for (BARY-238). */
   connected?: boolean;
@@ -53,6 +61,9 @@ export async function placeSettings(
           id: r.fullName,
           label: r.fullName,
           private: r.private,
+          archived: r.archived,
+          fork: r.fork,
+          url: r.url,
         })),
         connected: repos.connections.length > 0,
         failed: repos.failed,

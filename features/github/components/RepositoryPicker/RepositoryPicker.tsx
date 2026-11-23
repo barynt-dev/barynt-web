@@ -5,6 +5,7 @@ import { useState } from "react";
 import { usePluginText } from "@/features/plugins/components/shared";
 import type { PluginSettingField } from "@/features/plugins/queries";
 import { repositoryList } from "@/lib/plugins/settings";
+import { RepoBadges, RepoName } from "../RepoBadges/RepoBadges";
 import styles from "./repositoryPicker.module.scss";
 
 // A `repositories` setting (BARY-238): what the place's GitHub connections
@@ -95,33 +96,47 @@ export function RepositoryPicker({
       )}
       <ul className={styles.list}>
         {unreachable.map((name) => (
-          <li key={name}>
+          <li key={name} className={styles.item}>
             <label className={styles.row} data-unreachable>
               <input type="checkbox" checked onChange={() => toggle(name)} />
-              <Icon icon="lucide:book-x" width={15} aria-hidden />
-              <span className={styles.name}>{name}</span>
-              <span className={styles.tag}>{text.t("github.unreachable")}</span>
+              <span className={styles.name}>
+                <RepoName fullName={name} />
+              </span>
+              <RepoBadges repo={{ unreachable: true }} />
             </label>
           </li>
         ))}
         {shown.map((o) => (
-          <li key={o.id}>
+          <li key={o.id} className={styles.item}>
             <label className={styles.row}>
               <input
                 type="checkbox"
                 checked={isChosen(o.id)}
                 onChange={() => toggle(o.id)}
               />
-              <Icon
-                icon={o.private ? "lucide:lock" : "lucide:book-marked"}
-                width={15}
-                aria-hidden
+              <span className={styles.name}>
+                <RepoName fullName={o.label} />
+              </span>
+              <RepoBadges
+                repo={{
+                  visibility: o.private ? "private" : "public",
+                  archived: o.archived,
+                  fork: o.fork,
+                }}
               />
-              <span className={styles.name}>{o.label}</span>
-              {o.private && (
-                <span className={styles.tag}>{text.t("github.private")}</span>
-              )}
             </label>
+            {o.url && (
+              <a
+                href={o.url}
+                target="_blank"
+                rel="noreferrer"
+                className={styles.open}
+                aria-label={`${o.label} — ${text.t("github.openOnGitHub")}`}
+                title={text.t("github.openOnGitHub")}
+              >
+                <Icon icon="lucide:arrow-up-right" width={14} aria-hidden />
+              </a>
+            )}
           </li>
         ))}
         {shown.length === 0 && unreachable.length === 0 && (

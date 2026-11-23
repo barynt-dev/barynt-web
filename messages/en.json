@@ -3060,7 +3060,12 @@
       "noneLinked": "No repository is linked to a project yet. That's done in the project's plugin settings.",
       "unlinked": "{count, plural, one {# repository without a project} other {# repositories without a project}}",
       "refresh": "Reload",
-      "broken": "GitHub doesn't answer – disconnect and connect again"
+      "broken": "GitHub doesn't answer – disconnect and connect again",
+      "public": "public",
+      "internal": "internal",
+      "archived": "archived",
+      "fork": "fork",
+      "openOnGitHub": "Open on GitHub"
     },
     "githubApp": {
       "title": "GitHub App",

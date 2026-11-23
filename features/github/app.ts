@@ -234,6 +234,13 @@ export async function getInstallation(
 export interface GitHubRepository {
   fullName: string;
   private: boolean;
+  /** `public`, `private`, or `internal` (an enterprise's own). */
+  visibility: "public" | "private" | "internal";
+  archived: boolean;
+  fork: boolean;
+  description: string | null;
+  /** Its page on GitHub. */
+  url: string;
   installationId: string;
 }
 
@@ -258,7 +265,15 @@ export async function installationRepositories(
     for (let page = 1; page <= 10; page++) {
       const res = await call<{
         total_count?: number;
-        repositories?: { full_name?: string; private?: boolean }[];
+        repositories?: {
+          full_name?: string;
+          private?: boolean;
+          visibility?: string;
+          archived?: boolean;
+          fork?: boolean;
+          description?: string | null;
+          html_url?: string;
+        }[];
       }>(`/installation/repositories?per_page=100&page=${page}`, { token });
       if (res.status !== 200) {
         repos = page === 1 ? null : repos;
@@ -270,6 +285,16 @@ export async function installationRepositories(
           repos.push({
             fullName: r.full_name,
             private: r.private === true,
+            visibility:
+              r.visibility === "internal"
+                ? "internal"
+                : r.private
+                  ? "private"
+                  : "public",
+            archived: r.archived === true,
+            fork: r.fork === true,
+            description: r.description?.trim().slice(0, 200) || null,
+            url: r.html_url ?? `${GITHUB_WEB}/${r.full_name}`,
             installationId,
           });
       if (list.length < 100) break;

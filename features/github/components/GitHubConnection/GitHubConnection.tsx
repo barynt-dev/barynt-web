@@ -14,6 +14,7 @@ import {
 import type { PluginConnectionView } from "@/features/github/queries";
 import { ErrorLine, usePluginText } from "@/features/plugins/components/shared";
 import { Link } from "@/i18n/navigation";
+import { RepoBadges, RepoName } from "../RepoBadges/RepoBadges";
 import styles from "./gitHubConnection.module.scss";
 
 // A plugin's connection to GitHub in a workspace or project (BARY-238): the
@@ -284,34 +285,50 @@ function RepositoryLinks({
   const rest = repositories.filter((r) => r.projects.length === 0);
   const row = (r: (typeof repositories)[number]) => (
     <li key={r.fullName} className={styles.repoRow}>
-      <span
-        className={styles.repoName}
-        data-unreachable={r.unreachable || undefined}
-      >
-        <Icon
-          icon={
-            r.unreachable
-              ? "lucide:book-x"
-              : r.private
-                ? "lucide:lock"
-                : "lucide:book-marked"
-          }
-          width={15}
-          aria-hidden
-        />
-        {r.fullName}
-      </span>
-      <span className={styles.repoProjects}>
-        {r.projects.map((p) => (
-          <Link key={p.href} href={p.href} className={styles.projectChip}>
-            <span
-              className={styles.dot}
-              style={{ background: p.color }}
+      <Icon
+        icon={r.archived ? "lucide:archive" : "lucide:book-marked"}
+        width={16}
+        className={styles.repoIcon}
+        aria-hidden
+      />
+      <span className={styles.repoMain}>
+        <span className={styles.repoLine}>
+          <a
+            href={r.url}
+            target="_blank"
+            rel="noreferrer"
+            className={styles.repoLink}
+            title={text.t("github.openOnGitHub")}
+          >
+            <RepoName fullName={r.fullName} />
+            <Icon
+              icon="lucide:arrow-up-right"
+              width={13}
+              className={styles.repoArrow}
               aria-hidden
             />
-            {p.name}
-          </Link>
-        ))}
+          </a>
+        </span>
+        {r.description && (
+          <span className={styles.repoDescription}>{r.description}</span>
+        )}
+      </span>
+      <span className={styles.repoSide}>
+        <RepoBadges repo={r} />
+        {r.projects.length > 0 && (
+          <span className={styles.repoProjects}>
+            {r.projects.map((p) => (
+              <Link key={p.href} href={p.href} className={styles.projectChip}>
+                <span
+                  className={styles.dot}
+                  style={{ background: p.color }}
+                  aria-hidden
+                />
+                {p.name}
+              </Link>
+            ))}
+          </span>
+        )}
       </span>
     </li>
   );
