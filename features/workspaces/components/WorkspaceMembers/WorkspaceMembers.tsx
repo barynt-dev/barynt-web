@@ -1,9 +1,8 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import { EmptyState } from "@/components/ui/atoms/EmptyState/EmptyState";
 import { InlinePicker } from "@/components/ui/atoms/InlinePicker/InlinePicker";
@@ -59,7 +58,6 @@ export function WorkspaceMembers({
   tabs,
 }: Props) {
   const t = useTranslations();
-  const router = useRouter();
   const confirm = useConfirm();
   const { openModal } = useModal();
   const isPhone = useMediaQuery(PHONE_QUERY);
@@ -72,15 +70,30 @@ export function WorkspaceMembers({
     loadMore,
   });
 
+  // A picked role shows right away, until the server's fresh rows replace
+  // it (or the change fails and it falls back on its own).
+  const [pendingRoles, setPendingRole] = useOptimistic(
+    {} as Record<string, string>,
+    (state, { userId, role }: { userId: string; role: string }) => ({
+      ...state,
+      [userId]: role,
+    }),
+  );
+
   // `setMemberRole` and `removeMember` throw instead of returning errors —
   // they're wired up to row actions. The throw is caught here so the page
-  // doesn't hit its error boundary.
-  const run = (action: () => Promise<unknown>, failure: string) =>
+  // doesn't hit its error boundary. No `router.refresh()`: both actions
+  // revalidate, and their response already carries the new rows.
+  const run = (
+    action: () => Promise<unknown>,
+    failure: string,
+    optimistic?: () => void,
+  ) =>
     startTransition(async () => {
+      optimistic?.();
       try {
         await action();
         setError("");
-        router.refresh();
       } catch {
         setError(failure);
       }
@@ -130,13 +143,28 @@ export function WorkspaceMembers({
   );
 
   const roleCell = (row: WorkspaceMemberRow) => {
+    const pendingRole = assignableRoles.find(
+      (role) => role.id === pendingRoles[row.user.id],
+    );
     const pill = (
-      <Label size="sm" filled color={roleColor(row.roleRank)}>
-        {row.roleName}
+      <Label
+        size="sm"
+        filled
+        color={roleColor(pendingRole?.rank ?? row.roleRank)}
+      >
+        {pendingRole?.name ?? row.roleName}
       </Label>
     );
     if (!row.manageable || !canSetRole || assignableRoles.length === 0)
       return pill;
+
+    if (pendingRole)
+      return (
+        <span className={styles.roleTrigger} aria-busy>
+          {pill}
+          <Icon icon="lucide:loader-2" width={14} className={styles.spinner} />
+        </span>
+      );
 
     return (
       <InlinePicker
@@ -150,7 +178,7 @@ export function WorkspaceMembers({
             <Icon icon="lucide:chevron-down" width={14} />
           </button>
         }
-        width={240}
+        width={220}
         stop
       >
         {(close) => (
@@ -158,15 +186,17 @@ export function WorkspaceMembers({
             items={assignableRoles.map((role) => ({
               value: role.id,
               label: role.name,
-              hint: role.desc,
             }))}
             value={row.role}
             onPick={(value) => {
-              run(
-                () => setMemberRole(workspaceId, row.user.id, String(value)),
-                t("workspaceMembers.roleFailed"),
-              );
               close();
+              const role = String(value);
+              if (role === row.role) return;
+              run(
+                () => setMemberRole(workspaceId, row.user.id, role),
+                t("workspaceMembers.roleFailed"),
+                () => setPendingRole({ userId: row.user.id, role }),
+              );
             }}
             onClose={close}
           />

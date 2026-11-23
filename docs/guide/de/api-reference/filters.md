@@ -74,6 +74,9 @@ Welche Vergleiche ein Feld kennt, steht beim Feld. Werte sind IDs, sofern nichts
 | `updated` | Wann es zuletzt geändert wurde. | `before`, `after`, `within` | Ein Tag "YYYY-MM-DD" oder "today"; bei within ein Zeitraum-Name. |
 | `parent` | Sein übergeordnetes Issue. empty = nur Issues ganz oben, notEmpty = nur Sub-Issues. | `any`, `empty`, `notEmpty` | Issue-IDs (die interne ID, nicht "WEB-42"). |
 | `text` | Eine Suche in Titel und Beschreibung; eine Nummer oder "WEB-42" findet auch genau dieses Issue. | `contains` | Beliebiger Text. |
+| `title` | Ein Stück Text im Titel, genau so geschrieben (Groß- und Kleinschreibung egal). | `contains` | Beliebiger Text. |
+| `description` | Ein Stück Text in der Beschreibung, genau so geschrieben (Groß- und Kleinschreibung egal). | `contains` | Beliebiger Text. |
+| `comment` | Ein Stück Text in mindestens einem seiner Kommentare, genau so geschrieben (Groß- und Kleinschreibung egal). | `contains` | Beliebiger Text. |
 
 ## Vergleiche (`is`)
 

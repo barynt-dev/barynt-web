@@ -9,6 +9,7 @@ import { GroupIcon } from "@/features/issues/components/GroupIcon/GroupIcon";
 import { type GroupDef, groupStartPatch } from "@/features/issues/group";
 import type { IssueComposerData, IssueLookups } from "@/features/issues/types";
 import { useModal } from "@/lib/context";
+import { COMPACT_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
 import type { IssueDetail } from "@/types";
 import styles from "./boardColumn.module.scss";
 
@@ -36,6 +37,11 @@ interface BoardColumnProps {
     fromGroupId: string,
   ) => (e: React.DragEvent) => void;
   onCardDragEnd: () => void;
+  /** Pressing a card with a mouse starts dragging it (`pointerDrag.ts`). */
+  onCardPointerDown?: (
+    issue: IssueDetail,
+    fromGroupId: string,
+  ) => (e: React.PointerEvent<HTMLElement>) => void;
   onCardDragOver: (cardId: string) => (e: React.DragEvent) => void;
   /** Whether this issue is currently shown in the side panel. */
   isCardActive: (issue: IssueDetail) => boolean;
@@ -57,13 +63,27 @@ interface BoardColumnProps {
    * column in that lane. `column` is the plain board's whole column.
    */
   variant?: "column" | "head" | "cell";
+  /** The lane a `cell` belongs to — read off the element by `Board`. */
+  laneId?: string;
+  /** Own width in pixels (`useColumnWidths`) — the default without one. */
+  width?: number;
+  /** The handle at the header's right edge that changes the width. */
+  resize?: {
+    label: string;
+    "aria-valuenow": number;
+    "aria-valuemin": number;
+    "aria-valuemax": number;
+    onPointerDown: (e: React.PointerEvent<HTMLElement>) => void;
+    onDoubleClick: () => void;
+    onKeyDown: (e: React.KeyboardEvent) => void;
+  };
   /** Moving the whole column by a handle in its header (BARY-165). */
   columnDrag?: {
     label: string;
     /** This column is the one being dragged — drawn as a placeholder. */
     dragging: boolean;
-    onStart: (e: React.DragEvent) => void;
-    onEnd: () => void;
+    /** Pressing the header starts it (`Board`, `pointerDrag.ts`). */
+    onPointerDown: (e: React.PointerEvent<HTMLElement>) => void;
   };
 }
 
@@ -85,6 +105,7 @@ export function BoardColumn({
   onColumnDrop,
   onCardDragStart,
   onCardDragEnd,
+  onCardPointerDown,
   onCardDragOver,
   isCardActive,
   isCardFocused,
@@ -93,9 +114,13 @@ export function BoardColumn({
   moveTargets,
   onCardMoveTo,
   variant = "column",
+  width,
+  resize,
+  laneId,
   columnDrag,
 }: BoardColumnProps) {
   const { openModal } = useModal();
+  const isDesktop = !useMediaQuery(COMPACT_QUERY);
 
   // Without `issue.create` in this project there is neither the plus in the
   // column header nor the row at the end of the column. The server has already
@@ -143,12 +168,33 @@ export function BoardColumn({
       // Read by `Board` to tell which column the phone's switcher is on and
       // to scroll to one.
       data-group-id={group.id}
+      data-lane-id={laneId}
+      style={
+        width === undefined
+          ? undefined
+          : ({ "--col-w": `${width}px` } as React.CSSProperties)
+      }
       onDragOver={onColumnDragOver}
       onDragLeave={onColumnDragLeave}
       onDrop={onColumnDrop}
     >
       {variant !== "cell" && (
-        <div className={styles.colHeader}>
+        <div
+          className={styles.colHeader}
+          // The whole header grabs the column — title, count, anywhere —
+          // not just the grip. With a mouse only (a desktop), like the grip
+          // before; while dragging, the whole column follows the pointer.
+          data-column-grab={(columnDrag && isDesktop) || undefined}
+          title={columnDrag && isDesktop ? columnDrag.label : undefined}
+          onPointerDown={isDesktop ? columnDrag?.onPointerDown : undefined}
+        >
+          {columnDrag && (
+            // Just the hint that the column can be moved — the header
+            // itself is what's dragged.
+            <span className={styles.columnHandle} aria-hidden="true">
+              <Icon icon="lucide:grip-vertical" width={13} />
+            </span>
+          )}
           <GroupIcon group={group} size={16} />
           <span className={styles.colTitle}>{group.label}</span>
           <Badge mono>{issues.length}</Badge>
@@ -162,25 +208,32 @@ export function BoardColumn({
               icon={<Icon icon="lucide:plus" width={15} />}
             />
           )}
-          {columnDrag && (
-            // The handle grabs the column; while dragging, the whole column
-            // follows the pointer (`Board`, `setDragImage`).
-            <span
-              className={styles.columnHandle}
-              draggable
-              title={columnDrag.label}
-              aria-hidden="true"
-              onDragStart={columnDrag.onStart}
-              onDragEnd={columnDrag.onEnd}
-            >
-              <Icon icon="lucide:grip-vertical" width={14} />
-            </span>
-          )}
         </div>
       )}
 
+      {resize && (
+        // A focusable separator is the ARIA pattern for a resize handle:
+        // drag it, or arrow keys; a double click resets the width.
+        // biome-ignore lint/a11y/useSemanticElements: an <hr> can't take focus or pointer drags — a focusable separator is the resize-handle pattern
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          tabIndex={0}
+          className={styles.resizeHandle}
+          title={resize.label}
+          aria-label={resize.label}
+          aria-valuenow={resize["aria-valuenow"]}
+          aria-valuemin={resize["aria-valuemin"]}
+          aria-valuemax={resize["aria-valuemax"]}
+          onPointerDown={resize.onPointerDown}
+          onDoubleClick={resize.onDoubleClick}
+          onKeyDown={resize.onKeyDown}
+        />
+      )}
+
       {variant !== "head" && (
-        <div className={styles.cards}>
+        // `data-autoscroll`: the list a card held at its edge scrolls.
+        <div className={styles.cards} data-autoscroll>
           {issues.map((issue) => {
             const isCardOver =
               dragOverCard === issue.id && dragging !== issue.id;
@@ -200,6 +253,7 @@ export function BoardColumn({
                   isFocused={isCardFocused(issue)}
                   onDragStart={onCardDragStart(issue, group.id)}
                   onDragEnd={onCardDragEnd}
+                  onDragPointerDown={onCardPointerDown?.(issue, group.id)}
                   onDragOver={onCardDragOver(issue.id)}
                   onOpen={() => onCardOpen(issue)}
                   onOpenInNewTab={() => onCardOpenInNewTab(issue)}

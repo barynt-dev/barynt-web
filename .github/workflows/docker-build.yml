@@ -17,6 +17,16 @@ on:
         required: false
         type: string
         default: "linux/amd64,linux/arm64"
+      channel:
+        description: "release: ghcr.io/<owner>/barynt · beta: ghcr.io/<owner>/barynt-beta (never latest)"
+        required: false
+        type: choice
+        options: [release, beta]
+        default: release
+      version:
+        description: "Version written into the image's package.json (what the app says it is); empty = as in the branch"
+        required: false
+        type: string
   # Called by release.yml right after a release is published, on the new
   # tag — same build, without anyone starting it by hand.
   workflow_call:
@@ -32,6 +42,13 @@ on:
         default: "linux/amd64,linux/arm64"
       ref:
         description: "What to check out (the release tag); empty = the triggering commit"
+        type: string
+        default: ""
+      # Called by beta.yml (BARY-233): a pre-release into an image of its own.
+      channel:
+        type: string
+        default: release
+      version:
         type: string
         default: ""
 
@@ -61,20 +78,37 @@ jobs:
           else
             tag="$(echo "${{ github.sha }}" | cut -c1-7)"
           fi
-          image="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          owner="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          # The image's name is set here, not taken from the repository's
+          # (BARY-233): that's `barynt-web` since the move, while compose,
+          # Helm and the installer pull `ghcr.io/<owner>/barynt`. A beta has
+          # an image of its own, so nothing about it can reach a release's.
+          if [ "${{ inputs.channel }}" = "beta" ]; then
+            image="ghcr.io/$owner/barynt-beta"
+            legacy=""
+          else
+            image="ghcr.io/$owner/barynt"
+            # Where releases went before; tagged too until nobody pulls it.
+            legacy="ghcr.io/$owner/barynt-web"
+          fi
 
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "image=$image" >> "$GITHUB_OUTPUT"
 
-          # `latest` is the newest release: only a build from a git tag, or one
-          # asked to (`latest` input), moves it. A plain build from a branch (a
-          # test image) only gets its own tag, so it can't replace what
-          # `latest` points to.
+          # `latest` is the newest release: only a release build from a git
+          # tag, or one asked to (`latest` input), moves it. A plain build
+          # from a branch (a test image) only gets its own tag, and a beta
+          # moves `beta` in its own image instead — so neither can replace
+          # what `latest` points to.
           {
             echo "tags<<EOF"
             echo "$image:$tag"
-            if [ "${{ github.ref_type }}" = "tag" ] || [ "${{ inputs.latest }}" = "true" ]; then
+            [ -n "$legacy" ] && echo "$legacy:$tag"
+            if [ "${{ inputs.channel }}" = "beta" ]; then
+              echo "$image:beta"
+            elif [ "${{ github.ref_type }}" = "tag" ] || [ "${{ inputs.latest }}" = "true" ]; then
               echo "$image:latest"
+              [ -n "$legacy" ] && echo "$legacy:latest"
             fi
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
@@ -119,6 +153,17 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
+
+      # A beta says which it is (BARY-233): the app reads its version from
+      # package.json — the update card, release notes and plugins'
+      # minBaryntVersion go by it. Only in this checkout, never committed.
+      - name: Write the version into package.json
+        if: inputs.version != ''
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          jq --arg v "$VERSION" '.version = $v' package.json > package.json.new
+          mv package.json.new package.json
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -187,6 +232,17 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
+      # A beta says which it is (BARY-233): the app reads its version from
+      # package.json — the update card, release notes and plugins'
+      # minBaryntVersion go by it. Only in this checkout, never committed.
+      - name: Write the version into package.json
+        if: inputs.version != ''
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          jq --arg v "$VERSION" '.version = $v' package.json > package.json.new
+          mv package.json.new package.json
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -208,6 +264,11 @@ jobs:
           platforms: ${{ matrix.platform }}
           provenance: true
           sbom: true
+          # Links the package to this repository, so a new one (barynt,
+          # barynt-beta) takes its visibility and Actions may push to it.
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ needs.vars.outputs.tag }}
           outputs: type=image,name=${{ needs.vars.outputs.image }},push-by-digest=true,name-canonical=true,push=true
           build-args: APT_REFRESH=${{ github.run_id }}
           cache-from: type=gha,scope=${{ matrix.slug }}
@@ -272,4 +333,7 @@ jobs:
       # tag here still produces a digest-pinned signature.
       - name: Sign image (keyless)
         run: |
-          cosign sign --yes "${{ needs.vars.outputs.image }}:${{ needs.vars.outputs.tag }}"
+          # Every image name it went to, by its version tag.
+          while IFS= read -r t; do
+            case "$t" in *":${{ needs.vars.outputs.tag }}") cosign sign --yes "$t" ;; esac
+          done <<< "${{ needs.vars.outputs.tags }}"

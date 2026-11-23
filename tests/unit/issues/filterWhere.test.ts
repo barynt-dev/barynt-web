@@ -187,6 +187,23 @@ describe("toIssueWhere", () => {
     ).toEqual({ AND: [{ OR: [{ id: { in: [] } }, { key: 12 }] }] });
   });
 
+  it("finds a piece of text in the title, description or a comment", async () => {
+    const piece = { contains: "Checkout", mode: "insensitive" as const };
+    expect(
+      await one({ field: "title", is: "contains", value: " Checkout " }),
+    ).toEqual({ AND: [{ title: piece }] });
+    expect(
+      await one({ field: "description", is: "contains", value: "Checkout" }),
+    ).toEqual({ AND: [{ descriptionText: piece }] });
+    expect(
+      await one({ field: "comment", is: "contains", value: "Checkout" }),
+    ).toEqual({ AND: [{ comments: { some: { bodyText: piece } } }] });
+    // Nothing typed: no condition.
+    expect(await one({ field: "title", is: "contains", value: "  " })).toEqual(
+      {},
+    );
+  });
+
   it("narrows by project without widening", async () => {
     expect(await one({ field: "project", is: "any", value: ["p1"] })).toEqual({
       AND: [{ projectId: { in: ["p1"] } }],

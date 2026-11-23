@@ -1,5 +1,6 @@
 import "server-only";
 import { appUrl } from "@/lib/app-url";
+import { afterResponse } from "@/lib/background";
 import { db } from "@/lib/db";
 import { getMailTemplateOverride } from "@/lib/mail/overrides";
 import { isMailConfigured, sendMail } from "@/lib/mail/send";
@@ -61,11 +62,16 @@ export interface SendInvitationEmailInput {
  * configuration, it stays at the copyable link that the actions return
  * anyway.
  */
-export async function sendInvitationEmail(
+export function sendInvitationEmail(
   input: SendInvitationEmailInput,
 ): Promise<void> {
-  if (!isMailConfigured()) return;
+  if (!isMailConfigured()) return Promise.resolve();
+  return afterResponse(() => deliverInvitationEmail(input));
+}
 
+async function deliverInvitationEmail(
+  input: SendInvitationEmailInput,
+): Promise<void> {
   try {
     const [workspace, project, inviter, override] = await Promise.all([
       db.workspace.findUnique({
@@ -124,11 +130,16 @@ export interface SendMemberRemovedEmailInput {
  * Swallows every error: the membership is already gone at this point, a
  * stumbling email must not undo that.
  */
-export async function sendMemberRemovedEmail(
+export function sendMemberRemovedEmail(
   input: SendMemberRemovedEmailInput,
 ): Promise<void> {
-  if (!isMailConfigured()) return;
+  if (!isMailConfigured()) return Promise.resolve();
+  return afterResponse(() => deliverMemberRemovedEmail(input));
+}
 
+async function deliverMemberRemovedEmail(
+  input: SendMemberRemovedEmailInput,
+): Promise<void> {
   try {
     const [user, workspace, project, actor, override] = await Promise.all([
       db.user.findUnique({
@@ -189,11 +200,16 @@ export interface SendIssueShareLinkEmailInput {
  * Swallows every error: the link already exists at this point, a stumbling
  * email must not undo the sharing itself.
  */
-export async function sendIssueShareLinkEmail(
+export function sendIssueShareLinkEmail(
   input: SendIssueShareLinkEmailInput,
 ): Promise<void> {
-  if (!isMailConfigured()) return;
+  if (!isMailConfigured()) return Promise.resolve();
+  return afterResponse(() => deliverIssueShareLinkEmail(input));
+}
 
+async function deliverIssueShareLinkEmail(
+  input: SendIssueShareLinkEmailInput,
+): Promise<void> {
   try {
     const [actor, override] = await Promise.all([
       db.user.findUnique({

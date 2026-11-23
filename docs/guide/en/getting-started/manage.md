@@ -29,6 +29,31 @@ barynt upgrade --version {{version}}  # a specific one
 
 The app applies database migrations itself when it starts. Use `--no-backup` to skip the backup and `--force` to reinstall the same version or go back to an older one.
 
+## Testing a beta
+
+A beta is a version before its release, for trying what's coming. It's an image of its own, `ghcr.io/barynt-dev/barynt-beta` — tagged with its version (`1.1.0-beta.1`) and `beta` for the newest one — so it never mixes with releases or `latest`.
+
+```bash
+barynt backup
+barynt config BARYNT_IMAGE=ghcr.io/barynt-dev/barynt-beta BARYNT_VERSION=1.1.0-beta.1
+```
+
+`barynt config` pulls the image and restarts. For the next beta, set its version the same way.
+
+> [!WARNING]
+> Test a beta on a copy, not on the installation your team works in. Database migrations only go forward: back from a beta means restoring the backup from before it.
+
+Back to releases:
+
+```bash
+barynt config BARYNT_IMAGE=ghcr.io/barynt-dev/barynt BARYNT_VERSION={{version}}
+barynt restore <the backup from before the beta>
+```
+
+`barynt upgrade` doesn't leave a beta on its own: while `BARYNT_IMAGE` points at the beta image, set the image back first.
+
+With Helm, set `image.repository` to `ghcr.io/barynt-dev/barynt-beta` and `image.tag` to the beta's version.
+
 ## Backups
 
 ```bash

@@ -74,6 +74,9 @@ Which comparisons a field takes is listed per field. Values are ids unless noted
 | `updated` | When it last changed. | `before`, `after`, `within` | A day "YYYY-MM-DD" or "today"; for within, a range name. |
 | `parent` | Its parent issue. empty = top-level issues only, notEmpty = sub-issues only. | `any`, `empty`, `notEmpty` | Issue ids (the internal id, not "WEB-42"). |
 | `text` | A search in title and description; a number or "WEB-42" also finds that issue. | `contains` | Any text. |
+| `title` | A piece of text in the title, exactly as written (case doesn't matter). | `contains` | Any text. |
+| `description` | A piece of text in the description, exactly as written (case doesn't matter). | `contains` | Any text. |
+| `comment` | A piece of text in at least one of its comments, exactly as written (case doesn't matter). | `contains` | Any text. |
 
 ## Comparisons (`is`)
 

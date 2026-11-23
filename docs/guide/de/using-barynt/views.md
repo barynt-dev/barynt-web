@@ -5,7 +5,7 @@ sidebar:
   order: 6
 ---
 
-Eine **View** ist eine gespeicherte Art, Aufgaben anzusehen. Sie merkt sich Filter, Gruppierung, Sortierung und Layout, sodass „alle offenen Bugs, nach Zuständigkeit gruppiert“ einen Klick entfernt ist statt fünf.
+Eine **View** ist eine gespeicherte Art, Aufgaben anzusehen. Sie merkt sich Filter (samt Suchfeld), Gruppierung, Sortierung und Layout, sodass „alle offenen Bugs, nach Zuständigkeit gruppiert“ einen Klick entfernt ist statt fünf.
 
 ![Die Views eines Workspace](../../assets/de/views-gallery.webp)
 

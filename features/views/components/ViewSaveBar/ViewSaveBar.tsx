@@ -34,6 +34,8 @@ interface ViewSaveBarProps {
   currentParams: Record<string, string>;
   /** On the plain board/list: back to a fresh one. */
   onDiscardPlain?: () => Promise<void>;
+  /** Discarding a view's changes — before its address is opened again. */
+  onDiscard?: () => void;
 }
 
 /**
@@ -59,6 +61,7 @@ export function ViewSaveBar({
   layout,
   currentParams,
   onDiscardPlain,
+  onDiscard,
 }: ViewSaveBarProps) {
   const t = useTranslations();
   const router = useRouter();
@@ -142,7 +145,10 @@ export function ViewSaveBar({
         size="sm"
         variant="ghost"
         disabled={isPending}
-        onClick={() => router.push(activeView.href)}
+        onClick={() => {
+          onDiscard?.();
+          router.push(activeView.href);
+        }}
       >
         {t("views.discard")}
       </Button>

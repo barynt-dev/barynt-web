@@ -17,6 +17,7 @@ import type {
   WorkspaceTeamRow,
 } from "@/features/workspaces/types";
 import { recordAudit } from "@/lib/audit";
+import { afterResponse } from "@/lib/background";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
 import { db } from "@/lib/db";
 import { createInvitation, invitationUrl } from "@/lib/invitations";
@@ -932,34 +933,39 @@ export async function setMemberRole(
     data: { roleId: next.id },
   });
 
-  await notify({
-    userId,
-    type: "role",
-    actorId,
-    workspaceId,
-    text: next.name,
-  });
+  // Notification (with its mail over SMTP, which can take seconds) and the
+  // audit entry run after the response — the person changing the role
+  // waits only for the change itself.
+  await afterResponse(async () => {
+    await notify({
+      userId,
+      type: "role",
+      actorId,
+      workspaceId,
+      text: next.name,
+    });
 
-  // "Who granted rights to whom?" — the same question as at the platform
-  // level, here for the workspace. The entry carries both roles, so later
-  // it's possible to see which direction it went.
-  const target_ = await db.user.findUnique({
-    where: { id: userId },
-    select: { firstName: true, lastName: true, color: true },
-  });
-  await recordAudit({
-    action: "member.role.changed",
-    actorId,
-    target: {
-      type: "user",
-      id: userId,
-      label: target_
-        ? `${target_.firstName} ${target_.lastName}`.trim()
-        : userId,
-    },
-    personColor: target_?.color ?? null,
-    workspaceId,
-    meta: { from: target.role.key, to: roleKey },
+    // "Who granted rights to whom?" — the same question as at the platform
+    // level, here for the workspace. The entry carries both roles, so later
+    // it's possible to see which direction it went.
+    const target_ = await db.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true, color: true },
+    });
+    await recordAudit({
+      action: "member.role.changed",
+      actorId,
+      target: {
+        type: "user",
+        id: userId,
+        label: target_
+          ? `${target_.firstName} ${target_.lastName}`.trim()
+          : userId,
+      },
+      personColor: target_?.color ?? null,
+      workspaceId,
+      meta: { from: target.role.key, to: roleKey },
+    });
   });
   emitMemberEvent(
     "member.role_changed",

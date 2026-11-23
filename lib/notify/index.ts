@@ -4,6 +4,7 @@ import type {
   NotificationKey,
 } from "@/features/account/types";
 import { appUrl } from "@/lib/app-url";
+import { afterResponse } from "@/lib/background";
 import { db } from "@/lib/db";
 import { isMailConfigured, notificationEmail, sendMail } from "@/lib/mail";
 import { getMailTemplateOverride } from "@/lib/mail/overrides";
@@ -235,16 +236,21 @@ async function sendNotificationEmails(
  * Self-notifications are filtered out before either happens. In-app and
  * email channels are independent columns (see `notificationPrefsFor`) —
  * whoever has turned both off consistently gets nothing; without SMTP
- * configuration, it stays at the in-app path as before.
+ * configuration, it stays at the in-app path as before. Both happen after
+ * the response (`afterResponse`); outside a request, right away.
  */
-export async function notify(
-  input: NotifyInput | NotifyInput[],
-): Promise<void> {
+export function notify(input: NotifyInput | NotifyInput[]): Promise<void> {
   const items = (Array.isArray(input) ? input : [input]).filter(
     (i) => i.userId !== i.actorId,
   );
-  if (items.length === 0) return;
+  if (items.length === 0) return Promise.resolve();
 
+  // After the response: the change that triggered this (an assignment, a
+  // role) doesn't wait for the inbox rows or the emails.
+  return afterResponse(() => deliver(items));
+}
+
+async function deliver(items: NotifyInput[]): Promise<void> {
   try {
     const [prefs, actorLabels] = await Promise.all([
       notificationPrefsFor([...new Set(items.map((i) => i.userId))]),

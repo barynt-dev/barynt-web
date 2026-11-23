@@ -228,7 +228,7 @@ describe("custom fields in the address", () => {
   });
 
   it("reads text, and drops a field that doesn't exist", () => {
-    expect(read("cf.notes.contains=acme&cf.gone=x").rules).toEqual([
+    expect(read("cf.notes.has=acme&cf.gone=x").rules).toEqual([
       { field: "cf:f4", is: "contains", value: "acme" },
     ]);
   });

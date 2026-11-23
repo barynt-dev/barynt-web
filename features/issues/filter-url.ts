@@ -12,10 +12,14 @@
 //   priority.gte=high           at least         (`.lte`: at most)
 //   dueDate.within=next_7_days  relative range   (`.before`/`.after`: a day)
 //   dueDate=overdue,none        the due-date buckets of the chip (unchanged)
-//   q=login                     text
+//   q=login                     text (the search box)
+//   title.has=checkout          a piece of text in the title (`description.has`,
+//                               `comment.has` alike); inside `or=` the text is
+//                               percent-encoded, so `;~()|` in it can't break
+//                               the expression
 //   cf.customer=o_1,o_2         a custom field, by its key (BARY-196) —
-//   cf.points.gte=5             every operator as above, `.contains` for
-//   cf.notes.contains=urgent    text; a person by handle, a choice by id
+//   cf.points.gte=5             every operator as above, `.has` for text;
+//   cf.notes.has=urgent         a person by handle, a choice by id
 //   or=priority.gte:high;dueDate.within:next_7_days|label:bug
 //                               OR groups: rules `key:values` joined by `;`,
 //                               groups joined by `|`
@@ -53,8 +57,7 @@ import {
   rulesIn,
 } from "./filter";
 
-/** URL suffix per operator — `any` has none. `contains` only for a custom
- *  field: the search text has `q`. */
+/** URL suffix per operator — `any` has none. (`text`, the search, is `q`.) */
 const SUFFIX: Record<FilterOp, string> = {
   any: "",
   none: "not",
@@ -66,7 +69,7 @@ const SUFFIX: Record<FilterOp, string> = {
   before: "before",
   after: "after",
   within: "within",
-  contains: "contains",
+  contains: "has",
 };
 const OP_OF_SUFFIX = new Map(
   Object.entries(SUFFIX).map(([op, suffix]) => [suffix, op as FilterOp]),
@@ -111,7 +114,7 @@ export function parseFilterKey(
     return null;
   const field = name as FilterField;
   const is = OP_OF_SUFFIX.get(suffix);
-  if (!is || is === "contains") return null;
+  if (!is) return null;
   if (!(FILTER_FIELDS[field].ops as readonly FilterOp[]).includes(is))
     // `dueDate=` is the bucket list — the only "any" a date field has.
     return field === "dueDate" && is === "any" ? { field, is } : null;
@@ -136,6 +139,11 @@ function ruleFrom(
       .split(",")
       .flatMap((b) => (DUE_BUCKET_RULES[b] ? [DUE_BUCKET_RULES[b]] : []));
   }
+  if (is === "contains") {
+    // Text as typed — commas and all, no list to split.
+    const text = raw.trim();
+    return text ? { field, is, value: text } : null;
+  }
   if (isListOp(is)) {
     const values = raw.split(",").filter(Boolean);
     return values.length ? { field, is, value: values } : null;
@@ -151,14 +159,37 @@ function rulesFromEntry(key: string, raw: string): FilterRule[] {
   return Array.isArray(rule) ? rule : [rule];
 }
 
+/** A text value inside an expression: percent-encoded, including the
+ *  characters `encodeURIComponent` leaves alone but the expression uses. */
+function encodeText(text: string): string {
+  return encodeURIComponent(text).replace(
+    /[()~!*']/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+}
+
+function decodeText(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    // Edited by hand into something that isn't valid encoding: as typed.
+    return raw;
+  }
+}
+
 /** One `key:values` part of an expression — or the due-date buckets of a
  *  bare `dueDate:overdue,none`, OR-ed. */
 function nodeOfPart(part: string): FilterNode | null {
   const at = part.indexOf(":");
+  const key = at === -1 ? part : part.slice(0, at);
+  const raw = part.slice(at + 1);
   const found =
     at === -1
       ? rulesFromEntry(part, "1")
-      : rulesFromEntry(part.slice(0, at), part.slice(at + 1));
+      : rulesFromEntry(
+          key,
+          parseFilterKey(key)?.is === "contains" ? decodeText(raw) : raw,
+        );
   if (!found.length) return null;
   return found.length === 1 ? found[0] : { op: "or", rules: found };
 }
@@ -279,8 +310,9 @@ export function mapFilterValues(
       if (!field) return null;
       rule = { ...rule, field };
     }
-    if (rule.value === undefined || rule.field === "text") return rule;
-    // Relative tokens and plain dates aren't references.
+    if (rule.value === undefined) return rule;
+    // Text, relative tokens and plain dates aren't references.
+    if (rule.is === "contains") return rule;
     if (
       !isCustomFilterField(rule.field) &&
       FILTER_FIELDS[rule.field].kind === "date"
@@ -312,6 +344,8 @@ export function slugsByField(
 ): Partial<Record<RuleField, string[]>> {
   const out: Partial<Record<RuleField, Set<string>>> = {};
   const visit = (rule: FilterRule) => {
+    // Typed text is no slug to look up.
+    if (rule.is === "contains") return;
     const values = Array.isArray(rule.value)
       ? rule.value
       : rule.value === undefined
@@ -363,7 +397,8 @@ export function filterToParams(filter: IssueFilter): [string, string][] {
   const out: [string, string][] = [];
   const used = new Set<string>();
   const groups: string[] = [];
-  const encodeRule = (r: FilterRule) => `${keyOf(r)}:${encodeValue(r)}`;
+  const encodeRule = (r: FilterRule) =>
+    `${keyOf(r)}:${r.is === "contains" ? encodeText(String(r.value ?? "")) : encodeValue(r)}`;
   // AND binds tighter than OR: only an OR inside an AND needs parentheses.
   const encodeNode = (node: FilterNode, inAnd = false): string => {
     if (!isGroup(node)) return encodeRule(node);

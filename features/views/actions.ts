@@ -304,8 +304,7 @@ export async function reorderFavorites(
 /**
  * The stored fields an address stands for: its filters resolved to ids (the
  * same lookup the board itself does), grouping, order, layout and display
- * settings (BARY-165). The search
- * text isn't part of a view and is ignored (`pickViewState`).
+ * settings (BARY-165). The search text is part of the filter (`text`).
  */
 async function stateFromParams(
   /** The view's project — or, across projects, its workspace (V8). */
