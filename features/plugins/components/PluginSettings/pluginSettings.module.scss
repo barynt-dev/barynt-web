@@ -8,8 +8,10 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  max-width: 44rem;
-  padding: 1.25rem 1.5rem 3rem;
+  // Up to 64rem wide, then centred — through the padding, so the scroll
+  // container stays full width and its scrollbar at the window's edge.
+  --page-max: 64rem;
+  padding: 1.25rem max(1.5rem, calc((100% - var(--page-max)) / 2)) 3rem;
   overflow-y: auto;
 
   & > * {
