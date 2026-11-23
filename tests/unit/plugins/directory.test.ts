@@ -22,7 +22,7 @@ const manifest = (over: Record<string, unknown> = {}) =>
       version: "1.2.0",
       minBaryntVersion: "0.9.0",
       author: "Acme GmbH",
-      description: "Issues on a time line.",
+      description: { short: "Issues on a time line." },
       license: "MIT",
       kind: "sandbox",
       levels: ["project"],
@@ -189,7 +189,9 @@ describe("loadRelease", () => {
 
   it("refuses files that were swapped after listing", async () => {
     const listed = entry(release());
-    const swapped = release({ description: "Now does something else." });
+    const swapped = release({
+      description: { short: "Now does something else." },
+    });
     expect(
       await loadRelease(listed, "1.2.0", serve(swapped).fetch, "1.0.1"),
     ).toEqual({ ok: false, error: "hash_mismatch" });

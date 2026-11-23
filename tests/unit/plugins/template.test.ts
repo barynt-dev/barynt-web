@@ -1,7 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { APP_VERSION } from "@/lib/app-info";
-import { isCompatible, validateManifest } from "@/lib/plugins/manifest";
+import {
+  aboutFiles,
+  isCompatible,
+  validateManifest,
+  withAboutFiles,
+} from "@/lib/plugins/manifest";
 
 // The plugin template (BARY-222): what someone copies has to install as it
 // is. Its own tests, build and release run in the copy (see its README).
@@ -15,6 +20,19 @@ describe("the plugin template", () => {
     expect(parsed.ok ? [] : parsed.errors).toEqual([]);
     if (parsed.ok)
       expect(isCompatible(parsed.manifest, APP_VERSION)).toBe(true);
+  });
+
+  it("ships the page text file its manifest names", () => {
+    const parsed = validateManifest(read("manifest.json"));
+    if (!parsed.ok) throw new Error("invalid manifest");
+    const files = Object.fromEntries(
+      aboutFiles(parsed.manifest).map((name) => [
+        name,
+        new Uint8Array(readFileSync(`templates/plugin/${name}`)),
+      ]),
+    );
+    expect(Object.keys(files)).toEqual(["about.md"]);
+    expect(withAboutFiles(parsed.manifest, files).ok).toBe(true);
   });
 
   it("names the view its code registers", () => {

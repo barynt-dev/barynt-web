@@ -43,4 +43,7 @@ const again = () => {
 watch("src", { recursive: true }, again);
 watch("manifest.json", again);
 watch("styles.css", again);
-console.log("Watching src/, manifest.json and styles.css …");
+watch(".", (_, name) => {
+  if (name && /^about(\.[a-z]{2})?\.md$/.test(name)) again();
+});
+console.log("Watching src/, manifest.json, styles.css and about.md …");

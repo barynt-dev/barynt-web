@@ -51,10 +51,7 @@ const entry = {
   name: manifest.name,
   author: manifest.author,
   // The directory lists the short text; the page text is in the release.
-  description:
-    typeof manifest.description === "string"
-      ? manifest.description
-      : manifest.description.short,
+  description: manifest.description.short,
   repo:
     process.env.PLUGIN_REPO ??
     previous?.repo ??

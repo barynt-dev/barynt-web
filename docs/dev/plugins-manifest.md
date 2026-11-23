@@ -53,9 +53,9 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `maxBaryntVersion` | no | The highest version it was tested on. |
 | `author` | yes | Up to 80 characters. |
 | `authorUrl` | no | An `http(s)` address, linked in the store. |
-| `description` | yes | In English: `short`, one or two sentences up to 300 characters, and optionally `about`, the plugin's page in the store — see [Page text and links](#page-text-and-links). A plain string is the short text alone. |
+| `description` | yes | In English: `short`, one or two sentences up to 300 characters, and optionally `about`, the plugin's page in the store — see [Page text and links](#page-text-and-links). |
 | `links` | no | Up to 10 addresses — homepage, docs, community — see [Page text and links](#page-text-and-links). |
-| `locales` | no | Texts in Barynt's other languages: `{ "de": { "description": { "short": "…", "about": "…" } } }`. Barynt shows each person the texts in their language, else the English ones. |
+| `locales` | no | Texts in Barynt's other languages: `{ "de": { "description": { "short": "…", "about": "…" } } }`, either text optional. Barynt shows each person the texts in their language, else the English ones. |
 | `logo` | no | `logo.png` or `logo.webp`, a file in the release: the plugin's picture in the store, the sidebar and its settings, see [Publishing](plugins-publishing.md#logo-and-screenshots). Without one, its first letter. |
 | `license` | yes | E.g. `MIT`, `Apache-2.0`, `Proprietary`. |
 | `kind` | yes | `declarative`, `sandbox` or `service`, see [Building plugins](plugins.md#the-three-kinds). |
@@ -111,10 +111,9 @@ which the store shows in a box of their own:
 
 `https` only, each address once. Both fields need Barynt 1.1.0-beta.5 or
 later — set `minBaryntVersion` accordingly, an older Barynt refuses the
-manifest. `description` as `{ short, about }` and the `about.md` files need
-a Barynt released after 1.1.0-beta.5; before, the page text was a field of
-its own — `"about": "…"` beside `description`, and in `locales` — which
-Barynt still reads.
+manifest. `description` as `{ short, about }` needs a Barynt released after
+1.1.0-beta.5; it's the only form Barynt takes — a plain string, or `about`
+beside `description`, is refused.
 
 ## Capabilities
 

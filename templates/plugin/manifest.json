@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "minBaryntVersion": "1.0.0",
   "author": "You",
-  "description": "The project's open issues at a glance.",
+  "description": {
+    "short": "The project's open issues at a glance.",
+    "about": "about.md"
+  },
   "license": "MIT",
   "kind": "sandbox",
   "levels": ["project"],

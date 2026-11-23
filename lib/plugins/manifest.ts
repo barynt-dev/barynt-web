@@ -110,40 +110,42 @@ const summary = z.string().trim().min(1).max(300);
 const aboutText = z.string().trim().min(1).max(ABOUT_MAX);
 
 /**
- * A manifest's description: the short text the store's cards show, and the
- * page text (BARY-237) — Markdown, or the name of a file in the release
- * (`about.md`). A plain string is the short text alone, as before.
+ * A manifest's description (BARY-237): `short`, what the store's cards and
+ * lists show, and `about`, the plugin's page — Markdown, or the name of a
+ * file in the release (`about.md`).
  */
-const descriptionSchema = z.union(
-  [summary, z.strictObject({ short: summary, about: aboutText.optional() })],
-  { error: "expected a text, or { short, about }" },
+const descriptionSchema = z.strictObject(
+  { short: summary, about: aboutText.optional() },
+  { error: "expected { short, about }" },
 );
-export type ManifestDescription = z.infer<typeof descriptionSchema>;
 
-/** A manifest's texts in other languages. `about` beside the description is
- *  the older place of the page text, still read. A directory entry only has
- *  the short description. */
+/** The same in another language — either text may be left to English. */
+const localeDescriptionSchema = z
+  .strictObject(
+    { short: summary.optional(), about: aboutText.optional() },
+    { error: "expected { short, about }" },
+  )
+  .refine((d) => d.short || d.about, "expected short, about or both");
+
+/** A manifest's texts in other languages: `{ de: { description } }`. */
 const manifestLocalesSchema = z
   .partialRecord(
     z.enum(PLUGIN_LOCALES),
-    z.strictObject({
-      description: descriptionSchema.optional(),
-      about: aboutText.optional(),
-    }),
+    z.strictObject({ description: localeDescriptionSchema }),
   )
   .optional();
 
+/** A description as a manifest (`{ short, about }`) or a directory entry
+ *  (the short text alone) has it. */
+type Texts = string | { short?: string; about?: string };
 type Described = {
-  description: ManifestDescription;
-  about?: string;
-  locales?: Partial<
-    Record<string, { description?: ManifestDescription; about?: string }>
-  >;
+  description: Texts;
+  locales?: Partial<Record<string, { description?: Texts }>>;
 };
 
-const shortOf = (d: ManifestDescription | undefined) =>
+const shortOf = (d: Texts | undefined) =>
   typeof d === "string" ? d : d?.short;
-const aboutOf = (d: ManifestDescription | undefined) =>
+const aboutOf = (d: Texts | undefined) =>
   typeof d === "object" ? d.about : undefined;
 
 /** The page text in the person's language, else the manifest's own — never
@@ -152,38 +154,29 @@ export function localizedAbout(
   plugin: Partial<Described>,
   locale: string,
 ): string | null {
-  const own = plugin.locales?.[locale];
   const text =
-    aboutOf(own?.description) ??
-    own?.about ??
+    aboutOf(plugin.locales?.[locale]?.description) ??
     aboutOf(plugin.description) ??
-    plugin.about ??
     null;
   return text && !ABOUT_FILE_RE.test(text) ? text : null;
 }
 
 /** Every place a manifest names its page text, as [path, value]. */
-function aboutSlots(raw: unknown): [(string | number)[], unknown][] {
-  if (!raw || typeof raw !== "object") return [];
-  const m = raw as Record<string, unknown>;
+function aboutSlots(raw: unknown): [string[], unknown][] {
   const at = (o: unknown, key: string) =>
     o && typeof o === "object"
       ? (o as Record<string, unknown>)[key]
       : undefined;
-  const slots: [(string | number)[], unknown][] = [
-    [["description", "about"], at(m.description, "about")],
-    [["about"], m.about],
+  const slots: [string[], unknown][] = [
+    [["description", "about"], at(at(raw, "description"), "about")],
   ];
-  const locales = m.locales;
+  const locales = at(raw, "locales");
   if (locales && typeof locales === "object")
     for (const [lang, texts] of Object.entries(locales))
-      slots.push(
-        [
-          ["locales", lang, "description", "about"],
-          at(at(texts, "description"), "about"),
-        ],
-        [["locales", lang, "about"], at(texts, "about")],
-      );
+      slots.push([
+        ["locales", lang, "description", "about"],
+        at(at(texts, "description"), "about"),
+      ]);
   return slots;
 }
 
@@ -499,7 +492,7 @@ export const manifestSchema = z
       .url({ protocol: /^https?$/ })
       .max(300)
       .optional(),
-    /** The short text, or `{ short, about }` with the page text (BARY-237). */
+    /** `{ short, about }`: the short text and the page text (BARY-237). */
     description: descriptionSchema,
     license: z.string().trim().min(1).max(40),
     kind: z.enum(PLUGIN_KINDS),
@@ -529,13 +522,8 @@ export const manifestSchema = z
       .string()
       .regex(LOGO_FILE_RE, 'expected "logo.png" or "logo.webp"')
       .optional(),
-    /** Its description in other languages (BARY-235), and its page text
-     *  (BARY-237). */
+    /** Its description in other languages (BARY-235, BARY-237). */
     locales: manifestLocalesSchema,
-    /** Its page in the store (BARY-237), where it was before
-     *  `description.about` — still read. Markdown, shown without links,
-     *  images or HTML; those go in `links`. */
-    about: aboutText.optional(),
     /** Its homepage, docs, issue tracker, community (BARY-237). */
     links: z
       .array(
@@ -590,20 +578,6 @@ export const manifestSchema = z
       add(["previews"], "preview files must be unique");
     if (m.links && new Set(m.links.map((l) => l.url)).size !== m.links.length)
       add(["links"], "link addresses must be unique");
-
-    // One page text per language, in one place.
-    if (typeof m.description === "object" && m.description.about && m.about)
-      add(["about"], "the page text is already in description.about");
-    for (const [lang, texts] of Object.entries(m.locales ?? {}))
-      if (
-        typeof texts?.description === "object" &&
-        texts.description.about &&
-        texts.about
-      )
-        add(
-          ["locales", lang, "about"],
-          "the page text is already in description.about",
-        );
 
     if (m.service) {
       if (m.kind === "declarative")

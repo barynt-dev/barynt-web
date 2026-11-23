@@ -18,7 +18,7 @@ const base = {
   version: "1.2.0",
   minBaryntVersion: "0.1.0",
   author: "Acme GmbH",
-  description: "Issues on a timeline.",
+  description: { short: "Issues on a timeline." },
   license: "MIT",
   kind: "sandbox",
   levels: ["project"],
@@ -767,30 +767,36 @@ describe("a plugin's logo and languages (BARY-235)", () => {
   });
 
   it("describes itself in Barynt's languages", () => {
+    const de = (description: unknown) =>
+      errors({ ...base, locales: { de: { description } } });
+    expect(de({ short: "Issues auf einer Zeitleiste." })).toEqual([]);
+    expect(de({ about: "Nur die Seite." })).toEqual([]);
+    expect(de({}).length).toBeGreaterThan(0);
+    expect(de("Issues auf einer Zeitleiste.").length).toBeGreaterThan(0);
+    expect(
+      errors({ ...base, locales: { fr: { description: { short: "x" } } } })
+        .length,
+    ).toBeGreaterThan(0);
     expect(
       errors({
         ...base,
-        locales: { de: { description: "Issues auf einer Zeitleiste." } },
-      }),
-    ).toEqual([]);
-    expect(
-      errors({ ...base, locales: { fr: { description: "x" } } }).length,
-    ).toBeGreaterThan(0);
-    expect(
-      errors({ ...base, locales: { de: { description: "x", name: "y" } } })
-        .length,
+        locales: { de: { description: { short: "x" }, name: "y" } },
+      }).length,
     ).toBeGreaterThan(0);
   });
 
   it("picks the description in the person's language, else its own", () => {
     const plugin = {
-      description: "Issues on a timeline.",
-      locales: { de: { description: "Issues auf einer Zeitleiste." } },
+      description: { short: "Issues on a timeline." },
+      locales: {
+        de: { description: { short: "Issues auf einer Zeitleiste." } },
+      },
     };
     expect(localizedDescription(plugin, "de")).toBe(
       "Issues auf einer Zeitleiste.",
     );
     expect(localizedDescription(plugin, "en")).toBe("Issues on a timeline.");
+    // A directory entry has the short text alone.
     expect(localizedDescription({ description: "Only English" }, "de")).toBe(
       "Only English",
     );
@@ -802,16 +808,23 @@ describe("page text and links (BARY-237)", () => {
     const about = `## Why\n\n${"Lots to say. ".repeat(300)}`;
     const result = validateManifest({
       ...base,
-      about,
-      locales: { de: { about: "Auf Deutsch." } },
+      description: { short: "Issues on a timeline.", about },
+      locales: { de: { description: { about: "Auf Deutsch." } } },
     });
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(localizedAbout(result.manifest, "de")).toBe("Auf Deutsch.");
       expect(localizedAbout(result.manifest, "en")).toBe(about.trim());
+      // The short text stays English where German has none.
+      expect(localizedDescription(result.manifest, "de")).toBe(
+        "Issues on a timeline.",
+      );
     }
     expect(
-      validateManifest({ ...base, about: "x".repeat(ABOUT_MAX + 1) }).ok,
+      validateManifest({
+        ...base,
+        description: { short: "x", about: "x".repeat(ABOUT_MAX + 1) },
+      }).ok,
     ).toBe(false);
   });
 
@@ -842,14 +855,19 @@ describe("page text and links (BARY-237)", () => {
     expect(aboutFiles(result.manifest)).toEqual(["about.de.md"]);
   });
 
-  it("wants a short text, and the page text in one place", () => {
-    for (const description of [{ about: "x" }, { short: "x", more: 1 }, 5])
+  it("wants { short, about }, nothing of the older forms", () => {
+    for (const description of [
+      "Issues on a timeline.",
+      { about: "x" },
+      { short: "x", more: 1 },
+      5,
+    ])
       expect(validateManifest({ ...base, description }).ok).toBe(false);
+    expect(validateManifest({ ...base, about: "z" }).ok).toBe(false);
     expect(
       validateManifest({
         ...base,
-        description: { short: "x", about: "y" },
-        about: "z",
+        locales: { de: { description: { short: "x" }, about: "z" } },
       }).ok,
     ).toBe(false);
   });

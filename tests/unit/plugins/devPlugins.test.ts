@@ -26,7 +26,7 @@ const manifest = (over: Record<string, unknown> = {}) => ({
   version: "0.1.0",
   minBaryntVersion: "0.1.0",
   author: "You",
-  description: "The project's open issues.",
+  description: { short: "The project's open issues." },
   license: "MIT",
   kind: "sandbox",
   levels: ["project"],
