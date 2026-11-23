@@ -314,7 +314,6 @@ function RepositoryLinks({
         )}
       </span>
       <span className={styles.repoSide}>
-        <RepoBadges repo={r} />
         {r.projects.length > 0 && (
           <span className={styles.repoProjects}>
             {r.projects.map((p) => (
@@ -329,6 +328,7 @@ function RepositoryLinks({
             ))}
           </span>
         )}
+        <RepoBadges repo={r} />
       </span>
     </li>
   );
