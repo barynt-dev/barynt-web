@@ -4,7 +4,8 @@
 
 /** The kinds of setting a manifest may declare. `member`, `label` and
  *  `status` pick from the place's people, labels (BARY-204) and statuses
- *  (BARY-224). */
+ *  (BARY-224); `repositories` from what the place's connections reach
+ *  (BARY-238). */
 export const SETTING_TYPES = [
   "text",
   "textarea",
@@ -16,6 +17,7 @@ export const SETTING_TYPES = [
   "member",
   "label",
   "status",
+  "repositories",
 ] as const;
 export type SettingType = (typeof SETTING_TYPES)[number];
 
@@ -27,6 +29,36 @@ export interface SettingSpec {
 }
 
 export type SettingValue = string | number | boolean | string[];
+
+/** `owner/name` — a repository's full name on GitHub. */
+export const REPOSITORY_RE =
+  /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]{1,100}$/;
+/** A `repositories` setting holds at most this many. */
+export const REPOSITORIES_MAX = 50;
+
+/**
+ * A `repositories` value, however it was kept: a list, or — as the GitHub
+ * plugin's older text field had it — `owner/name` per line (or comma).
+ * Unique without regard to case, in the order given; nothing that isn't a
+ * full name.
+ */
+export function repositoryList(value: unknown): string[] {
+  const raw = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(/[\n,]/)
+      : [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") continue;
+    const name = item.trim();
+    if (!REPOSITORY_RE.test(name) || seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    out.push(name);
+  }
+  return out;
+}
 
 /** A text setting may be this long. */
 export const SETTING_TEXT_MAX = 2000;
@@ -106,6 +138,25 @@ export function checkSettings(
         if (!isOption(spec, raw)) return fail;
         values[spec.key] = raw as string;
         break;
+      case "repositories": {
+        // A list, or text one per line — what isn't a full name fails.
+        const items = Array.isArray(raw)
+          ? raw
+          : typeof raw === "string"
+            ? raw.split(/[\n,]/).filter((x) => x.trim())
+            : null;
+        if (!items) return fail;
+        if (
+          !items.every(
+            (x) => typeof x === "string" && REPOSITORY_RE.test(x.trim()),
+          )
+        )
+          return fail;
+        const list = repositoryList(items);
+        if (list.length > REPOSITORIES_MAX) return fail;
+        if (list.length > 0) values[spec.key] = list;
+        break;
+      }
       case "multiselect": {
         if (!Array.isArray(raw)) return fail;
         if (!raw.every((id) => isOption(spec, id))) return fail;

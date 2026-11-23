@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/atoms/Badge/Badge";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import { Tab, Tabs } from "@/components/ui/layout/Tabs/Tabs";
+import { GitHubAppCard } from "@/features/github/components/GitHubAppCard/GitHubAppCard";
 import type {
   InstalledPlugin,
   PluginPlace,
@@ -298,6 +299,7 @@ function Overview({
 
       <aside className={styles.facts}>
         {installed?.serviceAddress && <ServiceAddressCard plugin={installed} />}
+        {installed?.githubApp && <GitHubAppCard view={installed.githubApp} />}
         <PluginLinks links={links} />
         <section className={styles.card}>
           <h3 className={styles.cardTitle}>

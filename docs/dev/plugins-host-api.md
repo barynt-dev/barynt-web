@@ -174,6 +174,11 @@ Barynt sends the request for the plugin:
 - It adds the [credentials](plugins-manifest.md#credentials) the manifest
   declares for that host. If one isn't kept, the request is refused with
   `credential_missing`.
+- For a plugin with a GitHub [connection](plugins-manifest.md#connections),
+  a request about a repository the place ticked
+  (`https://api.github.com/repos/{owner}/{name}/…`) goes with the
+  connection's token when no credential of its own is kept — then it isn't
+  `credential_missing`.
 - Redirects aren't followed: you get the `3xx` and its `location`, and may
   ask again — for a host you're allowed.
 

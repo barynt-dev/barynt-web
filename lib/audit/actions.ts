@@ -128,6 +128,11 @@ export const AUDIT_ACTIONS = {
   "plugin.service.address": "Address of a plugin's server changed",
   // BARY-227: a `link` hook's rule switched on (with its status) or off.
   "plugin.inbound.rules": "Rule of a plugin's webhook changed",
+  // BARY-238: a GitHub installation connected to a workspace or project for
+  // a plugin, or taken off; the instance's GitHub App created.
+  "plugin.connection.added": "Plugin connected to GitHub",
+  "plugin.connection.removed": "Plugin's GitHub connection removed",
+  "github.app.created": "GitHub App created",
 
   // ── Webhooks (BARY-211) ───────────────────────────────────────────────────
   //

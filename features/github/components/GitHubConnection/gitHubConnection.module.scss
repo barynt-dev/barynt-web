@@ -1,0 +1,166 @@
+@use "breakpoints" as bp;
+
+/* A plugin's GitHub connection (BARY-238): the accounts connected, a button
+   to GitHub, and — back from there — the installations to pick from. Laid
+   out like the credentials cards beside it. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+
+  h2 {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: 650;
+  }
+}
+
+.hint {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font-size: var(--text-sm);
+}
+
+.outcome,
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+
+  & > svg {
+    flex: none;
+    margin-top: 0.15em;
+  }
+}
+
+.outcome {
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+
+  &[data-tone="success"] {
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+  }
+}
+
+.notice {
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-lg);
+}
+
+.choiceTitle {
+  margin: 0;
+  font-weight: 600;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+
+  .choice & {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+.account {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-high);
+  object-fit: cover;
+}
+
+.accountText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.accountName {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+}
+
+.itemActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.manage {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+
+  a {
+    text-decoration: none;
+  }
+
+  @include bp.phone {
+    & > a {
+      flex: 1 1 100%;
+      justify-content: center;
+    }
+  }
+}
+
+/* Doubled class to outrank the button's own colors. */
+.remove.remove {
+  color: var(--error);
+}

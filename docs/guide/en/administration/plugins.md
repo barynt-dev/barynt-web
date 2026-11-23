@@ -93,6 +93,10 @@ Plugins can also add **actions** — "Re-run pipeline", "Close merge request" �
 
 A plugin running in the workspace that has settings gets an entry under **Plugins** in the workspace settings, with its form.
 
+### Connecting to GitHub
+
+A plugin that works with GitHub can be connected instead of everyone keeping a token. Under **Plugins** in the workspace settings (or a project's), **Connect GitHub** goes to GitHub: sign in, install the instance's GitHub App on an organization and pick the repositories it may see there — or pick an account where it's installed already. A connection in the workspace counts for every project in it; the project then only ticks which repositories it works with. GitHub reports to Barynt through the app, so no webhook has to be added per repository. A platform admin creates the app once, on the plugin's page under **Admin → Plugins**. See [GitHub](../integrations/github.md).
+
 ### Credentials
 
 A plugin that talks to another service — a Git host, a chat — may need an access token for it. Depending on the plugin you keep it in one of three places:

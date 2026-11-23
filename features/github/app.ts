@@ -1,0 +1,320 @@
+import "server-only";
+import { db } from "@/lib/db";
+import {
+  appJwt,
+  GITHUB_API,
+  GITHUB_WEB,
+  readPrivateKey,
+} from "@/lib/github/app";
+import type { GitHubAccount } from "@/lib/github/state";
+import { openSecret, sealSecret } from "@/lib/secret-box";
+
+// The instance's GitHub App (BARY-238): where its keys come from, the
+// tokens it gets for an installation, and what it reads there. Barynt calls
+// GitHub here itself — this is Barynt's own integration, not a plugin's
+// request (those go through the host proxy, `features/plugins/proxy.ts`).
+
+const PURPOSE = "github-app";
+const TIMEOUT_MS = 10_000;
+
+export interface GitHubAppConfig {
+  appId: string;
+  slug: string;
+  name: string;
+  htmlUrl: string;
+  owner: string | null;
+  clientId: string;
+  clientSecret: string;
+  privateKey: string;
+  webhookSecret: string;
+  /** Set by the environment (`GITHUB_APP_*`) — then it's only shown. */
+  fromEnv: boolean;
+}
+
+/** The app from `GITHUB_APP_*`, when all of it is set. */
+function fromEnv(): GitHubAppConfig | null {
+  const e = process.env;
+  if (
+    !e.GITHUB_APP_ID ||
+    !e.GITHUB_APP_SLUG ||
+    !e.GITHUB_APP_CLIENT_ID ||
+    !e.GITHUB_APP_CLIENT_SECRET ||
+    !e.GITHUB_APP_PRIVATE_KEY ||
+    !e.GITHUB_APP_WEBHOOK_SECRET
+  )
+    return null;
+  return {
+    appId: e.GITHUB_APP_ID,
+    slug: e.GITHUB_APP_SLUG,
+    name: e.GITHUB_APP_SLUG,
+    htmlUrl: `${GITHUB_WEB}/apps/${e.GITHUB_APP_SLUG}`,
+    owner: null,
+    clientId: e.GITHUB_APP_CLIENT_ID,
+    clientSecret: e.GITHUB_APP_CLIENT_SECRET,
+    privateKey: readPrivateKey(e.GITHUB_APP_PRIVATE_KEY),
+    webhookSecret: e.GITHUB_APP_WEBHOOK_SECRET,
+    fromEnv: true,
+  };
+}
+
+/** The app: from the environment, else the one created in Admin →
+ *  Plugins. `null` while there's none. */
+export async function getGitHubApp(): Promise<GitHubAppConfig | null> {
+  const env = fromEnv();
+  if (env) return env;
+  const row = await db.gitHubApp.findUnique({ where: { id: "github" } });
+  if (!row) return null;
+  const clientSecret = openSecret(row.clientSecretCipher, PURPOSE);
+  const privateKey = openSecret(row.privateKeyCipher, PURPOSE);
+  const webhookSecret = openSecret(row.webhookSecretCipher, PURPOSE);
+  // A changed AUTH_SECRET: it has to be created again.
+  if (!clientSecret || !privateKey || !webhookSecret) return null;
+  return {
+    appId: row.appId,
+    slug: row.slug,
+    name: row.name,
+    htmlUrl: row.htmlUrl,
+    owner: row.owner,
+    clientId: row.clientId,
+    clientSecret,
+    privateKey,
+    webhookSecret,
+    fromEnv: false,
+  };
+}
+
+/** One call to GitHub's API: the status and the parsed answer. */
+async function call<T>(
+  path: string,
+  init: { token?: string; jwt?: string; method?: string; body?: unknown } = {},
+): Promise<{ status: number; data: T | null }> {
+  const auth = init.jwt ?? init.token;
+  const res = await fetch(`${GITHUB_API}${path}`, {
+    method: init.method ?? "GET",
+    headers: {
+      Accept: "application/vnd.github+json",
+      "User-Agent": "Barynt",
+      "X-GitHub-Api-Version": "2022-11-28",
+      ...(auth && { Authorization: `Bearer ${auth}` }),
+      ...(init.body !== undefined && { "Content-Type": "application/json" }),
+    },
+    ...(init.body !== undefined && { body: JSON.stringify(init.body) }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    cache: "no-store",
+  });
+  let data: T | null = null;
+  try {
+    data = (await res.json()) as T;
+  } catch {}
+  return { status: res.status, data };
+}
+
+/**
+ * Trades the code GitHub returns after the manifest flow for the app's
+ * keys and keeps them, sealed. Replaces an app created before.
+ */
+export async function createAppFromCode(
+  code: string,
+  createdById: string,
+): Promise<{ ok: true; name: string } | { error: string }> {
+  const res = await call<{
+    id?: number;
+    slug?: string;
+    name?: string;
+    html_url?: string;
+    owner?: { login?: string };
+    client_id?: string;
+    client_secret?: string;
+    webhook_secret?: string;
+    pem?: string;
+  }>(`/app-manifests/${encodeURIComponent(code)}/conversions`, {
+    method: "POST",
+  });
+  const d = res.data;
+  if (
+    res.status !== 201 ||
+    !d?.id ||
+    !d.slug ||
+    !d.client_id ||
+    !d.client_secret ||
+    !d.webhook_secret ||
+    !d.pem
+  )
+    return { error: "github_app_failed" };
+  const data = {
+    appId: String(d.id),
+    slug: d.slug,
+    name: d.name ?? d.slug,
+    htmlUrl: d.html_url ?? `${GITHUB_WEB}/apps/${d.slug}`,
+    owner: d.owner?.login ?? null,
+    clientId: d.client_id,
+    clientSecretCipher: sealSecret(d.client_secret, PURPOSE),
+    privateKeyCipher: sealSecret(d.pem, PURPOSE),
+    webhookSecretCipher: sealSecret(d.webhook_secret, PURPOSE),
+    createdById,
+  };
+  await db.gitHubApp.upsert({
+    where: { id: "github" },
+    create: data,
+    update: data,
+  });
+  tokens.clear();
+  repoCache.clear();
+  return { ok: true, name: data.name };
+}
+
+// ─── Installations ──────────────────────────────────────────────────────────
+
+/** Installation tokens hold an hour; one is used until five minutes before. */
+const tokens = new Map<string, { token: string; expires: number }>();
+
+/** A token for an installation — `null` when GitHub won't give one (it was
+ *  uninstalled, or the app is gone). */
+export async function installationToken(
+  installationId: string,
+): Promise<string | null> {
+  const cached = tokens.get(installationId);
+  if (cached && cached.expires - 5 * 60_000 > Date.now()) return cached.token;
+  const app = await getGitHubApp();
+  if (!app) return null;
+  const res = await call<{ token?: string; expires_at?: string }>(
+    `/app/installations/${encodeURIComponent(installationId)}/access_tokens`,
+    { method: "POST", jwt: appJwt(app.appId, app.privateKey) },
+  );
+  if (res.status !== 201 || !res.data?.token) {
+    tokens.delete(installationId);
+    return null;
+  }
+  tokens.set(installationId, {
+    token: res.data.token,
+    expires: res.data.expires_at
+      ? Date.parse(res.data.expires_at)
+      : Date.now() + 60 * 60_000,
+  });
+  return res.data.token;
+}
+
+type ApiAccount = { login?: string; type?: string; avatar_url?: string };
+type ApiInstallation = { id?: number; account?: ApiAccount | null };
+
+const accountOf = (i: ApiInstallation): GitHubAccount | null =>
+  i.id && i.account?.login
+    ? {
+        id: String(i.id),
+        account: i.account.login,
+        accountType: i.account.type ?? "User",
+        avatar: i.account.avatar_url ?? null,
+      }
+    : null;
+
+/** An installation as the app sees it. */
+export async function getInstallation(
+  installationId: string,
+): Promise<GitHubAccount | null> {
+  const app = await getGitHubApp();
+  if (!app) return null;
+  const res = await call<ApiInstallation>(
+    `/app/installations/${encodeURIComponent(installationId)}`,
+    { jwt: appJwt(app.appId, app.privateKey) },
+  );
+  return res.status === 200 && res.data ? accountOf(res.data) : null;
+}
+
+export interface GitHubRepository {
+  fullName: string;
+  private: boolean;
+  installationId: string;
+}
+
+/** What an installation reaches, kept a minute — the settings page asks
+ *  each time it's drawn. */
+const repoCache = new Map<
+  string,
+  { at: number; repos: GitHubRepository[] | null }
+>();
+
+/** The repositories an installation may see — `null` when GitHub won't
+ *  say (uninstalled, suspended). At most a thousand. */
+export async function installationRepositories(
+  installationId: string,
+): Promise<GitHubRepository[] | null> {
+  const cached = repoCache.get(installationId);
+  if (cached && Date.now() - cached.at < 60_000) return cached.repos;
+  const token = await installationToken(installationId);
+  let repos: GitHubRepository[] | null = null;
+  if (token) {
+    repos = [];
+    for (let page = 1; page <= 10; page++) {
+      const res = await call<{
+        total_count?: number;
+        repositories?: { full_name?: string; private?: boolean }[];
+      }>(`/installation/repositories?per_page=100&page=${page}`, { token });
+      if (res.status !== 200) {
+        repos = page === 1 ? null : repos;
+        break;
+      }
+      const list = res.data?.repositories ?? [];
+      for (const r of list)
+        if (r.full_name)
+          repos.push({
+            fullName: r.full_name,
+            private: r.private === true,
+            installationId,
+          });
+      if (list.length < 100) break;
+    }
+  }
+  repoCache.set(installationId, { at: Date.now(), repos });
+  return repos;
+}
+
+// ─── A person, signed in at GitHub ──────────────────────────────────────────
+
+/** Trades the code of GitHub's sign-in for the person's token — only used
+ *  to list their installations, never kept. */
+export async function exchangeUserCode(code: string): Promise<string | null> {
+  const app = await getGitHubApp();
+  if (!app) return null;
+  const res = await fetch(`${GITHUB_WEB}/login/oauth/access_token`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "User-Agent": "Barynt",
+    },
+    body: JSON.stringify({
+      client_id: app.clientId,
+      client_secret: app.clientSecret,
+      code,
+    }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    cache: "no-store",
+  }).catch(() => null);
+  if (!res?.ok) return null;
+  const data = (await res.json().catch(() => null)) as {
+    access_token?: string;
+  } | null;
+  return data?.access_token ?? null;
+}
+
+/** The app's installations the person can reach on GitHub — the ones they
+ *  may connect. */
+export async function userInstallations(
+  userToken: string,
+): Promise<GitHubAccount[]> {
+  const res = await call<{ installations?: ApiInstallation[] }>(
+    "/user/installations?per_page=100",
+    { token: userToken },
+  );
+  if (res.status !== 200) return [];
+  return (res.data?.installations ?? []).flatMap((i) => {
+    const a = accountOf(i);
+    return a ? [a] : [];
+  });
+}
+
+/** Forgets what's kept of an installation — after GitHub says it's gone. */
+export function forgetInstallation(installationId: string) {
+  tokens.delete(installationId);
+  repoCache.delete(installationId);
+}

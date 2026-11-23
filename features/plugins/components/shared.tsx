@@ -47,6 +47,8 @@ const KNOWN_ERRORS = [
   "provider_required",
   "invalid_setting",
   "invalid_ref",
+  "github_choice_expired",
+  "forbidden",
 ] as const;
 
 export function usePluginText() {

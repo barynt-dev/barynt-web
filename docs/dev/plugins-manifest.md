@@ -163,6 +163,7 @@ capability, and each entry an `id` that's unique in its list.
 | `fields` | custom fields, up to 20 | `fields:write` | all |
 | `settings` | settings, up to 30 | — | all |
 | `credentials` | credentials, up to 10 | a host in `network` | sandbox |
+| `connections` | [connections](#connections), `{ id, title, provider }`, up to 3 | the provider's API host in `network` | sandbox |
 
 `icon` is an [Iconify](https://icon-sets.iconify.design) name like
 `lucide:clock`.
@@ -357,6 +358,7 @@ under **Plugins** — and the plugin reads them with
 | `member` | a choice of the place's people — the project's members, or the workspace's | a user id |
 | `label` | a choice of the place's labels — the ones the project shows, or the workspace's own | a label id |
 | `status` | a choice of the workspace's statuses, in board order — in a project too | a status id |
+| `repositories` | the repositories the place's [connections](#connections) reach, to tick — or, without one, a field for `owner/name` per line | a list of `owner/name` (up to 50) |
 
 Barynt checks what's saved against these types — a `member`, `label` or
 `status` against the people, labels and statuses of that place, when it's
@@ -429,6 +431,40 @@ to the plugin's requests to that host itself. **The plugin never sees it.**
 Every request to `host` gets the header. If a credential the host needs
 isn't kept, the request is refused with `credential_missing` — tell the
 person where to keep it (see [Host API](plugins-host-api.md#netfetch)).
+
+### Connections
+
+A connection links a workspace or project to an account at another service
+— so far **GitHub**, through the instance's own GitHub App (BARY-238).
+Instead of everyone keeping a token, a workspace or project admin clicks
+**Connect GitHub** in the plugin's settings, installs the app on an
+organization there (picking its repositories on GitHub) and is back. A
+workspace's connection counts in every project of it.
+
+```json
+"network": ["api.github.com"],
+"contributes": {
+  "connections": [{ "id": "github", "title": "GitHub", "provider": "github" }],
+  "settings": [{ "key": "repositories", "type": "repositories", "label": "Repositories" }]
+}
+```
+
+- A `repositories` setting lists what the place's connections reach; the
+  project ticks the ones it works with. It needs a connection.
+- A request to `api.github.com/repos/{owner}/{name}/…` of a **ticked**
+  repository goes with the token of the connection on that owner —
+  unless the person keeps a credential of their own for the host, which
+  wins. Anything else (another repository, `/user`, GraphQL) goes without
+  the connection's token: a person sees no more of GitHub through the plugin
+  than the place's admins picked.
+- GitHub's webhooks reach Barynt through the app itself. A `link` hook of
+  `provider: "github"` gets every call about a ticked repository, in each
+  project connected to its installation — nobody adds a webhook per
+  repository. A repository's own webhook to the hook's address still works.
+- The platform admin creates the app once, in the plugin's page under
+  **Admin → Plugins** (GitHub's manifest flow), or sets `GITHUB_APP_ID`,
+  `GITHUB_APP_SLUG`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`,
+  `GITHUB_APP_PRIVATE_KEY` and `GITHUB_APP_WEBHOOK_SECRET`.
 
 ### Custom fields
 
@@ -647,6 +683,9 @@ already in the status stays as it is.
 - `settingsPage` needs `settings`, and only a `sandbox` plugin has it.
 - A credential's `host` is in `network`, and a `workspace` or `project`
   credential matches one of the plugin's `levels`.
+- A connection's API host (`api.github.com`) is in `network`, one connection
+  per provider; a `repositories` setting needs a connection and has no
+  default.
 - Ids are unique within each list; `select` and `multiselect` settings and
   choice fields need options, other types must not have them; only a
   `multiselect`'s default is a list.

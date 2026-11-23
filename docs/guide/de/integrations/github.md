@@ -5,7 +5,7 @@ sidebar:
   order: 4
 ---
 
-Das Plugin **GitHub** bringt die Arbeit in einem Repository an die Issues, um die es geht. Ein Pull Request, dessen Branch, Titel oder Beschreibung `WEB-42` nennt, erscheint an Issue WEB-42: auf seiner Karte im Board und im Panel **Development** des Issues. Barynt liest die Webhooks von GitHub selbst, es läuft kein zusätzlicher Server.
+Das Plugin **GitHub** bringt die Arbeit in einem Repository an die Issues, um die es geht. Ein Pull Request, dessen Branch, Titel oder Beschreibung `WEB-42` nennt, erscheint an Issue WEB-42: auf seiner Karte im Board und im Panel **Development** des Issues. Barynt verbindet sich über eine eigene GitHub App mit GitHub und liest selbst, was GitHub meldet. Es läuft kein zusätzlicher Server.
 
 ## Was es zeigt
 
@@ -14,14 +14,21 @@ Das Plugin **GitHub** bringt die Arbeit in einem Repository an die Issues, um di
 
 ## Einrichten
 
-1. Ein Plattform-Admin installiert **GitHub** unter **Admin → Plugins**, ein Workspace-Admin schaltet es im Plugin-Store des Workspaces frei.
-2. Im Projekt unter **Projekteinstellungen → Plugins → GitHub** bestätigen, was es darf, und einschalten.
-3. Die **Repositories** des Projekts eintragen (`owner/repo`, eins pro Zeile). Unter dem Formular prüft _Repositories on GitHub_ jedes mit deinem Token.
-4. Die Karte **Webhooks anderer Dienste** zeigt **Adresse** und **Geheimnis**. In GitHub das Repository (oder die Organisation) öffnen → **Settings → Webhooks → Add webhook**: die Adresse als _Payload URL_, `application/json`, das Geheimnis eintragen und unter _Let me select individual events_ _Branch or tag creation_, _Branch or tag deletion_, _Check runs_, _Check suites_, _Pull requests_, _Pull request reviews_ und _Pushes_ wählen.
-5. Wer Branches anlegen oder Reviews sehen will, hinterlegt unter **Persönliche Einstellungen → Plugins → GitHub** einen **Fine-grained Token**: _Contents_ lesen und schreiben, _Pull requests_ und _Checks_ lesen, für die Repositories des Teams. Barynt schickt ihn nur an `api.github.com`.
+Barynt verbindet sich über eine eigene **GitHub App** mit GitHub, so wie Linear oder Plane. Die App wird einmal auf deiner Organisation installiert. Dabei wählst du, welche Repositories sie sehen darf. Danach meldet GitHub sich von selbst bei Barynt. Niemand muss pro Repository einen Webhook anlegen oder für das Team ein Token hinterlegen.
+
+1. **Einmal pro Barynt (Plattform-Admin):** **GitHub** unter **Admin → Plugins** installieren. Auf seiner Seite erstellt die Karte **GitHub App** die App: Optional die Organisation angeben, unter der sie entstehen soll. Dann **Auf GitHub erstellen** klicken, prüfen, was sie verlangt, und bestätigen. GitHub übergibt Barynt die Schlüssel der App, du musst nichts kopieren. Alternativ `GITHUB_APP_*` in der Umgebung setzen, wenn du die App selbst erstellt hast.
+2. **Freischalten:** Ein Workspace-Admin schaltet GitHub im Plugin-Store des Workspace frei.
+3. **Verbinden:** Unter **Workspace-Einstellungen → Plugins → GitHub** auf **Mit GitHub verbinden** klicken. GitHub bittet dich, dich anzumelden, und dann, die App auf einem Konto zu installieren und Repositories auszuwählen. Ist sie dort schon installiert, listet Barynt die Konten auf, die du erreichst. Eine Verbindung im Workspace gilt für **jedes Projekt** darin. Ein Projekt kann unter **Projekteinstellungen → Plugins → GitHub** auch ein eigenes Konto verbinden.
+4. **Im Projekt:** Unter **Projekteinstellungen → Plugins → GitHub** bestätigen, was das Plugin darf, und einschalten. Unter **Repositories** steht jetzt alles, was die verbundenen Konten freigeben. Die Repositories anhaken, mit denen dieses Projekt arbeitet, und speichern.
+
+Das war's: Pull Requests, Branches, Commits und Checks dieser Repositories kommen von selbst. Wenn die App später mehr oder weniger Repositories sehen soll, geht das über **Repositories auf GitHub ändern** neben dem Konto.
 
 > [!NOTE]
-> GitHub muss Barynt für den Webhook erreichen. Eine Instanz, die nur im eigenen Netz erreichbar ist, bekommt von github.com nichts.
+> GitHub muss Barynt für seine Meldungen unter `<deine Adresse>/api/github/webhook` erreichen. Eine Instanz, die nur im eigenen Netz erreichbar ist, bekommt von github.com nichts.
+
+**Eigenes Token (optional):** Wer unter **Persönliche Einstellungen → Plugins → GitHub** ein Fine-grained-Token hinterlegt (_Contents_ lesen und schreiben, _Pull requests_ und _Checks_ lesen), bekommt Branches mit dem eigenen GitHub-Login im Namen und sieht, wer reviewt hat. Ohne Token arbeitet das Plugin über die Verbindung, dann aber nur mit den Repositories, die das Projekt angehakt hat.
+
+**Ohne App:** Wie bisher die Repositories eintragen (`owner/repo`, eins pro Zeile), den Webhook aus der Karte **Webhooks anderer Dienste** in den Repository-Einstellungen auf GitHub anlegen und jeder ein eigenes Token hinterlegen.
 
 ## Wie Issues gefunden werden
 
@@ -35,6 +42,6 @@ Unter dem Webhook in den Einstellungen des Plugins wählst du je Regel einen Sta
 
 Im Menü eines Issues, in den Schnellaktionen einer Karte und in der Befehlspalette:
 
-- **Create branch** — im ersten Repository des Projekts, ausgehend von dessen Standard-Branch, benannt nach dem Schema aus den Einstellungen (`{user}/{key}-{title}`, z. B. `ada/web-42-keep-the-cookie`). Angelegt mit deinem Token, auf GitHub bist also du der Autor; danach wird das Issue je nach Einstellung dir zugewiesen und auf einen Status gesetzt.
+- **Create branch** — im ersten Repository des Projekts, ausgehend von dessen Standard-Branch, benannt nach dem Schema aus den Einstellungen (`{user}/{key}-{title}`, z. B. `ada/web-42-keep-the-cookie`). Angelegt mit deinem Token, falls du eins hinterlegt hast, sonst über die Verbindung. Danach wird das Issue je nach Einstellung dir zugewiesen und auf einen Status gesetzt.
 - **Copy branch name** — der Branch des Issues, oder der Name, den er bekäme.
 - **Open pull request** — sein offener Pull Request, oder GitHubs Seite zum Öffnen eines neuen, der Titel beginnt mit dem Schlüssel des Issues.

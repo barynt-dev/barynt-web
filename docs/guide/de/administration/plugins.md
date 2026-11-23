@@ -93,6 +93,10 @@ Plugins können außerdem **Aktionen** ergänzen – „Pipeline neu starten“,
 
 Ein Plugin, das im Workspace läuft und Einstellungen hat, bekommt in den Workspace-Einstellungen einen Eintrag unter **Plugins** mit seinem Formular.
 
+### Mit GitHub verbinden
+
+Ein Plugin, das mit GitHub arbeitet, lässt sich verbinden, statt dass jeder ein Token hinterlegt. Unter **Plugins** in den Workspace-Einstellungen (oder denen eines Projekts) führt **Mit GitHub verbinden** zu GitHub. Dort meldest du dich an, installierst die GitHub App dieser Instanz auf einer Organisation und wählst die Repositories, die sie sehen darf. Ist sie schon installiert, wählst du einfach ein Konto aus. Eine Verbindung im Workspace gilt für jedes Projekt darin. Das Projekt hakt dann nur noch an, mit welchen Repositories es arbeitet. GitHub meldet sich über die App bei Barynt, deshalb muss niemand pro Repository einen Webhook anlegen. Ein Plattform-Admin erstellt die App einmal auf der Seite des Plugins unter **Admin → Plugins**. Siehe [GitHub](../integrations/github.md).
+
 ### Zugangsdaten
 
 Ein Plugin, das mit einem anderen Dienst spricht – einem Git-Server, einem Chat –, braucht dafür vielleicht ein Zugangstoken. Je nach Plugin hinterlegst du es an einer von drei Stellen:

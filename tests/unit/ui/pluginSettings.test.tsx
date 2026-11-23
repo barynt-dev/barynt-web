@@ -16,7 +16,15 @@ mock.module("next-intl", () => {
     useFormatter: () => ({ dateTime: () => "date" }),
   };
 });
-mock.module("next/navigation", () => ({ useRouter: () => ({}) }));
+mock.module("next/navigation", () => ({
+  useRouter: () => ({}),
+  useSearchParams: () => new URLSearchParams(),
+}));
+mock.module("@/features/github/actions", () => ({
+  connectGitHubInstallation: async () => ({ ok: true }),
+  dismissGitHubChoice: async () => ({ ok: true }),
+  removePluginConnection: async () => ({ ok: true }),
+}));
 mock.module("@/i18n/navigation", () => ({
   Link: ({
     href,
@@ -76,6 +84,7 @@ const view = (over: Partial<PluginSettingsView> = {}): PluginSettingsView => ({
   settingsPage: false,
   service: null,
   inbound: [],
+  connection: null,
   ...over,
 });
 
@@ -84,6 +93,127 @@ const render = (
   v: PluginSettingsView,
   scope: { workspaceId: string; projectId: string | null } = inProject,
 ) => renderToStaticMarkup(<PluginSettings view={v} scope={scope} />);
+
+const connection = {
+  title: "GitHub",
+  appReady: true,
+  connections: [],
+  choice: null,
+  connectHref: "/api/github/connect?plugin=notify&workspace=ws-1",
+  installHref: "/api/github/connect?plugin=notify&workspace=ws-1&mode=install",
+};
+const repos = {
+  key: "repositories",
+  type: "repositories" as const,
+  label: "Repositories",
+  description: null,
+  default: null,
+  options: [
+    { id: "acme/api", label: "acme/api", private: true },
+    { id: "acme/web", label: "acme/web" },
+  ],
+  connected: true,
+  failed: [],
+};
+
+describe("PluginSettings, connected to GitHub (BARY-238)", () => {
+  it("lets a workspace connect for its projects, with nothing to switch on", () => {
+    const html = render(view({ state: "off", fields: [], connection }), {
+      workspaceId: "ws-1",
+      projectId: null,
+    });
+    expect(html).toContain("github.hintWorkspace");
+    expect(html).toContain(
+      'href="/api/github/connect?plugin=notify&amp;workspace=ws-1"',
+    );
+    expect(html).not.toContain("switchOnInProject");
+    expect(html).not.toContain("noSettings");
+  });
+
+  it("shows the workspace's account in a project, without taking it off there", () => {
+    const html = render(
+      view({
+        fields: [],
+        connection: {
+          ...connection,
+          connections: [
+            {
+              rowId: "c1",
+              account: "acme",
+              accountType: "Organization",
+              avatar: null,
+              inherited: true,
+              manageUrl:
+                "https://github.com/organizations/acme/settings/installations/7",
+            },
+          ],
+        },
+      }),
+    );
+    expect(html).toContain("acme");
+    expect(html).toContain("github.fromWorkspace");
+    expect(html).not.toContain("github.disconnect");
+    expect(html).toContain("github.connect");
+  });
+
+  it("offers the installations to pick after signing in at GitHub", () => {
+    const html = render(
+      view({
+        fields: [],
+        connection: {
+          ...connection,
+          choice: [
+            {
+              id: "7",
+              account: "acme",
+              accountType: "Organization",
+              avatar: null,
+            },
+          ],
+        },
+      }),
+    );
+    expect(html).toContain("github.choose");
+    expect(html).toContain("github.connectThis");
+    expect(html).toContain("mode=install");
+  });
+
+  it("says when the instance has no GitHub App", () => {
+    const html = render(
+      view({ fields: [], connection: { ...connection, appReady: false } }),
+    );
+    expect(html).toContain("github.noApp");
+    expect(html).not.toContain("/api/github/connect");
+  });
+
+  it("lists the repositories to tick, the chosen ones ticked", () => {
+    const html = render(
+      view({
+        fields: [repos],
+        values: { repositories: ["acme/web", "gone/repo"] },
+        connection,
+      }),
+    );
+    expect(html).toMatch(
+      /checked=""[^>]*\/?>(<i[^>]*><\/i>)?<span[^>]*>gone\/repo/,
+    );
+    expect(html).toContain("github.unreachable");
+    expect(html).toContain("github.private");
+    expect(html).toContain("acme/api");
+  });
+
+  it("falls back to typing them without a connection", () => {
+    const html = render(
+      view({
+        fields: [{ ...repos, options: [], connected: false }],
+        values: { repositories: "acme/web" },
+      }),
+    );
+    expect(html).toContain("<textarea");
+    expect(html).toContain("acme/web");
+    expect(html).toContain("github.typeRepos");
+  });
+});
 
 describe("PluginSettings", () => {
   it("switches a released plugin on in the project, after a confirmation", () => {

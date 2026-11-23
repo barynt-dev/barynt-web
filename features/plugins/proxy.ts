@@ -1,6 +1,8 @@
 import "server-only";
 import { lookup } from "node:dns/promises";
 import https from "node:https";
+import { installationToken } from "@/features/github/app";
+import { connectionFor } from "@/features/github/connections";
 import { db } from "@/lib/db";
 import type { BridgeResponse } from "@/lib/plugins/bridge";
 import { pluginInternalHosts } from "@/lib/plugins/dev";
@@ -24,7 +26,8 @@ import type { RunningPlugin } from "./runtime";
 // through, `PLUGIN_INTERNAL_HOSTS`), and connects to exactly the address it
 // checked — a DNS answer that changes in between (rebinding) can't send the
 // request somewhere else. It adds the credentials the manifest declares for
-// that host itself; the plugin never sees them. Redirects aren't followed:
+// that host itself; the plugin never sees them — or, for a repository the
+// place chose, its GitHub connection's token (BARY-238). Redirects aren't followed:
 // the plugin gets the 3xx and may ask again, for a host it's allowed.
 
 const no = (error: string): BridgeResponse =>
@@ -166,11 +169,18 @@ export async function proxyFetch(
   );
   if (typeof request === "string") return no(request);
 
-  const credentials = await credentialsFor(
+  let credentials = await credentialsFor(
     userId,
     plugin,
     request.url.hostname.toLowerCase(),
   );
+  // Without one of its own, a request about a repository the place chose
+  // goes with the token of the connection that reaches it (BARY-238).
+  if ("missing" in credentials || Object.keys(credentials).length === 0) {
+    const installation = await connectionFor(plugin, plugin, request.url);
+    const token = installation && (await installationToken(installation));
+    if (token) credentials = { authorization: `Bearer ${token}` };
+  }
   if ("missing" in credentials) return no("credential_missing");
 
   const address = await checkedAddress(

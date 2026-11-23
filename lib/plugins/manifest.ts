@@ -415,6 +415,22 @@ const inboundHookSchema = z.strictObject({
     .optional(),
 });
 
+/** An account at another service the plugin works with (BARY-238): Barynt
+ *  connects a workspace or project to it — for GitHub through the
+ *  instance's GitHub App — keeps the token and adds it itself. */
+export const CONNECTION_PROVIDERS = ["github"] as const;
+export type ConnectionProvider = (typeof CONNECTION_PROVIDERS)[number];
+/** The host a provider's API answers on — it must be in `network`. */
+export const CONNECTION_HOSTS: Record<ConnectionProvider, string> = {
+  github: "api.github.com",
+};
+
+const connectionSchema = z.strictObject({
+  id: localId,
+  title,
+  provider: z.enum(CONNECTION_PROVIDERS),
+});
+
 const contributesSchema = z.strictObject({
   navItems: z.array(entry).max(5).optional(),
   projectViews: z.array(entry).max(5).optional(),
@@ -428,6 +444,7 @@ const contributesSchema = z.strictObject({
   settings: z.array(settingSchema).max(30).optional(),
   credentials: z.array(credentialSchema).max(10).optional(),
   inboundHooks: z.array(inboundHookSchema).max(5).optional(),
+  connections: z.array(connectionSchema).max(3).optional(),
   /** Draws its settings itself, in its own frame, instead of Barynt's form
    *  of `settings` (BARY-149) — or, `"section"`, below that form (BARY-204).
    *  Saving still goes through Barynt, checked against `settings`. */
@@ -438,7 +455,10 @@ type Contributes = z.infer<typeof contributesSchema>;
 
 /** Which capability each contribution needs. */
 const CONTRIBUTION_CAPABILITY: Record<
-  Exclude<keyof Contributes, "settings" | "credentials" | "settingsPage">,
+  Exclude<
+    keyof Contributes,
+    "settings" | "credentials" | "settingsPage" | "connections"
+  >,
   Capability
 > = {
   navItems: "ui:nav-item",
@@ -462,6 +482,7 @@ const KIND_CONTRIBUTIONS: Record<PluginKind, readonly (keyof Contributes)[]> = {
     "widgetTemplates",
     "inboundHooks",
     "credentials",
+    "connections",
     "settingsPage",
     "navItems",
     "projectViews",
@@ -661,7 +682,8 @@ export const manifestSchema = z
       if (
         key !== "settings" &&
         key !== "credentials" &&
-        key !== "settingsPage"
+        key !== "settingsPage" &&
+        key !== "connections"
       ) {
         const needed = CONTRIBUTION_CAPABILITY[key];
         if (!m.capabilities.includes(needed))
@@ -692,6 +714,17 @@ export const manifestSchema = z
           "Barynt sets this header itself",
         );
     });
+
+    const connections = m.contributes.connections ?? [];
+    connections.forEach((c, i) => {
+      if (!m.network.includes(CONNECTION_HOSTS[c.provider]))
+        add(
+          ["contributes", "connections", i, "provider"],
+          `${CONNECTION_HOSTS[c.provider]} must be in network`,
+        );
+    });
+    if (new Set(connections.map((c) => c.provider)).size !== connections.length)
+      add(["contributes", "connections"], "one connection per provider");
 
     (m.contributes.widgetBlocks ?? []).forEach((b, i) => {
       (b.settings ?? []).forEach((setting, j) => {
@@ -759,7 +792,18 @@ export const manifestSchema = z
           ["contributes", "settings", i, "options"],
           "only select and multiselect settings have options",
         );
+      if (s.type === "repositories" && connections.length === 0)
+        add(
+          ["contributes", "settings", i, "type"],
+          "a repositories setting needs a connection to list them from",
+        );
+      if (s.type === "repositories" && s.default !== undefined)
+        add(
+          ["contributes", "settings", i, "default"],
+          "a repositories setting has no default",
+        );
       if (
+        s.type !== "repositories" &&
         Array.isArray(s.default) !== (s.type === "multiselect") &&
         s.default !== undefined
       )

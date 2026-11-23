@@ -10,6 +10,8 @@ import { NativeSelect } from "@/components/ui/atoms/NativeSelect/NativeSelect";
 import { Switch } from "@/components/ui/atoms/Switch/Switch";
 import { useConfirm } from "@/components/ui/layout/ConfirmDialog/ConfirmDialog";
 import { PageHeader } from "@/components/ui/layout/PageHeader/PageHeader";
+import { GitHubConnection } from "@/features/github/components/GitHubConnection/GitHubConnection";
+import { RepositoryPicker } from "@/features/github/components/RepositoryPicker/RepositoryPicker";
 import {
   activatePlugin,
   deactivatePlugin,
@@ -23,6 +25,7 @@ import type {
 import { Link } from "@/i18n/navigation";
 import { pluginStorePath } from "@/lib/nav";
 import {
+  repositoryList,
   SETTING_TEXTAREA_MAX,
   type SettingValue,
 } from "@/lib/plugins/settings";
@@ -52,6 +55,7 @@ function initial(field: PluginSettingField, stored: unknown): Value {
   const value = stored ?? field.default;
   if (field.type === "boolean") return value === true;
   if (field.type === "multiselect") return Array.isArray(value) ? value : [];
+  if (field.type === "repositories") return repositoryList(value);
   if (value === null || value === undefined) return "";
   return value as Value;
 }
@@ -189,56 +193,59 @@ export function PluginSettings({
       />
       <div className={styles.page}>
         {/* Off here, or an update asks for more: what it may do, confirmed. */}
-        {(!running || view.state === "needsConfirmation") && (
-          <section className={styles.switchOn} aria-labelledby="plugin-on">
-            <h2 id="plugin-on">
-              {running
-                ? text.t("confirmAgainTitle")
-                : text.t("switchOnInProject")}
-            </h2>
-            <p>
-              {running
-                ? text.t("updateAsksMore")
-                : text.t("switchOnHint", { name: plugin.name })}
-            </p>
-            {!running && <p className={styles.about}>{plugin.description}</p>}
-            <CapabilityCards
-              capabilities={plugin.capabilities}
-              service={plugin.service}
-              network={plugin.network}
-            />
-            <label className={shared.confirm}>
-              <input
-                type="checkbox"
-                checked={confirmed}
-                disabled={isPending}
-                onChange={(e) => setConfirmed(e.target.checked)}
+        {/* A workspace that only connects for its projects (BARY-238)
+            has nothing to switch on. */}
+        {(inProject || running) &&
+          (!running || view.state === "needsConfirmation") && (
+            <section className={styles.switchOn} aria-labelledby="plugin-on">
+              <h2 id="plugin-on">
+                {running
+                  ? text.t("confirmAgainTitle")
+                  : text.t("switchOnInProject")}
+              </h2>
+              <p>
+                {running
+                  ? text.t("updateAsksMore")
+                  : text.t("switchOnHint", { name: plugin.name })}
+              </p>
+              {!running && <p className={styles.about}>{plugin.description}</p>}
+              <CapabilityCards
+                capabilities={plugin.capabilities}
+                service={plugin.service}
+                network={plugin.network}
               />
-              <span>{text.t("switchOnConfirm")}</span>
-            </label>
-            <ErrorLine message={error} />
-            <div className={styles.formActions}>
-              {view.state === "disabled" && (
-                <Button
-                  variant="text"
-                  className={styles.dangerText}
-                  icon={<Icon icon="lucide:trash-2" width={15} />}
+              <label className={shared.confirm}>
+                <input
+                  type="checkbox"
+                  checked={confirmed}
                   disabled={isPending}
-                  onClick={removeData}
+                  onChange={(e) => setConfirmed(e.target.checked)}
+                />
+                <span>{text.t("switchOnConfirm")}</span>
+              </label>
+              <ErrorLine message={error} />
+              <div className={styles.formActions}>
+                {view.state === "disabled" && (
+                  <Button
+                    variant="text"
+                    className={styles.dangerText}
+                    icon={<Icon icon="lucide:trash-2" width={15} />}
+                    disabled={isPending}
+                    onClick={removeData}
+                  >
+                    {text.t("deleteData")}
+                  </Button>
+                )}
+                <Button
+                  variant="primary"
+                  disabled={!confirmed || isPending}
+                  onClick={switchOn}
                 >
-                  {text.t("deleteData")}
+                  {running ? text.t("confirmAgain") : text.t("switchOn")}
                 </Button>
-              )}
-              <Button
-                variant="primary"
-                disabled={!confirmed || isPending}
-                onClick={switchOn}
-              >
-                {running ? text.t("confirmAgain") : text.t("switchOn")}
-              </Button>
-            </div>
-          </section>
-        )}
+              </div>
+            </section>
+          )}
 
         {running && viewsHref && view.views.length > 0 && (
           <section className={styles.views} aria-labelledby="plugin-views">
@@ -267,6 +274,15 @@ export function PluginSettings({
         {/* Its own settings page (BARY-149): its frame instead of the
             form — saving still goes through Barynt (`settings.set`). */}
         {running && view.settingsPage === "page" && ownSettings}
+
+        {/* Connected first, then the repositories to pick from it. */}
+        {view.connection && (running || !inProject) && (
+          <GitHubConnection
+            pluginId={plugin.pluginId}
+            view={view.connection}
+            scope={scope}
+          />
+        )}
 
         {running && view.settingsPage !== "page" && view.fields.length > 0 && (
           <form
@@ -315,7 +331,8 @@ export function PluginSettings({
           view.fields.length === 0 &&
           view.credentials.length === 0 &&
           !view.service &&
-          view.inbound.length === 0 && (
+          view.inbound.length === 0 &&
+          !view.connection && (
             <p className={styles.empty}>{text.t("noSettings")}</p>
           )}
 
@@ -361,6 +378,15 @@ function Field({
   onChange: (value: Value) => void;
 }) {
   const id = `setting-${field.key}`;
+  if (field.type === "repositories")
+    return (
+      <RepositoryPicker
+        field={field}
+        value={value}
+        disabled={disabled}
+        onChange={onChange}
+      />
+    );
   if (field.type === "boolean")
     return (
       <div className={styles.switchRow}>

@@ -1,6 +1,12 @@
 import "server-only";
 import { getLocale } from "next-intl/server";
 import {
+  type GitHubAppAdminView,
+  getConnectionView,
+  getGitHubAppAdminView,
+  type PluginConnectionView,
+} from "@/features/github/queries";
+import {
   pluginRepo,
   readSourceRecent,
   sourceRepo,
@@ -73,6 +79,8 @@ export interface PluginSummary {
   /** Its page text, in the person's language (BARY-237). */
   about: PMDoc | null;
   links: PluginLink[];
+  /** The services it connects to (BARY-238), e.g. `["github"]`. */
+  connections?: string[];
 }
 
 /** Where an installed version's preview image is served. */
@@ -105,6 +113,7 @@ function summaryOf(
     service: m.service ? serviceSummary(m.service) : null,
     about: aboutDoc(localizedAbout(m, locale)),
     links: m.links ?? [],
+    connections: (m.contributes?.connections ?? []).map((c) => c.provider),
     previews: rowId
       ? (m.previews ?? []).map(({ file, title }) => ({
           title,
@@ -166,6 +175,9 @@ export interface InstalledPlugin extends PluginSummary {
   /** For a server the operator runs (`platform`, BARY-223): its address,
    *  and whether `PLUGIN_SERVICE_URLS` sets it. `null` for any other. */
   serviceAddress: { url: string | null; fromEnv: boolean } | null;
+  /** For a plugin that connects to GitHub: the instance's GitHub App, and
+   *  how to create it (BARY-238). */
+  githubApp?: GitHubAppAdminView | null;
 }
 
 export interface AdminPluginsView {
@@ -215,7 +227,22 @@ export async function getAdminPluginsView(): Promise<AdminPluginsView | null> {
             counts.find((c) => c.pluginId === shown.pluginId)?._count._all ?? 0,
         };
       }),
-    ).then((list) => list.sort((a, b) => a.name.localeCompare(b.name))),
+    )
+      .then((list) =>
+        Promise.all(
+          list.map(async (p) =>
+            p.connections?.includes("github")
+              ? {
+                  ...p,
+                  githubApp: await getGitHubAppAdminView(
+                    `/admin/plugins?plugin=${encodeURIComponent(p.pluginId)}`,
+                  ),
+                }
+              : p,
+          ),
+        ),
+      )
+      .then((list) => list.sort((a, b) => a.name.localeCompare(b.name))),
   };
 }
 
@@ -657,8 +684,13 @@ export interface PluginSettingField {
   label: string;
   description: string | null;
   default: SettingValue | null;
-  /** A choice's options — for `member` and `label` the place's (BARY-204). */
-  options: { id: string; label: string; color?: string }[];
+  /** A choice's options — for `member` and `label` the place's (BARY-204),
+   *  for `repositories` what the place's connections reach (BARY-238). */
+  options: { id: string; label: string; color?: string; private?: boolean }[];
+  /** `repositories`: whether there's a connection to list them from, and
+   *  the accounts GitHub didn't answer for. */
+  connected?: boolean;
+  failed?: string[];
 }
 
 /** The settings nav's "Plugins" group. In a project: every plugin its
@@ -677,12 +709,7 @@ export async function getPluginSettingsNav(scope: {
           select: { pluginId: true },
         })
       ).map((g) => g.pluginId)
-    : (
-        await db.pluginActivation.findMany({
-          where: { scopeKey: activationScopeKey(scope), enabled: true },
-          select: { pluginId: true },
-        })
-      ).map((a) => a.pluginId);
+    : await workspaceSettingsIds(scope.workspaceId);
   if (ids.length === 0) return [];
   const rows = await db.plugin.findMany({
     where: { pluginId: { in: ids }, status: "active" },
@@ -693,13 +720,53 @@ export async function getPluginSettingsNav(scope: {
       scope.projectId
         ? true
         : hasSettingsForm(r.manifest) ||
-          credentialsOf(r.manifest, "workspace").length > 0,
+          credentialsOf(r.manifest, "workspace").length > 0 ||
+          connectsTo(r.manifest),
     )
     .map((r) => ({
       pluginId: r.pluginId,
       name: summaryOf(r.pluginId, r.manifest).name,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** In the workspace: the plugins on there, and those released for its
+ *  projects that connect to GitHub — connected once for all of them. */
+async function workspaceSettingsIds(workspaceId: string): Promise<string[]> {
+  const [on, released] = await Promise.all([
+    db.pluginActivation.findMany({
+      where: {
+        scopeKey: activationScopeKey({ workspaceId, projectId: null }),
+        enabled: true,
+      },
+      select: { pluginId: true },
+    }),
+    db.pluginGrant.findMany({
+      where: { workspaceId },
+      select: { pluginId: true },
+    }),
+  ]);
+  const onIds = new Set(on.map((a) => a.pluginId));
+  const connecting = (
+    await db.plugin.findMany({
+      where: {
+        pluginId: { in: released.map((g) => g.pluginId) },
+        status: "active",
+      },
+      select: { pluginId: true, manifest: true },
+    })
+  )
+    .filter((r) => connectsTo(r.manifest))
+    .map((r) => r.pluginId);
+  return [...new Set([...onIds, ...connecting])];
+}
+
+/** Does the manifest connect to another service (BARY-238)? */
+function connectsTo(manifest: unknown): boolean {
+  const parsed = validateManifest(manifest);
+  return (
+    parsed.ok && (parsed.manifest.contributes.connections ?? []).length > 0
+  );
 }
 
 export interface PluginSettingsView {
@@ -720,6 +787,8 @@ export interface PluginSettingsView {
   service: PluginServiceView | null;
   /** Webhooks other services send it through Barynt (BARY-215). */
   inbound: PluginInboundView[];
+  /** Its connection to GitHub here (BARY-238). */
+  connection: PluginConnectionView | null;
 }
 
 /** A hook another service calls, as its settings show it (BARY-215). */
@@ -838,13 +907,11 @@ export async function getPluginSettingsView(
       include: { settings: true },
     }),
     db.plugin.findMany({ where: { pluginId } }),
-    scope.projectId
-      ? db.pluginGrant.findUnique({
-          where: {
-            pluginId_workspaceId: { pluginId, workspaceId: scope.workspaceId },
-          },
-        })
-      : null,
+    db.pluginGrant.findUnique({
+      where: {
+        pluginId_workspaceId: { pluginId, workspaceId: scope.workspaceId },
+      },
+    }),
   ]);
   const active = versions.find((v) => v.status === "active");
   if (!active) return null;
@@ -860,16 +927,21 @@ export async function getPluginSettingsView(
   );
   const service = parsed.manifest.service;
   const hooks = parsed.manifest.contributes.inboundHooks ?? [];
+  // A workspace connects to GitHub for its projects (BARY-238) — released
+  // for them is enough, the plugin needn't be on in the workspace itself.
+  const connects = (parsed.manifest.contributes.connections ?? []).length > 0;
   if (
     scope.projectId
       ? !grant
-      : !activation?.enabled ||
-        (settings.length === 0 &&
-          credentials.length === 0 &&
-          !service &&
-          hooks.length === 0)
+      : !(connects && grant) &&
+        (!activation?.enabled ||
+          (settings.length === 0 &&
+            credentials.length === 0 &&
+            !service &&
+            hooks.length === 0))
   )
     return null;
+  const connection = await getConnectionView(pluginId, parsed.manifest, scope);
   const inboundRows =
     activation?.enabled && hooks.length > 0
       ? await db.pluginInboundHook.findMany({
@@ -892,7 +964,8 @@ export async function getPluginSettingsView(
       ...summaryOf(pluginId, active.manifest, active.id, locale),
       version: active.version,
     },
-    fields: (await placeSettings(scope, settings)).map((f) => ({
+    connection,
+    fields: (await placeSettings(scope, settings, pluginId)).map((f) => ({
       key: f.key,
       type: f.type,
       label: f.label,
@@ -902,7 +975,12 @@ export async function getPluginSettingsView(
         id: o.id,
         label: o.label,
         ...(o.color && { color: o.color }),
+        ...(o.private && { private: true }),
       })),
+      ...(f.type === "repositories" && {
+        connected: f.connected ?? false,
+        failed: f.failed ?? [],
+      }),
     })),
     inbound: hooks.flatMap((hook) => {
       const row = inboundRows.find((r) => r.hookId === hook.id);
