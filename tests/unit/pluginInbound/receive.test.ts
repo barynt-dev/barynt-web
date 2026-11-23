@@ -53,7 +53,7 @@ function setup(provider: "gitlab" | "github", handle = "forward") {
     version: "1.0.0",
     minBaryntVersion: "0.1.0",
     author: "Acme",
-    description: "x",
+    description: { short: "x" },
     license: "MIT",
     kind: "service",
     levels: ["workspace"],

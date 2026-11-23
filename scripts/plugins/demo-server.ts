@@ -806,7 +806,7 @@ const directory = DEMOS.map((demo) => {
       name: demo.entry.name,
       version,
       author: demo.entry.author,
-      description: demo.entry.description,
+      description: { short: demo.entry.description },
       kind: demo.entry.kind,
       levels: demo.entry.levels,
       network: [],

@@ -98,27 +98,132 @@ export const localesSchema = z
 /** How long a plugin's page text may be (BARY-237), per language. */
 export const ABOUT_MAX = 5000;
 
-/** A manifest's texts in other languages: the short description and the
- *  page text (BARY-237). A directory entry only has the former. */
+/** The page text as a file of the release: `about.md`, or `about.de.md` for
+ *  a language of its own. Flat names, like the previews. */
+export const ABOUT_FILE_RE = /^about(\.(de|en))?\.md$/;
+export type AboutFileName = `about${"" | ".de" | ".en"}.md`;
+/** A page text file may be this big — `ABOUT_MAX` characters, each up to
+ *  four bytes of UTF-8. */
+export const ABOUT_FILE_MAX_BYTES = 4 * ABOUT_MAX;
+
+const summary = z.string().trim().min(1).max(300);
+const aboutText = z.string().trim().min(1).max(ABOUT_MAX);
+
+/**
+ * A manifest's description (BARY-237): `short`, what the store's cards and
+ * lists show, and `about`, the plugin's page — Markdown, or the name of a
+ * file in the release (`about.md`).
+ */
+const descriptionSchema = z.strictObject(
+  { short: summary, about: aboutText.optional() },
+  { error: "expected { short, about }" },
+);
+
+/** The same in another language — either text may be left to English. */
+const localeDescriptionSchema = z
+  .strictObject(
+    { short: summary.optional(), about: aboutText.optional() },
+    { error: "expected { short, about }" },
+  )
+  .refine((d) => d.short || d.about, "expected short, about or both");
+
+/** A manifest's texts in other languages: `{ de: { description } }`. */
 const manifestLocalesSchema = z
   .partialRecord(
     z.enum(PLUGIN_LOCALES),
-    z.strictObject({
-      description: z.string().trim().min(1).max(300).optional(),
-      about: z.string().trim().min(1).max(ABOUT_MAX).optional(),
-    }),
+    z.strictObject({ description: localeDescriptionSchema }),
   )
   .optional();
 
-/** The page text in the person's language, else the manifest's own. */
+/** A description as a manifest (`{ short, about }`) or a directory entry
+ *  (the short text alone) has it. */
+type Texts = string | { short?: string; about?: string };
+type Described = {
+  description: Texts;
+  locales?: Partial<Record<string, { description?: Texts }>>;
+};
+
+const shortOf = (d: Texts | undefined) =>
+  typeof d === "string" ? d : d?.short;
+const aboutOf = (d: Texts | undefined) =>
+  typeof d === "object" ? d.about : undefined;
+
+/** The page text in the person's language, else the manifest's own — never
+ *  a file name a release didn't resolve. */
 export function localizedAbout(
-  plugin: {
-    about?: string;
-    locales?: Partial<Record<string, { about?: string }>>;
-  },
+  plugin: Partial<Described>,
   locale: string,
 ): string | null {
-  return plugin.locales?.[locale]?.about ?? plugin.about ?? null;
+  const text =
+    aboutOf(plugin.locales?.[locale]?.description) ??
+    aboutOf(plugin.description) ??
+    null;
+  return text && !ABOUT_FILE_RE.test(text) ? text : null;
+}
+
+/** Every place a manifest names its page text, as [path, value]. */
+function aboutSlots(raw: unknown): [string[], unknown][] {
+  const at = (o: unknown, key: string) =>
+    o && typeof o === "object"
+      ? (o as Record<string, unknown>)[key]
+      : undefined;
+  const slots: [string[], unknown][] = [
+    [["description", "about"], at(at(raw, "description"), "about")],
+  ];
+  const locales = at(raw, "locales");
+  if (locales && typeof locales === "object")
+    for (const [lang, texts] of Object.entries(locales))
+      slots.push([
+        ["locales", lang, "description", "about"],
+        at(at(texts, "description"), "about"),
+      ]);
+  return slots;
+}
+
+/** The page text files a manifest names — read before it's checked, like
+ *  the previews, since they're part of the release hash. */
+export function aboutFiles(raw: unknown): AboutFileName[] {
+  const names = aboutSlots(raw)
+    .map(([, value]) => value)
+    .filter(
+      (v): v is AboutFileName => typeof v === "string" && ABOUT_FILE_RE.test(v),
+    );
+  return [...new Set(names)];
+}
+
+/**
+ * The manifest with each page text file it names put in its place, so
+ * everything after reads the text as if it were written there. A file has to
+ * be there, UTF-8 and no longer than an inline text may be; what it may show
+ * is `aboutDoc`'s business, as for any page text.
+ */
+export function withAboutFiles(
+  manifest: PluginManifest,
+  files: Partial<Record<string, Uint8Array>>,
+): { ok: true; manifest: PluginManifest } | { ok: false; detail: string } {
+  const out = structuredClone(manifest) as unknown as Record<string, unknown>;
+  for (const [path, value] of aboutSlots(manifest)) {
+    if (typeof value !== "string" || !ABOUT_FILE_RE.test(value)) continue;
+    const bytes = files[value];
+    if (!bytes) return { ok: false, detail: `${value}: not found` };
+    let text: string;
+    try {
+      text = new TextDecoder("utf-8", { fatal: true }).decode(bytes).trim();
+    } catch {
+      return { ok: false, detail: `${value}: not UTF-8 text` };
+    }
+    if (!text) return { ok: false, detail: `${value}: empty` };
+    if (text.length > ABOUT_MAX)
+      return {
+        ok: false,
+        detail: `${value}: longer than ${ABOUT_MAX} characters`,
+      };
+    let parent = out;
+    for (const key of path.slice(0, -1))
+      parent = parent[key] as Record<string, unknown>;
+    parent[path[path.length - 1] as string] = text;
+  }
+  return { ok: true, manifest: out as unknown as PluginManifest };
 }
 
 /**
@@ -156,15 +261,17 @@ export interface PluginLink {
   title?: string;
 }
 
-/** The description in the person's language, else the manifest's own. */
+/** The short description in the person's language, else the plugin's own —
+ *  of a manifest or a directory entry. */
 export function localizedDescription(
-  plugin: {
-    description: string;
-    locales?: Partial<Record<string, { description?: string }>>;
-  },
+  plugin: Pick<Described, "description" | "locales">,
   locale: string,
 ): string {
-  return plugin.locales?.[locale]?.description ?? plugin.description;
+  return (
+    shortOf(plugin.locales?.[locale]?.description) ??
+    shortOf(plugin.description) ??
+    ""
+  );
 }
 
 const localId = z
@@ -385,7 +492,8 @@ export const manifestSchema = z
       .url({ protocol: /^https?$/ })
       .max(300)
       .optional(),
-    description: z.string().trim().min(1).max(300),
+    /** `{ short, about }`: the short text and the page text (BARY-237). */
+    description: descriptionSchema,
     license: z.string().trim().min(1).max(40),
     kind: z.enum(PLUGIN_KINDS),
     levels: z.array(z.enum(PLUGIN_LEVELS)).min(1).max(2),
@@ -414,12 +522,8 @@ export const manifestSchema = z
       .string()
       .regex(LOGO_FILE_RE, 'expected "logo.png" or "logo.webp"')
       .optional(),
-    /** Its description in other languages (BARY-235), and its page text
-     *  (BARY-237). */
+    /** Its description in other languages (BARY-235, BARY-237). */
     locales: manifestLocalesSchema,
-    /** Its page in the store (BARY-237): Markdown, shown without links,
-     *  images or HTML — those go in `links`. */
-    about: z.string().trim().min(1).max(ABOUT_MAX).optional(),
     /** Its homepage, docs, issue tracker, community (BARY-237). */
     links: z
       .array(

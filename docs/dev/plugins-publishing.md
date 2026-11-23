@@ -17,6 +17,7 @@ the release on GitHub, GitLab or Gitea, or in the tag on Bitbucket:
 | `styles.css` | optional |
 | `preview-1.webp` … `preview-6.png` | optional, see [Logo and screenshots](#logo-and-screenshots) |
 | `logo.png` or `logo.webp` | optional, the one the manifest names |
+| `about.md`, `about.de.md` | optional, the page text the manifest names, see [Page text and links](plugins-manifest.md#page-text-and-links) |
 
 On a plain web server, the files of version `1.2.0` of the entry's `repo`
 `https://plugins.acme.example/timeline` are at
@@ -28,11 +29,11 @@ For a fix, release a new version.
 ## The release hash
 
 The directory names, for each version, the SHA-256 of its files — all of
-them, previews and logo included. It's the hash of the list of each file's own hash
+them, previews, logo and page text included. It's the hash of the list of each file's own hash
 and name, sorted by name, exactly what this prints:
 
 ```bash
-sha256sum manifest.json main.js styles.css preview-*.* logo.* | sort -k2 | sha256sum
+sha256sum manifest.json main.js styles.css preview-*.* logo.* about*.md | sort -k2 | sha256sum
 ```
 
 Leave out files the release doesn't have. If a single byte differs from
@@ -84,7 +85,7 @@ anywhere on a web server — with one entry per plugin:
 | `levels`, `kind` | yes | Must match the release's manifest. |
 | `versions` | yes | Every version the directory vouches for, with its [release hash](#the-release-hash). |
 | `categories` | no | Up to three of `development`, `planning`, `communication`, `reports`, `time`, `automation`, `support`. |
-| `featured` | no | `true` for the store's "Featured" row. |
+| `featured` | no | `true` for the store's "Featured" row: a card with the plugin's logo, and its first screenshot fading in from the right. More than three become a carousel, one large card at a time; on a phone the row sits above the list. |
 | `added` | no | Since when it's listed, `YYYY-MM-DD`, for "New in the directory". |
 | `notes` | no | Release notes per version, up to 2000 characters each. Plain text; lines starting with `- ` become a list. |
 | `locales` | no | The description in Barynt's other languages, as in the [manifest](plugins-manifest.md#fields) — what the store shows before the plugin is installed. |
@@ -137,7 +138,11 @@ plugin shows those of its own version.
 ## Updates
 
 Release the new version, add it with its hash to `versions`, and the
-platform admin sees **Update** in the store. If the new version asks for
+platform admin sees **Update** in the store. A real release comes first: the
+store preselects the newest one even when a newer beta is listed, and offers
+**Update** to a release; a beta (`1.2.0-beta.1`) only to a plugin that is on
+a beta already, and a plugin that has no release at all starts on its newest
+beta. The version picker lists releases and betas under their own headings. If the new version asks for
 **more capabilities**, it doesn't get them silently: wherever it's on, it
 keeps running with only the capabilities confirmed before — a call that
 needs a new one is refused with `capability_not_confirmed` — until someone

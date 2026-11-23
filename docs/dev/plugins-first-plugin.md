@@ -51,7 +51,10 @@ and what it adds. Every field is explained in [Manifest](plugins-manifest.md).
   "version": "0.1.0",
   "minBaryntVersion": "1.0.0",
   "author": "You",
-  "description": "The project's open issues at a glance.",
+  "description": {
+    "short": "The project's open issues at a glance.",
+    "about": "about.md"
+  },
   "license": "MIT",
   "kind": "sandbox",
   "levels": ["project"],
@@ -62,6 +65,9 @@ and what it adds. Every field is explained in [Manifest](plugins-manifest.md).
   }
 }
 ```
+
+`about.md`, next to it, is the plugin's page in the store — see
+[Page text and links](plugins-manifest.md#page-text-and-links).
 
 ## 3. The code
 

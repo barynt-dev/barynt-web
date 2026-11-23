@@ -9,6 +9,28 @@ import styles from "./pluginStore.module.scss";
 // install dialog share it, so both read the same: cards by what a capability
 // touches, the network on its own, and an update's changes as + / − rows.
 
+/**
+ * The head of what a plugin may do: the heading, and the one thing worth
+ * knowing before reading the cards — as a note, not a line of small print.
+ */
+export function CapabilitiesHead() {
+  const text = usePluginText();
+  return (
+    <header className={styles.capHead}>
+      <h3>{text.t("capsMay")}</h3>
+      <p className={styles.capNote} role="note">
+        <Icon
+          icon="lucide:info"
+          width={15}
+          className={styles.capNoteIcon}
+          aria-hidden
+        />
+        {text.t("capabilitiesIntro")}
+      </p>
+    </header>
+  );
+}
+
 /** What a version may do and which servers it calls. */
 export interface Permissions {
   capabilities: string[];

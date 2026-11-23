@@ -12,6 +12,9 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { GIT_PROVIDERS } from "./git-hosts";
 import {
+  ABOUT_FILE_MAX_BYTES,
+  type AboutFileName,
+  aboutFiles,
   isCompatible,
   LOGO_FILE_RE,
   localesSchema,
@@ -21,6 +24,7 @@ import {
   type PluginManifest,
   PREVIEW_FILE_RE,
   validateManifest,
+  withAboutFiles,
 } from "./manifest";
 import { isSemver } from "./semver";
 
@@ -153,7 +157,8 @@ export type LogoFileName = `logo.${"webp" | "png"}`;
 export type ReleaseFileName =
   | keyof typeof RELEASE_FILES
   | PreviewFileName
-  | LogoFileName;
+  | LogoFileName
+  | AboutFileName;
 
 /** A logo may be this big. */
 export const LOGO_MAX_BYTES = 128 * 1024;
@@ -215,10 +220,10 @@ const sha256 = (data: Uint8Array | string) =>
  * The hash a directory lists for a release: SHA-256 over the `sha256sum`
  * lines of its files, sorted by name — what
  *
- *   sha256sum manifest.json main.js styles.css preview-*.* logo.* | sort -k2 | sha256sum
+ *   sha256sum manifest.json main.js styles.css preview-*.* logo.* about*.md | sort -k2 | sha256sum
  *
  * prints, for the files the release has (previews included, BARY-199, and
- * the logo, BARY-235).
+ * the logo, BARY-235, and the page text files, BARY-237).
  */
 export function releaseHash(files: ReleaseFiles): string {
   const lines = (Object.keys(files) as ReleaseFileName[])
@@ -314,6 +319,12 @@ export async function loadRelease(
     if (!data) return { ok: false, error: "download_failed", detail: logo };
     files[logo] = data;
   }
+  // And the page text files (`about.md`, BARY-237).
+  for (const name of aboutFiles(raw)) {
+    const data = await fetchFile(name, ABOUT_FILE_MAX_BYTES);
+    if (!data) return { ok: false, error: "download_failed", detail: name };
+    files[name] = data;
+  }
 
   // The hash covers whatever arrived — an optional file that failed to
   // load makes it differ too, so nothing half-downloaded slips through.
@@ -354,6 +365,9 @@ export async function loadRelease(
         error: "invalid_manifest",
         detail: `${file}: not an image`,
       };
+  const texts = withAboutFiles(manifest, files);
+  if (!texts.ok)
+    return { ok: false, error: "invalid_manifest", detail: texts.detail };
 
-  return { ok: true, manifest, files, hash };
+  return { ok: true, manifest: texts.manifest, files, hash };
 }

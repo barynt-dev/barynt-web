@@ -26,7 +26,7 @@ const manifest = (over: Record<string, unknown> = {}) => ({
   version: "0.1.0",
   minBaryntVersion: "0.1.0",
   author: "You",
-  description: "The project's open issues.",
+  description: { short: "The project's open issues." },
   license: "MIT",
   kind: "sandbox",
   levels: ["project"],
@@ -89,6 +89,23 @@ describe("readDevPlugin", () => {
       ok: false,
       errors: ["manifest.json: not found"],
     });
+  });
+
+  it("puts the page text file in its place (BARY-237)", async () => {
+    const m = manifest({ description: { short: "Open.", about: "about.md" } });
+    write(m);
+    rmSync(join(dir, "about.md"), { force: true });
+    expect(await readDevPlugin(dir)).toEqual({
+      ok: false,
+      errors: ["about.md: not found"],
+    });
+    writeFileSync(join(dir, "about.md"), "## Why\n\nBecause.\n");
+    const read = await readDevPlugin(dir);
+    expect(read.ok && read.manifest.description).toEqual({
+      short: "Open.",
+      about: "## Why\n\nBecause.",
+    });
+    rmSync(join(dir, "about.md"));
   });
 });
 

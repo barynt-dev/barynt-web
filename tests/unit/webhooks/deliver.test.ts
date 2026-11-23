@@ -536,7 +536,7 @@ function servicePlugin(
     version: "1.0.0",
     minBaryntVersion: "0.1.0",
     author: "Acme",
-    description: "Builds on status changes.",
+    description: { short: "Builds on status changes." },
     license: "MIT",
     kind: "service",
     levels: ["workspace", "project"],

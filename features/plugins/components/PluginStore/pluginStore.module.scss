@@ -68,6 +68,18 @@
 
 // ─── The list ───────────────────────────────────────────────────────────────
 
+/* The featured carousel above the list, on a phone only. */
+.phoneFeatured {
+  display: none;
+
+  @include bp.phone {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    margin-bottom: 0.5rem;
+  }
+}
+
 .list {
   display: flex;
   flex-direction: column;
@@ -92,6 +104,73 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.375rem;
+}
+
+/* The filter at the end of the search field: primary while something is
+   picked, the number of picks on its corner. */
+.filterButton {
+  position: relative;
+
+  &[data-active] {
+    color: var(--primary);
+  }
+}
+
+.filterCount {
+  position: absolute;
+  top: -0.125rem;
+  right: -0.125rem;
+  min-width: 0.95rem;
+  height: 0.95rem;
+  padding-inline: 0.2rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 0.95rem;
+  text-align: center;
+}
+
+.filterMenu {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.875rem;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  h3 {
+    margin: 0;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--on-surface-variant);
+  }
+}
+
+.filterNone {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--on-surface-variant);
+}
+
+.filterReset {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--primary);
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 .group {
@@ -275,6 +354,25 @@
     font-size: 1.5rem;
   }
 
+  /* A featured card's: large, and its colour glows under it. */
+  &[data-size="hero"] {
+    width: var(--hero-size, 4.5rem);
+    height: var(--hero-size, 4.5rem);
+    border-radius: 1.25rem;
+    font-size: calc(var(--hero-size, 4.5rem) * 0.42);
+    box-shadow:
+      0 0.75rem 2rem color-mix(in oklab, var(--hue) 38%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+  }
+
+  /* A plugin page's header: as tall as `.headText` beside it. */
+  &[data-size="xl"] {
+    width: var(--head-height);
+    height: var(--head-height);
+    border-radius: 1.25rem;
+    font-size: 2rem;
+  }
+
   @include hues;
 }
 
@@ -332,6 +430,35 @@
   min-width: 0;
 }
 
+/* A plugin page's top — header and tabs — stays put while what's under the
+   divider scrolls (the column, `.main`, is the scroller). It reaches over
+   the column's top padding so nothing shows above it. A phone scrolls the
+   whole screen: the top would take half of it. */
+.detailTop {
+  position: sticky;
+  /* Sticky counts from the column's padding: this sits it at the very top. */
+  top: -1.5rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: -1.5rem;
+  padding-top: 1.5rem;
+  background: var(--background);
+
+  @include bp.phone {
+    position: static;
+    margin-top: 0;
+    padding-top: 0;
+  }
+}
+
+/* A warning between the title and the tabs belongs to the tabs it sits on:
+   it hugs them, with the space under the title kept. */
+.topNotice {
+  margin-bottom: -1rem;
+}
+
 /* Up a level, left of the page title (see `PluginStore`): to the list on a
    phone that shows a plugin, else to the admin overview on a tablet or
    phone. Exactly one of the two shows. */
@@ -370,6 +497,8 @@
 
 .detailHead,
 .paneHead {
+  /* Name, author and badges — and the logo, as tall (BARY-237). */
+  --head-height: 4.75rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -389,10 +518,14 @@
 
 .headText {
   display: flex;
-  flex: 1 1 16rem;
+  /* Beside the logo down to a phone's width (375px). */
+  flex: 1 1 12rem;
   flex-direction: column;
+  justify-content: center;
   gap: 0.25rem;
   min-width: 0;
+  /* As tall as the logo beside it (`[data-size="xl"]`). */
+  min-height: var(--head-height);
 }
 
 .detailName {
@@ -525,6 +658,12 @@
 }
 
 /* Links (BARY-237): labelled ones as rows, brands as a row of icons. */
+
+/* A brand logo without a fill of its own (X) takes the text colour. */
+:is(.linkList, .brandLinks, .shareNetwork) svg {
+  flex: none;
+  fill: currentColor;
+}
 .linkList {
   display: flex;
   flex-direction: column;
@@ -591,39 +730,135 @@
 .brandLinks {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.375rem;
+  justify-content: center;
+  gap: 0.25rem;
   margin: 0;
-  padding: 0.5rem 0 0;
+  padding: 0;
   list-style: none;
+}
 
-  /* Only when there are labelled links above. */
-  .linkList + & {
-    border-top: 1px solid var(--outline-variant);
+/* The social links under the others, past a line. */
+.linkList + :is(.linkList, .brandLinks) {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* Drawn like a text icon button (`Button variant="text"`), but a link: it
+   leaves Barynt. */
+.brandLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max(2.5rem, var(--touch-min));
+  height: max(2.5rem, var(--touch-min));
+  border-radius: var(--radius-sm);
+  color: var(--on-surface-variant);
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+
+  &:hover {
+    background: var(--surface-container-high);
+    color: var(--on-surface);
   }
 
-  a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: max(2.5rem, var(--touch-min));
-    height: max(2.5rem, var(--touch-min));
-    border: 1px solid var(--outline-variant);
-    border-radius: var(--radius-pill);
-    background: var(--surface-container);
-    color: var(--on-surface);
-    transition:
-      background 120ms ease,
-      border-color 120ms ease;
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
 
-    &:hover {
-      border-color: var(--outline);
-      background: var(--surface-container-high);
-    }
+/* The sharing dialog (BARY-237): a link, HTML for a website, the networks. */
+.shareSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 
-    /* Monochrome logos without a fill of their own take the text colour. */
-    svg {
-      fill: currentColor;
-    }
+.shareHead {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.shareHint {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+
+  /* An address that only opens signed in: said plainly. */
+  &[data-warn] {
+    color: var(--warning);
+  }
+}
+
+.shareCode {
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius);
+  background: var(--surface-container-low);
+
+  pre {
+    max-height: 9rem;
+    margin: 0;
+    padding: 0.625rem 0.75rem;
+    overflow: auto;
+    color: var(--on-surface-variant);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    /* The whole snippet readable without scrolling sideways. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
+.shareCodeBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.375rem 0.25rem 0.75rem;
+  border-bottom: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+  font-weight: 650;
+}
+
+.shareNetworks {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @include bp.phone {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* An icon button with the network's logo in its colours. */
+.shareNetwork {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: max(3rem, var(--touch-min));
+  border-radius: var(--radius);
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  transition: background 120ms ease;
+
+  &:hover {
+    background: var(--surface-container-high);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  /* XING's mark is one colour: its green, light enough for a dark surface. */
+  &[data-network="xing"] {
+    color: #00898c;
   }
 }
 
@@ -1173,13 +1408,29 @@
     font-size: var(--text-md);
     font-weight: 650;
   }
+}
 
-  p {
-    max-width: 60ch;
-    margin: 0;
-    color: var(--on-surface-variant);
-    font-size: var(--text-xs);
-  }
+/* The note under a plugin's "what it may do": an icon and one sentence in a
+   box of its own, as wide as the sentence. */
+.capNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius);
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  font-size: var(--text-sm);
+}
+
+.capNoteIcon {
+  flex: none;
+  margin-top: 0.1875rem;
+  color: var(--primary);
 }
 
 .capGrid {
@@ -1728,41 +1979,319 @@
 
 /* Featured: large cards washed in the plugin's own color. */
 .featured {
+  min-width: 0;
+}
+
+.featuredTrack {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  /* Three across on a laptop's 1440px, two on a tablet, one on a phone. */
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
   gap: 1rem;
 }
 
+.featuredWrap {
+  position: relative;
+}
+
+/* Where the carousel is: one short bar per card, the current one long. */
+.featuredDots {
+  display: none;
+  justify-content: center;
+  gap: 0.375rem;
+
+  button {
+    width: 1rem;
+    height: 0.375rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--outline-variant);
+    cursor: pointer;
+    transition:
+      width 400ms cubic-bezier(0.2, 0, 0, 1),
+      background-color 200ms ease;
+
+    &:hover {
+      background: var(--outline);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    &[aria-current] {
+      width: 2.25rem;
+      background: var(--primary);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+}
+
+/* The carousel's arrows, at its sides like the screenshots' (`.arrow`);
+   gone at either end. */
+.featuredStage {
+  position: relative;
+}
+
+.featuredArrow {
+  z-index: 1;
+  display: none;
+
+  /* On the edge, half outside: the small card under it stays readable. */
+  &[data-side="prev"] {
+    left: -1.25rem;
+  }
+
+  &[data-side="next"] {
+    right: -1.25rem;
+  }
+
+  transition: opacity 160ms ease;
+
+  &:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* A featured plugin's first screenshot, fading in from the right of its card
+   and out towards the text. Over the haze. */
+.featurePreview {
+  position: absolute;
+  z-index: -2;
+  top: 0;
+  right: 0;
+  width: 66%;
+  height: 70%;
+  object-fit: cover;
+  object-position: left top;
+  opacity: 0;
+  pointer-events: none;
+  mask-image: radial-gradient(
+    ellipse 100% 100% at 100% 0%,
+    #000 12%,
+    transparent 66%
+  );
+  transform-origin: top right;
+  transition:
+    opacity 700ms ease,
+    transform 400ms ease;
+
+  &[data-shown] {
+    opacity: 0.42;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity 300ms ease;
+  }
+}
+
+/* A featured plugin: its logo large and glowing in its colour, a haze of the
+   same colour in the corner. One card on its own spreads out as a banner. */
 .featureCard {
   @include hues;
 
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-areas:
+    "logo head"
+    "text text"
+    "foot foot";
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.875rem 1rem;
   min-height: 11rem;
-  padding: 1.125rem;
-  border-radius: 1.375rem;
+  padding: 1.25rem;
+  overflow: hidden;
+  border-radius: 1.5rem;
   background: linear-gradient(
     160deg,
-    color-mix(in oklab, var(--hue) 24%, var(--surface-container-low)) 0%,
-    var(--surface-container-low) 70%
+    color-mix(in oklab, var(--hue) 22%, var(--surface-container-low)) 0%,
+    var(--surface-container-low) 72%
   );
   color: var(--on-surface);
   text-decoration: none;
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 4%, transparent),
+    inset 0 0 0 1px color-mix(in oklab, var(--hue) 20%, var(--outline-variant)),
+    inset 0 1px 0 color-mix(in srgb, white 5%, transparent),
     0 0.5rem 1.5rem rgb(0 0 0 / 0.14);
-  transition: transform 160ms ease;
+  transition:
+    transform 160ms ease,
+    box-shadow 200ms ease;
 
-  &:hover {
-    transform: translateY(-2px);
+  /* The haze. */
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: -3;
+    top: -45%;
+    right: -12%;
+    width: 75%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      color-mix(in oklab, var(--hue) 50%, transparent) 0%,
+      transparent 66%
+    );
+    opacity: 0.5;
+    transition:
+      opacity 240ms ease,
+      transform 320ms ease;
+  }
+
+  &:hover,
+  &:focus-visible {
+    transform: translateY(-3px);
+    box-shadow:
+      inset 0 0 0 1px
+        color-mix(in oklab, var(--hue) 55%, var(--outline-variant)),
+      inset 0 1px 0 color-mix(in srgb, white 6%, transparent),
+      0 1rem 2.25rem color-mix(in oklab, var(--hue) 22%, rgb(0 0 0 / 0.2));
+
+    &::before {
+      opacity: 0.85;
+      transform: scale(1.1);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  &:is(:hover, :focus-visible) .featurePreview[data-shown] {
+    opacity: 0.62;
+    transform: scale(1.04);
+  }
+
+  /* One on its own: a banner — the logo to the left over all three rows. */
+  &:is(:only-child, [data-slot="lead"]) {
+    --hero-size: 6rem;
+
+    grid-template-areas:
+      "logo head"
+      "logo text"
+      "logo foot";
+    column-gap: 1.5rem;
+    min-height: 0;
+    padding: 1.5rem 4rem 1.5rem 1.75rem;
+
+    /* The whole right side, the screenshot full height and stronger: there's
+       room, and a dark screenshot on a dark card needs it. */
+    .featurePreview {
+      width: 50%;
+      height: 100%;
+      mask-image: radial-gradient(
+        ellipse 110% 150% at 100% 50%,
+        #000 40%,
+        transparent 80%
+      );
+
+      &[data-shown] {
+        opacity: 0.85;
+      }
+    }
+
+    &:is(:hover, :focus-visible) .featurePreview[data-shown] {
+      opacity: 1;
+    }
+  }
+
+  @include bp.phone {
+    &:is(:only-child, [data-slot="lead"]) {
+      --hero-size: 4.5rem;
+
+      grid-template-areas:
+        "logo head"
+        "text text"
+        "foot foot";
+      padding: 1.25rem;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     transition: none;
 
-    &:hover {
+    &::before {
+      transition: none;
+    }
+
+    &:hover,
+    &:focus-visible {
       transform: none;
+
+      &::before {
+        transform: none;
+      }
+    }
+  }
+}
+
+.featureLogo {
+  grid-area: logo;
+  display: flex;
+}
+
+.featureHead {
+  grid-area: head;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.featureName {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.featureText {
+  grid-area: text;
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.featureFoot {
+  grid-area: foot;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-self: end;
+  gap: 0.375rem;
+}
+
+/* A banner keeps its text off the screenshot on the right. */
+.featureCard:is(:only-child, [data-slot="lead"]) {
+  .featureHead,
+  .featureText,
+  .featureFoot {
+    max-width: 26rem;
+  }
+
+  /* Where the two meet, the text keeps its ground. */
+  .featureHead,
+  .featureText {
+    text-shadow: 0 0 0.75rem
+      color-mix(in oklab, var(--surface-container-low) 90%, transparent);
+  }
+
+  @include bp.phone {
+    .featureHead,
+    .featureText,
+    .featureFoot {
+      max-width: none;
     }
   }
 }
@@ -1772,15 +2301,6 @@
   align-items: center;
   gap: 0.75rem;
   min-width: 0;
-}
-
-.featureName {
-  font-size: var(--text-md);
-  font-weight: 650;
-}
-
-.featureText {
-  font-size: var(--text-sm);
 }
 
 .cardFoot {
@@ -1809,27 +2329,361 @@
   }
 }
 
-/* Newest: a compact list in columns. */
+/* A banner's state sits by the badges, off the screenshot on the right. */
+.featureCard:is(:only-child, [data-slot="lead"]) .cardState {
+  margin-left: 0.25rem;
+}
+
+/* More than three: a carousel after Material Design 3's hero carousel. The
+   card in focus (`data-slot="lead"`) is large and looks like a lone featured
+   plugin; the one before and the one after wait small (`side`) with logo and
+   name. At either end the large card takes the missing neighbour's room
+   (`--sides`). The row starts at the card before the focused one
+   (`--offset`) and slides, the cards growing and shrinking with it — both
+   set by `FeaturedCarousel`. */
+.featuredWrap[data-carousel] {
+  --gap: 1rem;
+  --small-size: 6rem;
+
+  .featured {
+    /* Clipped sideways only: the shadows and the hover lift reach out above
+       and below, and a little to the sides where the browser can. */
+    margin-block: -1.5rem;
+    padding-block: 1.5rem;
+    overflow: hidden;
+    overflow: clip;
+    overflow-clip-margin: 0.75rem;
+    touch-action: pan-y;
+  }
+
+  .featuredTrack {
+    display: flex;
+    gap: var(--gap);
+    translate: calc(var(--offset) * -1 * (var(--small-size) + var(--gap))) 0;
+    transition: translate 400ms cubic-bezier(0.2, 0, 0, 1);
+
+    & > * {
+      flex: 0 0 var(--small-size);
+      min-width: 0;
+      align-content: center;
+      transition:
+        flex-basis 400ms cubic-bezier(0.2, 0, 0, 1),
+        transform 160ms ease,
+        box-shadow 200ms ease;
+
+      /* The content comes in once the card has its new size. */
+      & > :not(.featurePreview) {
+        animation: feature-in 320ms ease 140ms backwards;
+      }
+
+      /* The logo grows and shrinks with its card. */
+      .featureLogo > * {
+        transition:
+          width 400ms cubic-bezier(0.2, 0, 0, 1),
+          height 400ms cubic-bezier(0.2, 0, 0, 1),
+          font-size 400ms cubic-bezier(0.2, 0, 0, 1),
+          border-radius 400ms cubic-bezier(0.2, 0, 0, 1);
+      }
+
+      &[data-slot="lead"] {
+        flex-basis: calc(
+          100% - var(--sides) * (var(--small-size) + var(--gap))
+        );
+        padding-right: 1.75rem;
+
+        & > :not(.featurePreview) {
+          animation-name: feature-in-lead;
+        }
+      }
+
+      /* Narrow: the logo fills the top, the name below it in at most three
+         lines. */
+      &[data-slot="side"] {
+        --hero-size: calc(var(--small-size) - 1rem);
+
+        grid-template-areas:
+          "logo"
+          "head";
+        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr);
+        align-content: stretch;
+        gap: 0.5rem;
+        padding: 0.5rem 0.5rem 0.625rem;
+        cursor: pointer;
+
+        .featureLogo {
+          justify-self: center;
+        }
+
+        .featureLogo > * {
+          border-radius: 1rem;
+        }
+
+        .featureHead {
+          align-self: start;
+          padding-inline: 0.125rem;
+        }
+
+        /* The name takes what room is left and adds none: a long one is cut
+           off instead of making the row taller. */
+        .featureHead {
+          align-self: stretch;
+          overflow: hidden;
+          contain: size;
+        }
+
+        .featureName {
+          display: -webkit-box;
+          overflow: hidden;
+          font-size: var(--text-sm);
+          line-height: 1.25;
+          overflow-wrap: anywhere;
+          hyphens: auto;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 3;
+          line-clamp: 3;
+        }
+
+        .featureText,
+        .featureFoot,
+        .featureHead .itemSub,
+        .featurePreview {
+          display: none;
+        }
+      }
+    }
+  }
+
+  .featuredArrow {
+    display: inline-flex;
+  }
+
+  .featuredDots {
+    display: flex;
+  }
+
+  /* A tablet's narrower column: the large card's text under its logo, as a
+     lone featured plugin has it on a phone, and slim small cards. */
+  @include bp.tablet-down {
+    --small-size: 4.5rem;
+
+    .featuredTrack > [data-slot="lead"] {
+      --hero-size: 4.5rem;
+
+      grid-template-areas:
+        "logo head"
+        "text text"
+        "foot foot";
+      column-gap: 1rem;
+      padding: 1.25rem;
+    }
+
+    /* The small cards: the logo over their width, the name running up the
+       rest of the pill, as on a book's spine. */
+    .featuredTrack > [data-slot="side"] {
+      /* The logo exactly the card's width less its padding. */
+      --hero-size: calc(var(--small-size) - 0.75rem);
+
+      padding: 0.375rem 0.375rem 0.75rem;
+
+      .featureHead {
+        justify-self: stretch;
+        align-items: center;
+        padding: 0;
+      }
+
+      .featureName {
+        display: block;
+        max-height: 100%;
+        overflow: hidden;
+        font-size: var(--text-sm);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        writing-mode: vertical-rl;
+        rotate: 180deg;
+        -webkit-line-clamp: unset;
+        line-clamp: none;
+      }
+    }
+  }
+
+  @include bp.phone {
+    --small-size: 3.5rem;
+
+    .featuredTrack > [data-slot="lead"] {
+      --hero-size: 3.5rem;
+
+      .featureName {
+        font-size: var(--text-md);
+        overflow-wrap: anywhere;
+      }
+    }
+
+    /* A swipe and the indicator do it on a phone. */
+    .featuredArrow {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .featuredTrack,
+    .featuredTrack > *,
+    .featuredTrack > * > * {
+      transition: none;
+      animation: none;
+    }
+  }
+}
+
+@keyframes feature-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The large card's, by another name — a new name restarts it when a card
+   changes size — with its text rising a little into place. */
+@keyframes feature-in-lead {
+  from {
+    opacity: 0;
+    transform: translateY(0.375rem);
+  }
+}
+
+/* Newest: compact cards in columns of up to three, as many rows as the
+   cards need — two of them share a row on a desktop. More than fit (six
+   on a desktop, three on a tablet or phone) become a row of columns that
+   scrolls sideways (`NewestRow`), the next one peeking in. Rows are equal:
+   a card whose text wraps makes its whole row taller. */
 .newest {
+  --columns: 2;
+  --rows: 1;
+
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--rows), 1fr);
+  grid-auto-columns: calc(
+    (100% - (var(--columns) - 1) * 1rem) / var(--columns)
+  );
   gap: 0.5rem 1rem;
-  margin: 0;
-  padding: 0;
+  margin: -0.25rem 0;
+  padding: 0.25rem 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
   list-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* A desktop: two across, filled row by row while it all fits. */
+  &:has(> :nth-child(3)) {
+    --rows: 2;
+  }
+
+  &:has(> :nth-child(5)) {
+    --rows: 3;
+  }
+
+  &:not(:has(> :nth-child(7))) {
+    grid-auto-flow: row;
+    grid-template-rows: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 1fr;
+  }
+
+  &:has(> :nth-child(7)) {
+    --columns: 2.15;
+  }
+
+  /* A tablet or phone: one column of up to three, then sideways. */
+  @include bp.tablet-down {
+    --columns: 1;
+
+    &,
+    &:not(:has(> :nth-child(7))) {
+      grid-auto-flow: column;
+      grid-template-rows: repeat(var(--rows), 1fr);
+      grid-template-columns: none;
+    }
+
+    &:has(> :nth-child(2)) {
+      --rows: 2;
+    }
+
+    &:has(> :nth-child(3)) {
+      --rows: 3;
+    }
+
+    &:has(> :nth-child(4)) {
+      --columns: 1.12;
+    }
+  }
+
+  @include bp.phone {
+    &:has(> :nth-child(4)) {
+      --columns: 1.08;
+    }
+  }
+
+  /* Endless (`NewestRow`): one row of columns, each of up to three cards. */
+  &[data-loop] {
+    grid-auto-flow: column;
+    grid-template-rows: none;
+    grid-template-columns: none;
+  }
+}
+
+.newestColumn {
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+/* Arrows beside a row that scrolls, while there's more that way. */
+.rowArrow {
+  z-index: 1;
+
+  &[data-side="prev"] {
+    left: -1.25rem;
+  }
+
+  &[data-side="next"] {
+    right: -1.25rem;
+  }
+
+  &:disabled {
+    display: none;
+  }
+
+  /* A swipe does it on a phone. */
+  @include bp.phone {
+    display: none;
+  }
 }
 
 .newestItem {
+  scroll-snap-align: start;
+  box-sizing: border-box;
+  height: 100%;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: var(--radius-lg);
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: 1.125rem;
+  background: var(--surface-container-low);
   color: var(--on-surface);
   text-decoration: none;
+  transition: border-color 120ms ease;
 
   &:hover {
-    background: var(--surface-container-low);
+    border-color: var(--outline);
   }
 }
 
@@ -1855,6 +2709,20 @@
 
   &:hover {
     border-color: var(--outline);
+  }
+}
+
+/* The next page of "All plugins". */
+.loadMore {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  padding-top: 0.5rem;
+
+  span {
+    color: var(--on-surface-variant);
+    font-size: var(--text-xs);
   }
 }
 

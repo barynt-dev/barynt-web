@@ -104,7 +104,7 @@ describe("actions in the manifest", () => {
       version: "1.0.0",
       minBaryntVersion: "0.1.0",
       author: "Acme",
-      description: "CI.",
+      description: { short: "CI." },
       license: "MIT",
       kind: "sandbox",
       levels: ["project"],

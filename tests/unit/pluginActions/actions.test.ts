@@ -129,7 +129,7 @@ const manifest = {
   version: "1.1.0",
   minBaryntVersion: "0.9.0",
   author: "Acme",
-  description: "Issues on a time line.",
+  description: { short: "Issues on a time line." },
   license: "MIT",
   kind: "sandbox",
   levels: ["project"],

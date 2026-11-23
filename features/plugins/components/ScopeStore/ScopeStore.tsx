@@ -20,7 +20,7 @@ import type {
 import { Link } from "@/i18n/navigation";
 import { adminPath, pluginStorePath } from "@/lib/nav";
 import { PLUGIN_CATEGORIES } from "@/lib/plugins/directory";
-import { CapabilityCards } from "../PluginStore/capabilities";
+import { CapabilitiesHead, CapabilityCards } from "../PluginStore/capabilities";
 import { PluginAbout, PluginLinks } from "../PluginStore/PluginAbout";
 import { PluginTile } from "../PluginStore/PluginTile";
 import { PreviewGallery } from "../PluginStore/PreviewGallery";
@@ -432,52 +432,59 @@ function Detail({
   const text = usePluginText();
   return (
     <article className={store.detail}>
-      <header className={store.detailHead}>
-        <PluginTile id={plugin.pluginId} name={plugin.name} size="lg" />
-        <div className={store.headText}>
-          <h2 className={store.detailName}>{plugin.name}</h2>
-          <span className={store.headMeta}>
-            {plugin.author}
-            {plugin.version && <> · v{plugin.version}</>}
-          </span>
-          <span className={store.categories}>
-            <PluginBadges kind={plugin.kind} levels={plugin.levels} size="md" />
-            {plugin.categories.map((c) => (
-              <Link
-                key={c}
-                href={href({ category: c })}
-                className={store.categoryLink}
-              >
-                {text.t(`category.${c}` as "category.planning")}
-              </Link>
-            ))}
-          </span>
-        </div>
-        <ReleaseActions
+      {/* Stays at the top while what's under the divider scrolls. */}
+      <div className={store.detailTop}>
+        <header className={store.detailHead}>
+          <PluginTile id={plugin.pluginId} name={plugin.name} size="xl" />
+          <div className={store.headText}>
+            <h2 className={store.detailName}>{plugin.name}</h2>
+            <span className={store.headMeta}>
+              {plugin.author}
+              {plugin.version && <> · v{plugin.version}</>}
+            </span>
+            <span className={store.categories}>
+              <PluginBadges
+                kind={plugin.kind}
+                levels={plugin.levels}
+                size="md"
+              />
+              {plugin.categories.map((c) => (
+                <Link
+                  key={c}
+                  href={href({ category: c })}
+                  className={store.categoryLink}
+                >
+                  {text.t(`category.${c}` as "category.planning")}
+                </Link>
+              ))}
+            </span>
+          </div>
+          <ReleaseActions
+            plugin={plugin}
+            view={view}
+            workspaceName={workspaceName}
+          />
+        </header>
+
+        <ReleaseSummary
           plugin={plugin}
           view={view}
           workspaceName={workspaceName}
         />
-      </header>
 
-      <ReleaseSummary
-        plugin={plugin}
-        view={view}
-        workspaceName={workspaceName}
-      />
-
-      <Tabs label={text.t("detailTabs")} className={store.tabs}>
-        {(["overview", "capabilities"] as const).map((id) => (
-          <Tab
-            key={id}
-            href={href({ plugin: plugin.pluginId, tab: id })}
-            active={tab === id}
-            icon={<Icon icon={TAB_ICONS[id]} width={15} />}
-          >
-            {text.t(`tab.${id}`)}
-          </Tab>
-        ))}
-      </Tabs>
+        <Tabs label={text.t("detailTabs")} className={store.tabs}>
+          {(["overview", "capabilities"] as const).map((id) => (
+            <Tab
+              key={id}
+              href={href({ plugin: plugin.pluginId, tab: id })}
+              active={tab === id}
+              icon={<Icon icon={TAB_ICONS[id]} width={15} />}
+            >
+              {text.t(`tab.${id}`)}
+            </Tab>
+          ))}
+        </Tabs>
+      </div>
 
       {tab === "overview" ? (
         <div className={scope.overview}>
@@ -491,12 +498,7 @@ function Detail({
         </div>
       ) : (
         <div className={store.capabilities}>
-          <header className={store.capHead}>
-            <h3>
-              {text.t("capsOfVersion", { version: plugin.version ?? "" })}
-            </h3>
-            <p>{text.t("capabilitiesIntro")}</p>
-          </header>
+          <CapabilitiesHead />
           <CapabilityCards
             capabilities={plugin.capabilities}
             service={plugin.service}

@@ -36,8 +36,10 @@ git clone https://github.com/you/open-issues    # your copy of the template
 cd open-issues && bun install
 ```
 
-Then make it yours: `id`, `name`, `author` and `description` in
-`manifest.json` (and `name` in `package.json`). The id is lower-case
+Then make it yours: `id`, `name`, `author` and `description.short` in
+`manifest.json` (and `name` in `package.json`), and the plugin's page in the
+store in `about.md` — Markdown without links or images; addresses go in the
+manifest's `links`. The id is lower-case
 letters, digits and `-`, and never changes once the plugin is out.
 
 ## Work on it
