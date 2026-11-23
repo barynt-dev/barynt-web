@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { appBaseUrl } from "@/lib/app-url";
+import { db } from "@/lib/db";
 import {
   appManifest,
   GITHUB_PATHS,
@@ -13,13 +14,26 @@ import {
   openChoice,
   sealState,
 } from "@/lib/github/state";
+import { pluginSettingsPath } from "@/lib/nav";
 import { currentUserId } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
 import type { PluginManifest } from "@/lib/plugins/manifest";
 import { getGitHubApp } from "./app";
-import { placeConnections } from "./connections";
+import {
+  chosenRepositories,
+  placeConnections,
+  placeRepositories,
+} from "./connections";
 
 // What the GitHub parts of the plugin pages show (BARY-238).
+
+export interface ConnectionRepository {
+  fullName: string;
+  private: boolean;
+  /** Chosen by a project, but no connection reaches it (any more). */
+  unreachable: boolean;
+  projects: { name: string; color: string; href: string }[];
+}
 
 export interface PluginConnectionView {
   title: string;
@@ -37,6 +51,10 @@ export interface PluginConnectionView {
   /** After signing in at GitHub: the installations the person may connect
    *  here and hasn't yet. */
   choice: GitHubAccount[] | null;
+  /** In the workspace, once connected: every repository the connections
+   *  reach — and any a project chose that they don't — with the projects
+   *  that work with it. `null` in a project. */
+  repositories: ConnectionRepository[] | null;
   /** Starts connecting: sign in (and install, if need be), or install on
    *  another account. */
   connectHref: string;
@@ -87,9 +105,65 @@ export async function getConnectionView(
       manageUrl: manageInstallationUrl(c),
     })),
     choice,
+    repositories:
+      place.projectId === null && connections.length > 0
+        ? await workspaceRepositories(pluginId, manifest, place.workspaceId)
+        : null,
     connectHref: `/api/github/connect?${query}`,
     installHref: `/api/github/connect?${query}&mode=install`,
   };
+}
+
+/** Which project works with which repository, across the workspace. */
+async function workspaceRepositories(
+  pluginId: string,
+  manifest: PluginManifest,
+  workspaceId: string,
+): Promise<ConnectionRepository[]> {
+  const [reach, activations] = await Promise.all([
+    placeRepositories(pluginId, { workspaceId, projectId: null }),
+    db.pluginActivation.findMany({
+      where: { pluginId, workspaceId, enabled: true, projectId: { not: null } },
+      select: { projectId: true, settings: { select: { values: true } } },
+    }),
+  ]);
+  const projects = await db.project.findMany({
+    where: { id: { in: activations.flatMap((a) => a.projectId ?? []) } },
+    select: { id: true, name: true, slug: true, color: true },
+  });
+  const rows = new Map<string, ConnectionRepository>();
+  for (const r of reach.repositories)
+    rows.set(r.fullName.toLowerCase(), {
+      fullName: r.fullName,
+      private: r.private,
+      unreachable: false,
+      projects: [],
+    });
+  for (const a of activations) {
+    const project = projects.find((p) => p.id === a.projectId);
+    if (!project) continue;
+    for (const name of chosenRepositories(manifest, a.settings?.values)) {
+      const key = name.toLowerCase();
+      const row = rows.get(key) ?? {
+        fullName: name,
+        private: false,
+        unreachable: true,
+        projects: [],
+      };
+      row.projects.push({
+        name: project.name,
+        color: project.color,
+        href: pluginSettingsPath(workspaceId, project.slug, pluginId),
+      });
+      rows.set(key, row);
+    }
+  }
+  // Linked first, then by name.
+  return [...rows.values()].sort(
+    (a, b) =>
+      Number(b.projects.length > 0) - Number(a.projects.length > 0) ||
+      a.fullName.localeCompare(b.fullName),
+  );
 }
 
 export interface GitHubAppAdminView {

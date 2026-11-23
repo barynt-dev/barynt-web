@@ -99,6 +99,7 @@ const connection = {
   appReady: true,
   connections: [],
   choice: null,
+  repositories: null,
   connectHref: "/api/github/connect?plugin=notify&workspace=ws-1",
   installHref: "/api/github/connect?plugin=notify&workspace=ws-1&mode=install",
 };
@@ -176,6 +177,46 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
     expect(html).toContain("github.choose");
     expect(html).toContain("github.connectThis");
     expect(html).toContain("mode=install");
+  });
+
+  it("shows in the workspace which project works with which repository", () => {
+    const html = render(
+      view({
+        state: "off",
+        fields: [],
+        connection: {
+          ...connection,
+          repositories: [
+            {
+              fullName: "acme/web",
+              private: true,
+              unreachable: false,
+              projects: [
+                {
+                  name: "Web App",
+                  color: "#7c86ff",
+                  href: "/ws-1/project/web-app/settings/plugins/notify",
+                },
+              ],
+            },
+            {
+              fullName: "acme/docs",
+              private: false,
+              unreachable: false,
+              projects: [],
+            },
+          ],
+        },
+      }),
+      { workspaceId: "ws-1", projectId: null },
+    );
+    expect(html).toContain("github.reposTitle");
+    expect(html).toContain("acme/web");
+    expect(html).toContain(
+      'href="/ws-1/project/web-app/settings/plugins/notify"',
+    );
+    expect(html).toContain("Web App");
+    expect(html).toContain("github.unlinked");
   });
 
   it("says when the instance has no GitHub App", () => {

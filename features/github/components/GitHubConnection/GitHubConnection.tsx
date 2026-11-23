@@ -12,6 +12,7 @@ import {
 } from "@/features/github/actions";
 import type { PluginConnectionView } from "@/features/github/queries";
 import { ErrorLine, usePluginText } from "@/features/plugins/components/shared";
+import { Link } from "@/i18n/navigation";
 import styles from "./gitHubConnection.module.scss";
 
 // A plugin's connection to GitHub in a workspace or project (BARY-238): the
@@ -195,6 +196,10 @@ export function GitHubConnection({
         </ul>
       )}
 
+      {view.repositories && (
+        <RepositoryLinks repositories={view.repositories} />
+      )}
+
       <ErrorLine message={error} />
 
       {view.appReady && !view.choice?.length && (
@@ -238,5 +243,70 @@ function Account({
         <span className={styles.meta}>{meta}</span>
       </span>
     </span>
+  );
+}
+
+/** In the workspace: which project works with which repository — the
+ *  linked ones first, the rest folded away. */
+function RepositoryLinks({
+  repositories,
+}: {
+  repositories: NonNullable<PluginConnectionView["repositories"]>;
+}) {
+  const text = usePluginText();
+  const linked = repositories.filter((r) => r.projects.length > 0);
+  const rest = repositories.filter((r) => r.projects.length === 0);
+  const row = (r: (typeof repositories)[number]) => (
+    <li key={r.fullName} className={styles.repoRow}>
+      <span
+        className={styles.repoName}
+        data-unreachable={r.unreachable || undefined}
+      >
+        <Icon
+          icon={
+            r.unreachable
+              ? "lucide:book-x"
+              : r.private
+                ? "lucide:lock"
+                : "lucide:book-marked"
+          }
+          width={15}
+          aria-hidden
+        />
+        {r.fullName}
+      </span>
+      <span className={styles.repoProjects}>
+        {r.projects.map((p) => (
+          <Link key={p.href} href={p.href} className={styles.projectChip}>
+            <span
+              className={styles.dot}
+              style={{ background: p.color }}
+              aria-hidden
+            />
+            {p.name}
+          </Link>
+        ))}
+      </span>
+    </li>
+  );
+  return (
+    <div className={styles.repos}>
+      <h3 className={styles.reposTitle}>{text.t("github.reposTitle")}</h3>
+      {linked.length > 0 ? (
+        <ul className={styles.repoList}>{linked.map(row)}</ul>
+      ) : (
+        <p className={styles.hint}>
+          {repositories.length === 0
+            ? text.t("github.noRepos")
+            : text.t("github.noneLinked")}
+        </p>
+      )}
+      {rest.length > 0 && (
+        <details className={styles.unlinked}>
+          <summary>{text.t("github.unlinked", { count: rest.length })}</summary>
+          <ul className={styles.repoList}>{rest.map(row)}</ul>
+        </details>
+      )}
+    </div>
   );
 }

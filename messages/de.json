@@ -3025,8 +3025,8 @@
       "noCapabilities": "nichts"
     },
     "github": {
-      "hintWorkspace": "Verbinde die GitHub-Konten des Workspace einmal: Danach kann jedes Projekt Repositories daraus auswählen. Welche Repositories ein Konto freigibt, legst du bei der Installation der App auf GitHub fest.",
-      "hintProject": "Verbinde ein GitHub-Konto für dieses Projekt oder nutze das des Workspace. Wähle danach unten die Repositories aus. Pull Requests, Branches und Checks daraus kommen von selbst, ohne dass du einen Webhook einrichten musst.",
+      "hintWorkspace": "Verbinde ein GitHub-Konto oder eine Organisation. Alle Projekte im Workspace können dann deren Repositories nutzen.",
+      "hintProject": "Wähle unten die Repositories für dieses Projekt. Die GitHub-Konten kommen aus dem Workspace, du kannst hier aber auch ein eigenes verbinden.",
       "noApp": "Geht noch nicht: Ein Plattform-Admin muss GitHub einmal unter Admin → Plugins → GitHub einrichten.",
       "connect": "Mit GitHub verbinden",
       "connectAnother": "Weiteres Konto verbinden",
@@ -3055,7 +3055,10 @@
       "noRepos": "Die verbundenen Konten geben der App noch keine Repositories frei. Füge auf GitHub welche hinzu.",
       "noMatch": "Kein Repository passt.",
       "chosenCount": "{count} von {total} ausgewählt",
-      "failed": "GitHub hat für {accounts} nicht geantwortet"
+      "failed": "GitHub hat für {accounts} nicht geantwortet",
+      "reposTitle": "Repositories und Projekte",
+      "noneLinked": "Noch kein Repository mit einem Projekt verknüpft. Das machst du in den Plugin-Einstellungen des Projekts.",
+      "unlinked": "{count, plural, one {# Repository ohne Projekt} other {# Repositories ohne Projekt}}"
     },
     "githubApp": {
       "title": "GitHub App",
