@@ -60,7 +60,6 @@ const base: ScopeStorePlugin = {
   version: "1.0.0",
   blocked: false,
   categories: ["planning"],
-  featured: false,
   added: null,
   source: "Barynt",
   granted: true,

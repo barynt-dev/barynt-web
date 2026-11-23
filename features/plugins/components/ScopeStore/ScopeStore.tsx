@@ -47,7 +47,7 @@ import scope from "./scopeStore.module.scss";
 // platform has installed, next to the one that's open — what it does, what
 // it asks for, and whether it's released here. Laid out like the admin store
 // (BARY-237) and built from its pieces: the search with its filter, a start
-// page with the numbers, what's featured, every plugin by category,
+// page with the numbers, what was added last, every plugin by category,
 // and a plugin's page with its facts beside the overview. What's open lives
 // in the address (`?plugin=`, `?tab=`, `?category=`).
 
@@ -241,11 +241,11 @@ export function ScopeStore({
           </div>
           <ActiveFacets facets={facets} onRemove={removeFacet} />
 
-          {/* A phone has no start page: what's featured sits above the
-              list, while nothing narrows it. */}
+          {/* A phone has no start page: what was added last sits above
+              the list, while nothing narrows it. */}
           {!query && filter === "all" && activeFacets(facets) === 0 && (
             <div className={store.phoneFeatured}>
-              <Featured plugins={view.plugins} href={href} />
+              <Newest plugins={view.plugins} href={href} />
             </div>
           )}
 
@@ -435,8 +435,8 @@ function CardState({ plugin }: { plugin: ScopeStorePlugin }) {
 /** How many of "All plugins" show at once, and come with each "more". */
 const ALL_PAGE = 12;
 
-/** Next to the list when nothing is open: the numbers, what the directory
- *  puts forward, and every plugin by category. */
+/** Next to the list when nothing is open: the numbers, what was
+ *  added last, and every plugin by category. */
 function Home({
   view,
   category: initialCategory,
@@ -554,7 +554,7 @@ function Home({
         </a>
       </div>
 
-      <Featured plugins={plugins} href={href} />
+      <Newest plugins={plugins} href={href} />
 
       <section className={store.homeSection} id="all-plugins">
         <header className={store.homeHead}>
@@ -617,11 +617,10 @@ function Home({
 }
 
 /**
- * What the directory puts forward, among what the platform installed — in
- * the compact row of the admin store's "New in the directory", not as its
- * large carousel (BARY-237).
+ * What was added last, among what the platform installed — in the compact
+ * row of the admin store's "New in the directory", newest first (BARY-237).
  */
-function Featured({
+function Newest({
   plugins,
   href,
 }: {
@@ -629,16 +628,18 @@ function Featured({
   href: Href;
 }) {
   const text = usePluginText();
-  const featured = plugins.filter((p) => p.featured).slice(0, 18);
-  if (featured.length === 0) return null;
+  const newest = plugins
+    .filter((p) => p.added)
+    .sort((a, b) => (b.added ?? "").localeCompare(a.added ?? ""))
+    .slice(0, 18);
+  if (newest.length === 0) return null;
   return (
     <section className={store.homeSection}>
       <header className={store.homeHead}>
-        <h2>{text.t("featuredTitle")}</h2>
-        <span>{text.t("featuredSub")}</span>
+        <h2>{text.t("scopeNewestTitle")}</h2>
       </header>
       <NewestRow
-        cards={featured.map((p) => (
+        cards={newest.map((p) => (
           <Link
             key={p.pluginId}
             href={href({ plugin: p.pluginId })}

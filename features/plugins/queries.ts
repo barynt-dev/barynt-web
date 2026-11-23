@@ -540,8 +540,6 @@ export interface ScopeStorePlugin extends PluginSummary {
   blocked: boolean;
   /** From the directory, when a source lists it. */
   categories: string[];
-  /** The directory puts it forward (BARY-237). */
-  featured: boolean;
   /** Since when the directory lists it (`YYYY-MM-DD`). */
   added: string | null;
   /** The source that lists it, by name. */
@@ -646,7 +644,6 @@ export async function getScopeStoreView(
       version: current.version,
       blocked: current.status === "blocked",
       categories: listing?.categories ?? [],
-      featured: listing?.featured ?? false,
       added: listing?.added ?? null,
       source: listing?.sourceName ?? null,
       granted: grants.some((g) => g.pluginId === current.pluginId),

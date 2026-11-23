@@ -3029,6 +3029,7 @@
     "scopeKpiAvailableSub": "noch nicht freigeschaltet · {count, plural, =0 {ohne Kategorien} one {# Kategorie} other {# Kategorien}}",
     "scopeKpiProjectsSub": "mit mindestens einem Plugin an",
     "scopeActiveIn": "{count, plural, =0 {In keinem Projekt} one {In # Projekt} other {In # Projekten}}",
-    "scopeProvenanceNote": "Ein Plattform-Admin hat es installiert; Hash und Manifest wurden dabei geprüft."
+    "scopeProvenanceNote": "Ein Plattform-Admin hat es installiert; Hash und Manifest wurden dabei geprüft.",
+    "scopeNewestTitle": "Neu hinzugefügt"
   }
 }
