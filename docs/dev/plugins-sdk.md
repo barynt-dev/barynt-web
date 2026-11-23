@@ -591,6 +591,7 @@ Each returns a field: `el`, `value`, `disabled`, `focus()`. All take
 | `radioGroup()` | one of a few, all in view | `options: { value, label, hint? }[]`, `value`, `onChange` |
 | `segmentedControl()` | one of a few, side by side (arrow keys) | `options`, `value`, `onChange` |
 | `multiSelect()` | any number, as chips | `options`, `value: string[]`, `onChange` |
+| `pickMenu()` | a button that opens a searchable menu to pick one from — to add to a list | `label`, `icon`, `options: { value, label, hint?, aside? }[]`, `placeholder`, `empty`, `onPick`; returns `{ el, setOptions(), disabled, open(), close() }` — arrow keys, Enter, Escape |
 | `toggle()` | on or off — a switch | `checked`, `onChange` |
 | `checkbox()` | on or off — a box | `checked`, `onChange` |
 | `swatchPicker()` | a colour of the palette | `value`, `colors`, `onChange` |
@@ -616,7 +617,7 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 
 | Function | What |
 | --- | --- |
-| `badge({ text, tone? })` | a short state: `neutral`, `primary`, `info`, `success`, `warning`, `danger` |
+| `badge({ text, tone?, icon? })` | a short state: `neutral`, `primary`, `info`, `success`, `warning`, `danger`; `icon` before the text (`lock`, `globe` …) |
 | `tag({ text, color?, onRemove? })` | a coloured tag, removable |
 | `labelChip({ name, color? })` | a label as Barynt shows one |
 | `avatar({ name, color?, size? })`, `user({ name, color?, meta? })` | initials; a person with a line about them |
@@ -642,7 +643,7 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `tabs({ tabs, value?, label?, onChange? })` | tabs (arrow keys); a tab's `content` can be a function, drawn when first opened |
 | `accordion({ items })` | sections that open and close |
 | `kpi({ value, label, trend? })` | a big number; `trend: { text, good? }` |
-| `list({ items, empty? })` | rows of `{ title, meta?, href? }` |
+| `list({ items, empty? })` | rows of `{ title, meta?, href?, icon?, aside?, onRemove?, removeLabel? }` — `aside` puts elements (badges) on the right, `onRemove` a ✕ at the end |
 | `barChart({ bars, max? })` | horizontal bars of `{ label, value, color? }` |
 | `progressBar({ value, max?, label?, tone? })`, `progressRing({ value, max?, label?, size? })` | how far along |
 

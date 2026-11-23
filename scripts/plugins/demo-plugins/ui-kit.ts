@@ -27,6 +27,7 @@ import {
   list,
   multiSelect,
   notice,
+  pickMenu,
   progressBar,
   progressRing,
   radioGroup,
@@ -131,6 +132,7 @@ export default class UiKit extends Plugin {
             }).el,
           ],
         }),
+        pickAndList(),
         card({
           title: "On and off",
           children: [
@@ -248,6 +250,12 @@ export default class UiKit extends Plugin {
               badge({ text: "Draft", tone: "warning" }),
               badge({ text: "Failed", tone: "danger" }),
               badge({ text: "3 open" }),
+            ),
+            row(
+              badge({ text: "private", icon: "lock" }),
+              badge({ text: "public", icon: "globe" }),
+              badge({ text: "archived", icon: "archive", tone: "warning" }),
+              badge({ text: "fork", icon: "git-fork" }),
             ),
             row(
               labelChip({ name: "Bug", color: "red" }),
@@ -454,4 +462,59 @@ export default class UiKit extends Plugin {
       }),
     );
   }
+}
+
+/** `pickMenu` and `list` together: a list to add to, and rows to take off. */
+function pickAndList() {
+  const all = [
+    "acme/web",
+    "acme/api",
+    "acme/docs",
+    "acme/mobile",
+    "acme/infra",
+  ];
+  let chosen = ["acme/web"];
+  const holder = stack();
+  const menu = pickMenu({
+    label: "Add repository",
+    placeholder: "Search repositories",
+    options: [],
+    onPick: (value) => {
+      chosen = [...chosen, value];
+      draw();
+    },
+  });
+  const draw = () => {
+    holder.replaceChildren(
+      list({
+        empty: "Nothing chosen yet.",
+        items: chosen.map((name) => ({
+          title: name,
+          icon: "folder",
+          aside: [
+            badge({
+              text: name === "acme/web" ? "public" : "private",
+              icon: name === "acme/web" ? "globe" : "lock",
+            }),
+          ],
+          onRemove: () => {
+            chosen = chosen.filter((c) => c !== name);
+            draw();
+          },
+        })),
+      }),
+    );
+    menu.setOptions(
+      all
+        .filter((name) => !chosen.includes(name))
+        .map((name) => ({ value: name, label: name, hint: "acme on GitHub" })),
+    );
+  };
+  draw();
+  return card({
+    title: "Pick and list",
+    description:
+      "pickMenu() adds from a searchable menu; list() rows can be taken off.",
+    children: [holder, menu.el],
+  });
 }

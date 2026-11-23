@@ -1,4 +1,5 @@
 import {
+  type Child,
   describe,
   el,
   type Field,
@@ -487,4 +488,208 @@ export function button(options: {
     });
   }
   return node;
+}
+
+/** One entry of a `pickMenu`. */
+export interface PickOption {
+  value: string;
+  label: string;
+  /** A second, quieter line under the label. */
+  hint?: string;
+  /** Elements on the right — badges, say. */
+  aside?: Child[];
+}
+
+export interface PickMenu {
+  el: HTMLElement;
+  /** Replaces what the menu offers — after one was picked, say. */
+  setOptions(options: PickOption[]): void;
+  disabled: boolean;
+  open(): void;
+  close(): void;
+}
+
+/**
+ * A button that opens a menu to pick one entry from, with a search over
+ * them — to add a channel, a project, a repository to a list. Arrow keys
+ * move, Enter picks, Escape closes. It closes after a pick; what the plugin
+ * does with the value (and what the menu offers next, `setOptions`) is up to
+ * it. With nothing to offer the button is disabled.
+ */
+export function pickMenu(options: {
+  label: string;
+  /** The button's icon — `plus` by default. */
+  icon?: IconName;
+  options: PickOption[];
+  /** The search field's placeholder. */
+  placeholder?: string;
+  /** Shown when the search matches nothing. */
+  empty?: string;
+  onPick: (value: string) => void;
+}): PickMenu {
+  styled();
+  let entries = [...options.options];
+  let active = 0;
+  let disabled = false;
+  const menuId = nextId();
+
+  const trigger = el(
+    "button",
+    "bui-button",
+    icon(options.icon ?? "plus", { size: 15 }),
+    options.label,
+    icon("chevron-down", { size: 14 }),
+  );
+  trigger.type = "button";
+  trigger.dataset.variant = "secondary";
+  trigger.setAttribute("aria-haspopup", "listbox");
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.setAttribute("aria-controls", menuId);
+
+  const search = el("input", "bui-input bui-pick-search");
+  search.type = "search";
+  search.placeholder = options.placeholder ?? "Search";
+  search.setAttribute("aria-label", options.placeholder ?? "Search");
+  search.setAttribute("aria-controls", menuId);
+  const listEl = el("ul", "bui-pick-list");
+  listEl.id = menuId;
+  listEl.setAttribute("role", "listbox");
+  const panel = el("div", "bui-pick-panel", search, listEl);
+  panel.hidden = true;
+  const wrap = el("div", "bui-pick", trigger, panel);
+
+  const matches = () => {
+    const needle = search.value.trim().toLowerCase();
+    return entries.filter(
+      (e) =>
+        !needle ||
+        e.label.toLowerCase().includes(needle) ||
+        e.hint?.toLowerCase().includes(needle),
+    );
+  };
+
+  const draw = () => {
+    const shown = matches();
+    active = Math.min(active, Math.max(0, shown.length - 1));
+    listEl.replaceChildren(
+      ...(shown.length === 0
+        ? [el("li", "bui-pick-empty", options.empty ?? "Nothing matches.")]
+        : shown.map((entry, i) => {
+            const item = el(
+              "li",
+              "bui-pick-option",
+              el(
+                "span",
+                "bui-pick-text",
+                el("span", "bui-pick-label", entry.label),
+                entry.hint && el("span", "bui-pick-hint", entry.hint),
+              ),
+              entry.aside?.length &&
+                el("span", "bui-pick-aside", ...entry.aside),
+            );
+            item.id = `${menuId}-${i}`;
+            item.setAttribute("role", "option");
+            item.setAttribute("aria-selected", String(i === active));
+            item.addEventListener("mousedown", (event) =>
+              event.preventDefault(),
+            );
+            item.addEventListener("click", () => pick(entry.value));
+            item.addEventListener("mousemove", () => {
+              if (active === i) return;
+              active = i;
+              mark();
+            });
+            return item;
+          })),
+    );
+    mark();
+  };
+
+  const mark = () => {
+    const items = listEl.querySelectorAll<HTMLElement>(".bui-pick-option");
+    items.forEach((item, i) => {
+      item.setAttribute("aria-selected", String(i === active));
+    });
+    const current = items[active];
+    if (current) {
+      search.setAttribute("aria-activedescendant", current.id);
+      current.scrollIntoView?.({ block: "nearest" });
+    } else search.removeAttribute("aria-activedescendant");
+  };
+
+  const open = () => {
+    if (disabled || entries.length === 0) return;
+    panel.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+    search.value = "";
+    active = 0;
+    draw();
+    search.focus();
+    document.addEventListener("mousedown", outside, true);
+  };
+  const close = () => {
+    if (panel.hidden) return;
+    panel.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+    document.removeEventListener("mousedown", outside, true);
+  };
+  const outside = (event: MouseEvent) => {
+    if (!wrap.contains(event.target as Node)) close();
+  };
+  const pick = (value: string) => {
+    close();
+    trigger.focus();
+    options.onPick(value);
+  };
+  const sync = () => {
+    trigger.disabled = disabled || entries.length === 0;
+  };
+
+  trigger.addEventListener("click", () => (panel.hidden ? open() : close()));
+  search.addEventListener("input", () => {
+    active = 0;
+    draw();
+  });
+  search.addEventListener("keydown", (event) => {
+    const shown = matches();
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (shown.length === 0) return;
+      active =
+        (active + (event.key === "ArrowDown" ? 1 : -1) + shown.length) %
+        shown.length;
+      mark();
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      const entry = shown[active];
+      if (entry) pick(entry.value);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+      trigger.focus();
+    }
+  });
+  sync();
+
+  return {
+    el: wrap,
+    setOptions(next) {
+      entries = [...next];
+      sync();
+      if (!panel.hidden) {
+        if (entries.length === 0) close();
+        else draw();
+      }
+    },
+    get disabled() {
+      return disabled;
+    },
+    set disabled(v) {
+      disabled = v;
+      sync();
+      if (v) close();
+    },
+    open,
+    close,
+  };
 }

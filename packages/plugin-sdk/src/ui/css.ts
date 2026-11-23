@@ -116,7 +116,7 @@ export const CSS = `
 .bui-button[data-icon-only] { padding: 0; width: var(--barynt-size-control); }
 .bui-button[data-icon-only][data-size="sm"] { width: var(--barynt-size-control-sm); }
 
-:is(.bui-input, .bui-button, .bui-toggle, .bui-select, .bui-segment, .bui-chip-toggle, .bui-swatch, .bui-tab, .bui-link, .bui-tag-remove, .bui-accordion summary):focus-visible {
+:is(.bui-input, .bui-button, .bui-toggle, .bui-select, .bui-segment, .bui-chip-toggle, .bui-swatch, .bui-tab, .bui-link, .bui-tag-remove, .bui-list-remove, .bui-pick-option, .bui-accordion summary):focus-visible {
   outline: 2px solid var(--barynt-color-focus); outline-offset: 2px;
 }
 
@@ -189,6 +189,28 @@ export const CSS = `
 .bui-notice-body { display: flex; flex-direction: column; gap: var(--barynt-space-1); min-width: 0; }
 .bui-notice-body strong { font-weight: var(--barynt-font-weight-semibold); }
 
+.bui-pick { position: relative; display: inline-flex; max-width: 100%; }
+.bui-pick-panel {
+  position: absolute; z-index: 5; top: calc(100% + 0.375rem); left: 0; display: flex; flex-direction: column; gap: 0.375rem;
+  box-sizing: border-box; width: min(26rem, calc(100vw - 2rem)); padding: 0.375rem;
+  border: 1px solid var(--barynt-color-border); border-radius: var(--barynt-radius-md);
+  background: var(--barynt-color-surface-raised); box-shadow: var(--barynt-shadow-overlay);
+}
+.bui-pick-panel[hidden] { display: none; }
+.bui-pick-search { min-height: var(--barynt-size-control-sm); font-size: var(--barynt-font-size-sm); }
+.bui-pick-list { display: flex; flex-direction: column; max-height: 16rem; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.bui-pick-option {
+  display: flex; align-items: center; gap: 0.625rem; min-height: 2.25rem; padding: 0.25rem 0.5rem;
+  border-radius: var(--barynt-radius-sm); color: var(--barynt-color-text); font-size: var(--barynt-font-size-sm); cursor: pointer;
+}
+.bui-pick-option[aria-selected="true"] { background: var(--barynt-color-surface-hovered); }
+.bui-pick-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.bui-pick-label, .bui-pick-hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bui-pick-hint { color: var(--barynt-color-text-subtle); font-size: var(--barynt-font-size-xs); }
+.bui-pick-aside { display: inline-flex; flex: none; gap: 0.25rem; }
+.bui-pick-empty { padding: 0.75rem 0.5rem; color: var(--barynt-color-text-subtle); font-size: var(--barynt-font-size-sm); }
+@media (pointer: coarse) { .bui-pick-option { min-height: 2.75rem; } }
+
 .bui-toasts { position: fixed; z-index: 10; right: var(--barynt-space-4); bottom: var(--barynt-space-4); display: flex; flex-direction: column; gap: var(--barynt-space-2); max-width: min(22rem, calc(100% - 2rem)); }
 .bui-toast {
   display: flex; align-items: center; gap: var(--barynt-space-2); padding: var(--barynt-space-3) var(--barynt-space-4);
@@ -228,6 +250,14 @@ export const CSS = `
 a.bui-list-title { text-decoration: none; }
 a.bui-list-title:hover { text-decoration: underline; }
 .bui-list-meta { flex: none; font-size: var(--barynt-font-size-xs); color: var(--barynt-color-text-subtle); }
+.bui-list-item:has(.bui-list-remove, .bui-list-aside, .bui-list-icon) { align-items: center; }
+.bui-list-icon { display: inline-flex; flex: none; color: var(--barynt-color-text-subtle); }
+.bui-list-aside { display: inline-flex; flex: none; flex-wrap: wrap; justify-content: flex-end; gap: 0.25rem; }
+.bui-list-remove {
+  display: grid; place-items: center; flex: none; width: 1.75rem; height: 1.75rem; padding: 0; border: none;
+  border-radius: var(--barynt-radius-sm); background: none; color: var(--barynt-color-text-subtle); cursor: pointer;
+}
+.bui-list-remove:hover { color: var(--barynt-color-danger); background: color-mix(in srgb, var(--barynt-color-danger) 12%, transparent); }
 .bui-bars { display: flex; flex-direction: column; gap: var(--barynt-space-2); }
 .bui-bar { display: grid; grid-template-columns: minmax(0, 7rem) 1fr auto; align-items: center; gap: 0.625rem; font-size: var(--barynt-font-size-sm); }
 .bui-bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--barynt-color-text-subtle); }

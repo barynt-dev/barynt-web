@@ -164,9 +164,19 @@ export function card(options: {
 // ─── Small things ────────────────────────────────────────────────────────────
 
 /** A short state in colour: "New", "Failed", "3 open". */
-export function badge(options: { text: string; tone?: Tone }): HTMLElement {
+export function badge(options: {
+  text: string;
+  tone?: Tone;
+  /** A built-in icon before the text — `lock` for private, say. */
+  icon?: IconName;
+}): HTMLElement {
   styled();
-  const node = el("span", "bui-badge", options.text);
+  const node = el(
+    "span",
+    "bui-badge",
+    options.icon && icon(options.icon, { size: 12 }),
+    options.text,
+  );
   if (options.tone && options.tone !== "neutral")
     node.dataset.tone = options.tone;
   return node;
@@ -462,6 +472,14 @@ export interface ListItem {
   meta?: string;
   /** Makes the title a link, opened outside Barynt. */
   href?: string;
+  /** A built-in icon before the title. */
+  icon?: IconName;
+  /** Elements on the right, before `meta` — badges, say. */
+  aside?: Child[];
+  /** Shows a ✕ at the end that runs this — taking the row off a list. */
+  onRemove?: () => void;
+  /** What the ✕ says to screen readers — `Remove <title>` by default. */
+  removeLabel?: string;
 }
 
 /** Rows of a title and a note. `empty` shows when there are none. */
@@ -475,6 +493,8 @@ export function list(options: {
   const node = el("ul", "bui-list");
   for (const item of options.items) {
     const line = el("li", "bui-list-item");
+    if (item.icon)
+      line.append(el("span", "bui-list-icon", icon(item.icon, { size: 15 })));
     const href = item.href ? safeHref(item.href) : null;
     if (href) {
       const a = el("a", "bui-list-title", item.title);
@@ -483,7 +503,20 @@ export function list(options: {
       a.rel = "noopener noreferrer";
       line.append(a);
     } else line.append(el("span", "bui-list-title", item.title));
+    if (item.aside?.length)
+      line.append(el("span", "bui-list-aside", ...item.aside));
     if (item.meta) line.append(el("span", "bui-list-meta", item.meta));
+    if (item.onRemove) {
+      const remove = el("button", "bui-list-remove", icon("x", { size: 14 }));
+      remove.type = "button";
+      remove.setAttribute(
+        "aria-label",
+        item.removeLabel ?? `Remove ${item.title}`,
+      );
+      const onRemove = item.onRemove;
+      remove.addEventListener("click", () => onRemove());
+      line.append(remove);
+    }
     node.append(line);
   }
   return node;

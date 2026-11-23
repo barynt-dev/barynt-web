@@ -18,10 +18,12 @@ import {
   keyValue,
   labelChip,
   link,
+  list,
   multiSelect,
   navList,
   notice,
   onThemeChange,
+  pickMenu,
   progressBar,
   radioGroup,
   sectionHeader,
@@ -382,5 +384,109 @@ describe("development pieces (BARY-209)", () => {
       (head.querySelector(".bui-section-status") as HTMLElement).dataset.tone,
     ).toBe("success");
     expect(diffStat({ added: 9, removed: 4 }).textContent).toBe("+9−4");
+  });
+});
+
+describe("picking from a list, and rows to take off (BARY-238)", () => {
+  it("puts an icon in a badge", () => {
+    const b = badge({ text: "private", icon: "lock" });
+    expect(b.querySelector("svg")).not.toBeNull();
+    expect(b.textContent).toBe("private");
+    expect(badge({ text: "plain" }).querySelector("svg")).toBeNull();
+  });
+
+  it("lists rows with an icon, things on the right and a way off", () => {
+    const removed: string[] = [];
+    const rows = list({
+      items: [
+        {
+          title: "acme/web",
+          href: "https://github.com/acme/web",
+          icon: "folder",
+          aside: [badge({ text: "private", icon: "lock" })],
+          onRemove: () => removed.push("acme/web"),
+        },
+        { title: "acme/api" },
+      ],
+    });
+    const first = rows.querySelector("li") as HTMLElement;
+    expect(first.querySelector(".bui-list-icon svg")).not.toBeNull();
+    expect(first.querySelector(".bui-list-aside")?.textContent).toBe("private");
+    const remove = first.querySelector("button") as HTMLButtonElement;
+    expect(remove.getAttribute("aria-label")).toBe("Remove acme/web");
+    remove.click();
+    expect(removed).toEqual(["acme/web"]);
+    // Without one, no ✕.
+    expect(rows.querySelectorAll("li")[1]?.querySelector("button")).toBeNull();
+  });
+
+  it("opens a menu to search and pick from, with the keyboard too", () => {
+    const picked: string[] = [];
+    const menu = pickMenu({
+      label: "Add repository",
+      placeholder: "Search repositories",
+      options: [
+        { value: "acme/web", label: "acme/web", hint: "The web app" },
+        {
+          value: "acme/api",
+          label: "acme/api",
+          aside: [badge({ text: "private" })],
+        },
+        { value: "acme/docs", label: "acme/docs" },
+      ],
+      onPick: (v) => picked.push(v),
+    });
+    document.body.append(menu.el);
+    const trigger = menu.el.querySelector("button") as HTMLButtonElement;
+    const panel = menu.el.querySelector(".bui-pick-panel") as HTMLElement;
+    expect(panel.hidden).toBe(true);
+    trigger.click();
+    expect(panel.hidden).toBe(false);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(menu.el.querySelectorAll('[role="option"]')).toHaveLength(3);
+
+    // The search narrows it — the hint counts too.
+    const search = menu.el.querySelector("input") as HTMLInputElement;
+    search.value = "web app";
+    search.dispatchEvent(new window.Event("input") as never);
+    expect(menu.el.querySelectorAll('[role="option"]')).toHaveLength(1);
+
+    // Down, Enter: the one below, and the menu closes.
+    search.value = "acme";
+    search.dispatchEvent(new window.Event("input") as never);
+    press(search, "ArrowDown");
+    press(search, "Enter");
+    expect(picked).toEqual(["acme/api"]);
+    expect(panel.hidden).toBe(true);
+
+    // A click picks too; Escape closes without picking.
+    trigger.click();
+    (menu.el.querySelectorAll('[role="option"]')[2] as HTMLElement).click();
+    expect(picked).toEqual(["acme/api", "acme/docs"]);
+    trigger.click();
+    press(menu.el.querySelector("input") as HTMLInputElement, "Escape");
+    expect(panel.hidden).toBe(true);
+    expect(picked).toHaveLength(2);
+    menu.el.remove();
+  });
+
+  it("says when nothing matches, and can't open with nothing to offer", () => {
+    const menu = pickMenu({
+      label: "Add",
+      empty: "No match.",
+      options: [{ value: "a", label: "Alpha" }],
+      onPick: () => {},
+    });
+    const trigger = menu.el.querySelector("button") as HTMLButtonElement;
+    trigger.click();
+    const search = menu.el.querySelector("input") as HTMLInputElement;
+    search.value = "zzz";
+    search.dispatchEvent(new window.Event("input") as never);
+    expect(menu.el.textContent).toContain("No match.");
+    menu.setOptions([]);
+    expect(trigger.disabled).toBe(true);
+    expect(
+      (menu.el.querySelector(".bui-pick-panel") as HTMLElement).hidden,
+    ).toBe(true);
   });
 });
