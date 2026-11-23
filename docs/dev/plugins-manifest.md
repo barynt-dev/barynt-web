@@ -365,6 +365,12 @@ Barynt checks what's saved against these types — a `member`, `label` or
 saved. Something
 left empty isn't stored, so the plugin falls back to its default.
 
+The settings search finds each field by its `label`, and a
+[credential](#credentials) by its own, wherever the plugin runs. A hit opens
+the plugin's page there and shows the field. A plugin that draws its whole
+page itself (`settingsPage: true`) is found by its name only. So a label
+should say what the setting is about in words people would search for.
+
 ### Its own settings page
 
 With `"settingsPage": true` in `contributes`, the plugin's page in the

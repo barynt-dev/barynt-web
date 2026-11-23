@@ -70,7 +70,7 @@ Der Store zeigt alle Plugins, die deine Plattform-Admins installiert haben, mit 
 
 ### Einschalten in einem Projekt
 
-Ein freigeschaltetes Plugin für Projekte hat in den Einstellungen jedes Projekts einen Eintrag unter **Plugins**, unterhalb der anderen Bereiche. Projekt-Admins öffnen ihn, prüfen, was es im Projekt darf, und klicken **Einschalten**. Läuft es, enthält die Seite das Formular, das das Plugin mitbringt (ein Kanalname, wem zugewiesen wird, Labels, Wochentage, …), und unten das Ausschalten – Einstellungen und Daten bleiben, bis du **Daten löschen** wählst.
+Ein freigeschaltetes Plugin für Projekte hat in den Einstellungen jedes Projekts einen Eintrag unter **Plugins**, unterhalb der anderen Bereiche. Projekt-Admins öffnen ihn, prüfen, was es im Projekt darf, und klicken **Einschalten**. Läuft es, enthält die Seite das Formular, das das Plugin mitbringt (ein Kanalname, wem zugewiesen wird, Labels, Wochentage, …), und unten das Ausschalten – Einstellungen und Daten bleiben, bis du **Daten löschen** wählst. Die Suche über den Einstellungen findet auch die Einstellungen der Plugins, nach ihrem Namen, und springt direkt zur gewählten.
 
 ### Wo Plugins erscheinen
 

@@ -48,6 +48,7 @@ import {
   type ServiceSummary,
   serviceSummary,
 } from "@/lib/plugins/service";
+import { settingLabelsOf } from "@/lib/plugins/setting-labels";
 import type { SettingType, SettingValue } from "@/lib/plugins/settings";
 import type { PMDoc } from "@/lib/richtext/types";
 import {
@@ -710,7 +711,7 @@ export interface PluginSettingField {
 export async function getPluginSettingsNav(scope: {
   workspaceId: string;
   projectId: string | null;
-}): Promise<{ pluginId: string; name: string }[]> {
+}): Promise<PluginNavRow[]> {
   const ids = scope.projectId
     ? (
         await db.pluginGrant.findMany({
@@ -720,10 +721,21 @@ export async function getPluginSettingsNav(scope: {
       ).map((g) => g.pluginId)
     : await workspaceSettingsIds(scope.workspaceId);
   if (ids.length === 0) return [];
-  const rows = await db.plugin.findMany({
-    where: { pluginId: { in: ids }, status: "active" },
-    select: { pluginId: true, manifest: true },
-  });
+  const [rows, running] = await Promise.all([
+    db.plugin.findMany({
+      where: { pluginId: { in: ids }, status: "active" },
+      select: { pluginId: true, manifest: true },
+    }),
+    db.pluginActivation.findMany({
+      where: {
+        pluginId: { in: ids },
+        scopeKey: activationScopeKey(scope),
+        enabled: true,
+      },
+      select: { pluginId: true },
+    }),
+  ]);
+  const level = scope.projectId ? "project" : "workspace";
   return rows
     .filter((r) =>
       scope.projectId
@@ -735,8 +747,19 @@ export async function getPluginSettingsNav(scope: {
     .map((r) => ({
       pluginId: r.pluginId,
       name: summaryOf(r.pluginId, r.manifest).name,
+      settings: running.some((a) => a.pluginId === r.pluginId)
+        ? settingLabelsOf(r.manifest, level)
+        : [],
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** A plugin in a settings nav, with the labels of the settings its page
+ *  shows there — for the settings search. */
+export interface PluginNavRow {
+  pluginId: string;
+  name: string;
+  settings: string[];
 }
 
 /** In the workspace: the plugins on there, and those released for its
@@ -1082,7 +1105,7 @@ export async function getPluginSettingsView(
  *  a credential of their own — the personal settings' "Plugins" group. */
 export async function getUserCredentialPluginsNav(
   workspaceId: string,
-): Promise<{ pluginId: string; name: string }[]> {
+): Promise<PluginNavRow[]> {
   if (!(await currentUserCanEnterWorkspace(workspaceId))) return [];
   const running = await db.pluginActivation.findMany({
     where: { workspaceId, enabled: true },
@@ -1102,6 +1125,7 @@ export async function getUserCredentialPluginsNav(
     .map((r) => ({
       pluginId: r.pluginId,
       name: summaryOf(r.pluginId, r.manifest).name,
+      settings: settingLabelsOf(r.manifest, "user"),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }

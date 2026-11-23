@@ -70,7 +70,7 @@ The store lists every plugin your platform admin installed, with search, categor
 
 ### Switching on in a project
 
-A released plugin for projects has an entry under **Plugins** in every project's settings, below the other sections. Project admins open it, check what it may do in the project and **Switch on**. Once it runs, the page holds the form the plugin brings (a channel name, a person to assign, labels, days of the week, …) and, at the bottom, switching it off again — its settings and data stay until **Delete data**.
+A released plugin for projects has an entry under **Plugins** in every project's settings, below the other sections. Project admins open it, check what it may do in the project and **Switch on**. Once it runs, the page holds the form the plugin brings (a channel name, a person to assign, labels, days of the week, …) and, at the bottom, switching it off again — its settings and data stay until **Delete data**. The search above the settings finds the plugin's settings too, by their names, and jumps right to the one you pick.
 
 ### Where plugins show
 
