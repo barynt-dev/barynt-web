@@ -2,7 +2,7 @@
 
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Avatar } from "@/components/ui/atoms/Avatar/Avatar";
 import buttonStyles from "@/components/ui/atoms/Button/button.module.scss";
 import { Chip } from "@/components/ui/atoms/Chip/Chip";
@@ -22,10 +22,9 @@ import { adminPath, pluginStorePath } from "@/lib/nav";
 import { PLUGIN_CATEGORIES } from "@/lib/plugins/directory";
 import { PHONE_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
 import { CapabilitiesHead, CapabilityCards } from "../PluginStore/capabilities";
-import { FeaturedCarousel } from "../PluginStore/FeaturedCarousel";
 import { NewestRow } from "../PluginStore/NewestRow";
 import { PluginAbout, PluginLinks } from "../PluginStore/PluginAbout";
-import { PluginTile, tileHue } from "../PluginStore/PluginTile";
+import { PluginTile } from "../PluginStore/PluginTile";
 import { PreviewGallery } from "../PluginStore/PreviewGallery";
 import store from "../PluginStore/pluginStore.module.scss";
 import { ShareButton } from "../PluginStore/ShareButton";
@@ -48,7 +47,7 @@ import scope from "./scopeStore.module.scss";
 // platform has installed, next to the one that's open — what it does, what
 // it asks for, and whether it's released here. Laid out like the admin store
 // (BARY-237) and built from its pieces: the search with its filter, a start
-// page with the numbers, what's featured and new, every plugin by category,
+// page with the numbers, what's featured, every plugin by category,
 // and a plugin's page with its facts beside the overview. What's open lives
 // in the address (`?plugin=`, `?tab=`, `?category=`).
 
@@ -242,12 +241,11 @@ export function ScopeStore({
           </div>
           <ActiveFacets facets={facets} onRemove={removeFacet} />
 
-          {/* A phone has no start page: what's featured and what's new sit
-              above the list, while nothing narrows it. */}
+          {/* A phone has no start page: what's featured sits above the
+              list, while nothing narrows it. */}
           {!query && filter === "all" && activeFacets(facets) === 0 && (
             <div className={store.phoneFeatured}>
               <Featured plugins={view.plugins} href={href} />
-              <Newest plugins={view.plugins} href={href} />
             </div>
           )}
 
@@ -438,7 +436,7 @@ function CardState({ plugin }: { plugin: ScopeStorePlugin }) {
 const ALL_PAGE = 12;
 
 /** Next to the list when nothing is open: the numbers, what the directory
- *  puts forward, what's new, and every plugin by category. */
+ *  puts forward, and every plugin by category. */
 function Home({
   view,
   category: initialCategory,
@@ -558,8 +556,6 @@ function Home({
 
       <Featured plugins={plugins} href={href} />
 
-      <Newest plugins={plugins} href={href} />
-
       <section className={store.homeSection} id="all-plugins">
         <header className={store.homeHead}>
           <h2>{text.t("allPlugins")}</h2>
@@ -620,7 +616,11 @@ function Home({
   );
 }
 
-/** What the directory puts forward, among what the platform installed. */
+/**
+ * What the directory puts forward, among what the platform installed — in
+ * the compact row of the admin store's "New in the directory", not as its
+ * large carousel (BARY-237).
+ */
 function Featured({
   plugins,
   href,
@@ -629,89 +629,16 @@ function Featured({
   href: Href;
 }) {
   const text = usePluginText();
-  const featured = plugins.filter((p) => p.featured).slice(0, 12);
+  const featured = plugins.filter((p) => p.featured).slice(0, 18);
   if (featured.length === 0) return null;
-  return (
-    <FeaturedCarousel
-      names={featured.map((p) => p.name)}
-      head={
-        <>
-          <h2>{text.t("featuredTitle")}</h2>
-          <span>{text.t("featuredSub")}</span>
-        </>
-      }
-    >
-      {featured.map((p) => (
-        <Link
-          key={p.pluginId}
-          href={href({ plugin: p.pluginId })}
-          className={store.featureCard}
-          data-hue={tileHue(p.pluginId)}
-        >
-          {p.previews[0] && <FeaturePreview src={p.previews[0].src} />}
-          <span className={store.featureLogo}>
-            <PluginTile id={p.pluginId} name={p.name} size="hero" />
-          </span>
-          <span className={store.featureHead}>
-            <span className={store.featureName}>{p.name}</span>
-            <span className={store.itemSub}>
-              {p.author}
-              {p.version && ` · v${p.version}`}
-            </span>
-          </span>
-          <span className={store.featureText}>{p.description}</span>
-          <span className={store.featureFoot}>
-            <PluginBadges kind={p.kind} levels={p.levels} size="md" />
-            <CardState plugin={p} />
-          </span>
-        </Link>
-      ))}
-    </FeaturedCarousel>
-  );
-}
-
-/** A featured plugin's first screenshot, fading in once loaded. */
-function FeaturePreview({ src }: { src: string }) {
-  const [state, setState] = useState<"idle" | "loading" | "shown" | "none">(
-    "idle",
-  );
-  useEffect(() => setState("loading"), []);
-  if (state === "idle" || state === "none") return null;
-  return (
-    // biome-ignore lint/performance/noImgElement: a picture Barynt serves itself, behind a card
-    <img
-      className={store.featurePreview}
-      data-shown={state === "shown" || undefined}
-      src={src}
-      alt=""
-      decoding="async"
-      onLoad={() => setState("shown")}
-      onError={() => setState("none")}
-    />
-  );
-}
-
-/** What's new in the directory, among what the platform installed. */
-function Newest({
-  plugins,
-  href,
-}: {
-  plugins: ScopeStorePlugin[];
-  href: Href;
-}) {
-  const text = usePluginText();
-  const newest = plugins
-    .filter((p) => p.added)
-    .sort((a, b) => (b.added ?? "").localeCompare(a.added ?? ""))
-    .slice(0, 18);
-  if (newest.length === 0) return null;
   return (
     <section className={store.homeSection}>
       <header className={store.homeHead}>
-        <h2>{text.t("newestTitle")}</h2>
+        <h2>{text.t("featuredTitle")}</h2>
+        <span>{text.t("featuredSub")}</span>
       </header>
       <NewestRow
-        cards={newest.map((p) => (
+        cards={featured.map((p) => (
           <Link
             key={p.pluginId}
             href={href({ plugin: p.pluginId })}
