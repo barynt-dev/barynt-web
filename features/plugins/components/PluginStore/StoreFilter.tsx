@@ -57,11 +57,9 @@ const KNOWN: Partial<Record<StoreFacet, readonly string[]>> = {
   level: ["workspace", "project"],
 };
 
-/** The values a facet offers. Categories all of them, always — they're
- *  what a store is browsed by; the rest only what some plugin has, never a
- *  value it doesn't know (a manifest that no longer reads). */
+/** The values a facet offers: those some plugin has, never a value it
+ *  doesn't know (a manifest that no longer reads). */
 function offered(entries: StoreEntry[], facet: StoreFacet): string[] {
-  if (facet === "category") return [...PLUGIN_CATEGORIES];
   const seen = new Set(entries.flatMap((e) => valuesOf(e, facet)));
   const known = KNOWN[facet];
   return known ? known.filter((v) => seen.has(v)) : [...seen].sort();
@@ -82,8 +80,8 @@ export function useFacetLabel() {
 
 /**
  * The button at the end of the search field and the menu it opens (a bottom
- * sheet on a phone): the categories, and every other facet with more than
- * one value to choose from.
+ * sheet on a phone): the categories some plugin has, and every other facet
+ * with more than one value to choose from.
  */
 export function StoreFilterButton({
   entries,
@@ -99,11 +97,16 @@ export function StoreFilterButton({
   const anchor = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const count = activeFacets(facets);
-  // One value isn't a choice — unless it's already picked.
+  // Categories whenever some plugin has one — they're what a store is
+  // browsed by. Elsewhere one value isn't a choice, unless it's picked.
   const groups = FACETS.map((facet) => ({
     facet,
     values: offered(entries, facet),
-  })).filter((g) => g.values.length > 1 || facets[g.facet].length > 0);
+  })).filter(
+    (g) =>
+      g.values.length > (g.facet === "category" ? 0 : 1) ||
+      facets[g.facet].length > 0,
+  );
 
   const toggle = (facet: StoreFacet, value: string) =>
     onChange({
@@ -138,6 +141,9 @@ export function StoreFilterButton({
         title={text.t("facets.title")}
       >
         <div className={styles.filterMenu}>
+          {groups.length === 0 && (
+            <p className={styles.filterNone}>{text.t("facets.none")}</p>
+          )}
           {groups.map(({ facet, values }) => (
             <section key={facet} className={styles.filterGroup}>
               <h3>{text.t(`facets.${facet}`)}</h3>

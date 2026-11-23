@@ -152,6 +152,12 @@
   }
 }
 
+.filterNone {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--on-surface-variant);
+}
+
 .filterReset {
   align-self: flex-start;
   padding: 0;
