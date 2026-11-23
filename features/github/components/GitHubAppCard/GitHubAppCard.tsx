@@ -72,12 +72,19 @@ export function GitHubAppCard({ view }: { view: GitHubAppAdminView }) {
         </>
       )}
       {!view.app && (
-        <p className={storeStyles.muted}>{text.t("githubApp.missing")}</p>
+        <div className={styles.missing}>
+          <strong>{text.t("githubApp.missingTitle")}</strong>
+          <p>{text.t("githubApp.missing")}</p>
+        </div>
       )}
-      <p className={styles.webhook}>
-        <span className={storeStyles.muted}>{text.t("githubApp.webhook")}</span>
-        <code>{view.webhookUrl}</code>
-      </p>
+      {view.app && (
+        <p className={styles.webhook}>
+          <span className={storeStyles.muted}>
+            {text.t("githubApp.webhook")}
+          </span>
+          <code>{view.webhookUrl}</code>
+        </p>
+      )}
       {!view.app?.fromEnv &&
         (creating ? (
           <form
@@ -90,7 +97,6 @@ export function GitHubAppCard({ view }: { view: GitHubAppAdminView }) {
               label={text.t("githubApp.orgLabel")}
               hint={text.t("githubApp.orgHint")}
               value={organization}
-              placeholder="acme"
               onChange={(e) => setOrganization(e.target.value)}
             />
             <Button

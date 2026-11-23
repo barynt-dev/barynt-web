@@ -13,6 +13,25 @@
   }
 }
 
+.missing {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  font-size: var(--text-sm);
+
+  strong {
+    font-weight: 650;
+  }
+
+  p {
+    margin: 0;
+    color: var(--on-surface-variant);
+  }
+}
+
 .ready {
   display: flex;
   align-items: center;
