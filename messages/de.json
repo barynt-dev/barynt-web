@@ -2824,6 +2824,8 @@
     "featuredShow": "{name} zeigen",
     "previousNewest": "Vorherige neue Plugins",
     "nextNewest": "Weitere neue Plugins",
+    "loadMore": "Mehr laden",
+    "shownOf": "{shown} von {total}",
     "newestTitle": "Neu im Verzeichnis",
     "categoryAll": "Alle",
     "category": {

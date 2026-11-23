@@ -1,8 +1,9 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/atoms/Badge/Badge";
+import { Button } from "@/components/ui/atoms/Button/Button";
 import { Chip } from "@/components/ui/atoms/Chip/Chip";
 import type { StoreEntry, StoreView } from "@/features/plugins/queries";
 import { Link } from "@/i18n/navigation";
@@ -21,6 +22,9 @@ import styles from "./pluginStore.module.scss";
 
 type Filter = "installed" | "updates";
 
+/** How many of "All plugins" show at once, and come with each "more". */
+const ALL_PAGE = 12;
+
 export function StoreHome({
   view,
   onFilter,
@@ -33,7 +37,13 @@ export function StoreHome({
   onFilter: (filter: Filter) => void;
 }) {
   const text = usePluginText();
-  const [category, setCategory] = useState<string | null>(initialCategory);
+  const [category, setCategoryState] = useState<string | null>(initialCategory);
+  // "All plugins" a page at a time; a new category starts on the first.
+  const [limit, setLimit] = useState(ALL_PAGE);
+  const setCategory = (next: string | null) => {
+    setCategoryState(next);
+    setLimit(ALL_PAGE);
+  };
   const entries = view.entries;
   const installed = entries.filter((e) => e.installed);
   const on = installed.filter((e) => (e.installed?.activations ?? 0) > 0);
@@ -159,7 +169,7 @@ export function StoreHome({
           </div>
         )}
         <div className={styles.grid}>
-          {shown.map((entry) => (
+          {shown.slice(0, limit).map((entry) => (
             <Link
               key={entry.id}
               href={storeHref({ plugin: entry.id })}
@@ -180,6 +190,15 @@ export function StoreHome({
             </Link>
           ))}
         </div>
+        {shown.length > limit && (
+          <LoadMore
+            // A fresh one per page: still in view, it loads the next.
+            key={limit}
+            shown={limit}
+            total={shown.length}
+            onMore={() => setLimit((l) => l + ALL_PAGE)}
+          />
+        )}
       </section>
     </section>
   );
@@ -321,5 +340,47 @@ function CardState({ entry }: { entry: StoreEntry }) {
     <span className={styles.cardState} data-state={state}>
       {text.t(`cardState.${state}` as "cardState.installed")}
     </span>
+  );
+}
+
+/**
+ * The next page of "All plugins" (BARY-237): loads by itself once the end of
+ * the grid scrolls into view, or with the button — which also says how many
+ * there are.
+ */
+function LoadMore({
+  shown,
+  total,
+  onMore,
+}: {
+  shown: number;
+  total: number;
+  onMore: () => void;
+}) {
+  const text = usePluginText();
+  const mark = useRef<HTMLDivElement>(null);
+  const more = useRef(onMore);
+  more.current = onMore;
+
+  useEffect(() => {
+    const el = mark.current;
+    if (!el) return;
+    const watch = new IntersectionObserver(
+      ([hit]) => {
+        if (hit?.isIntersecting) more.current();
+      },
+      { rootMargin: "0px 0px 240px 0px" },
+    );
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, []);
+
+  return (
+    <div className={styles.loadMore} ref={mark}>
+      <Button variant="outline" onClick={onMore}>
+        {text.t("loadMore")}
+      </Button>
+      <span>{text.t("shownOf", { shown, total })}</span>
+    </div>
   );
 }
