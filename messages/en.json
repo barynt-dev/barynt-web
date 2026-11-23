@@ -3065,7 +3065,13 @@
       "internal": "internal",
       "archived": "archived",
       "fork": "fork",
-      "openOnGitHub": "Open on GitHub"
+      "openOnGitHub": "Open on GitHub",
+      "addRepo": "Add repository",
+      "removeRepo": "Remove {repo}",
+      "noneChosen": "No repository yet. Add one so pull requests, branches and checks arrive here.",
+      "allChosen": "Every repository is in already.",
+      "branchesHere": "Branches",
+      "branchesHereHint": "New branches from Barynt are created in this repository."
     },
     "githubApp": {
       "title": "GitHub App",

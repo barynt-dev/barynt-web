@@ -289,7 +289,7 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
     expect(html).not.toContain("/api/github/connect");
   });
 
-  it("lists the repositories to tick, the chosen ones ticked", () => {
+  it("shows only the project's repositories, and a menu to add more", () => {
     const html = render(
       view({
         fields: [repos],
@@ -297,16 +297,22 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
         connection,
       }),
     );
-    // Chosen but out of reach: still there, ticked, to untick.
-    const gone = html.slice(html.indexOf("gone/"));
-    expect(
-      html.lastIndexOf('checked=""', html.indexOf("gone/")),
-    ).toBeGreaterThan(-1);
-    expect(gone).toContain("github.unreachable");
-    expect(html).toContain("github.private");
-    expect(html).toContain(">api<");
-    // Each reachable one opens on GitHub, beside its row.
+    // The chosen ones, in order: branches go to the first.
+    expect(html.indexOf(">web<")).toBeLessThan(html.indexOf(">repo<"));
+    expect(html).toContain("github.branchesHere");
     expect(html).toContain('href="https://github.com/acme/web"');
+    // Chosen, but out of reach: still there, to take off.
+    expect(html.slice(html.indexOf(">repo<"))).toContain("github.unreachable");
+    expect(html).toContain("github.removeRepo");
+    // The others wait in the menu, not on the page.
+    expect(html).not.toContain(">api<");
+    expect(html).toContain("github.addRepo");
+  });
+
+  it("says so while the project has none", () => {
+    const html = render(view({ fields: [repos], values: {}, connection }));
+    expect(html).toContain("github.noneChosen");
+    expect(html).toContain("github.addRepo");
   });
 
   it("falls back to typing them without a connection", () => {

@@ -3065,7 +3065,13 @@
       "internal": "intern",
       "archived": "archiviert",
       "fork": "Fork",
-      "openOnGitHub": "Auf GitHub öffnen"
+      "openOnGitHub": "Auf GitHub öffnen",
+      "addRepo": "Repository hinzufügen",
+      "removeRepo": "{repo} entfernen",
+      "noneChosen": "Noch kein Repository. Füge eins hinzu, damit Pull Requests, Branches und Checks hier ankommen.",
+      "allChosen": "Alle Repositories sind schon dabei.",
+      "branchesHere": "Branches",
+      "branchesHereHint": "Neue Branches aus Barynt werden in diesem Repository angelegt."
     },
     "githubApp": {
       "title": "GitHub App",
