@@ -348,7 +348,7 @@ function CardState({ entry }: { entry: StoreEntry }) {
  * the grid scrolls into view, or with the button — which also says how many
  * there are.
  */
-function LoadMore({
+export function LoadMore({
   shown,
   total,
   onMore,

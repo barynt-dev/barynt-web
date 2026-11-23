@@ -119,8 +119,9 @@ export function ReleaseActions({
     });
   };
 
+  // Inside the header's actions (`store.headActions`), next to sharing.
   return (
-    <div className={store.headActions}>
+    <>
       {isReleased(plugin) ? (
         <Button
           variant="outline"
@@ -140,7 +141,7 @@ export function ReleaseActions({
         </Button>
       )}
       <ErrorLine message={error} />
-    </div>
+    </>
   );
 }
 

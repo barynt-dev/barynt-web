@@ -2897,13 +2897,12 @@
     "scopeFilter": {
       "all": "All · {count}",
       "on": "Released · {count}",
-      "available": "Available · {count}"
+      "available": "Available · {count}",
+      "waiting": "Confirm · {count}"
     },
     "groupOnHere": "Released",
     "groupAvailable": "Available",
     "stateConfirm": "Confirm",
-    "scopeStoreIntroTitle": "Plugins for this workspace",
-    "scopeStoreIntro": "Everything here was installed and checked by a platform admin. Release a plugin for the workspace — it then shows up in the project settings, and each project switches it on itself.",
     "openInStore": "In the plugin store",
     "settingsSaved": "Saved",
     "offInProject": "Switch off in this project",
@@ -3018,6 +3017,18 @@
       "installTitle": "Install “{name}” from its folder?",
       "installDesc": "No release, no hash: Barynt loads it from the folder on every load. It asks for: {capabilities}. If its manifest asks for more later, places that switched it on confirm again.",
       "noCapabilities": "nothing"
-    }
+    },
+    "scopeKpi": {
+      "released": "Released",
+      "waiting": "Awaiting confirmation",
+      "available": "Available",
+      "projects": "Projects"
+    },
+    "scopeKpiReleasedSub": "of {count, plural, one {# installed plugin} other {# installed plugins}}",
+    "scopeKpiNothingWaits": "nothing waiting",
+    "scopeKpiAvailableSub": "not released yet · {count, plural, =0 {no categories} one {# category} other {# categories}}",
+    "scopeKpiProjectsSub": "with at least one plugin on",
+    "scopeActiveIn": "{count, plural, =0 {In no project} one {In # project} other {In # projects}}",
+    "scopeProvenanceNote": "A platform admin installed it; its hash and manifest were checked then."
   }
 }

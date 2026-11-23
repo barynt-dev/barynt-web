@@ -29,19 +29,36 @@ export const NO_FACETS: StoreFacets = {
 
 const FACETS: StoreFacet[] = ["category", "kind", "level", "source"];
 
-/** A plugin's values for each facet. */
-function valuesOf(entry: StoreEntry, facet: StoreFacet): string[] {
-  if (facet === "category") return entry.listing?.categories ?? [];
-  if (facet === "kind") return [entry.kind];
-  if (facet === "level") return entry.levels;
-  return entry.listing ? [entry.listing.sourceName] : [];
+/** What the filter reads off a plugin — the admin store's entries and the
+ *  workspace store's plugins alike. */
+export interface FacetItem {
+  kind: string;
+  levels: string[];
+  categories: string[];
+  source: string | null;
 }
 
-export function matchesFacets(entry: StoreEntry, facets: StoreFacets) {
+/** An admin store entry, as the filter reads it. */
+export const entryFacets = (entry: StoreEntry): FacetItem => ({
+  kind: entry.kind,
+  levels: entry.levels,
+  categories: entry.listing?.categories ?? [],
+  source: entry.listing?.sourceName ?? null,
+});
+
+/** A plugin's values for each facet. */
+function valuesOf(item: FacetItem, facet: StoreFacet): string[] {
+  if (facet === "category") return item.categories;
+  if (facet === "kind") return [item.kind];
+  if (facet === "level") return item.levels;
+  return item.source ? [item.source] : [];
+}
+
+export function matchesFacets(item: FacetItem, facets: StoreFacets) {
   return FACETS.every(
     (f) =>
       facets[f].length === 0 ||
-      valuesOf(entry, f).some((v) => facets[f].includes(v)),
+      valuesOf(item, f).some((v) => facets[f].includes(v)),
   );
 }
 
@@ -59,8 +76,8 @@ const KNOWN: Partial<Record<StoreFacet, readonly string[]>> = {
 
 /** The values a facet offers: those some plugin has, never a value it
  *  doesn't know (a manifest that no longer reads). */
-function offered(entries: StoreEntry[], facet: StoreFacet): string[] {
-  const seen = new Set(entries.flatMap((e) => valuesOf(e, facet)));
+function offered(items: FacetItem[], facet: StoreFacet): string[] {
+  const seen = new Set(items.flatMap((e) => valuesOf(e, facet)));
   const known = KNOWN[facet];
   return known ? known.filter((v) => seen.has(v)) : [...seen].sort();
 }
@@ -84,11 +101,11 @@ export function useFacetLabel() {
  * with more than one value to choose from.
  */
 export function StoreFilterButton({
-  entries,
+  items,
   facets,
   onChange,
 }: {
-  entries: StoreEntry[];
+  items: FacetItem[];
   facets: StoreFacets;
   onChange: (next: StoreFacets) => void;
 }) {
@@ -101,7 +118,7 @@ export function StoreFilterButton({
   // browsed by. Elsewhere one value isn't a choice, unless it's picked.
   const groups = FACETS.map((facet) => ({
     facet,
-    values: offered(entries, facet),
+    values: offered(items, facet),
   })).filter(
     (g) =>
       g.values.length > (g.facet === "category" ? 0 : 1) ||
