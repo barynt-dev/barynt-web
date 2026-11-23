@@ -96,7 +96,7 @@ function summaryOf(
    *  (BARY-235). */
   locale = "en",
 ): PluginSummary {
-  const parsed = validateManifest(manifest);
+  const parsed = validateManifest(manifest, locale);
   const m: Partial<PluginManifest> = parsed.ok ? parsed.manifest : {};
   return {
     pluginId,
@@ -712,6 +712,7 @@ export async function getPluginSettingsNav(scope: {
   workspaceId: string;
   projectId: string | null;
 }): Promise<PluginNavRow[]> {
+  const locale = await getLocale();
   const ids = scope.projectId
     ? (
         await db.pluginGrant.findMany({
@@ -748,7 +749,7 @@ export async function getPluginSettingsNav(scope: {
       pluginId: r.pluginId,
       name: summaryOf(r.pluginId, r.manifest).name,
       settings: running.some((a) => a.pluginId === r.pluginId)
-        ? settingLabelsOf(r.manifest, level)
+        ? settingLabelsOf(r.manifest, level, locale)
         : [],
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -885,8 +886,12 @@ export interface PluginCredentialField {
 }
 
 /** The credentials a manifest declares at a level. */
-function credentialsOf(manifest: unknown, level: CredentialLevel) {
-  const parsed = validateManifest(manifest);
+function credentialsOf(
+  manifest: unknown,
+  level: CredentialLevel,
+  locale?: string,
+) {
+  const parsed = validateManifest(manifest, locale);
   return parsed.ok
     ? (parsed.manifest.contributes.credentials ?? []).filter(
         (c) => c.level === level,
@@ -900,8 +905,9 @@ async function credentialFields(
   manifest: unknown,
   level: CredentialLevel,
   scopeKey: string,
+  locale?: string,
 ): Promise<PluginCredentialField[]> {
-  const declared = credentialsOf(manifest, level);
+  const declared = credentialsOf(manifest, level, locale);
   if (declared.length === 0) return [];
   const kept = await db.pluginCredential.findMany({
     where: { pluginId, scopeKey, key: { in: declared.map((c) => c.key) } },
@@ -947,7 +953,7 @@ export async function getPluginSettingsView(
   ]);
   const active = versions.find((v) => v.status === "active");
   if (!active) return null;
-  const parsed = validateManifest(active.manifest);
+  const parsed = validateManifest(active.manifest, locale);
   if (!parsed.ok) return null;
   const settings = parsed.manifest.contributes.settings ?? [];
   const level = scope.projectId ? "project" : "workspace";
@@ -956,6 +962,7 @@ export async function getPluginSettingsView(
     active.manifest,
     level,
     activationScopeKey(scope),
+    locale,
   );
   const service = parsed.manifest.service;
   const hooks = parsed.manifest.contributes.inboundHooks ?? [];
@@ -1107,6 +1114,7 @@ export async function getUserCredentialPluginsNav(
   workspaceId: string,
 ): Promise<PluginNavRow[]> {
   if (!(await currentUserCanEnterWorkspace(workspaceId))) return [];
+  const locale = await getLocale();
   const running = await db.pluginActivation.findMany({
     where: { workspaceId, enabled: true },
     select: { pluginId: true },
@@ -1125,7 +1133,7 @@ export async function getUserCredentialPluginsNav(
     .map((r) => ({
       pluginId: r.pluginId,
       name: summaryOf(r.pluginId, r.manifest).name,
-      settings: settingLabelsOf(r.manifest, "user"),
+      settings: settingLabelsOf(r.manifest, "user", locale),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -1160,6 +1168,7 @@ export async function getUserCredentialsView(
       active.manifest,
       "user",
       `us:${userId}`,
+      locale,
     ),
   };
 }

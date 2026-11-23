@@ -1,3 +1,4 @@
+import { translator } from "../i18n";
 import { CSS } from "./css";
 
 // What every piece of the UI kit shares (BARY-204, BARY-206): its styles
@@ -135,3 +136,31 @@ export function describe(
   control.setAttribute("aria-describedby", node.id);
   wrap.append(node);
 }
+
+/** The kit's own words, in the frame's language (`translator`). */
+export const kitText = translator({
+  en: {
+    nothingHere: "Nothing here.",
+    nothingMatches: "Nothing matches.",
+    loading: "Loading",
+    copy: "Copy",
+    copied: "Copied",
+    open: "Open",
+    close: "Close",
+    cancel: "Cancel",
+    search: "Search",
+    removeItem: "Remove {name}",
+  },
+  de: {
+    nothingHere: "Hier ist nichts.",
+    nothingMatches: "Nichts gefunden.",
+    loading: "Lädt",
+    copy: "Kopieren",
+    copied: "Kopiert",
+    open: "Öffnen",
+    close: "Schließen",
+    cancel: "Abbrechen",
+    search: "Suchen",
+    removeItem: "{name} entfernen",
+  },
+});

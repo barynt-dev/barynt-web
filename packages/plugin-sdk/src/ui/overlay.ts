@@ -1,4 +1,4 @@
-import { append, type Child, el, nextId, styled } from "./core";
+import { append, type Child, el, kitText, nextId, styled } from "./core";
 import { button } from "./inputs";
 
 // The UI kit's overlays (BARY-206). A dialog inside the plugin's frame —
@@ -25,7 +25,7 @@ export function dialog(options: {
   const title = el("h2", "bui-dialog-title", options.title);
   title.id = id;
   const close = button({
-    label: "Close",
+    label: kitText("close"),
     variant: "ghost",
     size: "sm",
     icon: "x",
@@ -69,7 +69,7 @@ export function confirm(options: {
       content: options.text ? [options.text] : [],
       actions: [
         button({
-          label: options.cancelLabel ?? "Cancel",
+          label: options.cancelLabel ?? kitText("cancel"),
           variant: "secondary",
           onClick: () => d.close(),
         }),

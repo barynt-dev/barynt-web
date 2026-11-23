@@ -55,7 +55,7 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `authorUrl` | no | An `http(s)` address, linked in the store. |
 | `description` | yes | In English: `short`, one or two sentences up to 300 characters, and optionally `about`, the plugin's page in the store — see [Page text and links](#page-text-and-links). |
 | `links` | no | Up to 10 addresses — homepage, docs, community — see [Page text and links](#page-text-and-links). |
-| `locales` | no | Texts in Barynt's other languages: `{ "de": { "description": { "short": "…", "about": "…" } } }`, either text optional. Barynt shows each person the texts in their language, else the English ones. |
+| `locales` | no | Texts in Barynt's other languages: the description (`{ "de": { "description": { "short": "…", "about": "…" } } }`, either text optional) and the titles, labels and descriptions of what it contributes, see [Translations](#translations). Barynt shows each person the texts in their language, else the English ones. |
 | `logo` | no | `logo.png` or `logo.webp`, a file in the release: the plugin's picture in the store, the sidebar and its settings, see [Publishing](plugins-publishing.md#logo-and-screenshots). Without one, its first letter. |
 | `license` | yes | E.g. `MIT`, `Apache-2.0`, `Proprietary`. |
 | `kind` | yes | `declarative`, `sandbox` or `service`, see [Building plugins](plugins.md#the-three-kinds). |
@@ -114,6 +114,49 @@ later — set `minBaryntVersion` accordingly, an older Barynt refuses the
 manifest. `description` as `{ short, about }` needs a Barynt released after
 1.1.0-beta.5; it's the only form Barynt takes — a plain string, or `about`
 beside `description`, is refused.
+
+## Translations
+
+The manifest is written in English, and English is what Barynt shows when a
+language has no text of its own. `locales.<lang>` (`de`) holds only what
+differs: the description (above), and the texts of the plugin's
+contributions and previews, **by id**:
+
+```json
+"locales": {
+  "de": {
+    "contributes": {
+      "actions": { "create-branch": "Branch erstellen" },
+      "issuePanels": { "development": "Entwicklung" },
+      "settings": {
+        "branchPattern": { "label": "Branch-Name", "description": "{key} ist der Schlüssel des Issues." },
+        "mode": { "label": "Modus", "options": { "fast": "Schnell" } }
+      },
+      "credentials": { "token": "Token" },
+      "inboundHooks": { "github": { "title": "GitHub-Repository", "rules": { "merged": "Wenn ein Pull Request gemergt wird" } } }
+    },
+    "previews": { "preview-1.webp": "Pull Requests auf dem Board" }
+  }
+}
+```
+
+- Under `contributes`, a list of the manifest (`actions`, `settings` …) maps
+  an item's `id` — a setting's or credential's `key` — to its texts.
+- A string translates the item's main text: its `title`, else its `label`.
+  An object names them: `title`, `label`, `description`, and `options` or
+  `rules` — those by their `id` again, the same way.
+- `previews` maps a file to its caption.
+- Anything left out stays English, so a language can grow bit by bit.
+- `fields` can't be translated: a custom field becomes the project's own,
+  with one name for everyone.
+
+Barynt checks them like the rest: an id, a text or an option the manifest
+doesn't have is refused with where it is (most likely a typo, which would
+otherwise just stay English), and each text keeps its limit (60 characters
+for a title or label, 300 for a description).
+
+What the plugin draws itself in its frame isn't in the manifest — translate
+that with the SDK's [`translator()`](plugins-sdk.md#translations).
 
 ## Capabilities
 
@@ -696,6 +739,8 @@ already in the status stays as it is.
   choice fields need options, other types must not have them; only a
   `multiselect`'s default is a list.
 - `maxBaryntVersion` isn't lower than `minBaryntVersion`.
+- [Translations](#translations) name only ids, texts and options the
+  manifest has, within their limits; `fields` aren't translated.
 - `service` isn't for a `declarative` plugin; its `url` is `https` on a host
   in `network` (or local `http`), each of its `events` once and with its
   capability.

@@ -87,6 +87,11 @@ export abstract class Plugin {
     this.api = createApi(host);
     this.context = host.context;
     this.root = host.root;
+    // The person's language for the frame: `translator()` and the UI
+    // kit's own texts read it from here.
+    const html =
+      typeof document !== "undefined" ? document.documentElement : null;
+    if (html && host.context.locale) html.lang = host.context.locale;
     // The host calls `onunload()`; a subclass's own one runs first, then
     // everything registered is undone — even when the subclass forgets.
     const own = this.onunload;

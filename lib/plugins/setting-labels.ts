@@ -9,8 +9,10 @@ import { type CredentialLevel, validateManifest } from "./manifest";
 export function settingLabelsOf(
   manifest: unknown,
   level: CredentialLevel,
+  /** The person's language: the labels as the page shows them. */
+  locale?: string,
 ): string[] {
-  const parsed = validateManifest(manifest);
+  const parsed = validateManifest(manifest, locale);
   if (!parsed.ok) return [];
   const m = parsed.manifest;
   const ownPage =

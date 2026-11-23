@@ -41,6 +41,8 @@ const db = {
   project: { findUnique: mock(), findFirst: mock() },
 };
 mock.module("@/lib/db", () => ({ db }));
+// The slots read the manifest in the person's language.
+mock.module("next-intl/server", () => ({ getLocale: async () => "en" }));
 const can = mock(async (_u?: string, _permission?: string) => true);
 const canEnterWorkspace = mock(async () => true);
 const currentUserCanEnterWorkspace = mock(async () => true);

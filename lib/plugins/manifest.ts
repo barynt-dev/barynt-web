@@ -21,6 +21,7 @@ import {
   type ServiceAddressMode,
 } from "./service";
 import { SETTING_TYPES } from "./settings";
+import { translateManifest, translationIssues } from "./translate";
 
 /** How a plugin runs. In-process code is Barynt's own and not a plugin kind. */
 export const PLUGIN_KINDS = ["declarative", "sandbox", "service"] as const;
@@ -127,11 +128,26 @@ const localeDescriptionSchema = z
   )
   .refine((d) => d.short || d.about, "expected short, about or both");
 
-/** A manifest's texts in other languages: `{ de: { description } }`. */
+/** A contribution's text in another language: its main text, or its texts
+ *  by name — `lib/plugins/translate.ts` checks them against the item. */
+const itemTextSchema = z.union([
+  z.string().trim().min(1).max(300),
+  z.record(z.string(), z.unknown()),
+]);
+
+/** A manifest's texts in other languages (BARY-235, BARY-237): its
+ *  description, and the titles, labels and descriptions of what it
+ *  contributes and of its previews, by id — `lib/plugins/translate.ts`. */
 const manifestLocalesSchema = z
   .partialRecord(
     z.enum(PLUGIN_LOCALES),
-    z.strictObject({ description: localeDescriptionSchema }),
+    z.strictObject({
+      description: localeDescriptionSchema.optional(),
+      contributes: z
+        .record(z.string(), z.record(z.string(), itemTextSchema))
+        .optional(),
+      previews: z.record(z.string(), z.string().trim().min(1)).optional(),
+    }),
   )
   .optional();
 
@@ -579,6 +595,11 @@ export const manifestSchema = z
     if (RESERVED_PLUGIN_IDS.includes(m.id))
       add(["id"], `"${m.id}" is reserved for Barynt`);
 
+    for (const [lang, texts] of Object.entries(m.locales ?? {}))
+      if (texts)
+        for (const issue of translationIssues(m, texts))
+          add(["locales", lang, ...issue.path], issue.message);
+
     if (
       m.maxBaryntVersion &&
       compareSemver(m.maxBaryntVersion, m.minBaryntVersion) < 0
@@ -827,10 +848,19 @@ export type ManifestResult =
   | { ok: true; manifest: PluginManifest }
   | { ok: false; errors: ManifestIssue[] };
 
-/** Validate a parsed `manifest.json`. Never throws. */
-export function validateManifest(input: unknown): ManifestResult {
+/** Validate a parsed `manifest.json`. Never throws. With a `locale`, the
+ *  manifest comes back with its texts in that language, as far as it has
+ *  them (`translateManifest`) — for showing it, never for storing it. */
+export function validateManifest(
+  input: unknown,
+  locale?: string,
+): ManifestResult {
   const parsed = manifestSchema.safeParse(input);
-  if (parsed.success) return { ok: true, manifest: parsed.data };
+  if (parsed.success)
+    return {
+      ok: true,
+      manifest: locale ? translateManifest(parsed.data, locale) : parsed.data,
+    };
   return {
     ok: false,
     errors: parsed.error.issues.map((i) => ({

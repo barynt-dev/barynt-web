@@ -2,6 +2,7 @@ import {
   append,
   type Child,
   el,
+  kitText,
   nextId,
   safeColor,
   safeHref,
@@ -195,7 +196,10 @@ export function tag(options: {
   if (options.onRemove) {
     const remove = el("button", "bui-tag-remove", icon("x", { size: 12 }));
     remove.type = "button";
-    remove.setAttribute("aria-label", `Remove ${options.text}`);
+    remove.setAttribute(
+      "aria-label",
+      kitText("removeItem", { name: options.text }),
+    );
     const onRemove = options.onRemove;
     remove.addEventListener("click", () => onRemove());
     node.append(remove);
@@ -285,7 +289,7 @@ export function spinner(options: { label?: string } = {}): HTMLElement {
   const node = el("span", "bui-spinner", icon("loader-circle", { size: 16 }));
   node.setAttribute("role", "status");
   if (options.label) node.append(options.label);
-  else node.setAttribute("aria-label", "Loading");
+  else node.setAttribute("aria-label", kitText("loading"));
   return node;
 }
 
@@ -489,7 +493,7 @@ export function list(options: {
 }): HTMLElement {
   styled();
   if (options.items.length === 0)
-    return el("p", "bui-empty", options.empty ?? "Nothing here.");
+    return el("p", "bui-empty", options.empty ?? kitText("nothingHere"));
   const node = el("ul", "bui-list");
   for (const item of options.items) {
     const line = el("li", "bui-list-item");
@@ -511,7 +515,7 @@ export function list(options: {
       remove.type = "button";
       remove.setAttribute(
         "aria-label",
-        item.removeLabel ?? `Remove ${item.title}`,
+        item.removeLabel ?? kitText("removeItem", { name: item.title }),
       );
       const onRemove = item.onRemove;
       remove.addEventListener("click", () => onRemove());
@@ -652,7 +656,7 @@ export function copyField(options: {
   const copy = el("button", "bui-copy-button", icon("copy", { size: 15 }));
   copy.type = "button";
   copy.setAttribute("aria-label", options.label ?? `Copy ${options.value}`);
-  copy.dataset.buiTip = "Copy";
+  copy.dataset.buiTip = kitText("copy");
   copy.addEventListener("click", async () => {
     let done = false;
     try {
@@ -671,10 +675,10 @@ export function copyField(options: {
     }
     if (!done) return;
     copy.replaceChildren(icon("check", { size: 15 }));
-    copy.dataset.buiTip = "Copied";
+    copy.dataset.buiTip = kitText("copied");
     setTimeout(() => {
       copy.replaceChildren(icon("copy", { size: 15 }));
-      copy.dataset.buiTip = "Copy";
+      copy.dataset.buiTip = kitText("copy");
     }, 1500);
   });
   node.append(copy);
@@ -688,8 +692,8 @@ export function copyField(options: {
     open.href = href;
     open.target = "_blank";
     open.rel = "noopener noreferrer";
-    open.setAttribute("aria-label", "Open");
-    open.dataset.buiTip = "Open";
+    open.setAttribute("aria-label", kitText("open"));
+    open.dataset.buiTip = kitText("open");
     node.append(open);
   }
   return node;

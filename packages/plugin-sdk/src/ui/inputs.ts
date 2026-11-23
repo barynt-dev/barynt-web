@@ -5,6 +5,7 @@ import {
   type Field,
   type FieldOptions,
   fieldShell,
+  kitText,
   nextId,
   PALETTE,
   type PaletteColor,
@@ -548,8 +549,8 @@ export function pickMenu(options: {
 
   const search = el("input", "bui-input bui-pick-search");
   search.type = "search";
-  search.placeholder = options.placeholder ?? "Search";
-  search.setAttribute("aria-label", options.placeholder ?? "Search");
+  search.placeholder = options.placeholder ?? kitText("search");
+  search.setAttribute("aria-label", options.placeholder ?? kitText("search"));
   search.setAttribute("aria-controls", menuId);
   const listEl = el("ul", "bui-pick-list");
   listEl.id = menuId;
@@ -573,7 +574,13 @@ export function pickMenu(options: {
     active = Math.min(active, Math.max(0, shown.length - 1));
     listEl.replaceChildren(
       ...(shown.length === 0
-        ? [el("li", "bui-pick-empty", options.empty ?? "Nothing matches.")]
+        ? [
+            el(
+              "li",
+              "bui-pick-empty",
+              options.empty ?? kitText("nothingMatches"),
+            ),
+          ]
         : shown.map((entry, i) => {
             const item = el(
               "li",

@@ -1,4 +1,5 @@
 import "server-only";
+import { getLocale } from "next-intl/server";
 import { cache } from "react";
 import type {
   PluginBlockEntry,
@@ -41,6 +42,7 @@ export const getPluginNav = cache(
     workspaceId: string,
     visibleProjectIds: readonly string[],
   ): Promise<PluginNav> => {
+    const locale = await getLocale();
     const empty: PluginNav = { workspace: [], projects: {} };
     if (!(await currentUserCanEnterWorkspace(workspaceId))) return empty;
     const activations = await db.pluginActivation.findMany({
@@ -57,7 +59,7 @@ export const getPluginNav = cache(
     });
     const manifests = new Map(
       rows.flatMap((r) => {
-        const parsed = validateManifest(r.manifest);
+        const parsed = validateManifest(r.manifest, locale);
         return parsed.ok ? [[r.pluginId, parsed.manifest] as const] : [];
       }),
     );
@@ -97,6 +99,7 @@ export async function getPluginWidgets(place: {
   workspaceId: string;
   projectId: string | null;
 }): Promise<PluginWidgetEntry[]> {
+  const locale = await getLocale();
   const activations = await db.pluginActivation.findMany({
     where: { scopeKey: activationScopeKey(place), enabled: true },
     select: { pluginId: true, capabilities: true },
@@ -112,7 +115,7 @@ export async function getPluginWidgets(place: {
   return activations
     .flatMap((a): PluginWidgetEntry[] => {
       const row = rows.find((r) => r.pluginId === a.pluginId);
-      const parsed = row ? validateManifest(row.manifest) : null;
+      const parsed = row ? validateManifest(row.manifest, locale) : null;
       if (!parsed?.ok) return [];
       const { manifest } = parsed;
       const drawn = slotEntries(manifest, a.capabilities)
@@ -148,6 +151,7 @@ export async function getPluginBlocks(place: {
   workspaceId: string;
   projectId: string | null;
 }): Promise<PluginBlockEntry[]> {
+  const locale = await getLocale();
   const activations = await db.pluginActivation.findMany({
     where: { scopeKey: activationScopeKey(place), enabled: true },
     select: { pluginId: true, capabilities: true },
@@ -163,7 +167,7 @@ export async function getPluginBlocks(place: {
   return activations
     .flatMap((a): PluginBlockEntry[] => {
       const row = rows.find((r) => r.pluginId === a.pluginId);
-      const parsed = row ? validateManifest(row.manifest) : null;
+      const parsed = row ? validateManifest(row.manifest, locale) : null;
       if (!parsed?.ok) return [];
       const { manifest } = parsed;
       const shown = new Set(
@@ -211,6 +215,7 @@ export const getPluginIssuePanels = cache(
     workspaceId: string;
     projectId: string;
   }): Promise<IssuePluginPanel[]> => {
+    const locale = await getLocale();
     const activations = await db.pluginActivation.findMany({
       where: { scopeKey: activationScopeKey(place), enabled: true },
       select: { pluginId: true, capabilities: true },
@@ -226,7 +231,7 @@ export const getPluginIssuePanels = cache(
     return activations
       .flatMap((a): IssuePluginPanel[] => {
         const row = rows.find((r) => r.pluginId === a.pluginId);
-        const parsed = row ? validateManifest(row.manifest) : null;
+        const parsed = row ? validateManifest(row.manifest, locale) : null;
         if (!parsed?.ok) return [];
         const declared = parsed.manifest.contributes.issuePanels ?? [];
         return slotEntries(parsed.manifest, a.capabilities)
@@ -269,6 +274,7 @@ export const getPluginBadgeProviders = cache(
     prefix: string;
     providers: PluginBadgeProvider[];
   } | null> => {
+    const locale = await getLocale();
     const project = await db.project.findFirst({
       where: { workspaceId: place.workspaceId, slug: place.projectSlug },
       select: { id: true, prefix: true },
@@ -300,7 +306,7 @@ export const getPluginBadgeProviders = cache(
     });
     const providers = withBadges.flatMap((a): PluginBadgeProvider[] => {
       const row = rows.find((r) => r.pluginId === a.pluginId);
-      const parsed = row ? validateManifest(row.manifest) : null;
+      const parsed = row ? validateManifest(row.manifest, locale) : null;
       if (!parsed?.ok || parsed.manifest.kind !== "sandbox") return [];
       const badges = parsed.manifest.contributes.issueBadges ?? [];
       if (badges.length === 0) return [];
@@ -325,6 +331,7 @@ export const getPluginIssueActions = cache(
     workspaceId: string;
     projectId: string;
   }): Promise<PluginActionEntry[]> => {
+    const locale = await getLocale();
     const activations = await db.pluginActivation.findMany({
       where: { scopeKey: activationScopeKey(place), enabled: true },
       select: { pluginId: true, capabilities: true },
@@ -343,7 +350,7 @@ export const getPluginIssueActions = cache(
     return withActions
       .flatMap((a): PluginActionEntry[] => {
         const row = rows.find((r) => r.pluginId === a.pluginId);
-        const parsed = row ? validateManifest(row.manifest) : null;
+        const parsed = row ? validateManifest(row.manifest, locale) : null;
         if (!parsed?.ok || parsed.manifest.kind !== "sandbox") return [];
         return (parsed.manifest.contributes.actions ?? []).map((action) => ({
           pluginId: a.pluginId,

@@ -3,7 +3,14 @@
 // screenshots show. Nothing here is styled by hand: it's all the kit and
 // `token()`.
 
-import { Plugin, TOKEN_NAMES, type TokenName, token } from "@barynt/plugin-sdk";
+import {
+  currentLocale,
+  Plugin,
+  TOKEN_NAMES,
+  type TokenName,
+  token,
+  translator,
+} from "@barynt/plugin-sdk";
 import {
   accordion,
   avatar,
@@ -133,6 +140,7 @@ export default class UiKit extends Plugin {
           ],
         }),
         pickAndList(),
+        translations(),
         card({
           title: "On and off",
           children: [
@@ -465,6 +473,41 @@ export default class UiKit extends Plugin {
 }
 
 /** `pickMenu` and `list` together: a list to add to, and rows to take off. */
+/** The plugin's own texts in the person's language: English and German,
+ *  English where German has nothing. */
+const t = translator({
+  en: {
+    greeting: "Hello, {name}!",
+    issues_one: "{count} open issue",
+    issues_other: "{count} open issues",
+    onlyEnglish: "This one is English only.",
+  },
+  de: {
+    greeting: "Hallo, {name}!",
+    issues_one: "{count} offenes Issue",
+    issues_other: "{count} offene Issues",
+  },
+});
+
+function translations() {
+  return card({
+    title: "Translations",
+    description:
+      "translator() follows the person's language — the kit's own words too.",
+    children: [
+      keyValue({
+        items: [
+          { label: "currentLocale()", value: currentLocale() },
+          { label: 't("greeting")', value: t("greeting", { name: "Ada" }) },
+          { label: 't("issues", 1)', value: t("issues", { count: 1 }) },
+          { label: 't("issues", 3)', value: t("issues", { count: 3 }) },
+          { label: 't("onlyEnglish")', value: t("onlyEnglish") },
+        ],
+      }),
+    ],
+  });
+}
+
 function pickAndList() {
   const all = [
     "acme/web",

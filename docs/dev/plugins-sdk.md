@@ -536,6 +536,54 @@ try {
 [Host API → Errors](plugins-host-api.md#errors). An error you don't catch ends up as
 the plugin's error in Barynt.
 
+## Translations
+
+What a plugin draws in its frame — a panel's headings, a toast, an action's
+message — follows the person's language with `translator()`. English is the
+base and the fallback; another language lists only what it translates:
+
+```ts
+// src/i18n.ts
+import { translator } from "@barynt/plugin-sdk";
+
+export const t = translator({
+  en: {
+    createBranch: "Create branch",
+    created: "Branch {name} created in {repo}.",
+    repos_one: "{count} repository",
+    repos_other: "{count} repositories",
+  },
+  de: {
+    createBranch: "Branch erstellen",
+    created: "Branch {name} in {repo} erstellt.",
+    repos_one: "{count} Repository",
+    repos_other: "{count} Repositories",
+  },
+});
+
+// anywhere
+button({ label: t("createBranch") });
+toast(t("created", { name, repo }));
+t("repos", { count: 3 }); // "3 Repositories"
+```
+
+- `{name}` takes the value of that name.
+- With `count`, the key's plural form comes first: `key_one`, `key_other`
+  (`zero`, `two`, `few`, `many` too), picked by `Intl.PluralRules` for the
+  language.
+- A key the language doesn't have comes from English; one neither has shows
+  as the key. TypeScript checks that the other languages only use English's
+  keys.
+- The language is read when a text is asked for: the plugin sets the frame's
+  `<html lang>` from [`context.locale`](#context) as it starts, and
+  `currentLocale()` reads it — so `t` can live at a module's top. Pass a
+  language as the second argument to fix one.
+- The [UI kit](#the-ui-kit)'s own words ("Search", "Close", "Copy", "Nothing
+  here." …) follow the same language.
+
+Titles, labels and settings in the manifest are translated there, under
+[`locales`](plugins-manifest.md#translations) — Barynt shows those itself.
+
 ## The UI kit
 
 `@barynt/plugin-sdk/ui` has Barynt's components for your frame — the pieces

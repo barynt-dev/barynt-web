@@ -9,6 +9,14 @@ export {
   type NetResponse,
 } from "./api";
 export {
+  currentLocale,
+  type Messages,
+  type TextValues,
+  type Translate,
+  type Translations,
+  translator,
+} from "./i18n";
+export {
   type Cleanup,
   Plugin,
   type ProjectView,
