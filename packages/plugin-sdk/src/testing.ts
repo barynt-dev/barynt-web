@@ -29,6 +29,11 @@ export interface TestHost extends Host {
     id: string,
     context?: { issueId: string | null },
   ): Promise<ActionResult>;
+  /** Whether its settings page says it has changes to save — `null` while
+   *  it doesn't save with Barynt's button (`registerSettings` `save`). */
+  readonly unsavedState: boolean | null;
+  /** Presses Barynt's Save button for its settings page. */
+  save(): Promise<void>;
   /** Asks the plugin's badges for these issues, as a board would. */
   badges(
     issues: BadgeIssue[],
@@ -53,6 +58,8 @@ export function createTestHost(
     null;
   let actionHandler: Parameters<NonNullable<Host["serveActions"]>>[0] | null =
     null;
+  let saveHandler: Parameters<NonNullable<Host["serveSave"]>>[0] | null = null;
+  let unsavedState: boolean | null = null;
   return {
     calls,
     shown,
@@ -63,6 +70,20 @@ export function createTestHost(
     badges: (issues) => badgeHandler?.(issues) ?? {},
     serveActions: (handler) => {
       actionHandler = handler;
+    },
+    serveSave: (handler) => {
+      saveHandler = handler;
+      unsavedState = false;
+    },
+    unsaved: (on) => {
+      if (saveHandler) unsavedState = on;
+    },
+    get unsavedState() {
+      return unsavedState;
+    },
+    save: async () => {
+      if (!saveHandler) throw new Error("no save registered");
+      await saveHandler();
     },
     runAction: async (id, context = { issueId: null }) => {
       if (!actionHandler) throw new Error("no actions registered");

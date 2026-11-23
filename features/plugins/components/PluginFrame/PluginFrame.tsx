@@ -66,6 +66,9 @@ export function PluginFrame({
   onBadges,
   actionRequest,
   onActionDone,
+  saveRequest,
+  onUnsaved,
+  onSaveDone,
   onError,
 }: {
   pluginId: string;
@@ -93,6 +96,13 @@ export function PluginFrame({
   } | null;
   /** How it went: its answer (unchecked), or the error. */
   onActionDone?: (seq: number, ok: boolean, result: unknown) => void;
+  /** Save its settings page — Barynt's Save button was pressed. */
+  saveRequest?: { seq: number } | null;
+  /** Its settings page has changes to save, or none any more — the first
+   *  call says it saves with Barynt's button at all. */
+  onUnsaved?: (unsaved: boolean) => void;
+  /** How saving went: done, or the error it threw. */
+  onSaveDone?: (seq: number, ok: boolean, error?: string) => void;
   /** It threw, or didn't start in time — besides showing so. */
   onError?: (message: string) => void;
 }) {
@@ -102,8 +112,22 @@ export function PluginFrame({
   const [height, setHeight] = useState<number | null>(null);
   // The latest callbacks: the channel lives as long as the frame, the
   // callbacks change with every render of the caller.
-  const callbacks = useRef({ onBlockData, onBadges, onActionDone, onError });
-  callbacks.current = { onBlockData, onBadges, onActionDone, onError };
+  const callbacks = useRef({
+    onBlockData,
+    onBadges,
+    onActionDone,
+    onUnsaved,
+    onSaveDone,
+    onError,
+  });
+  callbacks.current = {
+    onBlockData,
+    onBadges,
+    onActionDone,
+    onUnsaved,
+    onSaveDone,
+    onError,
+  };
   // Sends to the frame's channel — set while one is open.
   const send = useRef<((message: HostMessage) => void) | null>(null);
   // A new frame on "Load again" — and, in development, whenever the
@@ -207,6 +231,14 @@ export function PluginFrame({
           );
         } else if (message.type === "badges") {
           callbacks.current.onBadges?.(message.seq, message.badges);
+        } else if (message.type === "unsaved") {
+          callbacks.current.onUnsaved?.(message.unsaved);
+        } else if (message.type === "saveDone") {
+          callbacks.current.onSaveDone?.(
+            message.seq,
+            message.ok,
+            message.error,
+          );
         } else {
           void forward(message.id, message.method, message.params);
         }
@@ -256,6 +288,12 @@ export function PluginFrame({
     if (state.status === "ready" && actionRequest)
       send.current?.({ type: "action:run", ...actionRequest });
   }, [state.status, actionRequest]);
+
+  // Save its settings page, once it listens.
+  useEffect(() => {
+    if (state.status === "ready" && saveRequest)
+      send.current?.({ type: "settings:save", ...saveRequest });
+  }, [state.status, saveRequest]);
 
   // The issues to put badges on, once it listens — and again when they
   // change (BARY-151).

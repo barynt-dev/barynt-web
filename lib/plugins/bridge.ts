@@ -116,7 +116,12 @@ export type FrameMessage =
    *  host (`parseBadges`, BARY-151). */
   | { type: "badges"; seq: number; badges: unknown }
   /** How an action went (BARY-152): its answer, or the error it threw. */
-  | { type: "actionDone"; seq: number; ok: boolean; result: unknown };
+  | { type: "actionDone"; seq: number; ok: boolean; result: unknown }
+  /** Its settings page has changes to save — or none any more. The first
+   *  one says it saves at all: Barynt's Save button then covers it. */
+  | { type: "unsaved"; unsaved: boolean }
+  /** How saving its settings page went: done, or the error it threw. */
+  | { type: "saveDone"; seq: number; ok: boolean; error?: string };
 
 /** Host → frame. */
 export type HostMessage =
@@ -131,7 +136,9 @@ export type HostMessage =
       seq: number;
       actionId: string;
       issueId: string | null;
-    };
+    }
+  /** Save its settings page: Barynt's Save button was pressed. */
+  | { type: "settings:save"; seq: number };
 
 /** The first message, posted to the frame's window with the channel's port. */
 export interface InitMessage {
@@ -177,6 +184,19 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
           ok: m.ok === true,
           result:
             m.ok === true ? m.result : String(m.result ?? "").slice(0, 300),
+        }
+      : null;
+  if (m.type === "unsaved")
+    return { type: "unsaved", unsaved: m.unsaved === true };
+  if (m.type === "saveDone")
+    return Number.isSafeInteger(m.seq)
+      ? {
+          type: "saveDone",
+          seq: m.seq as number,
+          ok: m.ok === true,
+          ...(m.ok !== true && {
+            error: String(m.error ?? "").slice(0, 300),
+          }),
         }
       : null;
   if (m.type === "badges")

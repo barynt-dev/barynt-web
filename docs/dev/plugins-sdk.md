@@ -414,7 +414,8 @@ you draw the block yourself, like a view — the [UI kit](#the-ui-kit) helps.
 ### `registerSettings()`
 
 ```ts
-registerSettings(page: { render(el, context) }): void;
+registerSettings(page: { render(el, context); save?(): void | Promise<void> }): void;
+setUnsaved(unsaved: boolean): void;
 ```
 
 Its own settings (`contributes.settingsPage`): with `true` a page shown
@@ -422,6 +423,41 @@ instead of Barynt's form, with `"section"` a part below it — see
 [Manifest → Its own settings page](plugins-manifest.md#its-own-settings-page).
 `context.slot.id` says which: `"settings"` or `"section"`. Read the values
 with `loadSettings()`, save them with `api.settings.set(values)`.
+
+**Barynt's Save button.** The page's header has the Save button, greyed out
+until something changes. Give `registerSettings` a `save` and your page
+uses it too: call `setUnsaved(true)` when something changed (`false` when
+it's back as it was), and a click runs `save` — together with Barynt's
+form, if the page has one. Throw to say it failed: the message is shown.
+After it ran, there's nothing unsaved any more on its own. Without `save`,
+the button stays Barynt's and you save the way you like.
+
+```ts
+let saved = "";
+let draft = "";
+this.registerSettings({
+  render: async (el) => {
+    const { channel } = await this.loadSettings<{ channel: string | null }>();
+    saved = draft = channel ?? "";
+    const field = textField({
+      label: "Channel",
+      value: draft,
+      onInput: (value) => {
+        draft = value;
+        this.setUnsaved(draft !== saved);
+      },
+    });
+    el.replaceChildren(field.el);
+  },
+  save: async () => {
+    await this.api.settings.set({ channel: draft });
+    saved = draft;
+  },
+});
+```
+
+In a test, `host.unsavedState` says what the page last reported (`null`
+without `save`) and `host.save()` presses the button.
 
 ```ts
 import { button, status, stack } from "@barynt/plugin-sdk/ui";

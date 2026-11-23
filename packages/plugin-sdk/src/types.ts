@@ -221,6 +221,10 @@ export interface Host {
       context: { issueId: string | null },
     ) => ActionResult | undefined | Promise<ActionResult | undefined>,
   ): void;
+  /** What saves its settings page when Barynt's Save button is pressed. */
+  serveSave?(handler: () => void | Promise<void>): void;
+  /** Whether its settings page has changes to save. */
+  unsaved?(on: boolean): void;
   /** What answers a board's batches of issues with badges. */
   serveBadges?(
     handler: (

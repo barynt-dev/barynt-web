@@ -3,7 +3,7 @@
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import { Input } from "@/components/ui/atoms/Input/Input";
 import { NativeSelect } from "@/components/ui/atoms/NativeSelect/NativeSelect";
@@ -82,12 +82,28 @@ export function PluginSettings({
       view.fields.map((f) => [f.key, initial(f, view.values[f.key])]),
     ),
   );
+  // What's saved — the form has changes while `values` differ from it.
+  const [savedValues, setSavedValues] = useState(values);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  // Its own settings page saves with the same button (SDK `save`), once it
+  // says so — and has changes while it says that.
+  const [frameSaves, setFrameSaves] = useState(false);
+  const [frameUnsaved, setFrameUnsaved] = useState(false);
+  const [saveRequest, setSaveRequest] = useState<{ seq: number } | null>(null);
+  const saving = useRef(
+    new Map<number, (r: { ok: boolean; error?: string }) => void>(),
+  );
   const [confirmed, setConfirmed] = useState(false);
   const { plugin } = view;
   const inProject = scope.projectId !== null;
   const running = view.state === "active" || view.state === "needsConfirmation";
+  const hasForm =
+    running && view.settingsPage !== "page" && view.fields.length > 0;
+  const formDirty =
+    hasForm && JSON.stringify(values) !== JSON.stringify(savedValues);
+  const dirty = formDirty || (frameSaves && frameUnsaved);
+  const canSave = running && (hasForm || frameSaves);
   const storeHref = pluginStorePath(scope.workspaceId, {
     plugin: plugin.pluginId,
   });
@@ -112,23 +128,51 @@ export function PluginSettings({
           projectId: scope.projectId,
           locale,
         }}
+        saveRequest={saveRequest}
+        onUnsaved={(unsaved) => {
+          setFrameSaves(true);
+          setFrameUnsaved(unsaved);
+          if (unsaved) setSaved(false);
+        }}
+        onSaveDone={(seq, ok, error) => {
+          saving.current.get(seq)?.({ ok, error });
+          saving.current.delete(seq);
+        }}
       />
     </section>
   );
+
+  /** Has its own settings page save, and waits for how it went. */
+  const saveFrame = () =>
+    new Promise<{ ok: boolean; error?: string }>((resolve) => {
+      const seq = Date.now();
+      saving.current.set(seq, resolve);
+      setSaveRequest({ seq });
+    });
 
   const set = (key: string, value: Value) => {
     setValues((v) => ({ ...v, [key]: value }));
     setSaved(false);
   };
 
+  /** The Save button at the top: the form and its own page, as far as
+   *  each has changes. */
   const save = () =>
     startTransition(async () => {
-      const result = await savePluginSettings({
-        pluginId: plugin.pluginId,
-        ...scope,
-        values,
-      });
-      if ("error" in result) return setError(text.error(result.error));
+      if (formDirty) {
+        const result = await savePluginSettings({
+          pluginId: plugin.pluginId,
+          ...scope,
+          values,
+        });
+        if ("error" in result) return setError(text.error(result.error));
+        setSavedValues(values);
+      }
+      if (frameSaves && frameUnsaved) {
+        const result = await saveFrame();
+        if (!result.ok)
+          return setError(result.error || text.t("settingsSaveFailed"));
+      }
       setError("");
       setSaved(true);
       router.refresh();
@@ -183,13 +227,34 @@ export function PluginSettings({
         title={plugin.name}
         description={`${plugin.author} · v${plugin.version}`}
         actions={
-          // Only a workspace manager has the store.
-          !inProject && (
-            <Link href={storeHref} className={styles.storeLink}>
-              <Icon icon="lucide:store" width={15} aria-hidden />
-              {text.t("openInStore")}
-            </Link>
-          )
+          <>
+            {/* Only a workspace manager has the store. */}
+            {!inProject && (
+              <Link href={storeHref} className={styles.storeLink}>
+                <Icon icon="lucide:store" width={15} aria-hidden />
+                {text.t("openInStore")}
+              </Link>
+            )}
+            {canSave && (
+              <>
+                {/* Gone as soon as something changes again — it belongs
+                    to the save that's done. */}
+                {saved && !dirty && (
+                  <span className={styles.saved} role="status">
+                    <Icon icon="lucide:check" width={14} aria-hidden />
+                    {text.t("settingsSaved")}
+                  </span>
+                )}
+                <Button
+                  variant="primary"
+                  disabled={!dirty || isPending}
+                  onClick={save}
+                >
+                  {t("actions.save")}
+                </Button>
+              </>
+            )}
+          </>
         }
       />
       <div className={styles.page}>
@@ -274,7 +339,12 @@ export function PluginSettings({
 
         {/* Its own settings page (BARY-149): its frame instead of the
             form — saving still goes through Barynt (`settings.set`). */}
-        {running && view.settingsPage === "page" && ownSettings}
+        {running && view.settingsPage === "page" && (
+          <>
+            <ErrorLine message={error} />
+            {ownSettings}
+          </>
+        )}
 
         {/* Connected first, then the repositories to pick from it. */}
         {view.connection && (running || !inProject) && (
@@ -285,12 +355,12 @@ export function PluginSettings({
           />
         )}
 
-        {running && view.settingsPage !== "page" && view.fields.length > 0 && (
+        {hasForm && (
           <form
             className={styles.form}
             onSubmit={(e) => {
               e.preventDefault();
-              save();
+              if (dirty) save();
             }}
           >
             {view.fields.map((field) => (
@@ -303,17 +373,6 @@ export function PluginSettings({
               />
             ))}
             {view.state === "active" && <ErrorLine message={error} />}
-            <div className={styles.formActions}>
-              {saved && (
-                <span className={styles.saved} role="status">
-                  <Icon icon="lucide:check" width={14} aria-hidden />
-                  {text.t("settingsSaved")}
-                </span>
-              )}
-              <Button variant="primary" type="submit" disabled={isPending}>
-                {t("actions.save")}
-              </Button>
-            </div>
           </form>
         )}
         {/* Its part below the form (BARY-204): a check, a preview, a

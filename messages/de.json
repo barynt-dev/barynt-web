@@ -3095,6 +3095,7 @@
     "suggestions": "Vorschläge",
     "suggestionsTitle": "Vorschlag übernehmen",
     "suggestionCurrent": "Aktuell",
-    "suggestionExample": "Beispiel:"
+    "suggestionExample": "Beispiel:",
+    "settingsSaveFailed": "Speichern hat nicht geklappt."
   }
 }

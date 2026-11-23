@@ -29,6 +29,22 @@ export interface WidgetBlock {
   ): void | Cleanup | Promise<void | Cleanup>;
 }
 
+/** Its own settings page (`registerSettings`). */
+export interface SettingsPage {
+  /** Draws the page into `el`. May return what undoes it. */
+  render(
+    el: HTMLElement,
+    context: Context,
+  ): void | Cleanup | Promise<void | Cleanup>;
+  /**
+   * Saves what was changed on it — with this, Barynt's Save button at the
+   * top of the page covers it: greyed out until you call
+   * `setUnsaved(true)`, then this runs on a click. Throw to say it failed;
+   * the message is shown. Without it, save the way you like.
+   */
+  save?(): void | Promise<void>;
+}
+
 export interface ProjectView {
   /** As in the manifest's `contributes.projectViews` (or `navItems`, for
    *  `registerPage`). */
@@ -73,6 +89,8 @@ export abstract class Plugin {
   readonly #show: Host["show"];
   readonly #serveBadges: Host["serveBadges"];
   readonly #serveActions: Host["serveActions"];
+  readonly #serveSave: Host["serveSave"];
+  readonly #unsaved: Host["unsaved"];
   readonly #actions = new Map<
     string,
     (context: {
@@ -84,6 +102,8 @@ export abstract class Plugin {
     this.#show = host.show;
     this.#serveBadges = host.serveBadges;
     this.#serveActions = host.serveActions;
+    this.#serveSave = host.serveSave;
+    this.#unsaved = host.unsaved;
     this.api = createApi(host);
     this.context = host.context;
     this.root = host.root;
@@ -198,12 +218,30 @@ export abstract class Plugin {
    * instead of Barynt's form, with `"section"` a part below it — a check, a
    * preview, a picker that asks your service. `context.slot.id` says which
    * (`"settings"` or `"section"`). Read with `loadSettings()`, save with
-   * `api.settings.set(values)`.
+   * `api.settings.set(values)` — in `save`, to save with Barynt's Save
+   * button at the top of the page (`setUnsaved`).
    */
-  registerSettings(page: Omit<ProjectView, "id">): void {
+  registerSettings(page: SettingsPage): void {
     const { id } = this.context.slot;
-    if (id === "settings" || id === "section")
-      this.#renderSlot("settings", { ...page, id });
+    if (id !== "settings" && id !== "section") return;
+    if (page.save) {
+      const save = page.save.bind(page);
+      this.#serveSave?.(async () => {
+        await save();
+        this.setUnsaved(false);
+      });
+    }
+    this.#renderSlot("settings", { id, render: page.render.bind(page) });
+  }
+
+  /**
+   * Tells Barynt whether its settings page has changes to save: `true`
+   * makes the Save button at the top clickable, `false` greys it out
+   * again. Only with a `save` in `registerSettings`; after it ran, it's
+   * `false` on its own.
+   */
+  setUnsaved(unsaved: boolean): void {
+    this.#unsaved?.(unsaved);
   }
 
   /**

@@ -20,6 +20,7 @@ export {
   type Cleanup,
   Plugin,
   type ProjectView,
+  type SettingsPage,
   type WidgetBlock,
 } from "./plugin";
 export {

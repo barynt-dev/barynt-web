@@ -409,6 +409,13 @@ in the app shell runs it in a hidden `PluginFrame` (slot `actions`): `action:run
 over the frame's channel, checked by `parseActionResult` (`lib/plugins/plugin-actions.ts`),
 then a toast, `router.refresh()` or the panel (`barynt:focus-panel`). 20 s at most.
 
+**Saving a settings page.** `PluginSettings` has the Save button in its `PageHeader`,
+disabled until the form's `values` differ from what's saved — or until the plugin's own page
+(`settingsPage`) reports changes: the SDK's `registerSettings({ save })` makes the frame send
+`unsaved` (first `false`, which says it saves with the button), `setUnsaved()` sends it again.
+A click saves the form (`savePluginSettings`) and, if the frame has changes, sends it
+`settings:save`, answered by `saveDone` (`ok`, or the error it threw).
+
 **Sidebar panels (BARY-209).** `issuePanels[].placement` (`main` default, `sidebar`) comes
 along in `pluginPanels`; `IssuePluginPanels placement=…` draws the main ones after the
 attachments and the sidebar ones in `IssueSidebar` after the custom fields (in the stacked

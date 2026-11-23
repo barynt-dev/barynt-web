@@ -3095,6 +3095,7 @@
     "suggestions": "Suggestions",
     "suggestionsTitle": "Use a suggestion",
     "suggestionCurrent": "Current",
-    "suggestionExample": "Example:"
+    "suggestionExample": "Example:",
+    "settingsSaveFailed": "Saving didn't work."
   }
 }

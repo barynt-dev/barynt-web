@@ -179,6 +179,48 @@ describe("plugin SDK", () => {
     expect(drawn).toEqual(["page"]);
   });
 
+  it("saves its settings page with Barynt's Save button", async () => {
+    const saved: string[] = [];
+    let plugin: Plugin | null = null;
+    class Own extends Plugin {
+      onload() {
+        plugin = this;
+        this.registerSettings({
+          render: () => {},
+          save: async () => {
+            saved.push("saved");
+          },
+        });
+      }
+    }
+    const host = createTestHost({
+      context: { slot: { kind: "settings", id: "settings" } },
+    });
+    await loadPlugin(Own, host);
+    // It saves with the button: nothing to save yet.
+    expect(host.unsavedState).toBe(false);
+    (plugin as Plugin | null)?.setUnsaved(true);
+    expect(host.unsavedState).toBe(true);
+    await host.save();
+    expect(saved).toEqual(["saved"]);
+    // Saved: nothing left to save.
+    expect(host.unsavedState).toBe(false);
+  });
+
+  it("keeps saving its own without a save", async () => {
+    class Own extends Plugin {
+      onload() {
+        this.registerSettings({ render: () => {} });
+        this.setUnsaved(true);
+      }
+    }
+    const host = createTestHost({
+      context: { slot: { kind: "settings", id: "settings" } },
+    });
+    await loadPlugin(Own, host);
+    expect(host.unsavedState).toBeNull();
+  });
+
   it("draws a widget or its settings page only in its own frame", async () => {
     const drawn: string[] = [];
     class All extends Plugin {

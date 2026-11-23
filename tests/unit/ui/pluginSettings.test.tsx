@@ -347,6 +347,20 @@ describe("PluginSettings", () => {
     expect(html).not.toContain("switchOnInProject");
   });
 
+  it("saves from the top of the page, greyed out until something changes", () => {
+    const html = render(view());
+    const header = html.slice(0, html.indexOf("</header>"));
+    expect(header).toContain("actions.save");
+    expect(header).toMatch(/<button[^>]*disabled=""[^>]*>[^<]*actions\.save/);
+    // Not at the form's end any more.
+    expect(html.slice(html.indexOf("</header>"))).not.toContain("actions.save");
+  });
+
+  it("has no Save button with nothing to save", () => {
+    const html = render(view({ fields: [] }));
+    expect(html).not.toContain("actions.save");
+  });
+
   it("says so when a running plugin has nothing to set", () => {
     const html = render(view({ fields: [] }));
     expect(html).toContain("noSettings");

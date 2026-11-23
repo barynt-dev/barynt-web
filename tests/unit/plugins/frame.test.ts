@@ -84,4 +84,24 @@ describe("bridge protocol", () => {
       parseFrameMessage({ type: "error", message: "x".repeat(900) }),
     ).toEqual({ type: "error", message: "x".repeat(500) });
   });
+
+  it("takes a settings page's unsaved changes and how saving went", () => {
+    expect(parseFrameMessage({ type: "unsaved", unsaved: true })).toEqual({
+      type: "unsaved",
+      unsaved: true,
+    });
+    expect(parseFrameMessage({ type: "unsaved", unsaved: "yes" })).toEqual({
+      type: "unsaved",
+      unsaved: false,
+    });
+    expect(parseFrameMessage({ type: "saveDone", seq: 2, ok: true })).toEqual({
+      type: "saveDone",
+      seq: 2,
+      ok: true,
+    });
+    expect(
+      parseFrameMessage({ type: "saveDone", seq: 3, ok: false, error: "x" }),
+    ).toEqual({ type: "saveDone", seq: 3, ok: false, error: "x" });
+    expect(parseFrameMessage({ type: "saveDone", seq: "3" })).toBeNull();
+  });
 });

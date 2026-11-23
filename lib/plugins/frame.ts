@@ -25,6 +25,7 @@ const RUNTIME = `(() => {
   let instance = null;
   let badgeHandler = null;
   let actionHandler = null;
+  let saveHandler = null;
 
   const send = (message) => port && port.postMessage(message);
   const fail = (error) =>
@@ -90,6 +91,24 @@ const RUNTIME = `(() => {
           );
         return;
       }
+      // Barynt's Save button, for its settings page: the answer goes back
+      // with the request's number.
+      if (m.type === "settings:save") {
+        const seq = m.seq;
+        if (!saveHandler) return send({ type: "saveDone", seq, ok: true });
+        Promise.resolve()
+          .then(() => saveHandler())
+          .then(() => send({ type: "saveDone", seq, ok: true }))
+          .catch((error) =>
+            send({
+              type: "saveDone",
+              seq,
+              ok: false,
+              error: String((error && error.message) || error),
+            }),
+          );
+        return;
+      }
       if (m.type === "badges:request") {
         const seq = m.seq;
         if (!badgeHandler) return send({ type: "badges", seq, badges: {} });
@@ -131,6 +150,13 @@ const RUNTIME = `(() => {
         serveActions: (handler) => {
           actionHandler = typeof handler === "function" ? handler : null;
         },
+        // What saves its settings page when Barynt's Save button is
+        // pressed — and whether there's anything to save.
+        serveSave: (handler) => {
+          saveHandler = typeof handler === "function" ? handler : null;
+          if (saveHandler) send({ type: "unsaved", unsaved: false });
+        },
+        unsaved: (on) => send({ type: "unsaved", unsaved: on === true }),
       });
       instance = new Plugin(host);
       if (instance && typeof instance.onload === "function") await instance.onload();
