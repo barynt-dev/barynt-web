@@ -42,6 +42,37 @@ export const GITHUB_PATHS = {
 } as const;
 
 /**
+ * Can GitHub reach this address? Not `localhost`, a private network, or a
+ * name without a dot — GitHub refuses such a webhook address ("isn't
+ * reachable over the public Internet"), so the app is created without one.
+ */
+export function isPublicBase(baseUrl: string): boolean {
+  let host: string;
+  try {
+    host = new URL(baseUrl).hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  } catch {
+    return false;
+  }
+  // IPv6: loopback, unique-local and link-local stay inside.
+  if (host.includes(":")) return !/^(::1$|f[cd]|fe80)/.test(host);
+  if (!host.includes(".")) return false;
+  if (/(^|\.)(localhost|local|internal|lan|home\.arpa)$/.test(host))
+    return false;
+  const ip = host.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
+  if (!ip) return true;
+  const [a, b] = [Number(ip[1]), Number(ip[2])];
+  return !(
+    a === 10 ||
+    a === 127 ||
+    a === 0 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 100 && b >= 64 && b <= 127)
+  );
+}
+
+/**
  * The manifest GitHub creates the app from (the manifest flow): a click in
  * Admin → Plugins sends it to GitHub, GitHub shows it, and returns with a
  * code Barynt trades for the app's keys. `public` lets it be installed on
@@ -54,11 +85,16 @@ export function appManifest(input: {
   public: boolean;
 }) {
   const base = input.baseUrl.replace(/\/+$/, "");
+  // GitHub can't reach a local Barynt: then no webhook, and no events to
+  // send to it — signing in, connecting and listing repositories still work.
+  const reachable = isPublicBase(base);
   return {
     name: input.name.slice(0, 34),
     url: base,
     description: "Pull requests, branches and checks on Barynt's issues.",
-    hook_attributes: { url: `${base}${GITHUB_PATHS.webhook}`, active: true },
+    ...(reachable && {
+      hook_attributes: { url: `${base}${GITHUB_PATHS.webhook}`, active: true },
+    }),
     redirect_url: `${base}${GITHUB_PATHS.created}`,
     callback_urls: [`${base}${GITHUB_PATHS.callback}`],
     // After installing, GitHub asks the person to sign in, so Barynt can
@@ -67,7 +103,7 @@ export function appManifest(input: {
     setup_on_update: true,
     public: input.public,
     default_permissions: APP_PERMISSIONS,
-    default_events: [...APP_EVENTS],
+    ...(reachable && { default_events: [...APP_EVENTS] }),
   };
 }
 

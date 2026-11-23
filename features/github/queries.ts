@@ -4,6 +4,7 @@ import { appBaseUrl } from "@/lib/app-url";
 import {
   appManifest,
   GITHUB_PATHS,
+  isPublicBase,
   manageInstallationUrl,
 } from "@/lib/github/app";
 import {
@@ -102,6 +103,9 @@ export interface GitHubAppAdminView {
   manifest: string;
   state: string;
   webhookUrl: string;
+  /** Barynt runs on an address GitHub can't reach (localhost): the app
+   *  comes without a webhook. */
+  local: boolean;
 }
 
 /** The GitHub App card of Admin → Plugins — for a platform admin. */
@@ -128,5 +132,6 @@ export async function getGitHubAppAdminView(
     ),
     state: sealState({ kind: "app", userId, back }),
     webhookUrl: `${base}${GITHUB_PATHS.webhook}`,
+    local: !isPublicBase(base),
   };
 }

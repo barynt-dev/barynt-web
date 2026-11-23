@@ -4,6 +4,7 @@ import {
   appJwt,
   appManifest,
   isChosen,
+  isPublicBase,
   manageInstallationUrl,
   readPrivateKey,
   repositoryOfRequest,
@@ -155,7 +156,7 @@ describe("GitHub App", () => {
       name: "Barynt",
       public: true,
     });
-    expect(m.hook_attributes.url).toBe(
+    expect(m.hook_attributes?.url).toBe(
       "https://issues.acme.dev/api/github/webhook",
     );
     expect(m.redirect_url).toBe(
@@ -167,6 +168,41 @@ describe("GitHub App", () => {
     expect(m.request_oauth_on_install).toBe(true);
     expect(m.default_permissions.contents).toBe("write");
     expect(m.default_events).toContain("pull_request");
+  });
+
+  it("leaves the webhook out where GitHub can't reach Barynt", () => {
+    const m = appManifest({
+      baseUrl: "http://localhost:3000",
+      name: "Barynt",
+      public: true,
+    });
+    expect("hook_attributes" in m).toBe(false);
+    expect("default_events" in m).toBe(false);
+    expect(m.callback_urls).toEqual([
+      "http://localhost:3000/api/github/callback",
+    ]);
+  });
+
+  it("tells a public address from a local one", () => {
+    for (const url of [
+      "https://issues.acme.dev",
+      "https://203.0.113.7",
+      "https://[2001:db8::1]",
+    ])
+      expect(isPublicBase(url)).toBe(true);
+    for (const url of [
+      "http://localhost:3000",
+      "http://app.localhost",
+      "http://127.0.0.1:3000",
+      "http://192.168.1.20",
+      "http://10.0.0.5",
+      "http://172.20.0.3",
+      "http://barynt",
+      "http://barynt.local",
+      "http://[::1]:3000",
+      "not a url",
+    ])
+      expect(isPublicBase(url)).toBe(false);
   });
 
   it("links to an installation's settings on GitHub", () => {

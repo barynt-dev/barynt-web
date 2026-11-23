@@ -85,6 +85,12 @@ export function GitHubAppCard({ view }: { view: GitHubAppAdminView }) {
           <code>{view.webhookUrl}</code>
         </p>
       )}
+      {view.local && (
+        <p className={styles.local}>
+          <Icon icon="lucide:info" width={15} aria-hidden />
+          {text.t("githubApp.local")}
+        </p>
+      )}
       {!view.app?.fromEnv &&
         (creating ? (
           <form

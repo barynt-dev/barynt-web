@@ -24,7 +24,7 @@ Barynt verbindet sich über eine eigene **GitHub App** mit GitHub, so wie Linear
 Das war's: Pull Requests, Branches, Commits und Checks dieser Repositories kommen von selbst. Wenn die App später mehr oder weniger Repositories sehen soll, geht das über **Repositories auf GitHub ändern** neben dem Konto.
 
 > [!NOTE]
-> GitHub muss Barynt für seine Meldungen unter `<deine Adresse>/api/github/webhook` erreichen. Eine Instanz, die nur im eigenen Netz erreichbar ist, bekommt von github.com nichts.
+> GitHub muss Barynt für seine Meldungen unter `<deine Adresse>/api/github/webhook` erreichen. Ist eine Instanz nur im eigenen Netz (oder unter `localhost`) erreichbar, wird die App ohne Webhook angelegt. Verbinden und Repositories auswählen funktioniert dann, Pull Requests und Checks kommen aber nicht an.
 
 **Eigenes Token (optional):** Wer unter **Persönliche Einstellungen → Plugins → GitHub** ein Fine-grained-Token hinterlegt (_Contents_ lesen und schreiben, _Pull requests_ und _Checks_ lesen), bekommt Branches mit dem eigenen GitHub-Login im Namen und sieht, wer reviewt hat. Ohne Token arbeitet das Plugin über die Verbindung, dann aber nur mit den Repositories, die das Projekt angehakt hat.
 
