@@ -98,21 +98,18 @@ export function ScopeStore({
 
   // Nothing installed yet — only a platform admin gets here then
   // (`canUsePluginStore`): how plugins come in, and where to start.
-  if (view.plugins.length === 0)
-    return (
-      <>
-        <PageHeader divider={false} title={text.t("scopeStoreTitle")} />
-        <ScopeStoreWelcome />
-      </>
-    );
+  if (view.plugins.length === 0) return <ScopeStoreWelcome />;
 
   return (
     <>
-      <PageHeader
-        divider={false}
-        title={text.t("scopeStoreTitle")}
-        leading={
-          selected && (
+      {/* The tab above already says "Store": a header only on a phone
+          showing a plugin, for the way back to the list. */}
+      {selected && (
+        <PageHeader
+          divider={false}
+          className={scope.phoneHeader}
+          title={text.t("scopeStoreTitle")}
+          leading={
             <Link
               href={href({})}
               className={store.headerBack}
@@ -122,9 +119,9 @@ export function ScopeStore({
             >
               <Icon icon="lucide:chevron-left" width={22} aria-hidden />
             </Link>
-          )
-        }
-      />
+          }
+        />
+      )}
       <div
         className={`${store.store} ${scope.fill}`}
         data-open={selected ? "plugin" : "home"}
