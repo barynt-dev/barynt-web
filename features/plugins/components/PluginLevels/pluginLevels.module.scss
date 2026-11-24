@@ -2,23 +2,23 @@
 
 /* Personal | Project | Workspace under a plugin's header, as tall as the
    members' tabs, with the project or workspace to pick on the right — one
-   divider under both. On a phone the pick goes on top, the tabs on their
-   divider below it. */
+   divider under both, edge to edge like the header's above. On a phone the
+   pick goes on top, the tabs on their divider below it. */
 .bar {
   display: flex;
   flex: none;
   align-items: center;
   gap: 1rem;
   min-height: 2.875rem;
-  margin: 0.25rem 1.5rem 0;
+  margin-top: 0.25rem;
+  padding: 0 1.5rem;
   border-bottom: 1px solid var(--outline-variant);
 
   @include bp.phone {
     flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;
-    margin: 0.25rem 1rem 0;
-    border-bottom: 0;
+    padding: 0;
   }
 }
 
@@ -31,7 +31,7 @@
     flex: none;
     order: 2;
     min-height: 2.875rem;
-    border-bottom: 1px solid var(--outline-variant);
+    padding: 0 1rem;
   }
 }
 
@@ -42,7 +42,7 @@
 
   @include bp.phone {
     order: 1;
-    width: 100%;
-    padding-bottom: 0;
+    width: auto;
+    padding: 0 1rem;
   }
 }
