@@ -2,9 +2,10 @@
 
 import { Icon } from "@iconify/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import buttonStyles from "@/components/ui/atoms/Button/button.module.scss";
+import { FoldGroup } from "@/components/ui/layout/FoldGroup/FoldGroup";
 import {
   connectGitHubInstallation,
   dismissGitHubChoice,
@@ -34,10 +35,14 @@ export function GitHubConnection({
   pluginId,
   view,
   scope,
+  children,
 }: {
   pluginId: string;
   view: PluginConnectionView;
   scope: { workspaceId: string; projectId: string | null };
+  /** What else belongs to the general section: the settings without a
+   *  group, below the connection. */
+  children?: ReactNode;
 }) {
   const text = usePluginText();
   const router = useRouter();
@@ -67,9 +72,12 @@ export function GitHubConnection({
     ].join(" ");
 
   return (
-    <section className={styles.section} aria-labelledby="plugin-github">
-      {/* The connection's title — the page's first, general section. */}
-      <h2 id="plugin-github">{view.title}</h2>
+    // The connection's title heads the page's first, general section; the
+    // settings without a group of their own follow in it (`children`).
+    <FoldGroup
+      className={styles.section}
+      heading={<h2 id="plugin-github">{view.title}</h2>}
+    >
       <p className={styles.hint}>
         {inProject
           ? text.t("github.hintProject")
@@ -250,7 +258,8 @@ export function GitHubConnection({
           )}
         </div>
       )}
-    </section>
+      {children}
+    </FoldGroup>
   );
 }
 

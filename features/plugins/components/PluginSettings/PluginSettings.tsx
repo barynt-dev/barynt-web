@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/atoms/Input/Input";
 import { NativeSelect } from "@/components/ui/atoms/NativeSelect/NativeSelect";
 import { Switch } from "@/components/ui/atoms/Switch/Switch";
 import { useConfirm } from "@/components/ui/layout/ConfirmDialog/ConfirmDialog";
+import { FoldGroup } from "@/components/ui/layout/FoldGroup/FoldGroup";
 import { PageHeader } from "@/components/ui/layout/PageHeader/PageHeader";
 import { GitHubConnection } from "@/features/github/components/GitHubConnection/GitHubConnection";
 import { RepositoryPicker } from "@/features/github/components/RepositoryPicker/RepositoryPicker";
@@ -120,6 +121,32 @@ export function PluginSettings({
   const rulesDirty = running && ruleHooks.some((h) => rulesChanged(h.id));
   const dirty = formDirty || rulesDirty || (frameSaves && frameUnsaved);
   const canSave = running && (hasForm || frameSaves || ruleHooks.length > 0);
+  const showConnection = !!view.connection && (running || !inProject);
+  // The settings in runs of their group; the first run without one is the
+  // general section's, beside the connection.
+  const runs = hasForm ? settingRuns(view.fields) : [];
+  const lead = runs[0] && !runs[0].group ? runs[0] : null;
+  const chunks = lead ? runs.slice(1) : runs;
+  // Enter in a field saves, like the button in the header.
+  const fieldsForm = (fields: PluginSettingField[], className?: string) => (
+    <form
+      className={[styles.form, className].filter(Boolean).join(" ")}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (dirty) save();
+      }}
+    >
+      {fields.map((field) => (
+        <Field
+          key={field.key}
+          field={field}
+          value={values[field.key]}
+          disabled={isPending}
+          onChange={(v) => set(field.key, v)}
+        />
+      ))}
+    </form>
+  );
   const storeHref = pluginStorePath(scope.workspaceId, {
     plugin: plugin.pluginId,
   });
@@ -376,47 +403,36 @@ export function PluginSettings({
           </>
         )}
 
-        {/* Connected first, then the repositories to pick from it. */}
-        {view.connection && (running || !inProject) && (
+        {/* Connected first, then the repositories to pick from it — the
+            settings without a group belong to that general section. */}
+        {showConnection && view.connection && (
           <GitHubConnection
             pluginId={plugin.pluginId}
             view={view.connection}
             scope={scope}
-          />
-        )}
-
-        {hasForm && (
-          <form
-            className={styles.form}
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (dirty) save();
-            }}
           >
-            {view.fields.map((field, i) => (
-              <Fragment key={field.key}>
-                {/* A group's heading, over the first of its settings. */}
-                {field.group && field.group !== view.fields[i - 1]?.group && (
-                  <GroupTitle
-                    title={field.group}
-                    icon={
-                      view.fields.find(
-                        (f) => f.group === field.group && f.groupIcon,
-                      )?.groupIcon
-                    }
-                  />
-                )}
-                <Field
-                  field={field}
-                  value={values[field.key]}
-                  disabled={isPending}
-                  onChange={(v) => set(field.key, v)}
-                />
-              </Fragment>
-            ))}
-            {view.state === "active" && <ErrorLine message={error} />}
-          </form>
+            {lead && fieldsForm(lead.fields, styles.lead)}
+          </GitHubConnection>
         )}
+        {lead && !showConnection && fieldsForm(lead.fields)}
+
+        {/* Each group of settings folds away under its heading. */}
+        {chunks.map((chunk) =>
+          chunk.group ? (
+            <FoldGroup
+              key={chunk.fields[0].key}
+              className={styles.group}
+              heading={<GroupTitle title={chunk.group} icon={chunk.icon} />}
+            >
+              {fieldsForm(chunk.fields)}
+            </FoldGroup>
+          ) : (
+            <Fragment key={chunk.fields[0].key}>
+              {fieldsForm(chunk.fields)}
+            </Fragment>
+          ),
+        )}
+        {hasForm && view.state === "active" && <ErrorLine message={error} />}
         {/* What a pull request and its checks do to the issues they work
             on — saved with the same button. */}
         {running &&
@@ -486,6 +502,32 @@ export function PluginSettings({
       </div>
     </>
   );
+}
+
+/** The settings in runs of the same group, each with the icon the first of
+ *  its group that has one gives it. */
+export function settingRuns(
+  fields: PluginSettingField[],
+): { group?: string; icon?: string; fields: PluginSettingField[] }[] {
+  const runs: {
+    group?: string;
+    icon?: string;
+    fields: PluginSettingField[];
+  }[] = [];
+  for (const field of fields) {
+    const last = runs.at(-1);
+    if (last && last.group === field.group) last.fields.push(field);
+    else
+      runs.push({
+        group: field.group,
+        icon: field.group
+          ? fields.find((f) => f.group === field.group && f.groupIcon)
+              ?.groupIcon
+          : undefined,
+        fields: [field],
+      });
+  }
+  return runs;
 }
 
 /** A group's heading, with the icon the plugin gave it. */

@@ -32,12 +32,6 @@
 }
 
 /* Heading and explanation belong to the card below, not the one before it. */
-.group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
 /* As under Labels: group heading above the card, not inside it. */
 .groupTitle {
   margin: 0;

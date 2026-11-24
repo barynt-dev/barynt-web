@@ -9,6 +9,7 @@ import { Chip } from "@/components/ui/atoms/Chip/Chip";
 import { ColorPicker } from "@/components/ui/atoms/ColorPicker/ColorPicker";
 import { CopyField } from "@/components/ui/atoms/CopyField/CopyField";
 import { Input } from "@/components/ui/atoms/Input/Input";
+import { FoldGroup } from "@/components/ui/layout/FoldGroup/FoldGroup";
 import { PageHeader } from "@/components/ui/layout/PageHeader/PageHeader";
 import { SettingsIdentity } from "@/components/ui/layout/SettingsIdentity/SettingsIdentity";
 import { Table, type TableColumn } from "@/components/ui/layout/Table/Table";
@@ -401,9 +402,13 @@ export function WorkspaceSettings({
           getRowKey={(row) => row.id}
         />
 
-        <section className={styles.group}>
-          <h2 className={styles.groupTitle}>{t("workspaceSettings.links")}</h2>
-
+        <FoldGroup
+          heading={
+            <h2 className={styles.groupTitle}>
+              {t("workspaceSettings.links")}
+            </h2>
+          }
+        >
           <div className={styles.linksRow}>
             {links.map((link) => (
               <Chip
@@ -435,12 +440,15 @@ export function WorkspaceSettings({
               </span>
             )}
           </div>
-        </section>
+        </FoldGroup>
 
-        <section className={styles.group}>
-          <h2 className={styles.groupTitle}>
-            {t("workspaceSettings.domains")}
-          </h2>
+        <FoldGroup
+          heading={
+            <h2 className={styles.groupTitle}>
+              {t("workspaceSettings.domains")}
+            </h2>
+          }
+        >
           <p className={styles.groupDesc}>
             {t("workspaceSettings.domainsDesc")}
           </p>
@@ -494,12 +502,15 @@ export function WorkspaceSettings({
               </span>
             )}
           </div>
-        </section>
+        </FoldGroup>
 
-        <section className={styles.group}>
-          <h2 className={styles.groupTitle}>
-            {t("workspaceSettings.content")}
-          </h2>
+        <FoldGroup
+          heading={
+            <h2 className={styles.groupTitle}>
+              {t("workspaceSettings.content")}
+            </h2>
+          }
+        >
           <Table
             variant="card"
             label={t("workspaceSettings.content")}
@@ -507,13 +518,16 @@ export function WorkspaceSettings({
             rows={content}
             getRowKey={(row) => row.id}
           />
-        </section>
+        </FoldGroup>
 
         {canDelete && (
-          <section className={styles.group}>
-            <h2 className={`${styles.groupTitle} ${styles.dangerTitle}`}>
-              {t("projectSettings.dangerZone")}
-            </h2>
+          <FoldGroup
+            heading={
+              <h2 className={`${styles.groupTitle} ${styles.dangerTitle}`}>
+                {t("projectSettings.dangerZone")}
+              </h2>
+            }
+          >
             <Table
               variant="card"
               className={styles.dangerCard}
@@ -522,7 +536,7 @@ export function WorkspaceSettings({
               rows={danger}
               getRowKey={(row) => row.id}
             />
-          </section>
+          </FoldGroup>
         )}
       </div>
     </>

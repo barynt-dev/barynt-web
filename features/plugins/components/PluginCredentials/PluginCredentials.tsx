@@ -6,6 +6,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import { Input } from "@/components/ui/atoms/Input/Input";
+import { FoldGroup } from "@/components/ui/layout/FoldGroup/FoldGroup";
 import {
   removePluginCredential,
   savePluginCredential,
@@ -34,8 +35,10 @@ export function PluginCredentials({
   const text = usePluginText();
   if (credentials.length === 0) return null;
   return (
-    <section className={styles.section} aria-labelledby="plugin-credentials">
-      <h2 id="plugin-credentials">{text.t("credentials")}</h2>
+    <FoldGroup
+      className={styles.section}
+      heading={<h2 id="plugin-credentials">{text.t("credentials")}</h2>}
+    >
       <p className={styles.hint}>
         {own ? text.t("credentialsHintOwn") : text.t("credentialsHint")}
       </p>
@@ -49,7 +52,7 @@ export function PluginCredentials({
           />
         ))}
       </ul>
-    </section>
+    </FoldGroup>
   );
 }
 

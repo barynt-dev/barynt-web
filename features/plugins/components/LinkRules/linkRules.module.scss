@@ -2,9 +2,8 @@
    target branches, and a row per rule with the status it sets. */
 
 .section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
+  // Its gap, for the body of the `FoldGroup` it is.
+  --fold-gap: 0.625rem;
 
   h2 {
     display: inline-flex;

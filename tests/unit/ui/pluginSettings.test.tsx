@@ -48,7 +48,10 @@ mock.module("@/components/ui/layout/ConfirmDialog/ConfirmDialog", () => ({
 }));
 mock.module("@/features/plugins/actions", () => pluginActionsMock());
 
-import { PluginSettings } from "@/features/plugins/components/PluginSettings/PluginSettings";
+import {
+  PluginSettings,
+  settingRuns,
+} from "@/features/plugins/components/PluginSettings/PluginSettings";
 import type { PluginSettingsView } from "@/features/plugins/queries";
 import { pluginActionsMock } from "./pluginActionsMock";
 
@@ -577,6 +580,35 @@ describe("PluginSettings", () => {
     expect(html.indexOf("Branches</h2>")).toBeGreaterThan(
       html.indexOf("repos"),
     );
+  });
+
+  it("folds each group away, the first without one in the general part", () => {
+    const field = (key: string, group?: string, groupIcon?: string) => ({
+      key,
+      type: "text" as const,
+      label: key,
+      description: null,
+      default: null,
+      options: [],
+      ...(group && { group }),
+      ...(groupIcon && { groupIcon }),
+    });
+    const runs = settingRuns([
+      field("repos"),
+      field("a", "Branches"),
+      field("b", "Branches", "lucide:git-branch"),
+      field("c", "Actions"),
+    ]);
+    expect(runs.map((r) => [r.group, r.icon, r.fields.length])).toEqual([
+      [undefined, undefined, 1],
+      ["Branches", "lucide:git-branch", 2],
+      ["Actions", undefined, 1],
+    ]);
+    const html = render(
+      view({ fields: [field("repos"), field("a", "Branches")] }),
+    );
+    expect(html.match(/<details/g)).toHaveLength(1);
+    expect(html).toContain("<summary");
   });
 
   it("asks again after an update wants more", () => {

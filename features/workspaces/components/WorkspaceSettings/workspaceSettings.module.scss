@@ -28,12 +28,6 @@
   @include card-rows.setting-rows;
 }
 
-.group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
 .groupTitle {
   margin: 0;
   font-size: var(--text-md);

@@ -3,6 +3,7 @@
 import { Icon } from "@iconify/react";
 import { NativeSelect } from "@/components/ui/atoms/NativeSelect/NativeSelect";
 import { Switch } from "@/components/ui/atoms/Switch/Switch";
+import { FoldGroup } from "@/components/ui/layout/FoldGroup/FoldGroup";
 import type { PluginInboundView } from "@/features/plugins/queries";
 import {
   type LinkTriggerGroup,
@@ -78,14 +79,15 @@ export function LinkRules({
   const basesId = `rules-bases-${hook.id}`;
 
   return (
-    <section
+    <FoldGroup
       className={styles.section}
-      aria-labelledby={`rules-${group}-${hook.id}`}
+      heading={
+        <h2 id={`rules-${group}-${hook.id}`}>
+          <Icon icon={GROUP[group].icon} width={17} aria-hidden />
+          {text.t(GROUP[group].title)}
+        </h2>
+      }
     >
-      <h2 id={`rules-${group}-${hook.id}`}>
-        <Icon icon={GROUP[group].icon} width={17} aria-hidden />
-        {text.t(GROUP[group].title)}
-      </h2>
       <p className={styles.hint}>{text.t(GROUP[group].hint)}</p>
 
       {pr && hook.viaApp && (
@@ -150,6 +152,6 @@ export function LinkRules({
           );
         })}
       </ul>
-    </section>
+    </FoldGroup>
   );
 }

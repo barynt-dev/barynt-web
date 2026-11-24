@@ -125,19 +125,23 @@
   gap: 1.125rem;
 }
 
-/* A group of settings: its heading, like the sections around the form. */
+/* A group of settings (`FoldGroup`): its heading, like the sections around
+   the form, and its fields as far below it as theirs. */
+.group {
+  --fold-gap: 0.625rem;
+}
+
+/* The general section's settings, set off from the connection above. */
+.lead {
+  margin-top: 0.75rem;
+}
+
 .groupTitle {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  // With the form's gap, as far from the group above as the sections are.
-  margin: calc(var(--settings-gap) - 1.125rem) 0 -0.25rem;
   font-size: var(--text-md);
   font-weight: 650;
-
-  &:first-child {
-    margin-top: 0;
-  }
 }
 
 .field {

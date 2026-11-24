@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { FoldGroup } from "@/components/ui/layout/FoldGroup/FoldGroup";
 import { Table, type TableColumn } from "@/components/ui/layout/Table/Table";
 import styles from "./settingsList.module.scss";
 
@@ -113,16 +114,19 @@ export function SettingsList({
   if (!title) return table;
 
   return (
-    <section className={styles.group}>
-      <h2
-        className={[styles.title, danger && styles.dangerTitle]
-          .filter(Boolean)
-          .join(" ")}
-      >
-        {title}
-      </h2>
+    <FoldGroup
+      heading={
+        <h2
+          className={[styles.title, danger && styles.dangerTitle]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {title}
+        </h2>
+      }
+    >
       {table}
-    </section>
+    </FoldGroup>
   );
 }
 
