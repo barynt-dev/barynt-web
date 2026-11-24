@@ -1,5 +1,6 @@
 import "server-only";
 import { getLocale } from "next-intl/server";
+import { cache } from "react";
 import {
   type GitHubAppAdminView,
   getConnectionView,
@@ -1291,9 +1292,6 @@ export interface PluginsAreaPlugin {
   /** Its workspace page opens (`plugin.enable` there, and something to
    *  set). */
   workspace: boolean;
-  /** On in the workspace itself — `null` for one that isn't switched on
-   *  there at all (only connected, for its projects). */
-  workspaceOn: boolean | null;
   /** The projects whose page for it opens — released for projects, and
    *  `plugin.enable` in each — with whether it's on there. */
   projects: (PluginsAreaProject & { on: boolean })[];
@@ -1304,7 +1302,9 @@ export interface PluginsAreaPlugin {
  * themselves, in a project, or in the workspace — each with those places,
  * sorted by name. `projects` are the ones the person can see.
  */
-export async function getPluginsArea(
+export const getPluginsArea = cache(pluginsArea);
+
+async function pluginsArea(
   workspaceId: string,
   projects: PluginsAreaProject[],
 ): Promise<PluginsAreaPlugin[]> {
@@ -1351,12 +1351,6 @@ export async function getPluginsArea(
         description: summary.description,
         personal: personal.some((p) => p.pluginId === r.pluginId),
         workspace: workspace.some((p) => p.pluginId === r.pluginId),
-        workspaceOn: summary.levels.includes("workspace")
-          ? isOn(
-              r.pluginId,
-              activationScopeKey({ workspaceId, projectId: null }),
-            )
-          : null,
         projects: forProjects
           ? manageable.map((p) => ({
               ...p,

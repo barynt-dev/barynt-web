@@ -70,7 +70,7 @@ Der Store zeigt alle Plugins, die deine Plattform-Admins installiert haben, mit 
 
 ### Die Einstellungen der Plugins
 
-**Plugins** im Umschalter oben in den Einstellungen enthält links jedes Plugin, das du in diesem Workspace einstellen kannst. Die **Übersicht** zeigt eine Karte pro Plugin: was es ist und wo es an ist – für dich, in wie vielen Projekten, im Workspace –, jeweils als Link zu dieser Seite.
+**Plugins** im Umschalter oben in den Einstellungen listet links jedes Plugin, das du in diesem Workspace einstellen kannst, und öffnet das erste; **Mehr im Store** darunter führt zum Store. Gibt es kein Plugin einzustellen, fehlt der Eintrag im Umschalter.
 
 Die Seite eines Plugins hat unter dem Namen Tabs: **Persönlich** (was es von dir selbst braucht, etwa ein eigenes Token), **Projekt** und **Workspace** – nur die, die es hat und die du öffnen darfst. Bei **Projekt** wählst du rechts das Projekt, bei **Workspace** einen anderen deiner Workspaces. Das Plugin öffnet in einem Projekt, in dem es an ist, sonst im Workspace.
 

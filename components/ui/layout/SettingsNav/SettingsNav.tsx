@@ -62,6 +62,8 @@ interface Props {
    *  plugins switched on here that have settings, say. Empty ones aren't
    *  passed. */
   groups?: SettingsNavSection[];
+  /** Below the sections — a link out of the nav, say. */
+  footer?: ReactNode;
 }
 
 /**
@@ -91,6 +93,7 @@ export function SettingsNav({
   title,
   items,
   groups = [],
+  footer,
 }: Props) {
   // The header only becomes a switcher when there's something to switch
   // between: one's own account has no siblings, and a single project isn't
@@ -125,6 +128,7 @@ export function SettingsNav({
       <SettingsNavSections
         sections={[...sectionsOf(items, title), ...groups]}
       />
+      {footer}
     </nav>
   );
 }

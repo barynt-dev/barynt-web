@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { Icon } from "@iconify/react";
+import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { SettingsHeader } from "@/components/ui/layout/SettingsHeader/SettingsHeader";
 import { SettingsBody } from "@/components/ui/layout/SettingsNav/SettingsBody";
@@ -20,8 +21,14 @@ import {
   getMyWorkspaces,
   getWorkspaceProjects,
 } from "@/features/workspaces/queries";
+import { Link } from "@/i18n/navigation";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
-import { pluginPath, pluginStorePath, pluginsPath } from "@/lib/nav";
+import {
+  accountPath,
+  pluginPath,
+  pluginStorePath,
+  pluginsPath,
+} from "@/lib/nav";
 import { getAccess } from "@/lib/permissions";
 import styles from "./plugins.module.scss";
 
@@ -83,33 +90,17 @@ export default async function PluginsLayout({
     href: pluginsPath(ws.id),
   }));
 
-  const items: SettingsNavItem[] = [
-    {
-      href: pluginsPath(workspace),
-      label: t("plugins.area.overview"),
-      icon: "lucide:layout-grid",
-      start: true,
-    },
-    ...plugins.map((p) => ({
-      href: pluginPath(workspace, p.pluginId),
-      activeHref: `${pluginPath(workspace, p.pluginId)}/*`,
-      label: p.name,
-      icon: "lucide:puzzle",
-      leading: <PluginTile id={p.pluginId} name={p.name} size="sm" />,
-      group: t("plugins.area.title"),
-    })),
-    // Where the next one comes from.
-    ...(store
-      ? [
-          {
-            href: pluginStorePath(workspace, {}),
-            label: t("plugins.area.moreInStore"),
-            icon: "lucide:store",
-            group: t("plugins.area.title"),
-          },
-        ]
-      : []),
-  ];
+  // Nothing to set here: the area isn't offered (`settingsScope`), and an
+  // old link lands on your own settings.
+  if (plugins.length === 0) redirect(accountPath(workspace, ""));
+
+  const items: SettingsNavItem[] = plugins.map((p) => ({
+    href: pluginPath(workspace, p.pluginId),
+    activeHref: `${pluginPath(workspace, p.pluginId)}/*`,
+    label: p.name,
+    icon: "lucide:puzzle",
+    leading: <PluginTile id={p.pluginId} name={p.name} size="sm" />,
+  }));
 
   return (
     <div className={styles.shell}>
@@ -135,8 +126,21 @@ export default async function PluginsLayout({
             image={current.avatarUrl ?? undefined}
             siblings={siblings}
             siblingsLabel={t("settings.scopeWorkspace")}
-            title={t("plugins.area.general")}
+            title={t("plugins.area.title")}
             items={items}
+            // Where the next one comes from — a way out, not a page here.
+            footer={
+              store && (
+                <Link
+                  href={pluginStorePath(workspace, {})}
+                  className={styles.storeLink}
+                >
+                  <Icon icon="lucide:store" width={15} aria-hidden />
+                  {t("plugins.area.moreInStore")}
+                  <Icon icon="lucide:arrow-right" width={14} aria-hidden />
+                </Link>
+              )
+            }
           />
           <div className={styles.panel} data-settings-panel>
             {children}

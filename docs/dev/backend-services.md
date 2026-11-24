@@ -311,7 +311,7 @@ in the **Plugins** area (`/<workspace>/plugins`, BARY-238), the switcher's entry
 the store: `getPluginsArea` lists every plugin the person can set somewhere — their own
 credentials (`getUserCredentialPluginsNav`), the workspace's (`getPluginSettingsNav`
 without a project: running there with a form, a credential or a connection) and the
-projects' (every granted plugin, in each project with `plugin.enable`). A plugin's pages
+projects' (every granted plugin, in each project with `plugin.enable`); without any, the switcher leaves the area out (`settingsScope`). A plugin's pages
 are its levels, `plugins/<pluginId>/personal`, `…/project/<slug>` and `…/workspace`
 (`pluginPath`), with `PluginLevels` as tabs under the header and the project or
 workspace to pick; `plugins/<pluginId>` opens the one `lib/plugins/levels#defaultLevel`

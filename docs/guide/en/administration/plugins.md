@@ -70,7 +70,7 @@ The store lists every plugin your platform admin installed, with search, categor
 
 ### The plugins' settings
 
-**Plugins**, in the switcher at the top of the settings, holds every plugin you can set up in this workspace, on the left. Its **Overview** shows a card per plugin: what it is, and where it's on — for you, in how many projects, in the workspace — each a link to that page.
+**Plugins**, in the switcher at the top of the settings, lists every plugin you can set up in this workspace on the left, and opens the first; **More in the store** below them leads to the store. Without any plugin to set up, the switcher leaves it out.
 
 A plugin's page has tabs under its name: **Personal** (what it asks you yourself for, like a token of your own), **Project** and **Workspace** — only the ones it has, and that you may open. On **Project**, pick the project at the right; on **Workspace**, another workspace of yours. The plugin opens on a project it's on in, else on the workspace.
 

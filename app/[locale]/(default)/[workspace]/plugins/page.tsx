@@ -1,16 +1,16 @@
 import { redirect } from "next/navigation";
-import { PluginsOverview } from "@/features/plugins/components/PluginsOverview/PluginsOverview";
-import { canUsePluginStore, getPluginsArea } from "@/features/plugins/queries";
+import { PluginsStart } from "@/features/plugins/components/PluginsStart/PluginsStart";
+import { getPluginsArea } from "@/features/plugins/queries";
 import { getWorkspaceProjects } from "@/features/workspaces/queries";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
-import { pluginStorePath } from "@/lib/nav";
+import { pluginPath, pluginStorePath } from "@/lib/nav";
 
 export const dynamic = "force-dynamic";
 
 /**
- * The plugins' start page (BARY-238): every plugin, where it's on and
- * what's set for it — and the way to the store. The store lived at this
- * address before: a link of then (`?plugin=`, `?category=`) goes there.
+ * The plugins' start (BARY-238): on a phone the list of them (the layout's
+ * nav), everywhere else the first one. The store lived at this address
+ * before: a link of then (`?plugin=`, `?category=`) goes there.
  */
 export default async function PluginsPage({
   params,
@@ -24,18 +24,8 @@ export default async function PluginsPage({
   if (query.plugin || query.category || query.tab)
     redirect(pluginStorePath(workspace, query));
   setCurrentWorkspaceId(workspace);
-
-  const [plugins, store] = await Promise.all([
-    getWorkspaceProjects().then((projects) =>
-      getPluginsArea(workspace, projects),
-    ),
-    canUsePluginStore(workspace),
-  ]);
-  return (
-    <PluginsOverview
-      workspaceId={workspace}
-      plugins={plugins}
-      storeHref={store ? pluginStorePath(workspace, {}) : null}
-    />
-  );
+  const [first] = await getPluginsArea(workspace, await getWorkspaceProjects());
+  // None: the layout has sent you on already.
+  if (!first) return null;
+  return <PluginsStart href={pluginPath(workspace, first.pluginId)} />;
 }

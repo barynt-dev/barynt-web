@@ -1,5 +1,6 @@
 import "server-only";
-import { canUsePluginStore } from "@/features/plugins/queries";
+import { canUsePluginStore, getPluginsArea } from "@/features/plugins/queries";
+import { getWorkspaceProjects } from "@/features/workspaces/queries";
 import {
   PROJECT_SETTINGS_PERMISSIONS,
   settingsScopeItems,
@@ -16,8 +17,8 @@ type Access = Awaited<ReturnType<typeof getAccess>>;
  * The settings' top row (Personal, Project, Workspace, Plugins, Store) as
  * this person may open it — one place for every area's layout, so the
  * tabs read alike wherever you are. `project` is the one "Project" leads
- * to: the open one, else the first. Plugins is always there: what isn't
- * set up yet, it says where to find.
+ * to: the open one, else the first. Plugins only while there's a plugin
+ * this person can set somewhere.
  */
 export async function settingsScope(
   t: T,
@@ -46,7 +47,9 @@ export async function settingsScope(
       project: projectAccess
         ? PROJECT_SETTINGS_PERMISSIONS.some(projectAccess.has)
         : false,
-      plugins: true,
+      plugins:
+        (await getPluginsArea(workspaceId, await getWorkspaceProjects()))
+          .length > 0,
       store: await canUsePluginStore(workspaceId),
     },
   );

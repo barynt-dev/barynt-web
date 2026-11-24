@@ -3123,25 +3123,13 @@
     },
     "area": {
       "title": "Plugins",
-      "intro": "Every plugin of this workspace in one place — for you, for projects and for the workspace.",
-      "empty": "No plugins yet",
-      "emptyHint": "The store has plugins you can release for this workspace.",
-      "emptyNoStore": "Once a plugin is released for this workspace, you can set it up here.",
-      "openStore": "Open the store",
       "moreInStore": "More in the store",
       "levels": "Level",
       "personal": "Personal",
       "project": "Project",
       "workspace": "Workspace",
-      "personalHint": "Your own credentials",
-      "on": "On",
-      "off": "Off",
-      "projectsOn": "{on, plural, =0 {On in no project} one {On in # of {count} projects} other {On in # of {count} projects}}",
-      "open": "Open",
       "pickProject": "Project",
-      "pickWorkspace": "Workspace",
-      "overview": "Overview",
-      "general": "General"
+      "pickWorkspace": "Workspace"
     }
   }
 }
