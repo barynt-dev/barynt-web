@@ -210,7 +210,7 @@ try {
   const mergeRequests = res.json<{ iid: number; title: string }[]>();
 } catch (error) {
   if (error instanceof BaryntError && error.code === "credential_missing")
-    showHint("Keep your GitLab token in your personal settings → Plugins.");
+    showHint("Keep your GitLab token under Settings → Plugins, tab Personal.");
   else throw error;
 }
 ```

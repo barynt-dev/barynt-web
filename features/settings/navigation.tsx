@@ -15,6 +15,7 @@ import {
   navEntryAllowed,
   PROJECT_SETTINGS_NAV,
   PROJECT_SETTINGS_PERMISSIONS,
+  pluginPath,
   pluginSettingsPath,
   projectSettingsPath,
   SEARCHABLE_SETTINGS,
@@ -148,7 +149,7 @@ export async function accountNav(t: T, workspaceId: string): Promise<ScopeNav> {
   return {
     items: rowsOf(t, "account", entries, href),
     ...pluginNav(t, await getUserCredentialPluginsNav(workspaceId), (id) =>
-      accountPath(workspaceId, `plugins/${id}`),
+      pluginPath(workspaceId, id, { kind: "personal" }),
     ),
     settings: settingRowsOf(t, "account", entries, href),
   };

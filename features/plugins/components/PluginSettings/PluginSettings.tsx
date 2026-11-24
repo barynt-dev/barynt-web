@@ -3,7 +3,13 @@
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { Fragment, useRef, useState, useTransition } from "react";
+import {
+  Fragment,
+  type ReactNode,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import { Input } from "@/components/ui/atoms/Input/Input";
 import { NativeSelect } from "@/components/ui/atoms/NativeSelect/NativeSelect";
@@ -73,11 +79,14 @@ export function PluginSettings({
   view,
   scope,
   viewsHref,
+  subnav,
 }: {
   view: PluginSettingsView;
   scope: { workspaceId: string; projectId: string | null };
   /** Where the plugin's project views open, `<viewsHref>/<viewId>`. */
   viewsHref?: string;
+  /** Under the header: its levels, in the plugins' area (BARY-238). */
+  subnav?: ReactNode;
 }) {
   const t = useTranslations();
   const text = usePluginText();
@@ -282,6 +291,7 @@ export function PluginSettings({
       <PageHeader
         leading={<PluginTile id={plugin.pluginId} name={plugin.name} />}
         title={plugin.name}
+        divider={!subnav}
         description={`${plugin.author} · v${plugin.version}`}
         actions={
           <>
@@ -314,6 +324,7 @@ export function PluginSettings({
           </>
         }
       />
+      {subnav}
       <div className={styles.page}>
         {/* Off here, or an update asks for more: what it may do, confirmed. */}
         {/* A workspace that only connects for its projects (BARY-238)

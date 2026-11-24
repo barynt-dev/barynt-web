@@ -12,6 +12,9 @@ export type { SettingsNavSubject };
 
 export interface SettingsNavItem {
   href: string;
+  /** Marks it active beyond its own address — `…/github/*` for a page
+   *  with pages under it. */
+  activeHref?: string;
   label: string;
   icon: string;
   /** A mark of its own in place of `icon` — a plugin's tile, say. */

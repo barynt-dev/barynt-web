@@ -1268,3 +1268,105 @@ export async function getWorkspaceApps(
       : [],
   );
 }
+
+// ─── The plugins' area (BARY-238) ────────────────────────────────────────────
+
+/** A project a plugin's project level can open. */
+export interface PluginsAreaProject {
+  id: string;
+  slug: string;
+  name: string;
+  color: string;
+  avatarUrl: string | null;
+}
+
+/** A plugin in the plugins' area: where this person can set it, and where
+ *  it's on. */
+export interface PluginsAreaPlugin {
+  pluginId: string;
+  name: string;
+  description: string;
+  /** Asks each person for a credential of their own. */
+  personal: boolean;
+  /** Its workspace page opens (`plugin.enable` there, and something to
+   *  set). */
+  workspace: boolean;
+  /** On in the workspace itself — `null` for one that isn't switched on
+   *  there at all (only connected, for its projects). */
+  workspaceOn: boolean | null;
+  /** The projects whose page for it opens — released for projects, and
+   *  `plugin.enable` in each — with whether it's on there. */
+  projects: (PluginsAreaProject & { on: boolean })[];
+}
+
+/**
+ * Every plugin this person can set somewhere in the workspace — for
+ * themselves, in a project, or in the workspace — each with those places,
+ * sorted by name. `projects` are the ones the person can see.
+ */
+export async function getPluginsArea(
+  workspaceId: string,
+  projects: PluginsAreaProject[],
+): Promise<PluginsAreaPlugin[]> {
+  const locale = await getLocale();
+  const [personal, canWorkspace, manageable] = await Promise.all([
+    getUserCredentialPluginsNav(workspaceId),
+    hasPermission("plugin.enable", { workspaceId }),
+    Promise.all(
+      projects.map(async (p) =>
+        (await hasPermission("plugin.enable", { projectId: p.id })) ? p : null,
+      ),
+    ).then((list) => list.filter((p) => p !== null)),
+  ]);
+  const [workspace, released] = await Promise.all([
+    canWorkspace ? getPluginSettingsNav({ workspaceId, projectId: null }) : [],
+    // What's released for projects is the same for each of them.
+    manageable[0]
+      ? getPluginSettingsNav({ workspaceId, projectId: manageable[0].id })
+      : [],
+  ]);
+  const ids = [
+    ...new Set([...personal, ...workspace, ...released].map((p) => p.pluginId)),
+  ];
+  if (ids.length === 0) return [];
+  const [rows, on] = await Promise.all([
+    db.plugin.findMany({
+      where: { pluginId: { in: ids }, status: "active" },
+      select: { pluginId: true, manifest: true },
+    }),
+    db.pluginActivation.findMany({
+      where: { workspaceId, pluginId: { in: ids }, enabled: true },
+      select: { pluginId: true, scopeKey: true },
+    }),
+  ]);
+  const isOn = (pluginId: string, scopeKey: string) =>
+    on.some((a) => a.pluginId === pluginId && a.scopeKey === scopeKey);
+  return rows
+    .map((r) => {
+      const summary = summaryOf(r.pluginId, r.manifest, undefined, locale);
+      const forProjects = released.some((p) => p.pluginId === r.pluginId);
+      return {
+        pluginId: r.pluginId,
+        name: summary.name,
+        description: summary.description,
+        personal: personal.some((p) => p.pluginId === r.pluginId),
+        workspace: workspace.some((p) => p.pluginId === r.pluginId),
+        workspaceOn: summary.levels.includes("workspace")
+          ? isOn(
+              r.pluginId,
+              activationScopeKey({ workspaceId, projectId: null }),
+            )
+          : null,
+        projects: forProjects
+          ? manageable.map((p) => ({
+              ...p,
+              on: isOn(
+                r.pluginId,
+                activationScopeKey({ workspaceId, projectId: p.id }),
+              ),
+            }))
+          : [],
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}

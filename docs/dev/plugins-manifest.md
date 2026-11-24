@@ -476,7 +476,7 @@ to the plugin's requests to that host itself. **The plugin never sees it.**
 | `key` | Starts with a letter: letters, digits, `_`, up to 40 characters. |
 | `label` | Up to 60 characters, shown above the field. |
 | `description` | Optional, up to 300 characters. |
-| `level` | Who keeps it, and for whom it counts: `workspace` (a workspace manager, once for the workspace — the plugin needs the `workspace` level), `project` (a project admin, per project — needs `project`), or `user` (each person their own, in their personal settings). |
+| `level` | Who keeps it, and for whom it counts: `workspace` (a workspace manager, once for the workspace — the plugin needs the `workspace` level), `project` (a project admin, per project — needs `project`), or `user` (each person their own, on the plugin's **Personal** tab under **Plugins**). |
 | `host` | The host it's sent to. Must be in `network`. |
 | `header` | The header it goes in. `Authorization` by default; not `Cookie`, `Host`, `Content-Length` or `Transfer-Encoding`. |
 | `format` | How the value is written into the header, with `{value}` where it goes. `Bearer {value}` by default. |

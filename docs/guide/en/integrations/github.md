@@ -17,16 +17,16 @@ The **GitHub** plugin brings a repository's work onto the issues it is about. A 
 Barynt connects to GitHub through a **GitHub App** of its own, the way Linear or Plane do: it's installed once on your organization, where you choose which repositories it may see, and GitHub then reports to Barynt by itself. Nobody adds a webhook per repository or keeps a token for the team.
 
 1. **Once per Barynt (platform admin):** install **GitHub** under **Admin → Plugins**. In its page, the card **GitHub App** creates the app: optionally name the organization to create it under, click **Create on GitHub**, check what it asks for and confirm. GitHub hands Barynt the app's keys; nothing to copy. (Or set `GITHUB_APP_*` in the environment for an app you created yourself.)
-2. **Release it:** a workspace admin releases GitHub in the workspace's plugin store.
-3. **Connect:** under **Workspace settings → Plugins → GitHub**, click **Connect GitHub**. GitHub asks you to sign in, then to install the app on an account and pick its repositories — or, if it's installed already, Barynt lists the accounts you can reach. A connection in the workspace counts for **every project** in it. A project can also connect an account of its own under **Project settings → Plugins → GitHub**.
-4. **In the project:** under **Project settings → Plugins → GitHub**, confirm what it may do and switch it on. **Repositories** now lists everything the connected accounts share: tick the ones this project works with and save.
+2. **Release it:** a workspace admin releases GitHub in the **Store**, in the settings.
+3. **Connect:** under **Settings → Plugins → GitHub → Workspace**, click **Connect GitHub**. GitHub asks you to sign in, then to install the app on an account and pick its repositories — or, if it's installed already, Barynt lists the accounts you can reach. A connection in the workspace counts for **every project** in it. A project can also connect an account of its own on the **Project** tab there.
+4. **In the project:** under **Settings → Plugins → GitHub → Project**, pick the project at the right, confirm what it may do and switch it on. **Repositories** now lists everything the connected accounts share: tick the ones this project works with and save.
 
 That's it: pull requests, branches, commits and checks of those repositories come in on their own. To give the app more or fewer repositories later, use **Change repositories on GitHub** beside the account.
 
 > [!NOTE]
 > GitHub has to reach Barynt for its reports, at `<your address>/api/github/webhook`. On an instance only reachable inside your network (or `localhost`), the app is created without a webhook: connecting and picking repositories work, but pull requests and checks don't arrive.
 
-**Your own token (optional):** keep a fine-grained GitHub token under **personal settings → Plugins → GitHub** (_Contents_ read and write, _Pull requests_ and _Checks_ read) to have branches named after your GitHub login and to see who reviewed. Without one, the plugin works through the connection — and then only on the repositories the project ticked.
+**Your own token (optional):** keep a fine-grained GitHub token under **Settings → Plugins → GitHub → Personal** (_Contents_ read and write, _Pull requests_ and _Checks_ read) to have branches named after your GitHub login and to see who reviewed. Without one, the plugin works through the connection — and then only on the repositories the project ticked.
 
 **Without the app:** as before, type the repositories (`owner/repo`, one per line), add the webhook from the card **Webhooks from other services** in GitHub's repository settings, and keep a token each. With a connection, that card isn't shown: GitHub reports through the app.
 

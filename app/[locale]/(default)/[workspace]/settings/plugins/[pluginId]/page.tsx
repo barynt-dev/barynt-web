@@ -1,21 +1,21 @@
-import { notFound } from "next/navigation";
-import { PluginSettings } from "@/features/plugins/components/PluginSettings/PluginSettings";
-import { getPluginSettingsView } from "@/features/plugins/queries";
-import { setCurrentWorkspaceId } from "@/lib/current-workspace";
+import { redirect } from "next/navigation";
+import { pluginPath, withQuery } from "@/lib/nav";
 
-export const dynamic = "force-dynamic";
-
-/** A switched-on plugin's settings in the workspace (BARY-201) —
- *  `plugin.enable` here, and a settings form in its manifest. */
+/** A plugin's workspace settings moved to the plugins' area (BARY-238). */
 export default async function WorkspacePluginSettingsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspace: string; pluginId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { workspace, pluginId } = await params;
-  setCurrentWorkspaceId(workspace);
-  const scope = { workspaceId: workspace, projectId: null };
-  const view = await getPluginSettingsView(scope, pluginId);
-  if (!view) notFound();
-  return <PluginSettings view={view} scope={scope} />;
+  redirect(
+    withQuery(
+      pluginPath(workspace, decodeURIComponent(pluginId), {
+        kind: "workspace",
+      }),
+      await searchParams,
+    ),
+  );
 }

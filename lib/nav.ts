@@ -656,7 +656,12 @@ export function accountPath(workspaceId: string, section: string): string {
  * workspace, what applies to a project, and what only concerns you
  * yourself.
  */
-export type SettingsScopeKey = "workspace" | "project" | "account" | "store";
+export type SettingsScopeKey =
+  | "workspace"
+  | "project"
+  | "account"
+  | "plugins"
+  | "store";
 
 export interface SettingsScopeEntry {
   key: SettingsScopeKey;
@@ -720,6 +725,14 @@ export function settingsScopeItems({
       icon: "lucide:building-2",
       href: workspaceSettingsPath(workspaceId, ""),
     },
+    // Every plugin's settings in one place (BARY-238): each with its own
+    // levels — personal, a project's, the workspace's — side by side.
+    {
+      key: "plugins",
+      label: labels.plugins,
+      icon: "lucide:puzzle",
+      href: pluginsPath(workspaceId),
+    },
     // The plugins a workspace or its projects can switch on (BARY-201) —
     // not a level of settings but what's on offer for all of them.
     {
@@ -731,7 +744,7 @@ export function settingsScopeItems({
   ];
 }
 
-/** The workspace's plugin store — `/<workspaceId>/plugins`, with the open
+/** The workspace's plugin store — `/<workspaceId>/store`, with the open
  *  plugin and tab in the address. */
 export function pluginStorePath(
   workspaceId: string,
@@ -742,7 +755,48 @@ export function pluginStorePath(
   if (to.tab && to.tab !== "overview") params.set("tab", to.tab);
   if (to.category) params.set("category", to.category);
   const query = params.toString();
-  return `/${workspaceId}/plugins${query ? `?${query}` : ""}`;
+  return `/${workspaceId}/store${query ? `?${query}` : ""}`;
+}
+
+/** The plugins' settings (BARY-238) — `/<workspaceId>/plugins`: every
+ *  plugin, each with its levels. */
+export function pluginsPath(workspaceId: string): string {
+  return `/${workspaceId}/plugins`;
+}
+
+/** Where a plugin is set: for you yourself, in a project, or in the
+ *  workspace. */
+export type PluginLevel =
+  | { kind: "personal" }
+  | { kind: "workspace" }
+  | { kind: "project"; slug: string };
+
+/** A plugin's page in the plugins' settings — without a level, the one
+ *  it opens on. */
+export function pluginPath(
+  workspaceId: string,
+  pluginId: string,
+  level?: PluginLevel,
+): string {
+  const base = `${pluginsPath(workspaceId)}/${encodeURIComponent(pluginId)}`;
+  if (!level) return base;
+  return level.kind === "project"
+    ? `${base}/project/${level.slug}`
+    : `${base}/${level.kind}`;
+}
+
+/** An address with a query carried over — a redirect that keeps what was
+ *  asked (`?github=connected` back from GitHub, say). */
+export function withQuery(
+  path: string,
+  query: Record<string, string | string[] | undefined>,
+): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query))
+    for (const v of Array.isArray(value) ? value : [value])
+      if (v !== undefined) params.append(key, v);
+  const rest = params.toString();
+  return rest ? `${path}?${rest}` : path;
 }
 
 /** A switched-on plugin's settings in a workspace or project. */
@@ -751,9 +805,13 @@ export function pluginSettingsPath(
   projectSlug: string | null,
   pluginId: string,
 ): string {
-  return projectSlug
-    ? projectSettingsPath(workspaceId, projectSlug, `plugins/${pluginId}`)
-    : workspaceSettingsPath(workspaceId, `plugins/${pluginId}`);
+  return pluginPath(
+    workspaceId,
+    pluginId,
+    projectSlug
+      ? { kind: "project", slug: projectSlug }
+      : { kind: "workspace" },
+  );
 }
 
 /**
@@ -768,7 +826,12 @@ export function pluginSettingsPath(
  */
 export function visibleSettingsScope(
   items: SettingsScopeEntry[],
-  allowed: { workspace: boolean; project: boolean; store: boolean },
+  allowed: {
+    workspace: boolean;
+    project: boolean;
+    plugins: boolean;
+    store: boolean;
+  },
 ): VisibleSettingsScopeEntry[] {
   return items.filter((item): item is VisibleSettingsScopeEntry => {
     if (!item.href) return false;

@@ -10,24 +10,18 @@ import {
   SettingsSearchField,
   SettingsSearchProvider,
 } from "@/components/ui/layout/SettingsNav/SettingsSearch";
-import { canUsePluginStore } from "@/features/plugins/queries";
 import {
   settingsSearchIndex,
   workspaceNav,
 } from "@/features/settings/navigation";
+import { settingsScope } from "@/features/settings/scope";
 import {
   getCurrentWorkspace,
   getMyWorkspaces,
   getWorkspaceProjects,
 } from "@/features/workspaces/queries";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
-import {
-  PROJECT_SETTINGS_PERMISSIONS,
-  settingsScopeItems,
-  visibleSettingsScope,
-  WORKSPACE_SETTINGS_PERMISSIONS,
-  workspaceSettingsPath,
-} from "@/lib/nav";
+import { workspaceSettingsPath } from "@/lib/nav";
 import { getAccess } from "@/lib/permissions";
 import styles from "./settings.module.scss";
 
@@ -84,25 +78,12 @@ export default async function WorkspaceSettingsLayout({
     ? await getAccess({ projectId: firstProject.id })
     : null;
 
-  const scope = visibleSettingsScope(
-    settingsScopeItems({
-      workspaceId: workspace,
-      projectSlug: firstProject?.slug,
-      labels: {
-        workspace: t("settings.scopeWorkspace"),
-        project: t("settings.scopeProject"),
-        account: t("settings.scopeAccount"),
-        store: t("settings.scopeStore"),
-      },
-    }),
-    {
-      workspace: WORKSPACE_SETTINGS_PERMISSIONS.some(access.has),
-      project: projectAccess
-        ? PROJECT_SETTINGS_PERMISSIONS.some(projectAccess.has)
-        : false,
-      store: await canUsePluginStore(workspace),
-    },
-  );
+  const scope = await settingsScope(t, {
+    workspaceId: workspace,
+    project: firstProject ?? null,
+    workspaceAccess: access,
+    projectAccess,
+  });
 
   // Roles and members are the only sections with their own gate (`role.manage`
   // and `member.view` respectively) — the rest stay visible even without
@@ -145,11 +126,6 @@ export default async function WorkspaceSettingsLayout({
             siblingsLabel={t("settings.scopeWorkspace")}
             title={t("nav.settings")}
             items={nav.items}
-            groups={
-              nav.plugins.length > 0
-                ? [{ title: t("nav.plugins"), items: nav.plugins }]
-                : undefined
-            }
           />
           <div className={styles.panel} data-settings-panel>
             {children}

@@ -122,11 +122,10 @@ describe("ScopeStore", () => {
     const html = render(view(), base);
     expect(html).toContain("unrelease");
     expect(html).toContain("releasedIn");
-    // Its workspace settings, and the project it's on in.
-    expect(html).toContain('href="/ws-1/settings/plugins/timeline"');
-    expect(html).toContain(
-      'href="/ws-1/project/web-app/settings/plugins/timeline"',
-    );
+    // Its workspace settings, and the project it's on in — in the
+    // plugins' area (BARY-238).
+    expect(html).toContain('href="/ws-1/plugins/timeline/workspace"');
+    expect(html).toContain('href="/ws-1/plugins/timeline/project/web-app"');
   });
 
   it("only offers to release it while it isn't", () => {

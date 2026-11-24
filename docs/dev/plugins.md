@@ -38,8 +38,8 @@ Most of this section is about **sandbox** plugins, written with the
    and keeps the files itself — nothing is loaded from your repository at
    runtime.
 4. **A workspace manager** releases the plugin for the workspace in the
-   plugin store, after reading what it may do.
-5. **A project admin** switches it on in the project's settings and confirms
+   store, after reading what it may do.
+5. **A project admin** switches it on under **Plugins**, on its **Project** tab, and confirms
    its capabilities for that project. From then on it runs there.
 
 An update that asks for more capabilities waits until it's confirmed again,

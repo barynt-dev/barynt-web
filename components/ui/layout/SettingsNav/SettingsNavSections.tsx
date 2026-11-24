@@ -43,7 +43,7 @@ export function SettingsNavSections({
                 <li key={item.href}>
                   <NavLink
                     href={settingsHref(item)}
-                    activeHref={item.href}
+                    activeHref={item.activeHref ?? item.href}
                     icon={item.icon}
                     leading={item.leading}
                     label={item.label}
