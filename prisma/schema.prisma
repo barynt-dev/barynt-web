@@ -180,6 +180,7 @@ model User {
   projectMemberships      ProjectMember[]
   createdProjects         Project[]                      @relation("ProjectCreator")
   accounts                Account[]
+  githubLink              GitHubUserLink?
   sessions                Session[]
   authenticators          Authenticator[]
   invitations             Invitation[]
@@ -2319,6 +2320,23 @@ model PluginConnection {
   @@unique([pluginId, scopeKey, installationId])
   @@index([installationId])
   @@index([workspaceId])
+}
+
+/// Das GitHub-Konto einer Person, verknüpft über die GitHub App der Instanz
+/// (BARY-238): Plugins, die mit GitHub arbeiten, handeln damit in ihrem Namen.
+/// Der Token läuft nach Stunden ab; der Refresh-Token holt einen neuen.
+model GitHubUserLink {
+  userId           String    @id
+  githubId         String
+  login            String
+  avatar           String?
+  accessCipher     String
+  refreshCipher    String?
+  expiresAt        DateTime?
+  refreshExpiresAt DateTime?
+  connectedAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 /// Schlüssel-Wert-Speicher eines Plugins (`storage:own`), je Aktivierung

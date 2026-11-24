@@ -263,7 +263,7 @@ export function GitHubConnection({
   );
 }
 
-function Account({
+export function Account({
   account,
   avatar,
   meta,

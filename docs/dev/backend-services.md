@@ -468,6 +468,17 @@ request and response headers are allow-listed, 10 s and 2 MB. Credentials
 with `plugin.enable` there and an audit entry), and deleting a plugin's data in a place
 deletes its credentials there too.
 
+Without one of its own, a request of a plugin that connects to GitHub (BARY-238) goes —
+about a repository the place chose — with the token of the connection that reaches it
+(`connectionFor`), and anything else to `api.github.com` as the person
+(`features/github/user-link.ts#userGitHubToken`): their account linked on the plugin's
+Personal tab (`GitHubUserLink`, through the instance's app — `/api/github/link`, back
+through `/api/github/callback` with a `link` state; tokens sealed with purpose
+`github-user` and renewed with the refresh token shortly before they run out), else the
+GitHub account they sign in with (`Account`, provider `github`) where its token reaches
+repositories (`lib/github/app#loginTokenReaches`: signing in through the app itself, or
+the `repo` scope).
+
 ## Smaller pieces
 
 | Piece | File | What it does |

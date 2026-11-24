@@ -3045,7 +3045,8 @@
         "requested": "GitHub hat die Eigentümer der Organisation gebeten, die App zu installieren. Verbinde erneut, sobald sie das getan haben.",
         "failed": "GitHub hat die Verbindung nicht bestätigt. Versuch es noch einmal.",
         "not_yours": "Diese Installation ist für dein GitHub-Konto nicht erreichbar. Sie wurde deshalb nicht verbunden.",
-        "no_app": "Diese Barynt-Instanz hat noch keine GitHub App."
+        "no_app": "Diese Barynt-Instanz hat noch keine GitHub App.",
+        "linked": "Dein GitHub-Konto ist verbunden."
       },
       "typeRepos": "owner/repo, eins pro Zeile. Wenn du oben GitHub verbindest, kannst du sie stattdessen aus einer Liste wählen.",
       "searchRepos": "Repositories durchsuchen",
@@ -3080,7 +3081,15 @@
         "actions": "Actions schreiben",
         "deployments": "Deployments lesen",
         "metadata": "Metadaten lesen"
-      }
+      },
+      "meTitle": "Dein GitHub-Konto",
+      "meHint": "Verbinde dein GitHub-Konto, damit Plugins in deinem Namen arbeiten – etwa Branches mit deinem Login benennen. Repositories des Projekts erreichen sie weiter über seine Verbindung.",
+      "meLinked": "Verbunden",
+      "meViaLogin": "Über deine Anmeldung mit GitHub",
+      "meExpired": "Abgelaufen – verbinde es neu",
+      "meSignedIn": "Du bist mit GitHub angemeldet (@{login}). Ein Klick verbindet das Konto auch für Plugins.",
+      "meConnect": "Mit GitHub verbinden",
+      "meReconnect": "Neu verbinden"
     },
     "githubApp": {
       "title": "GitHub App",

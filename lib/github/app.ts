@@ -235,3 +235,20 @@ export function repositoryOfRequest(url: URL): string | null {
 /** Is `repo` one of `chosen`, as GitHub compares names — without case? */
 export const isChosen = (repo: string, chosen: readonly string[]) =>
   chosen.some((c) => c.toLowerCase() === repo.toLowerCase());
+
+/**
+ * Whether the token of a sign-in with GitHub reaches repositories: one of
+ * the instance's app (signing in through the app itself), or of an OAuth
+ * app with the `repo` scope. A plain sign-in (`read:user`) only says who
+ * someone is.
+ */
+export function loginTokenReaches(
+  account: { scope: string | null },
+  loginClientId: string | undefined,
+  appClientId: string | null,
+): boolean {
+  if (appClientId && loginClientId === appClientId) return true;
+  return (account.scope ?? "")
+    .split(/[\s,]+/)
+    .some((s) => s === "repo" || s === "public_repo");
+}

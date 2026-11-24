@@ -6,6 +6,7 @@ import {
   userInstallations,
 } from "@/features/github/app";
 import { connectTarget, saveConnection } from "@/features/github/connect";
+import { linkBack } from "@/features/github/link-back";
 import { appUrl } from "@/lib/app-url";
 import { installUrl } from "@/lib/github/app";
 import {
@@ -26,6 +27,10 @@ export async function GET(req: Request) {
   const userId = await currentUserId();
   if (!userId) return NextResponse.redirect(appUrl("/login"));
   const params = new URL(req.url).searchParams;
+  // Linking their own account (a plugin's Personal tab).
+  const link = openState(params.get("state"), "link", userId);
+  if (link) return linkBack(userId, link.back, params.get("code"));
+
   const state = openState(params.get("state"), "connect", userId);
   if (!state)
     return new Response(

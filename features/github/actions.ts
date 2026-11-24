@@ -9,6 +9,7 @@ import { currentUserId } from "@/lib/permissions";
 import { forgetInstallation } from "./app";
 import { connectTarget, saveConnection } from "./connect";
 import { placeConnections } from "./connections";
+import { removeUserLink } from "./user-link";
 
 // What the GitHub connection card does (BARY-238): connect one of the
 // installations GitHub just listed for the person, or take a connection
@@ -98,6 +99,16 @@ export async function refreshGitHubConnections(
   if (!target) return { error: "forbidden" };
   for (const c of await placeConnections(target.pluginId, input))
     forgetInstallation(c.id);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Takes a person's own GitHub account off (a plugin's Personal tab):
+ *  plugins no longer act as them. Nothing changes on GitHub. */
+export async function unlinkGitHubAccount(): Promise<Result> {
+  const userId = await currentUserId();
+  if (!userId) return { error: "forbidden" };
+  await removeUserLink(userId);
   revalidatePath("/", "layout");
   return { ok: true };
 }

@@ -7,6 +7,7 @@ import {
   appPermissionsUrl,
   isChosen,
   isPublicBase,
+  loginTokenReaches,
   manageInstallationUrl,
   missingGrants,
   readPrivateKey,
@@ -324,6 +325,33 @@ describe("the state GitHub hands back", () => {
     const sealed = sealChoice(choice, 1000);
     expect(openChoice(sealed, 1000)).toMatchObject(choice);
     expect(openChoice(sealed, 1000 + 11 * 60)).toBeNull();
+  });
+});
+
+describe("a person's own GitHub account (BARY-238)", () => {
+  it("links with a state of its own kind", () => {
+    const sealed = sealState(
+      { kind: "link", userId: "u1", back: "/w/plugins/github/personal" },
+      1000,
+    );
+    expect(openState(sealed, "link", "u1", 1000)?.back).toBe(
+      "/w/plugins/github/personal",
+    );
+    expect(openState(sealed, "connect", "u1", 1000)).toBeNull();
+  });
+
+  it("takes a sign-in's token only where it reaches repositories", () => {
+    // Signing in through the instance's app itself.
+    expect(loginTokenReaches({ scope: "" }, "Iv1.app", "Iv1.app")).toBe(true);
+    // An OAuth app with the repo scope.
+    expect(
+      loginTokenReaches({ scope: "read:user,repo" }, "oauth", "Iv1.app"),
+    ).toBe(true);
+    // A plain sign-in only says who someone is.
+    expect(
+      loginTokenReaches({ scope: "read:user user:email" }, "oauth", "Iv1.app"),
+    ).toBe(false);
+    expect(loginTokenReaches({ scope: null }, undefined, null)).toBe(false);
   });
 });
 

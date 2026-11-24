@@ -3,6 +3,7 @@ import { lookup } from "node:dns/promises";
 import https from "node:https";
 import { installationToken } from "@/features/github/app";
 import { connectionFor } from "@/features/github/connections";
+import { userGitHubToken } from "@/features/github/user-link";
 import { db } from "@/lib/db";
 import type { BridgeResponse } from "@/lib/plugins/bridge";
 import { pluginInternalHosts } from "@/lib/plugins/dev";
@@ -48,6 +49,14 @@ async function checkedAddress(
     return null;
   }
 }
+
+const GITHUB_API_HOST = "api.github.com";
+
+/** Whether a plugin works with GitHub through Barynt's connection. */
+const connectsToGitHub = (plugin: RunningPlugin) =>
+  plugin.manifest.contributes.connections?.some(
+    (c) => c.provider === "github",
+  ) ?? false;
 
 /** The headers of the credentials the manifest declares for this host,
  *  opened — or which one is missing. */
@@ -174,11 +183,17 @@ export async function proxyFetch(
     plugin,
     request.url.hostname.toLowerCase(),
   );
-  // Without one of its own, a request about a repository the place chose
-  // goes with the token of the connection that reaches it (BARY-238).
+  // Without one of its own (BARY-238): about a repository the place chose,
+  // with the token of the connection that reaches it — it works for
+  // everyone there; anything else to GitHub (who they are, say) as the
+  // person: their linked account, or the one they sign in with.
   if ("missing" in credentials || Object.keys(credentials).length === 0) {
     const installation = await connectionFor(plugin, plugin, request.url);
-    const token = installation && (await installationToken(installation));
+    const token = installation
+      ? await installationToken(installation)
+      : connectsToGitHub(plugin) && request.url.hostname === GITHUB_API_HOST
+        ? await userGitHubToken(userId)
+        : null;
     if (token) credentials = { authorization: `Bearer ${token}` };
   }
   if ("missing" in credentials) return no("credential_missing");

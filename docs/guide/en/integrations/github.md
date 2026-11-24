@@ -26,7 +26,7 @@ That's it: pull requests, branches, commits and checks of those repositories com
 > [!NOTE]
 > GitHub has to reach Barynt for its reports, at `<your address>/api/github/webhook`. On an instance only reachable inside your network (or `localhost`), the app is created without a webhook: connecting and picking repositories work, but pull requests and checks don't arrive.
 
-**Your own token (optional):** keep a fine-grained GitHub token under **Settings → Plugins → GitHub → Personal** (_Contents_ read and write, _Pull requests_ and _Checks_ read) to have branches named after your GitHub login and to see who reviewed. Without one, the plugin works through the connection — and then only on the repositories the project ticked.
+**Your GitHub account (optional):** under **Settings → Plugins → GitHub → Personal**, **Connect GitHub** signs you in through the instance's app — then the plugin acts as you, naming branches after your GitHub login, say. If you sign in to Barynt with GitHub, the plugin takes that account right away where its token reaches repositories (signing in through the app itself, or with the `repo` scope); otherwise one click connects it. The project's repositories it still reaches through the project's connection, so it works for everyone there. A fine-grained token of your own on the same tab (_Contents_ read and write, _Pull requests_ and _Checks_ read) goes first.
 
 **Without the app:** as before, type the repositories (`owner/repo`, one per line), add the webhook from the card **Webhooks from other services** in GitHub's repository settings, and keep a token each. With a connection, that card isn't shown: GitHub reports through the app.
 

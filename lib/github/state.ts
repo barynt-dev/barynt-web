@@ -25,7 +25,14 @@ export interface AppState {
   back: string;
 }
 
-export type GitHubState = ConnectState | AppState;
+/** Linking a person's own GitHub account (a plugin's Personal tab). */
+export interface LinkState {
+  kind: "link";
+  userId: string;
+  back: string;
+}
+
+export type GitHubState = ConnectState | AppState | LinkState;
 
 /** Connecting takes a round at GitHub, perhaps an install: half an hour. */
 export const STATE_TTL_SECONDS = 30 * 60;

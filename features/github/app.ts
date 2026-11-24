@@ -387,7 +387,20 @@ export async function installationRepositories(
 
 /** Trades the code of GitHub's sign-in for the person's token — only used
  *  to list their installations, never kept. */
-export async function exchangeUserCode(code: string): Promise<string | null> {
+/** A person's token from the app, with what renews it. */
+export interface UserTokens {
+  access: string;
+  refresh: string | null;
+  /** When the token runs out — `null` for one that doesn't. */
+  expiresAt: Date | null;
+  refreshExpiresAt: Date | null;
+}
+
+/** Asks GitHub for a person's token: for the code they came back with, or
+ *  a new one for their refresh token. */
+async function userTokens(
+  grant: { code: string } | { refresh_token: string },
+): Promise<UserTokens | null> {
   const app = await getGitHubApp();
   if (!app) return null;
   const res = await fetch(`${GITHUB_WEB}/login/oauth/access_token`, {
@@ -400,7 +413,8 @@ export async function exchangeUserCode(code: string): Promise<string | null> {
     body: JSON.stringify({
       client_id: app.clientId,
       client_secret: app.clientSecret,
-      code,
+      ...grant,
+      ...("refresh_token" in grant && { grant_type: "refresh_token" }),
     }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
     cache: "no-store",
@@ -408,8 +422,47 @@ export async function exchangeUserCode(code: string): Promise<string | null> {
   if (!res?.ok) return null;
   const data = (await res.json().catch(() => null)) as {
     access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    refresh_token_expires_in?: number;
   } | null;
-  return data?.access_token ?? null;
+  if (!data?.access_token) return null;
+  const at = (seconds?: number) =>
+    typeof seconds === "number" ? new Date(Date.now() + seconds * 1000) : null;
+  return {
+    access: data.access_token,
+    refresh: data.refresh_token ?? null,
+    expiresAt: at(data.expires_in),
+    refreshExpiresAt: at(data.refresh_token_expires_in),
+  };
+}
+
+/** The person's token for the code they came back from GitHub with. */
+export async function exchangeUserCode(code: string): Promise<string | null> {
+  return (await userTokens({ code }))?.access ?? null;
+}
+
+/** Their tokens for the code, refresh token included. */
+export const exchangeUserCodeTokens = (code: string) => userTokens({ code });
+
+/** New tokens for a refresh token. */
+export const refreshUserTokens = (refresh: string) =>
+  userTokens({ refresh_token: refresh });
+
+/** Who a person's token belongs to on GitHub. */
+export async function gitHubUser(
+  token: string,
+): Promise<{ id: string; login: string; avatar: string | null } | null> {
+  const res = await call<{ id?: number; login?: string; avatar_url?: string }>(
+    "/user",
+    { token },
+  );
+  if (res.status !== 200 || !res.data?.login || !res.data.id) return null;
+  return {
+    id: String(res.data.id),
+    login: res.data.login,
+    avatar: res.data.avatar_url ?? null,
+  };
 }
 
 /** The app's installations the person can reach on GitHub — the ones they
