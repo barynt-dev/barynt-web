@@ -385,6 +385,27 @@ describe("development pieces (BARY-209)", () => {
     ).toBe("success");
     expect(diffStat({ added: 9, removed: 4 }).textContent).toBe("+9−4");
   });
+
+  it("folds a section away under its head", () => {
+    const seen: boolean[] = [];
+    const section = sectionHeader({
+      title: "Branches",
+      icon: "git-branch",
+      fold: {
+        content: text({ text: "inside" }),
+        open: false,
+        onToggle: (open) => seen.push(open),
+      },
+    }) as HTMLDetailsElement;
+    expect(section.tagName).toBe("DETAILS");
+    expect(section.open).toBe(false);
+    expect(section.querySelector("summary")?.textContent).toBe("Branches");
+    expect(section.querySelector(".bui-fold-body")?.textContent).toBe("inside");
+    // Opening it tells the plugin (the browser fires `toggle`).
+    section.open = true;
+    expect(seen.at(-1)).toBe(true);
+    expect(sectionHeader({ title: "Plain" }).tagName).toBe("DIV");
+  });
 });
 
 describe("picking from a list, and rows to take off (BARY-238)", () => {

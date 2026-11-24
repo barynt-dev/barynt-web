@@ -614,16 +614,25 @@ const STEP_ICON = {
 export type StepState = keyof typeof STEP_ICON;
 
 /** A head over a section or a card: an icon, a title, and on the right a
- *  note or a state in its tone — "Pipeline · Passed". */
+ *  note or a state in its tone — "Pipeline · Passed". With `fold`, the
+ *  head and its content in one: a click on the head folds the content away
+ *  (a `<details>`, open unless `open: false`); `onToggle` hears each change,
+ *  to keep it with `storage` for next time. */
 export function sectionHeader(options: {
   title: string;
   icon?: IconName;
   meta?: string;
   status?: { text: string; tone?: Tone };
+  fold?: {
+    content: Child | Child[];
+    open?: boolean;
+    onToggle?: (open: boolean) => void;
+  };
 }): HTMLElement {
   styled();
+  const fold = options.fold;
   const node = el(
-    "div",
+    fold ? "summary" : "div",
     "bui-section-head",
     options.icon && icon(options.icon, { size: 16 }),
     el("span", "bui-section-title", options.title),
@@ -634,7 +643,20 @@ export function sectionHeader(options: {
     node.append(s);
   } else if (options.meta)
     node.append(el("span", "bui-section-meta", options.meta));
-  return node;
+  if (!fold) return node;
+
+  const chevron = icon("chevron-down", { size: 15 });
+  chevron.classList.add("bui-fold-chevron");
+  node.append(chevron);
+  const body = el(
+    "div",
+    "bui-fold-body",
+    ...(Array.isArray(fold.content) ? fold.content : [fold.content]),
+  );
+  const details = el("details", "bui-fold", node, body);
+  details.open = fold.open ?? true;
+  details.addEventListener("toggle", () => fold.onToggle?.(details.open));
+  return details;
 }
 
 /** A value to copy — a branch, a hash, a command — with a copy button and,
