@@ -32,6 +32,14 @@
   }
 }
 
+.needsLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--primary);
+  font-weight: 550;
+}
+
 .ready {
   display: flex;
   align-items: center;

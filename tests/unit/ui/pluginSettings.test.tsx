@@ -151,6 +151,7 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
               avatar: null,
               inherited: true,
               broken: false,
+              pending: [],
               manageUrl:
                 "https://github.com/organizations/acme/settings/installations/7",
             },
@@ -201,6 +202,7 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
               avatar: null,
               inherited: false,
               broken: false,
+              pending: [],
               manageUrl:
                 "https://github.com/organizations/acme/settings/installations/7",
             },
@@ -267,6 +269,7 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
               avatar: null,
               inherited: false,
               broken: true,
+              pending: [],
               manageUrl:
                 "https://github.com/organizations/acme/settings/installations/7",
             },
@@ -482,6 +485,7 @@ describe("PluginSettings", () => {
       },
     ],
     bases: ["main"],
+    prComment: false,
     statuses: [
       { id: "in_review", label: "In Review" },
       { id: "done", label: "Done" },
@@ -517,6 +521,37 @@ describe("PluginSettings", () => {
     expect(html).not.toContain("inbound.howtoGithubLink");
     expect(html).not.toContain("inbound.title");
     expect(html).toContain("rules.prTitle");
+    // Only through the app: linking the issues in the pull request.
+    expect(html).toContain("rules.prComment");
+    expect(render(view({ fields: [], inbound: [linkHook()] }))).not.toContain(
+      "rules.prComment",
+    );
+  });
+
+  it("puts deployments in a section of their own", () => {
+    const hook = linkHook();
+    const html = render(
+      view({
+        fields: [],
+        inbound: [
+          {
+            ...hook,
+            rules: [
+              ...hook.rules,
+              {
+                id: "live",
+                title: "Deployed to production",
+                on: "deployment.production",
+                status: null,
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(html.indexOf("Deployed to production")).toBeGreaterThan(
+      html.indexOf("rules.deployTitle"),
+    );
   });
 
   it("puts a group's heading over its settings", () => {

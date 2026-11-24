@@ -56,7 +56,7 @@ import {
   serviceAddressOf,
 } from "@/lib/webhooks/plugin-targets";
 import { listDevPlugins } from "./dev";
-import { linkRuleBases, linkRuleStatuses } from "./link";
+import { linkRuleBases, linkRuleOptions, linkRuleStatuses } from "./link";
 import { placeSettings, placeStatuses } from "./settings-options";
 
 // What the plugin pages show (BARY-143). Every view checks its own
@@ -862,6 +862,9 @@ export interface PluginInboundView {
   }[];
   /** The target branches a pull request's rules count for — none: all. */
   bases: string[];
+  /** A pull request gets a comment linking the issues it works on — only
+   *  through a connection's app (`viaApp`). */
+  prComment: boolean;
   /** What a rule can set: the workspace's statuses. Empty without rules. */
   statuses: { id: string; label: string; color?: string }[];
   /** Its calls come through a connection's app — no address to give. */
@@ -1073,6 +1076,7 @@ export async function getPluginSettingsView(
             status: stored[r.id] ?? null,
           })),
           bases: linkRuleBases(row.rules),
+          prComment: linkRuleOptions(row.rules).prComment,
           statuses: hook.rules?.length ? ruleStatuses : [],
           // GitHub reports through the instance's GitHub App (BARY-238):
           // nothing to set up at GitHub, only the rules count.

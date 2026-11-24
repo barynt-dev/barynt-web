@@ -18,10 +18,17 @@ export const GITHUB_WEB = "https://github.com";
  *  write refs to start a branch. Metadata is always granted. */
 export const APP_PERMISSIONS = {
   contents: "write",
-  pull_requests: "read",
+  // Write: the link to the issue as a comment on the pull request.
+  pull_requests: "write",
   checks: "read",
+  // Write: starting a workflow from an issue (`workflow_dispatch`).
+  actions: "write",
+  // What was deployed where, for the deployment rules.
+  deployments: "read",
   metadata: "read",
 } as const;
+
+export type AppPermission = keyof typeof APP_PERMISSIONS;
 
 /** The webhook events the GitHub plugin's `link` hook reads. */
 export const APP_EVENTS = [
@@ -32,7 +39,46 @@ export const APP_EVENTS = [
   "pull_request_review",
   "check_run",
   "check_suite",
+  "deployment_status",
 ] as const;
+
+const LEVEL = { read: 1, write: 2, admin: 3 } as const;
+
+/**
+ * What the app (or an installation of it) lacks of what Barynt needs:
+ * permissions it hasn't, or has only to read where Barynt writes — and,
+ * for the app, events it isn't sent. An app made before a permission was
+ * added keeps its old ones until someone changes them on GitHub; an
+ * installation until its owner accepts them.
+ */
+export function missingGrants(granted: {
+  permissions?: Record<string, string> | null;
+  events?: readonly string[] | null;
+}): { permissions: AppPermission[]; events: string[] } {
+  const has = granted.permissions ?? {};
+  const permissions = (Object.keys(APP_PERMISSIONS) as AppPermission[]).filter(
+    (name) =>
+      (LEVEL[has[name] as keyof typeof LEVEL] ?? 0) <
+      LEVEL[APP_PERMISSIONS[name]],
+  );
+  const events = granted.events
+    ? APP_EVENTS.filter((e) => !granted.events?.includes(e))
+    : [];
+  return { permissions, events };
+}
+
+/** Where an app's permissions are changed on GitHub — its owner's
+ *  settings, a person's or an organization's. */
+export function appPermissionsUrl(
+  slug: string,
+  owner: { login: string; type: string } | null,
+): string {
+  const base =
+    owner?.type === "Organization"
+      ? `${GITHUB_WEB}/organizations/${encodeURIComponent(owner.login)}/settings/apps`
+      : `${GITHUB_WEB}/settings/apps`;
+  return `${base}/${encodeURIComponent(slug)}/permissions`;
+}
 
 /** Barynt's paths GitHub calls or sends people to. */
 export const GITHUB_PATHS = {

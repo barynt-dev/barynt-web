@@ -2,8 +2,12 @@
 
 import { Icon } from "@iconify/react";
 import { NativeSelect } from "@/components/ui/atoms/NativeSelect/NativeSelect";
+import { Switch } from "@/components/ui/atoms/Switch/Switch";
 import type { PluginInboundView } from "@/features/plugins/queries";
-import { linkTriggerGroup } from "@/lib/plugins/link-rules";
+import {
+  type LinkTriggerGroup,
+  linkTriggerGroup,
+} from "@/lib/plugins/link-rules";
 import { usePluginText } from "../shared";
 import styles from "./linkRules.module.scss";
 
@@ -19,11 +23,13 @@ import styles from "./linkRules.module.scss";
 export interface LinkRulesValue {
   statuses: Record<string, string>;
   bases: string;
+  prComment: boolean;
 }
 
 export const linkRulesValue = (hook: PluginInboundView): LinkRulesValue => ({
   statuses: Object.fromEntries(hook.rules.map((r) => [r.id, r.status ?? ""])),
   bases: hook.bases.join(", "),
+  prComment: hook.prComment,
 });
 
 /** The target branches as typed, as a list. */
@@ -33,6 +39,25 @@ export const parseBases = (typed: string) =>
     .map((b) => b.trim())
     .filter(Boolean);
 
+/** Each group's heading, icon and line under it. */
+const GROUP = {
+  pull_request: {
+    icon: "lucide:git-pull-request",
+    title: "rules.prTitle",
+    hint: "rules.prHint",
+  },
+  checks: {
+    icon: "lucide:circle-play",
+    title: "rules.checksTitle",
+    hint: "rules.checksHint",
+  },
+  deployment: {
+    icon: "lucide:rocket",
+    title: "rules.deployTitle",
+    hint: "rules.deployHint",
+  },
+} as const;
+
 export function LinkRules({
   hook,
   group,
@@ -41,7 +66,7 @@ export function LinkRules({
   onChange,
 }: {
   hook: PluginInboundView;
-  group: "pull_request" | "checks";
+  group: LinkTriggerGroup;
   value: LinkRulesValue;
   disabled: boolean;
   onChange: (value: LinkRulesValue) => void;
@@ -58,16 +83,26 @@ export function LinkRules({
       aria-labelledby={`rules-${group}-${hook.id}`}
     >
       <h2 id={`rules-${group}-${hook.id}`}>
-        <Icon
-          icon={pr ? "lucide:git-pull-request" : "lucide:circle-play"}
-          width={17}
-          aria-hidden
-        />
-        {pr ? text.t("rules.prTitle") : text.t("rules.checksTitle")}
+        <Icon icon={GROUP[group].icon} width={17} aria-hidden />
+        {text.t(GROUP[group].title)}
       </h2>
-      <p className={styles.hint}>
-        {pr ? text.t("rules.prHint") : text.t("rules.checksHint")}
-      </p>
+      <p className={styles.hint}>{text.t(GROUP[group].hint)}</p>
+
+      {pr && hook.viaApp && (
+        <div className={styles.switchRow}>
+          <span className={styles.switchText}>
+            <span className={styles.label}>{text.t("rules.prComment")}</span>
+            <span className={styles.hint}>{text.t("rules.prCommentHint")}</span>
+          </span>
+          <Switch
+            label={text.t("rules.prComment")}
+            labelHidden
+            checked={value.prComment}
+            disabled={disabled}
+            onChange={(prComment) => onChange({ ...value, prComment })}
+          />
+        </div>
+      )}
 
       {pr && (
         <div className={styles.field}>

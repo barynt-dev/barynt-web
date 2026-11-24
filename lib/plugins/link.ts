@@ -23,6 +23,24 @@ export interface PullRequestEntry {
   author: string | null;
   additions: number | null;
   deletions: number | null;
+  /** The commit a merge made — what a deployment of the target branch
+   *  is matched against. */
+  mergeSha?: string | null;
+  at: string;
+}
+
+export interface DeploymentEntry {
+  kind: "deployment";
+  repo: string;
+  environment: string;
+  /** GitHub's mark for what people use — `production` by default. */
+  production: boolean;
+  state: "success" | "failure" | "pending";
+  /** The branch or tag deployed, and its commit. */
+  ref: string | null;
+  sha: string | null;
+  /** The environment's address, else the run's. */
+  url: string | null;
   at: string;
 }
 
@@ -65,7 +83,8 @@ export type LinkEntry =
   | PullRequestEntry
   | BranchEntry
   | CommitEntry
-  | ChecksEntry;
+  | ChecksEntry
+  | DeploymentEntry;
 
 /** An entry, where it's kept, and the texts to look for issue keys in. */
 export interface LinkFinding {
@@ -112,6 +131,8 @@ export const linkKey = {
     `commit:${repoKey(repo)}:${sha.slice(0, 12)}`,
   checks: (repo: string, branch: string) =>
     `checks:${repoKey(repo)}:${nameKey(branch)}`,
+  deployment: (repo: string, environment: string) =>
+    `deploy:${repoKey(repo)}:${nameKey(environment)}`,
 };
 
 /** GitHub's check conclusion or status, as one of four. */
@@ -190,6 +211,7 @@ function pullRequest(
       author: str(obj(pr.user).login),
       additions: num(pr.additions),
       deletions: num(pr.deletions),
+      mergeSha: state === "merged" ? str(pr.merge_commit_sha, 64) : null,
       at,
     },
     texts: [branch ?? "", title, description],
@@ -297,6 +319,16 @@ function github(event: string, body: Json, at: string): LinkFinding[] {
     ];
   }
 
+  if (event === "deployment_status") {
+    const found = deploymentFinding(
+      repo,
+      obj(body.deployment),
+      obj(body.deployment_status),
+      at,
+    );
+    return found ? [found] : [];
+  }
+
   if (event === "check_run" || event === "check_suite") {
     const run = obj(body[event]);
     const suite = event === "check_run" ? obj(run.check_suite) : run;
@@ -337,6 +369,56 @@ function github(event: string, body: Json, at: string): LinkFinding[] {
   return [];
 }
 
+/**
+ * A deployment's state as an entry — kept on the issues `texts` name. By
+ * default the deployed branch's name (a preview of `ada/web-42-…`); for a
+ * deployment of `main` the host passes the keys of what it shipped. A
+ * successful one is what the deployment rules react to.
+ */
+export function deploymentFinding(
+  repo: string,
+  deployment: Json,
+  status: Json,
+  at: string,
+  texts?: string[],
+): LinkFinding | null {
+  const environment =
+    str(status.environment) ?? str(deployment.environment) ?? null;
+  if (!environment) return null;
+  const raw = str(status.state);
+  const state: DeploymentEntry["state"] =
+    raw === "success"
+      ? "success"
+      : raw === "failure" || raw === "error"
+        ? "failure"
+        : "pending";
+  const production =
+    typeof deployment.production_environment === "boolean"
+      ? deployment.production_environment
+      : environment.toLowerCase() === "production";
+  const ref = str(deployment.ref, 300);
+  const look = texts ?? [ref ?? ""];
+  return {
+    key: linkKey.deployment(repo, environment),
+    entry: {
+      kind: "deployment",
+      repo,
+      environment,
+      production,
+      state,
+      ref,
+      sha: str(deployment.sha, 64),
+      url: str(status.environment_url, 500) ?? str(status.log_url, 500),
+      at,
+    },
+    texts: look,
+    ...(state === "success" && {
+      trigger: production ? "deployment.production" : "deployment.test",
+      closes: look,
+    }),
+  };
+}
+
 /** What a call is about — nothing for an event this doesn't read, or a
  *  provider it can't read yet (GitLab comes next, generic never). */
 export function readLinkFindings(
@@ -364,6 +446,7 @@ export function mergeEntry(existing: unknown, incoming: LinkEntry): LinkEntry {
       review: incoming.review ?? was.review ?? null,
       additions: incoming.additions ?? was.additions ?? null,
       deletions: incoming.deletions ?? was.deletions ?? null,
+      mergeSha: incoming.mergeSha ?? was.mergeSha ?? null,
     };
   }
   if (incoming.kind === "checks") {

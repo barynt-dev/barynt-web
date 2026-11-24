@@ -50,6 +50,23 @@
   }
 }
 
+/* A switch with its text, like the form's. */
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.switchText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
 .list {
   margin: 0;
   padding: 0;

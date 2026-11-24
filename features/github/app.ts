@@ -231,6 +231,85 @@ export async function getInstallation(
   return res.status === 200 && res.data ? accountOf(res.data) : null;
 }
 
+/** Kept a minute: what the app and its installations were granted. */
+const grantsCache = new Map<string, { at: number; value: AppGrants | null }>();
+const GRANTS_TTL_MS = 60_000;
+
+export interface AppGrants {
+  permissions: Record<string, string>;
+  events: string[];
+  owner: { login: string; type: string } | null;
+}
+
+async function cachedGrants(
+  key: string,
+  load: () => Promise<AppGrants | null>,
+): Promise<AppGrants | null> {
+  const hit = grantsCache.get(key);
+  if (hit && Date.now() - hit.at < GRANTS_TTL_MS) return hit.value;
+  const value = await load().catch(() => null);
+  grantsCache.set(key, { at: Date.now(), value });
+  return value;
+}
+
+/** What the app itself may do and is sent — `null` when GitHub doesn't
+ *  answer. */
+export async function appGrants(): Promise<AppGrants | null> {
+  const app = await getGitHubApp();
+  if (!app) return null;
+  return cachedGrants(`app:${app.appId}`, async () => {
+    const res = await call<{
+      permissions?: Record<string, string>;
+      events?: string[];
+      owner?: { login?: string; type?: string } | null;
+    }>("/app", { jwt: appJwt(app.appId, app.privateKey) });
+    if (res.status !== 200 || !res.data) return null;
+    const owner = res.data.owner;
+    return {
+      permissions: res.data.permissions ?? {},
+      events: res.data.events ?? [],
+      owner:
+        owner?.login && owner.type
+          ? { login: owner.login, type: owner.type }
+          : null,
+    };
+  });
+}
+
+/** What an installation's owner accepted — an app given new permissions
+ *  waits for them to accept those. */
+export async function installationGrants(
+  installationId: string,
+): Promise<AppGrants | null> {
+  const app = await getGitHubApp();
+  if (!app) return null;
+  return cachedGrants(`installation:${installationId}`, async () => {
+    const res = await call<{
+      permissions?: Record<string, string>;
+      events?: string[];
+    }>(`/app/installations/${encodeURIComponent(installationId)}`, {
+      jwt: appJwt(app.appId, app.privateKey),
+    });
+    if (res.status !== 200 || !res.data) return null;
+    return {
+      permissions: res.data.permissions ?? {},
+      events: res.data.events ?? [],
+      owner: null,
+    };
+  });
+}
+
+/** A call to GitHub's API as an installation. `null` without a token. */
+export async function asInstallation<T>(
+  installationId: string,
+  path: string,
+  init: { method?: string; body?: unknown } = {},
+): Promise<{ status: number; data: T | null } | null> {
+  const token = await installationToken(installationId);
+  if (!token) return null;
+  return call<T>(path, { ...init, token });
+}
+
 export interface GitHubRepository {
   fullName: string;
   private: boolean;

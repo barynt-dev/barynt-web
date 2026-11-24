@@ -9,9 +9,11 @@ import {
 } from "@/lib/plugins/inbound";
 import { validateManifest } from "@/lib/plugins/manifest";
 import { redisClient } from "@/lib/redis";
-import { handleLink } from "../plugins/link";
+import { handleLink, linkRuleOptions } from "../plugins/link";
 import { forgetInstallation, getGitHubApp } from "./app";
 import { chosenRepositories } from "./connections";
+import { deploymentFor, shippedCommits } from "./deployments";
+import { commentLinks } from "./pull-request-comment";
 
 // The GitHub App's webhook (BARY-238): one address for the whole instance,
 // signed with the app's secret. Each call names its installation and
@@ -96,6 +98,11 @@ async function fileCall(
   const byPlugin = new Map<string, typeof connections>();
   for (const c of connections)
     byPlugin.set(c.pluginId, [...(byPlugin.get(c.pluginId) ?? []), c]);
+  // A deployment: the commits it shipped, asked of GitHub once.
+  const shipped =
+    event === "deployment_status" && byPlugin.size > 0
+      ? await shippedCommits(installationId, repo, data).catch(() => null)
+      : null;
 
   for (const [pluginId, rows] of byPlugin) {
     const installed = await db.plugin.findFirst({
@@ -165,6 +172,9 @@ async function fileCall(
             },
           })
           .catch(() => {});
+      const extra = shipped
+        ? await deploymentFor(activation.id, repo, data, shipped)
+        : null;
       await handleLink(
         activation,
         { id: pluginId, name: parsed.manifest.name },
@@ -172,8 +182,20 @@ async function fileCall(
         row.rules,
         event,
         data,
+        extra ? [extra] : [],
       ).then(
-        () => record(202, null),
+        async (reached) => {
+          // The issues it newly works on, linked in the pull request.
+          if (event === "pull_request" && linkRuleOptions(row.rules).prComment)
+            await commentLinks(
+              installationId,
+              activation.workspaceId,
+              repo,
+              data,
+              reached,
+            ).catch((error) => console.error("[github pr comment]", error));
+          return record(202, null);
+        },
         (error) => {
           console.error("[github app link]", error);
           return record(500, "Couldn't file this call");

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  deploymentFinding,
   findIssueRefs,
   linkKey,
   mergeEntry,
@@ -52,6 +53,7 @@ describe("reading GitHub's events", () => {
       author: "ada",
       additions: 120,
       deletions: 34,
+      mergeSha: null,
       at: at.toISOString(),
     });
     expect(found.texts).toContain("ada/web-42-oauth-callback");
@@ -262,6 +264,71 @@ describe("what a pull request works on (BARY-227)", () => {
     ]);
     expect(run("success").trigger).toBeUndefined();
     expect(run(null).trigger).toBeUndefined();
+  });
+
+  it("keeps the commit a merge made", () => {
+    const [found] = read("pull_request", {
+      action: "closed",
+      pull_request: pr({
+        state: "closed",
+        merged: true,
+        merge_commit_sha: "m1",
+      }),
+    });
+    expect(found.entry).toMatchObject({ mergeSha: "m1" });
+  });
+
+  it("reads a deployment, and what a rule reacts to", () => {
+    const deploy = (state: string, over: Record<string, unknown> = {}) =>
+      read("deployment_status", {
+        deployment: {
+          id: 7,
+          ref: "ada/web-42-oauth-callback",
+          sha: "abc",
+          environment: "preview",
+          production_environment: false,
+          ...over,
+        },
+        deployment_status: {
+          state,
+          environment_url: "https://web-42.preview.acme.dev",
+        },
+      })[0];
+    const preview = deploy("success");
+    expect(preview.entry).toMatchObject({
+      kind: "deployment",
+      environment: "preview",
+      production: false,
+      state: "success",
+      url: "https://web-42.preview.acme.dev",
+    });
+    expect(preview.trigger).toBe("deployment.test");
+    expect(findIssueRefs(preview.closes ?? [], ["WEB"])).toEqual([
+      { prefix: "WEB", key: 42 },
+    ]);
+    expect(
+      deploy("success", {
+        environment: "production",
+        production_environment: undefined,
+      }).trigger,
+    ).toBe("deployment.production");
+    expect(deploy("in_progress").trigger).toBeUndefined();
+    expect(deploy("failure").entry).toMatchObject({ state: "failure" });
+  });
+
+  it("takes the keys a deployment of main shipped from the host", () => {
+    const found = deploymentFinding(
+      "acme/web",
+      { ref: "main", environment: "production", production_environment: true },
+      { state: "success" },
+      at.toISOString(),
+      ["Merge pull request #42 from ada/web-42-oauth", "WEB-7"],
+    );
+    expect(found?.trigger).toBe("deployment.production");
+    expect(findIssueRefs(found?.closes ?? [], ["WEB"])).toEqual([
+      { prefix: "WEB", key: 42 },
+      { prefix: "WEB", key: 7 },
+    ]);
   });
 
   it("counts a target branch by the place's list", () => {

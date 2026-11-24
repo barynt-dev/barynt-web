@@ -193,6 +193,7 @@ export function PluginSettings({
             hook.rules.map((r) => [r.id, value.statuses[r.id] || null]),
           ),
           bases: parseBases(value.bases),
+          prComment: value.prComment,
         });
         if ("error" in result) return setError(text.error(result.error));
       }
@@ -412,7 +413,7 @@ export function PluginSettings({
         {/* What a pull request and its checks do to the issues they work
             on — saved with the same button. */}
         {running &&
-          (["pull_request", "checks"] as const).flatMap((group) =>
+          (["pull_request", "checks", "deployment"] as const).flatMap((group) =>
             ruleHooks.map((hook) => (
               <LinkRules
                 key={`${group}-${hook.id}`}

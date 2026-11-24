@@ -1,11 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { createVerify, generateKeyPairSync } from "node:crypto";
 import {
+  APP_EVENTS,
   appJwt,
   appManifest,
+  appPermissionsUrl,
   isChosen,
   isPublicBase,
   manageInstallationUrl,
+  missingGrants,
   readPrivateKey,
   repositoryOfRequest,
 } from "@/lib/github/app";
@@ -321,5 +324,57 @@ describe("the state GitHub hands back", () => {
     const sealed = sealChoice(choice, 1000);
     expect(openChoice(sealed, 1000)).toMatchObject(choice);
     expect(openChoice(sealed, 1000 + 11 * 60)).toBeNull();
+  });
+});
+
+describe("what the app needs (BARY-238)", () => {
+  it("names what an app made before lacks, and a permission only read", () => {
+    const missing = missingGrants({
+      permissions: {
+        contents: "write",
+        pull_requests: "read",
+        checks: "read",
+        metadata: "read",
+      },
+      events: ["push", "pull_request"],
+    });
+    expect(missing.permissions).toEqual([
+      "pull_requests",
+      "actions",
+      "deployments",
+    ]);
+    expect(missing.events).toContain("deployment_status");
+  });
+
+  it("is content with everything, or more", () => {
+    expect(
+      missingGrants({
+        permissions: {
+          contents: "write",
+          pull_requests: "write",
+          checks: "write",
+          actions: "write",
+          deployments: "read",
+          metadata: "read",
+          issues: "write",
+        },
+        events: [...APP_EVENTS, "issues"],
+      }),
+    ).toEqual({ permissions: [], events: [] });
+  });
+
+  it("leaves events out for an installation, which has none to set", () => {
+    expect(missingGrants({ permissions: {} }).events).toEqual([]);
+  });
+
+  it("links the app's permissions under its owner", () => {
+    expect(
+      appPermissionsUrl("barynt-acme", { login: "acme", type: "Organization" }),
+    ).toBe(
+      "https://github.com/organizations/acme/settings/apps/barynt-acme/permissions",
+    );
+    expect(
+      appPermissionsUrl("barynt-ada", { login: "ada", type: "User" }),
+    ).toBe("https://github.com/settings/apps/barynt-ada/permissions");
   });
 });

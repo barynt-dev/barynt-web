@@ -36,12 +36,19 @@ Barynt looks for the project's issue keys in a pull request's branch name, title
 
 ## Rules
 
-In the project's plugin settings, pick a status for each rule, or leave it off, and save with **Save** at the top. Under **Pull requests**, one per step: _Opened as a draft_, _Opened or ready for review_, _Review requested_, _Approved_, _Changes requested_, _Merged_, _Closed without merging_ — for example _In Review_ when a review is requested and _Done_ when merged. **Target branches** limits them to pull requests into these branches (`main, release/*`; empty: all), so a merge into `develop` doesn't mark an issue done. Under **Checks & Actions**, _Checks failed on the branch_ — any check, GitHub Actions too — say _Blocked_. Barynt then sets the status as **GitHub (App)** and comments why. A rule only moves an issue the pull request works on: its key in the branch's name, or after _Fixes_, _Closes_ or _Resolves_ in the title or description. A key only mentioned elsewhere links the pull request and nothing more.
+In the project's plugin settings, pick a status for each rule, or leave it off, and save with **Save** at the top. Under **Pull requests**, one per step: _Opened as a draft_, _Opened or ready for review_, _Review requested_, _Approved_, _Changes requested_, _Merged_, _Closed without merging_ — for example _In Review_ when a review is requested and _Done_ when merged. **Target branches** limits them to pull requests into these branches (`main, release/*`; empty: all), so a merge into `develop` doesn't mark an issue done. Under **Checks & Actions**, _Checks failed on the branch_ — any check, GitHub Actions too — say _Blocked_. Under **Deployments**, _Deployed to a test environment_ and _Deployed to production_ (as GitHub marks the environment) — say _On Staging_ and _Live_: a preview of the issue's branch counts, and for a deployment of `main` Barynt asks GitHub which commits came since the environment's deployment before and moves the issues they close. Barynt then sets the status as **GitHub (App)** and comments why. A rule only moves an issue the pull request works on: its key in the branch's name, or after _Fixes_, _Closes_ or _Resolves_ in the title or description. A key only mentioned elsewhere links the pull request and nothing more.
 
 ## Actions
 
 In an issue's menu, a card's quick actions and the command palette:
 
-- **Create branch** — in the project's first repository, from its default branch, named after the pattern in the settings (`{user}/{key}-{title}`, for example `ada/web-42-keep-the-cookie`). With your own token if you keep one, otherwise through the connection; as the project set it, the issue is then assigned to you and moved to a status.
+- **Create branch** — in the project's first repository, from its default branch, named after the pattern in the settings (`{type}/{key}-{title}`, for example `feature/web-42-keep-the-cookie`). With your own token if you keep one, otherwise through the connection; as the project set it, the issue is then assigned to you and moved to a status.
 - **Copy branch name** — the issue's branch, or the name it would get.
 - **Open pull request** — its open pull request, or GitHub's page to open one, the title starting with the issue's key.
+- **Run workflow** — the workflow named under **GitHub Actions** in the project's settings (a file in `.github/workflows` with `on: workflow_dispatch`), started on the issue's branch. The **Development** panel has the same button.
+
+**Link the issues in the pull request:** a switch under **Pull requests**. Once a pull request works on issues, Barynt comments on it with a link to each — once, as the GitHub App.
+
+## New permissions
+
+Commenting on pull requests, running workflows and deployments need permissions an app created before doesn't have: _Pull requests_ and _Actions_ to write, _Deployments_ to read, and the event _Deployment status_. **Admin → Plugins → GitHub** says so on the **GitHub App** card, with a link to the app's permissions on GitHub — set them there and save. Each installation's owner then accepts them once; the account's row in the plugin settings says so until they did, with a link.

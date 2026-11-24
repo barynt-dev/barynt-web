@@ -694,12 +694,18 @@ next.
 #### Rules
 
 A `link` hook can name rules — what Barynt may do with an issue when a pull
-request that works on it takes a step, or the checks on its branch fail.
+request that works on it takes a step, the checks on its branch fail, or
+it's deployed.
 Each project that switches the plugin on picks, per rule, the status to set
 (any of the workspace's), or leaves it off, and may limit the pull
 request's rules to target branches (`main, release/*`; none: all). The
-settings page shows them in a section each — _Pull requests_ and _Checks &
-Actions_ — saved with its Save button. Barynt sets the status as the
+settings page shows them in a section each — _Pull requests_, _Checks &
+Actions_ and _Deployments_ — saved with its Save button. A deployment
+names the issue by its branch (a preview); for one of `main`, a GitHub
+connection's app finds the issues the shipped commits close — merges since
+the environment's deployment before, and pull requests Barynt keeps whose
+merge commit is among them. With a connection, a place can also have
+Barynt comment the issues on the pull request (`_prComment`). Barynt sets the status as the
 plugin's app and, with `comments:write`, comments why. Rules need
 `issues:write`.
 
@@ -724,6 +730,8 @@ plugin's app and, with `comments:write`, comments why. Rules need
 | `pull_request.merged` | merged |
 | `pull_request.closed` | closed without merging |
 | `checks.failed` | a check on the branch failed — GitHub Actions or any other (the branch's name carries the key) |
+| `deployment.test` | deployed successfully to an environment GitHub doesn't mark as production (staging, a preview) |
+| `deployment.production` | deployed successfully to production |
 
 A rule moves an issue only when the pull request works on it: its key is
 in the branch's name, or follows *fixes*, *closes* or *resolves* in the

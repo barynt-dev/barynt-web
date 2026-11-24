@@ -4,9 +4,11 @@ import { appBaseUrl } from "@/lib/app-url";
 import { db } from "@/lib/db";
 import {
   appManifest,
+  appPermissionsUrl,
   GITHUB_PATHS,
   isPublicBase,
   manageInstallationUrl,
+  missingGrants,
 } from "@/lib/github/app";
 import {
   CHOICE_COOKIE,
@@ -19,7 +21,7 @@ import { currentUserId } from "@/lib/permissions";
 import { activationScopeKey } from "@/lib/plugins/activation";
 import type { PluginManifest } from "@/lib/plugins/manifest";
 import type { GitHubRepository } from "./app";
-import { getGitHubApp } from "./app";
+import { appGrants, getGitHubApp, installationGrants } from "./app";
 import { chosenRepositories, placeRepositories } from "./connections";
 
 // What the GitHub parts of the plugin pages show (BARY-238).
@@ -51,6 +53,9 @@ export interface PluginConnectionView {
     /** GitHub gives no token for it any more: uninstalled, or the app was
      *  created anew — connect again. */
     broken: boolean;
+    /** The app was given new permissions its owner hasn't accepted yet:
+     *  what's missing, accepted at `manageUrl`. */
+    pending: string[];
   }[];
   /** After signing in at GitHub: the installations the person may connect
    *  here and hasn't yet. */
@@ -98,6 +103,20 @@ export async function getConnectionView(
     workspace: place.workspaceId,
     ...(place.projectId && { project: place.projectId }),
   });
+  // What each installation still has to accept — only what the app has.
+  const appHas = app ? await appGrants() : null;
+  const pending = new Map(
+    (await Promise.all(
+      connections.map(async (c) => {
+        if (!appHas || reach.failed.includes(c.account)) return [c.id, []];
+        const granted = await installationGrants(c.id);
+        if (!granted) return [c.id, []];
+        const wanted = missingGrants(granted).permissions;
+        const appLacks = missingGrants(appHas).permissions;
+        return [c.id, wanted.filter((p) => !appLacks.includes(p))];
+      }),
+    )) as [string, string[]][],
+  );
   return {
     title: declared.title,
     appReady: app !== null,
@@ -109,6 +128,7 @@ export async function getConnectionView(
       inherited: c.inherited,
       manageUrl: manageInstallationUrl(c),
       broken: reach.failed.includes(c.account),
+      pending: pending.get(c.id) ?? [],
     })),
     choice,
     repositories:
@@ -197,6 +217,9 @@ export interface GitHubAppAdminView {
   /** Barynt runs on an address GitHub can't reach (localhost): the app
    *  comes without a webhook. */
   local: boolean;
+  /** What the app lacks of what Barynt needs now — made before a
+   *  permission was added — and where to give it on GitHub. */
+  needs: { permissions: string[]; events: string[]; url: string } | null;
 }
 
 /** The GitHub App card of Admin → Plugins — for a platform admin. */
@@ -207,7 +230,19 @@ export async function getGitHubAppAdminView(
   if (!userId) return null;
   const app = await getGitHubApp();
   const base = appBaseUrl();
+  const local = !isPublicBase(base);
+  const grants = app ? await appGrants() : null;
+  const missing = grants ? missingGrants(grants) : null;
+  // Without a webhook (local), events can't be set.
+  if (missing && local) missing.events = [];
   return {
+    needs:
+      app && missing && (missing.permissions.length || missing.events.length)
+        ? {
+            ...missing,
+            url: appPermissionsUrl(app.slug, grants?.owner ?? null),
+          }
+        : null,
     app: app && {
       name: app.name,
       htmlUrl: app.htmlUrl,
@@ -223,6 +258,6 @@ export async function getGitHubAppAdminView(
     ),
     state: sealState({ kind: "app", userId, back }),
     webhookUrl: `${base}${GITHUB_PATHS.webhook}`,
-    local: !isPublicBase(base),
+    local,
   };
 }

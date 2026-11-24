@@ -320,3 +320,28 @@
 .remove.remove {
   color: var(--error);
 }
+
+/* New permissions its owner hasn't accepted on GitHub yet. */
+.pending {
+  display: flex;
+  flex-basis: 100%;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning, #e2b340) 12%, transparent);
+  color: var(--on-surface);
+  font-size: var(--text-xs);
+
+  svg {
+    flex: none;
+    margin-top: 0.0625rem;
+    color: var(--warning, #e2b340);
+  }
+
+  a {
+    color: var(--primary);
+    font-weight: 550;
+  }
+}

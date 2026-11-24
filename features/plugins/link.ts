@@ -8,6 +8,7 @@ import type { Prisma } from "@/lib/generated/prisma/client";
 import type { InboundProvider } from "@/lib/plugins/inbound";
 import {
   type ChecksEntry,
+  type DeploymentEntry,
   findIssueRefs,
   type LinkFinding,
   mergeEntry,
@@ -52,8 +53,11 @@ export async function fileLink(
   provider: InboundProvider,
   event: string,
   body: unknown,
+  /** What the host found out beyond the call — the keys a deployment of
+   *  `main` shipped (`features/github/deployments.ts`). */
+  extra: LinkFinding[] = [],
 ): Promise<LinkReached[]> {
-  const findings = readLinkFindings(provider, event, body);
+  const findings = [...readLinkFindings(provider, event, body), ...extra];
   if (findings.length === 0) return [];
   const projects = await linkProjects(activation);
   const byPrefix = new Map(projects.map((p) => [p.prefix.toUpperCase(), p.id]));
@@ -99,8 +103,10 @@ export async function fileLink(
         ref,
         projectId,
         findings: [],
+        fresh: [],
       };
       at.findings.push(finding);
+      if (!kept) at.fresh.push(finding.key);
       reached.set(issue.id, at);
     }
   }
@@ -120,6 +126,9 @@ export interface LinkReached {
   status: string;
   ref: { prefix: string; key: number };
   findings: LinkFinding[];
+  /** The keys it filed here for the first time — a pull request newly
+   *  linked, say. */
+  fresh: string[];
 }
 
 /** A link hook's rules a project switched on: rule id → status to set. */
@@ -135,6 +144,16 @@ export function linkRuleStatuses(raw: unknown): LinkRuleStatuses {
         typeof e[1] === "string" && !e[0].startsWith("_"),
     ),
   );
+}
+
+/** A hook's options as stored: whether a pull request gets a comment
+ *  linking the issues it works on (`_prComment`, BARY-238). */
+export function linkRuleOptions(raw: unknown): { prComment: boolean } {
+  const o =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
+  return { prComment: o._prComment === true };
 }
 
 /** Most target branches a place lists. */
@@ -213,8 +232,9 @@ export async function handleLink(
   stored: unknown,
   event: string,
   body: unknown,
-): Promise<void> {
-  const reached = await fileLink(activation, hook.provider, event, body);
+  extra: LinkFinding[] = [],
+): Promise<LinkReached[]> {
+  const reached = await fileLink(activation, hook.provider, event, body, extra);
   const changes = linkRuleChanges(
     reached,
     hook.rules ?? [],
@@ -222,8 +242,8 @@ export async function handleLink(
     linkRuleBases(stored),
   );
   const bot = activation.botUserId;
-  if (changes.length === 0 || !bot) return;
-  if (!activation.capabilities.includes("issues:write")) return;
+  if (changes.length === 0 || !bot) return reached;
+  if (!activation.capabilities.includes("issues:write")) return reached;
   const comment = activation.capabilities.includes("comments:write");
   const names = new Map(
     (
@@ -249,10 +269,16 @@ export async function handleLink(
       );
     }
   });
+  return reached;
 }
 
 /** Why a rule moved an issue, for its comment: what happened, linked. */
 export function linkRuleReason(finding: LinkFinding): string {
+  if (finding.entry.kind === "deployment") {
+    const d = finding.entry as DeploymentEntry;
+    const where = d.url ? `[${d.environment}](${d.url})` : d.environment;
+    return `Deployed to ${where} from ${d.repo}`;
+  }
   if (finding.entry.kind === "checks") {
     const checks = finding.entry as ChecksEntry;
     const failed = checks.runs.find((r) => r.state === "failure");

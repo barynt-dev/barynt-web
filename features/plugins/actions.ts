@@ -1193,6 +1193,8 @@ export async function saveInboundRules(input: {
   hookId: string;
   statuses: Record<string, string | null>;
   bases: string[];
+  /** Comment the issues on the pull request (BARY-238). */
+  prComment?: boolean;
 }): Promise<PluginResult> {
   const hook = await db.pluginInboundHook.findUnique({
     where: { id: input.hookId },
@@ -1238,6 +1240,7 @@ export async function saveInboundRules(input: {
     else delete rules[id];
   }
   if (bases.length > 0) rules._bases = bases;
+  if (input.prComment) rules._prComment = true;
   await db.pluginInboundHook.update({
     where: { id: hook.id },
     data: { rules: rules as Prisma.InputJsonValue },
@@ -1253,7 +1256,12 @@ export async function saveInboundRules(input: {
     },
     workspaceId: activation.workspaceId,
     projectId: activation.projectId,
-    meta: { hook: hook.hookId, rules: input.statuses, bases },
+    meta: {
+      hook: hook.hookId,
+      rules: input.statuses,
+      bases,
+      prComment: input.prComment === true,
+    },
   });
   done();
   return { ok: true };

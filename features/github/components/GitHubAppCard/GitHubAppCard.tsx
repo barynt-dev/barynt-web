@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/atoms/Input/Input";
 import type { GitHubAppAdminView } from "@/features/github/queries";
 import storeStyles from "@/features/plugins/components/PluginStore/pluginStore.module.scss";
 import { usePluginText } from "@/features/plugins/components/shared";
+import { permissionName } from "../GitHubConnection/GitHubConnection";
 import styles from "./gitHubAppCard.module.scss";
 
 // The instance's GitHub App in Admin → Plugins (BARY-238), beside a plugin
@@ -75,6 +76,28 @@ export function GitHubAppCard({ view }: { view: GitHubAppAdminView }) {
         <div className={styles.missing}>
           <strong>{text.t("githubApp.missingTitle")}</strong>
           <p>{text.t("githubApp.missing")}</p>
+        </div>
+      )}
+      {view.needs && (
+        <div className={styles.missing}>
+          <strong>{text.t("githubApp.needsTitle")}</strong>
+          <p>
+            {text.t("githubApp.needs", {
+              what: [
+                ...view.needs.permissions.map((p) => permissionName(text.t, p)),
+                ...view.needs.events.map((e) => `${e} (Event)`),
+              ].join(", "),
+            })}
+          </p>
+          <a
+            href={view.needs.url}
+            target="_blank"
+            rel="noreferrer"
+            className={styles.needsLink}
+          >
+            {text.t("githubApp.needsLink")}
+            <Icon icon="lucide:external-link" width={13} aria-hidden />
+          </a>
         </div>
       )}
       {view.app && (

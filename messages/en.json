@@ -3069,7 +3069,17 @@
       "noneChosen": "No repository yet. Add one so pull requests, branches and checks arrive here.",
       "allChosen": "Every repository is in already.",
       "branchesHere": "Branches",
-      "branchesHereHint": "New branches from Barynt are created in this repository."
+      "branchesHereHint": "New branches from Barynt are created in this repository.",
+      "pending": "New permissions wait for your approval on GitHub: {permissions}.",
+      "acceptOnGitHub": "Approve on GitHub",
+      "permission": {
+        "contents": "Contents: write",
+        "pull_requests": "Pull requests: write",
+        "checks": "Checks: read",
+        "actions": "Actions: write",
+        "deployments": "Deployments: read",
+        "metadata": "Metadata: read"
+      }
     },
     "githubApp": {
       "title": "GitHub App",
@@ -3088,7 +3098,10 @@
         "app_created": "The GitHub App is set up.",
         "app_failed": "GitHub didn't hand over the app's keys. Try again."
       },
-      "local": "Barynt runs locally here, GitHub can't reach it. So the app comes without a webhook: connecting and picking repositories work, pull requests and checks only arrive with a public address."
+      "local": "Barynt runs locally here, GitHub can't reach it. So the app comes without a webhook: connecting and picking repositories work, pull requests and checks only arrive with a public address.",
+      "needsTitle": "The app needs new permissions",
+      "needs": "For comments on pull requests, workflows and deployments: {what}. Set them in the app's permissions on GitHub and save — then each installation's owner accepts them once.",
+      "needsLink": "Open permissions on GitHub"
     },
     "suggestions": "Suggestions",
     "suggestionsTitle": "Use a suggestion",
@@ -3101,7 +3114,11 @@
       "bases": "Target branches",
       "basesHint": "The rules count only for pull requests into these branches, separated by commas; release/* takes every one below. Empty: all.",
       "checksTitle": "Checks & Actions",
-      "checksHint": "Which status Barynt sets when the checks on an issue's branch fail — GitHub Actions and any other."
+      "checksHint": "Which status Barynt sets when the checks on an issue's branch fail — GitHub Actions and any other.",
+      "prComment": "Link the issues in the pull request",
+      "prCommentHint": "Barynt comments once on the pull request with a link to each issue it works on.",
+      "deployTitle": "Deployments",
+      "deployHint": "Which status Barynt sets when the work on an issue is deployed — a preview of its branch, or a deployment of the commits that close it."
     }
   }
 }

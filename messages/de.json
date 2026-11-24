@@ -3069,7 +3069,17 @@
       "noneChosen": "Noch kein Repository. Füge eins hinzu, damit Pull Requests, Branches und Checks hier ankommen.",
       "allChosen": "Alle Repositories sind schon dabei.",
       "branchesHere": "Branches",
-      "branchesHereHint": "Neue Branches aus Barynt werden in diesem Repository angelegt."
+      "branchesHereHint": "Neue Branches aus Barynt werden in diesem Repository angelegt.",
+      "pending": "Neue Rechte warten auf deine Bestätigung auf GitHub: {permissions}.",
+      "acceptOnGitHub": "Auf GitHub bestätigen",
+      "permission": {
+        "contents": "Inhalte schreiben",
+        "pull_requests": "Pull Requests schreiben",
+        "checks": "Checks lesen",
+        "actions": "Actions schreiben",
+        "deployments": "Deployments lesen",
+        "metadata": "Metadaten lesen"
+      }
     },
     "githubApp": {
       "title": "GitHub App",
@@ -3088,7 +3098,10 @@
         "app_created": "Die GitHub App ist eingerichtet.",
         "app_failed": "GitHub hat die Schlüssel der App nicht übergeben. Versuch es noch einmal."
       },
-      "local": "Barynt läuft hier lokal, GitHub kann es nicht erreichen. Die App kommt deshalb ohne Webhook: Verbinden und Repos auswählen geht, Pull Requests und Checks kommen erst mit einer öffentlichen Adresse an."
+      "local": "Barynt läuft hier lokal, GitHub kann es nicht erreichen. Die App kommt deshalb ohne Webhook: Verbinden und Repos auswählen geht, Pull Requests und Checks kommen erst mit einer öffentlichen Adresse an.",
+      "needsTitle": "Die App braucht neue Rechte",
+      "needs": "Für Kommentare im Pull Request, Workflows und Deployments: {what}. Setze sie in den Rechten der App auf GitHub und speichere – danach bestätigt jeder Besitzer einer Installation sie einmal.",
+      "needsLink": "Rechte auf GitHub öffnen"
     },
     "suggestions": "Vorschläge",
     "suggestionsTitle": "Vorschlag übernehmen",
@@ -3101,7 +3114,11 @@
       "bases": "Ziel-Branches",
       "basesHint": "Die Regeln gelten nur für Pull Requests in diese Branches, durch Komma getrennt; release/* nimmt alle darunter. Leer: alle.",
       "checksTitle": "Checks & Actions",
-      "checksHint": "Welchen Status Barynt setzt, wenn die Checks auf dem Branch eines Issues fehlschlagen – GitHub Actions und andere."
+      "checksHint": "Welchen Status Barynt setzt, wenn die Checks auf dem Branch eines Issues fehlschlagen – GitHub Actions und andere.",
+      "prComment": "Issues im Pull Request verlinken",
+      "prCommentHint": "Barynt kommentiert einmal im Pull Request mit einem Link zu jedem Issue, an dem er arbeitet.",
+      "deployTitle": "Deployments",
+      "deployHint": "Welchen Status Barynt setzt, wenn die Arbeit an einem Issue deployt ist – über einen Preview seines Branches oder den Deploy der Commits, die es schließen."
     }
   }
 }

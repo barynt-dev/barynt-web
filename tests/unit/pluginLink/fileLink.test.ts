@@ -297,6 +297,50 @@ describe("handleLink(): the rules (BARY-227)", () => {
     );
   });
 
+  it("moves what a deployment shipped, from what the host found", async () => {
+    const { deploymentFinding } = await import("@/lib/plugins/link");
+    const body = {
+      repository,
+      deployment: {
+        ref: "main",
+        sha: "abc",
+        environment: "production",
+        production_environment: true,
+      },
+      deployment_status: {
+        state: "success",
+        environment_url: "https://acme.dev",
+      },
+    };
+    const extra = deploymentFinding(
+      "acme/web",
+      body.deployment,
+      body.deployment_status,
+      new Date().toISOString(),
+      ["WEB-42"],
+    );
+    const reached = await handleLink(
+      app,
+      plugin,
+      {
+        provider: "github",
+        rules: [{ id: "live", on: "deployment.production" as const }],
+      },
+      { live: "done" },
+      "deployment_status",
+      body,
+      extra ? [extra] : [],
+    );
+    expect(updates).toEqual([
+      { userId: "bot-1", issueId: "i-42", status: "done" },
+    ]);
+    expect(comments[0].body).toBe(
+      "Deployed to [production](https://acme.dev) from acme/web — status set to **Done**.",
+    );
+    // Filed for the first time.
+    expect(reached[0].fresh).toEqual([reached[0].findings[0].key]);
+  });
+
   it("changes the status without a comment when it may not comment", async () => {
     await handleLink(
       { ...app, capabilities: ["issues:read", "issues:write"] },

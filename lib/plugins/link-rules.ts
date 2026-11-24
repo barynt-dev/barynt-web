@@ -5,8 +5,10 @@
 /**
  * What a rule reacts to. A pull request's way, in order: opened as a draft,
  * opened (or a draft marked ready), a review asked for, approved or changes
- * requested, merged — or closed without merging. And its branch's checks
- * failing (GitHub Actions and any other check).
+ * requested, merged — or closed without merging. Its branch's checks
+ * failing (GitHub Actions and any other check). And the work deployed:
+ * to a test environment (staging, a preview), or to production — as
+ * GitHub marks the environment.
  */
 export const LINK_TRIGGERS = [
   "pull_request.draft",
@@ -17,12 +19,20 @@ export const LINK_TRIGGERS = [
   "pull_request.merged",
   "pull_request.closed",
   "checks.failed",
+  "deployment.test",
+  "deployment.production",
 ] as const;
 export type LinkTrigger = (typeof LINK_TRIGGERS)[number];
 
 /** The group a trigger belongs to on the settings page. */
 export const linkTriggerGroup = (trigger: LinkTrigger) =>
-  trigger.startsWith("checks.") ? "checks" : "pull_request";
+  trigger.startsWith("checks.")
+    ? "checks"
+    : trigger.startsWith("deployment.")
+      ? "deployment"
+      : "pull_request";
+
+export type LinkTriggerGroup = ReturnType<typeof linkTriggerGroup>;
 
 /** Whether a target branch counts, by the place's list — empty: every one.
  *  `release/*` takes every branch below `release/`. */

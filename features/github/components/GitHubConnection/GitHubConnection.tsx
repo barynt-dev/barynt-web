@@ -200,6 +200,21 @@ export function GitHubConnection({
                   </Button>
                 )}
               </div>
+              {c.pending.length > 0 && (
+                <p className={styles.pending}>
+                  <Icon icon="lucide:shield-alert" width={15} aria-hidden />
+                  <span>
+                    {text.t("github.pending", {
+                      permissions: c.pending
+                        .map((p) => permissionName(text.t, p))
+                        .join(", "),
+                    })}{" "}
+                    <a href={c.manageUrl} target="_blank" rel="noreferrer">
+                      {text.t("github.acceptOnGitHub")}
+                    </a>
+                  </span>
+                </p>
+              )}
             </li>
           ))}
         </ul>
@@ -352,4 +367,13 @@ function RepositoryLinks({
       )}
     </div>
   );
+}
+
+/** A permission of the app, named as GitHub's settings name it. */
+export function permissionName(
+  t: ReturnType<typeof usePluginText>["t"],
+  permission: string,
+): string {
+  const key = `github.permission.${permission}` as "github.permission.actions";
+  return t.has(key) ? t(key) : permission;
 }
