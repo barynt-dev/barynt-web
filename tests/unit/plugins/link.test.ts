@@ -6,7 +6,7 @@ import {
   type PullRequestEntry,
   readLinkFindings,
 } from "@/lib/plugins/link";
-import { closingMentions } from "@/lib/plugins/link-rules";
+import { baseMatches, closingMentions } from "@/lib/plugins/link-rules";
 
 // What Barynt reads of GitHub's webhooks (BARY-226) — payloads cut down
 // from GitHub's own examples to what's read.
@@ -213,17 +213,64 @@ describe("keeping an entry", () => {
 });
 
 describe("what a pull request works on (BARY-227)", () => {
-  it("knows when it's opened, ready, or merged", () => {
+  it("knows each step of its way (BARY-238)", () => {
     const trigger = (action: string, over: Record<string, unknown> = {}) =>
       read("pull_request", { action, pull_request: pr(over) })[0].trigger;
+    expect(trigger("opened", { draft: true })).toBe("pull_request.draft");
+    expect(trigger("converted_to_draft", { draft: true })).toBe(
+      "pull_request.draft",
+    );
     expect(trigger("opened")).toBe("pull_request.opened");
-    expect(trigger("opened", { draft: true })).toBeUndefined();
     expect(trigger("ready_for_review")).toBe("pull_request.opened");
+    expect(trigger("review_requested")).toBe("pull_request.review_requested");
+    expect(trigger("review_requested", { draft: true })).toBeUndefined();
     expect(trigger("closed", { state: "closed", merged: true })).toBe(
       "pull_request.merged",
     );
-    expect(trigger("closed", { state: "closed" })).toBeUndefined();
+    expect(trigger("closed", { state: "closed" })).toBe("pull_request.closed");
     expect(trigger("synchronize")).toBeUndefined();
+  });
+
+  it("knows a review that decides", () => {
+    const trigger = (state: string) =>
+      read("pull_request_review", {
+        action: "submitted",
+        review: { state },
+        pull_request: pr(),
+      })[0]?.trigger;
+    expect(trigger("APPROVED")).toBe("pull_request.approved");
+    expect(trigger("CHANGES_REQUESTED")).toBe("pull_request.changes_requested");
+    expect(trigger("COMMENTED")).toBeUndefined();
+  });
+
+  it("knows checks that failed on the branch, and what it works on", () => {
+    const run = (conclusion: string | null) =>
+      read("check_run", {
+        check_run: {
+          name: "test",
+          status: conclusion ? "completed" : "in_progress",
+          conclusion,
+          head_sha: "abc",
+          check_suite: { head_branch: "ada/web-42-oauth-callback" },
+          pull_requests: [],
+        },
+      })[0];
+    const failed = run("failure");
+    expect(failed.trigger).toBe("checks.failed");
+    expect(findIssueRefs(failed.closes ?? [], ["WEB"])).toEqual([
+      { prefix: "WEB", key: 42 },
+    ]);
+    expect(run("success").trigger).toBeUndefined();
+    expect(run(null).trigger).toBeUndefined();
+  });
+
+  it("counts a target branch by the place's list", () => {
+    expect(baseMatches("develop", [])).toBe(true);
+    expect(baseMatches("main", ["main"])).toBe(true);
+    expect(baseMatches("develop", ["main"])).toBe(false);
+    expect(baseMatches("release/2.1", ["main", "release/*"])).toBe(true);
+    expect(baseMatches("release", ["release/*"])).toBe(false);
+    expect(baseMatches(null, ["main"])).toBe(false);
   });
 
   it("names what it closes: the branch, and what follows fixes/closes/resolves", () => {

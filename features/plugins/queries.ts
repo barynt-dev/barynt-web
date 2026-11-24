@@ -56,7 +56,7 @@ import {
   serviceAddressOf,
 } from "@/lib/webhooks/plugin-targets";
 import { listDevPlugins } from "./dev";
-import { linkRuleStatuses } from "./link";
+import { linkRuleBases, linkRuleStatuses } from "./link";
 import { placeSettings, placeStatuses } from "./settings-options";
 
 // What the plugin pages show (BARY-143). Every view checks its own
@@ -701,6 +701,9 @@ export interface PluginSettingField {
    *  the accounts GitHub didn't answer for. */
   connected?: boolean;
   failed?: string[];
+  /** The heading it's shown under, with the settings next to it that
+   *  share it. */
+  group?: string;
   /** `text`: ready-made values to pick from a menu beside the field. */
   suggestions?: {
     id: string;
@@ -857,8 +860,12 @@ export interface PluginInboundView {
     on: LinkTrigger;
     status: string | null;
   }[];
+  /** The target branches a pull request's rules count for — none: all. */
+  bases: string[];
   /** What a rule can set: the workspace's statuses. Empty without rules. */
   statuses: { id: string; label: string; color?: string }[];
+  /** Its calls come through a connection's app — no address to give. */
+  viaApp: boolean;
 }
 
 /** A plugin's server, as its settings show it (BARY-212). */
@@ -1030,6 +1037,7 @@ export async function getPluginSettingsView(
         connected: f.connected ?? false,
         failed: f.failed ?? [],
       }),
+      ...(f.group && { group: f.group }),
       ...(f.suggestions?.length && {
         suggestions: f.suggestions.map((x) => ({
           id: x.id,
@@ -1064,7 +1072,13 @@ export async function getPluginSettingsView(
             ...r,
             status: stored[r.id] ?? null,
           })),
+          bases: linkRuleBases(row.rules),
           statuses: hook.rules?.length ? ruleStatuses : [],
+          // GitHub reports through the instance's GitHub App (BARY-238):
+          // nothing to set up at GitHub, only the rules count.
+          viaApp:
+            hook.provider === "github" &&
+            !!connection?.connections.some((c) => !c.broken),
         },
       ];
     }),

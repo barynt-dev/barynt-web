@@ -365,6 +365,9 @@ const settingSchema = z.strictObject({
   type: z.enum(SETTING_TYPES),
   label: title,
   description: z.string().max(300).optional(),
+  /** The heading it's shown under: settings in a row with the same group
+   *  share one. */
+  group: title.optional(),
   default: z
     .union([
       z.string().max(500),

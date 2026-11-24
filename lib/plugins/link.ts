@@ -73,7 +73,8 @@ export interface LinkFinding {
   key: string;
   entry: LinkEntry;
   texts: string[];
-  /** A pull request's: what a rule may react to (BARY-227). */
+  /** What a rule may react to (BARY-227): a pull request's step, or its
+   *  branch's checks failing. */
   trigger?: LinkTrigger;
   /** Where a key means the pull request works on the issue — its branch
    *  name, `Fixes WEB-42` — not just names it. */
@@ -157,11 +158,23 @@ function pullRequest(
   const title = str(pr.title) ?? "";
   const description = str(pr.body, 4000) ?? "";
   const trigger: LinkTrigger | undefined =
-    (action === "opened" && state === "open") || action === "ready_for_review"
-      ? "pull_request.opened"
-      : action === "closed" && state === "merged"
-        ? "pull_request.merged"
-        : undefined;
+    review === "approved"
+      ? "pull_request.approved"
+      : review === "changes_requested"
+        ? "pull_request.changes_requested"
+        : (action === "opened" || action === "converted_to_draft") &&
+            state === "draft"
+          ? "pull_request.draft"
+          : (action === "opened" && state === "open") ||
+              action === "ready_for_review"
+            ? "pull_request.opened"
+            : action === "review_requested" && state === "open"
+              ? "pull_request.review_requested"
+              : action === "closed" && state === "merged"
+                ? "pull_request.merged"
+                : action === "closed" && state === "closed"
+                  ? "pull_request.closed"
+                  : undefined;
   return {
     key: linkKey.pullRequest(repo, number),
     entry: {
@@ -312,6 +325,11 @@ function github(event: string, body: Json, at: string): LinkFinding[] {
           at,
         },
         texts: [branch, ...prBranches],
+        // A run that failed: the branch works on the issue its name has.
+        ...(state === "failure" && {
+          trigger: "checks.failed" as const,
+          closes: [branch, ...prBranches],
+        }),
       },
     ];
   }

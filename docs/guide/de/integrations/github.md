@@ -28,7 +28,7 @@ Das war's: Pull Requests, Branches, Commits und Checks dieser Repositories komme
 
 **Eigenes Token (optional):** Wer unter **Persönliche Einstellungen → Plugins → GitHub** ein Fine-grained-Token hinterlegt (_Contents_ lesen und schreiben, _Pull requests_ und _Checks_ lesen), bekommt Branches mit dem eigenen GitHub-Login im Namen und sieht, wer reviewt hat. Ohne Token arbeitet das Plugin über die Verbindung, dann aber nur mit den Repositories, die das Projekt angehakt hat.
 
-**Ohne App:** Wie bisher die Repositories eintragen (`owner/repo`, eins pro Zeile), den Webhook aus der Karte **Webhooks anderer Dienste** in den Repository-Einstellungen auf GitHub anlegen und jeder ein eigenes Token hinterlegen.
+**Ohne App:** Wie bisher die Repositories eintragen (`owner/repo`, eins pro Zeile), den Webhook aus der Karte **Webhooks anderer Dienste** in den Repository-Einstellungen auf GitHub anlegen und jeder ein eigenes Token hinterlegen. Mit einer Verbindung wird diese Karte nicht gezeigt: GitHub meldet über die App.
 
 ## Wie Issues gefunden werden
 
@@ -36,7 +36,7 @@ Barynt sucht die Issue-Schlüssel des Projekts im Branch-Namen, Titel und in der
 
 ## Regeln
 
-Unter dem Webhook in den Einstellungen des Plugins wählst du je Regel einen Status — etwa _When a pull request is opened_ → _In Review_ und _When a pull request is merged_ → _Done_ — oder lässt sie aus. Barynt setzt den Status dann als **GitHub (App)** und kommentiert den Grund. Eine Regel bewegt nur ein Issue, an dem der Pull Request arbeitet: Schlüssel im Branch-Namen oder nach _Fixes_, _Closes_ oder _Resolves_ im Titel oder in der Beschreibung. Ein Schlüssel, der nur woanders erwähnt wird, verknüpft den Pull Request und sonst nichts.
+In den Plugin-Einstellungen des Projekts wählst du je Regel einen Status oder lässt sie aus, und speicherst oben mit **Speichern**. Unter **Pull Requests** gibt es eine Regel je Schritt: _Als Entwurf geöffnet_, _Geöffnet oder bereit für Review_, _Review angefragt_, _Freigegeben_, _Änderungen gewünscht_, _Gemergt_, _Ohne Merge geschlossen_ — etwa _In Review_, wenn ein Review angefragt wird, und _Done_ beim Merge. **Ziel-Branches** beschränkt sie auf Pull Requests in diese Branches (`main, release/*`; leer: alle), damit ein Merge in `develop` ein Issue nicht abschließt. Unter **Checks & Actions**: _Checks auf dem Branch fehlgeschlagen_ — jeder Check, auch GitHub Actions — etwa _Blockiert_. Barynt setzt den Status dann als **GitHub (App)** und kommentiert den Grund. Eine Regel bewegt nur ein Issue, an dem der Pull Request arbeitet: Schlüssel im Branch-Namen oder nach _Fixes_, _Closes_ oder _Resolves_ im Titel oder in der Beschreibung. Ein Schlüssel, der nur woanders erwähnt wird, verknüpft den Pull Request und sonst nichts.
 
 ## Aktionen
 

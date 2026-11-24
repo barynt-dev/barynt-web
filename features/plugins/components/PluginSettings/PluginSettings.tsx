@@ -3,7 +3,7 @@
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { useRef, useState, useTransition } from "react";
+import { Fragment, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import { Input } from "@/components/ui/atoms/Input/Input";
 import { NativeSelect } from "@/components/ui/atoms/NativeSelect/NativeSelect";
@@ -16,6 +16,7 @@ import {
   activatePlugin,
   deactivatePlugin,
   deletePluginData,
+  saveInboundRules,
   savePluginSettings,
 } from "@/features/plugins/actions";
 import type {
@@ -30,6 +31,12 @@ import {
   type SettingValue,
 } from "@/lib/plugins/settings";
 import { settingsSlotId } from "@/lib/plugins/slots";
+import {
+  LinkRules,
+  type LinkRulesValue,
+  linkRulesValue,
+  parseBases,
+} from "../LinkRules/LinkRules";
 import { PluginCredentials } from "../PluginCredentials/PluginCredentials";
 import { PluginFrame } from "../PluginFrame/PluginFrame";
 import { PluginInbound } from "../PluginInbound/PluginInbound";
@@ -84,6 +91,14 @@ export function PluginSettings({
   );
   // What's saved — the form has changes while `values` differ from it.
   const [savedValues, setSavedValues] = useState(values);
+  // The `link` hooks' rules (BARY-227), part of the form: by hook row.
+  const ruleHooks = view.inbound.filter((h) => h.rules.length > 0);
+  const [rules, setRules] = useState<Record<string, LinkRulesValue>>(() =>
+    Object.fromEntries(ruleHooks.map((h) => [h.id, linkRulesValue(h)])),
+  );
+  const [savedRules, setSavedRules] = useState(rules);
+  const rulesChanged = (id: string) =>
+    JSON.stringify(rules[id]) !== JSON.stringify(savedRules[id]);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   // Its own settings page saves with the same button (SDK `save`), once it
@@ -102,8 +117,9 @@ export function PluginSettings({
     running && view.settingsPage !== "page" && view.fields.length > 0;
   const formDirty =
     hasForm && JSON.stringify(values) !== JSON.stringify(savedValues);
-  const dirty = formDirty || (frameSaves && frameUnsaved);
-  const canSave = running && (hasForm || frameSaves);
+  const rulesDirty = running && ruleHooks.some((h) => rulesChanged(h.id));
+  const dirty = formDirty || rulesDirty || (frameSaves && frameUnsaved);
+  const canSave = running && (hasForm || frameSaves || ruleHooks.length > 0);
   const storeHref = pluginStorePath(scope.workspaceId, {
     plugin: plugin.pluginId,
   });
@@ -168,6 +184,19 @@ export function PluginSettings({
         if ("error" in result) return setError(text.error(result.error));
         setSavedValues(values);
       }
+      for (const hook of ruleHooks) {
+        if (!rulesChanged(hook.id)) continue;
+        const value = rules[hook.id];
+        const result = await saveInboundRules({
+          hookId: hook.id,
+          statuses: Object.fromEntries(
+            hook.rules.map((r) => [r.id, value.statuses[r.id] || null]),
+          ),
+          bases: parseBases(value.bases),
+        });
+        if ("error" in result) return setError(text.error(result.error));
+      }
+      setSavedRules(rules);
       if (frameSaves && frameUnsaved) {
         const result = await saveFrame();
         if (!result.ok)
@@ -363,17 +392,43 @@ export function PluginSettings({
               if (dirty) save();
             }}
           >
-            {view.fields.map((field) => (
-              <Field
-                key={field.key}
-                field={field}
-                value={values[field.key]}
-                disabled={isPending}
-                onChange={(v) => set(field.key, v)}
-              />
+            {view.fields.map((field, i) => (
+              <Fragment key={field.key}>
+                {/* A group's heading, over the first of its settings. */}
+                {field.group && field.group !== view.fields[i - 1]?.group && (
+                  <h2 className={styles.groupTitle}>{field.group}</h2>
+                )}
+                <Field
+                  field={field}
+                  value={values[field.key]}
+                  disabled={isPending}
+                  onChange={(v) => set(field.key, v)}
+                />
+              </Fragment>
             ))}
             {view.state === "active" && <ErrorLine message={error} />}
           </form>
+        )}
+        {/* What a pull request and its checks do to the issues they work
+            on — saved with the same button. */}
+        {running &&
+          (["pull_request", "checks"] as const).flatMap((group) =>
+            ruleHooks.map((hook) => (
+              <LinkRules
+                key={`${group}-${hook.id}`}
+                hook={hook}
+                group={group}
+                value={rules[hook.id]}
+                disabled={isPending}
+                onChange={(value) => {
+                  setRules((r) => ({ ...r, [hook.id]: value }));
+                  setSaved(false);
+                }}
+              />
+            )),
+          )}
+        {running && !hasForm && ruleHooks.length > 0 && (
+          <ErrorLine message={error} />
         )}
         {/* Its part below the form (BARY-204): a check, a preview, a
             picker that asks its own service. */}

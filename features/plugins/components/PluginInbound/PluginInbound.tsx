@@ -5,18 +5,20 @@ import { useFormatter, useTranslations } from "next-intl";
 import { CopyField } from "@/components/ui/atoms/CopyField/CopyField";
 import type { PluginInboundView } from "@/features/plugins/queries";
 import { usePluginText } from "../shared";
-import { InboundRules } from "./InboundRules";
 import styles from "./pluginInbound.module.scss";
 
 /**
  * Webhooks another service sends the plugin through Barynt (BARY-215): per
  * hook, the address and secret to give GitLab or GitHub — and what came
- * last, so a setup that doesn't work shows why.
+ * last, so a setup that doesn't work shows why. Not for a hook a GitHub
+ * connection's app feeds (BARY-238): nothing to set up there. Its rules
+ * are part of the settings form (`LinkRules`).
  */
-export function PluginInbound({ hooks }: { hooks: PluginInboundView[] }) {
+export function PluginInbound({ hooks: all }: { hooks: PluginInboundView[] }) {
   const text = usePluginText();
   const t = useTranslations();
   const format = useFormatter();
+  const hooks = all.filter((h) => !h.viaApp);
   if (hooks.length === 0) return null;
   return (
     <section className={styles.root} aria-labelledby="plugin-inbound">
@@ -94,7 +96,6 @@ export function PluginInbound({ hooks }: { hooks: PluginInboundView[] }) {
                     : text.t("inbound.howtoGithub")
                   : text.t("inbound.howtoGeneric")}
             </p>
-            <InboundRules hook={hook} />
           </div>
         );
       })}

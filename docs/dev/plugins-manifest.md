@@ -387,6 +387,7 @@ under **Plugins** — and the plugin reads them with
 | `type` | One of the types below. |
 | `label` | Up to 60 characters. |
 | `description` | Optional, up to 300 characters, shown under the field. |
+| `group` | Optional, up to 60 characters: the heading it's shown under. Settings in a row with the same `group` share one heading. |
 | `default` | Optional: a string, number or boolean — for `select` an option's `id`, for `multiselect` a list of them. |
 | `options` | For `select` and `multiselect` only, and required there: `{ id, label }`, up to 50. |
 | `suggestions` | For `text` only: ready-made values, up to 10 — `{ id, value, label, hint? }`. Barynt shows them in a menu beside the field (**Suggestions**); picking one fills it in, and the field stays free to type. `hint` (up to 120 characters) is an example of what the value gives: the menu shows it, and while the field holds that value, Barynt shows it under the field as **Example:** instead of the description. |
@@ -693,10 +694,14 @@ next.
 #### Rules
 
 A `link` hook can name rules — what Barynt may do with an issue when a pull
-request that works on it is opened or merged. Each project that switches
-the plugin on picks, per rule, the status to set (any of the workspace's),
-or leaves it off; Barynt sets it as the plugin's app and, with
-`comments:write`, comments why. Rules need `issues:write`.
+request that works on it takes a step, or the checks on its branch fail.
+Each project that switches the plugin on picks, per rule, the status to set
+(any of the workspace's), or leaves it off, and may limit the pull
+request's rules to target branches (`main, release/*`; none: all). The
+settings page shows them in a section each — _Pull requests_ and _Checks &
+Actions_ — saved with its Save button. Barynt sets the status as the
+plugin's app and, with `comments:write`, comments why. Rules need
+`issues:write`.
 
 ```json
 "capabilities": ["issues:read", "issues:write", "comments:write", "webhooks:receive"],
@@ -711,8 +716,14 @@ or leaves it off; Barynt sets it as the plugin's app and, with
 
 | `on` | When |
 | --- | --- |
+| `pull_request.draft` | opened as a draft, or turned back into one |
 | `pull_request.opened` | opened (not as a draft), or a draft marked ready |
+| `pull_request.review_requested` | a review asked for |
+| `pull_request.approved` | a review approved it |
+| `pull_request.changes_requested` | a review asked for changes |
 | `pull_request.merged` | merged |
+| `pull_request.closed` | closed without merging |
+| `checks.failed` | a check on the branch failed — GitHub Actions or any other (the branch's name carries the key) |
 
 A rule moves an issue only when the pull request works on it: its key is
 in the branch's name, or follows *fixes*, *closes* or *resolves* in the

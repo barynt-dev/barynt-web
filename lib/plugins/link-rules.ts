@@ -2,12 +2,37 @@
 // counts as working on an issue rather than just naming it. No
 // dependencies: the manifest's check and the browser read it too.
 
-/** What a rule reacts to. A draft counts as opened once it's ready. */
+/**
+ * What a rule reacts to. A pull request's way, in order: opened as a draft,
+ * opened (or a draft marked ready), a review asked for, approved or changes
+ * requested, merged — or closed without merging. And its branch's checks
+ * failing (GitHub Actions and any other check).
+ */
 export const LINK_TRIGGERS = [
+  "pull_request.draft",
   "pull_request.opened",
+  "pull_request.review_requested",
+  "pull_request.approved",
+  "pull_request.changes_requested",
   "pull_request.merged",
+  "pull_request.closed",
+  "checks.failed",
 ] as const;
 export type LinkTrigger = (typeof LINK_TRIGGERS)[number];
+
+/** The group a trigger belongs to on the settings page. */
+export const linkTriggerGroup = (trigger: LinkTrigger) =>
+  trigger.startsWith("checks.") ? "checks" : "pull_request";
+
+/** Whether a target branch counts, by the place's list — empty: every one.
+ *  `release/*` takes every branch below `release/`. */
+export function baseMatches(base: string | null, bases: readonly string[]) {
+  if (bases.length === 0) return true;
+  if (!base) return false;
+  return bases.some((b) =>
+    b.endsWith("/*") ? base.startsWith(b.slice(0, -1)) : base === b,
+  );
+}
 
 const KEY = "[A-Za-z][A-Za-z0-9]{0,9}[-_]\\d{1,7}";
 const CLOSING = new RegExp(

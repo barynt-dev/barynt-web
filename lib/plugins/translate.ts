@@ -39,6 +39,7 @@ const TEXT_MAX: Record<string, number> = {
   label: 60,
   description: 300,
   hint: 120,
+  group: 60,
 };
 
 /** Lists inside an item whose entries are translated by id. */
@@ -181,7 +182,7 @@ export function translationIssues(
       } else
         add(
           at,
-          "only title, label, description, hint, options, rules and suggestions translate",
+          "only title, label, description, hint, group, options, rules and suggestions translate",
         );
     }
   };

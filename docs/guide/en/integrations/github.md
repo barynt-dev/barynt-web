@@ -28,7 +28,7 @@ That's it: pull requests, branches, commits and checks of those repositories com
 
 **Your own token (optional):** keep a fine-grained GitHub token under **personal settings → Plugins → GitHub** (_Contents_ read and write, _Pull requests_ and _Checks_ read) to have branches named after your GitHub login and to see who reviewed. Without one, the plugin works through the connection — and then only on the repositories the project ticked.
 
-**Without the app:** as before, type the repositories (`owner/repo`, one per line), add the webhook from the card **Webhooks from other services** in GitHub's repository settings, and keep a token each.
+**Without the app:** as before, type the repositories (`owner/repo`, one per line), add the webhook from the card **Webhooks from other services** in GitHub's repository settings, and keep a token each. With a connection, that card isn't shown: GitHub reports through the app.
 
 ## How issues are found
 
@@ -36,7 +36,7 @@ Barynt looks for the project's issue keys in a pull request's branch name, title
 
 ## Rules
 
-Under the webhook in the plugin's settings, pick a status for each rule — for example _When a pull request is opened_ → _In Review_ and _When a pull request is merged_ → _Done_ — or leave it off. Barynt then sets the status as **GitHub (App)** and comments why. A rule only moves an issue the pull request works on: its key in the branch's name, or after _Fixes_, _Closes_ or _Resolves_ in the title or description. A key only mentioned elsewhere links the pull request and nothing more.
+In the project's plugin settings, pick a status for each rule, or leave it off, and save with **Save** at the top. Under **Pull requests**, one per step: _Opened as a draft_, _Opened or ready for review_, _Review requested_, _Approved_, _Changes requested_, _Merged_, _Closed without merging_ — for example _In Review_ when a review is requested and _Done_ when merged. **Target branches** limits them to pull requests into these branches (`main, release/*`; empty: all), so a merge into `develop` doesn't mark an issue done. Under **Checks & Actions**, _Checks failed on the branch_ — any check, GitHub Actions too — say _Blocked_. Barynt then sets the status as **GitHub (App)** and comments why. A rule only moves an issue the pull request works on: its key in the branch's name, or after _Fixes_, _Closes_ or _Resolves_ in the title or description. A key only mentioned elsewhere links the pull request and nothing more.
 
 ## Actions
 

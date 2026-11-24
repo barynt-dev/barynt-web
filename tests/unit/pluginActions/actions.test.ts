@@ -43,6 +43,8 @@ mock.module("@/lib/db", () => ({
     pluginCredential: { upsert: mock(), deleteMany: mock() },
     pluginGrant: { findUnique: mock(), upsert: mock(), deleteMany: mock() },
     project: { findUnique: mock() },
+    pluginInboundHook: { findUnique: mock(), update: mock() },
+    workspaceStatus: { count: mock() },
     $transaction: mock(async (arg: unknown) =>
       typeof arg === "function"
         ? (arg as (t: typeof tx) => unknown)(tx)
@@ -99,6 +101,7 @@ import {
   previewRelease,
   removePluginCredential,
   rollbackPlugin,
+  saveInboundRules,
   savePluginCredential,
   savePluginSettings,
   setPluginBlocked,
@@ -119,6 +122,8 @@ const settingsRow = db.pluginSettings as unknown as Record<string, M>;
 const grant = db.pluginGrant as unknown as Record<string, M>;
 const credential = db.pluginCredential as unknown as Record<string, M>;
 const project = db.project.findUnique as unknown as M;
+const inboundHook = db.pluginInboundHook as unknown as Record<string, M>;
+const statusCount = db.workspaceStatus.count as unknown as M;
 const perm = requirePermission as unknown as M;
 const audit = recordAudit as unknown as M;
 const release = fetchRelease as unknown as M;
@@ -156,10 +161,12 @@ beforeEach(() => {
     grant,
     settingsRow,
     credential,
+    inboundHook,
     tx.plugin,
   ])
     for (const fn of Object.values(group)) (fn as M).mockReset();
   project.mockReset();
+  statusCount.mockReset();
   audit.mockClear();
   release.mockReset();
   perm.mockReset();
@@ -642,6 +649,87 @@ describe("settings (BARY-201)", () => {
       }),
     ).toEqual({ error: "not_activated" });
     expect(settingsRow.upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("a link hook's rules (BARY-227, BARY-238)", () => {
+  const withRules = {
+    ...manifest,
+    capabilities: ["webhooks:receive", "issues:write"],
+    network: [],
+    contributes: {
+      inboundHooks: [
+        {
+          id: "github",
+          title: "GitHub",
+          provider: "github",
+          handle: "link",
+          rules: [
+            { id: "opened", title: "Opened", on: "pull_request.opened" },
+            { id: "merged", title: "Merged", on: "pull_request.merged" },
+          ],
+        },
+      ],
+    },
+  };
+  const setUp = (stored: unknown = {}) => {
+    inboundHook.findUnique.mockResolvedValue({
+      id: "h1",
+      hookId: "github",
+      activationId: "a1",
+      rules: stored,
+    });
+    activation.findUnique.mockResolvedValue({
+      id: "a1",
+      pluginId: "gantt-timeline",
+      workspaceId: "w1",
+      projectId: "p1",
+    });
+    plugin.findFirst.mockResolvedValue({ manifest: withRules });
+  };
+
+  it("saves the target branches, and turns a rule off, together", async () => {
+    setUp({ opened: "in_review", _bases: ["develop"] });
+    const result = await saveInboundRules({
+      hookId: "h1",
+      statuses: { opened: null, merged: null },
+      bases: [" main ", "release/*", "main"],
+    });
+    expect(result).toEqual({ ok: true });
+    expect(inboundHook.update.mock.calls[0][0].data).toEqual({
+      rules: { _bases: ["main", "release/*"] },
+    });
+  });
+
+  it("refuses a rule the manifest doesn't have, or a branch Git can't name", async () => {
+    setUp();
+    expect(
+      await saveInboundRules({
+        hookId: "h1",
+        statuses: { closed: null },
+        bases: [],
+      }),
+    ).toEqual({ error: "invalid_setting" });
+    expect(
+      await saveInboundRules({
+        hookId: "h1",
+        statuses: {},
+        bases: ["feature branch"],
+      }),
+    ).toEqual({ error: "invalid_setting" });
+    expect(inboundHook.update).not.toHaveBeenCalled();
+  });
+
+  it("refuses a status the workspace doesn't have", async () => {
+    setUp();
+    statusCount.mockResolvedValue(0);
+    expect(
+      await saveInboundRules({
+        hookId: "h1",
+        statuses: { merged: "nope" },
+        bases: [],
+      }),
+    ).toEqual({ error: "invalid_setting" });
   });
 });
 

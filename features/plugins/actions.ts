@@ -11,7 +11,7 @@ import {
   sealSourceToken,
 } from "@/features/plugins/directory";
 import { ensureInboundHooks } from "@/features/plugins/inbound";
-import { linkRuleStatuses } from "@/features/plugins/link";
+import { LINK_BASES_MAX, linkRuleStatuses } from "@/features/plugins/link";
 import { getPluginIssueActions } from "@/features/plugins/slots";
 import { DELIVERY_SELECT } from "@/features/webhooks/deliveries";
 import type { WebhookDelivery } from "@/features/webhooks/types";
@@ -1183,14 +1183,16 @@ async function manageableActivation(activationId: string) {
 }
 
 /**
- * Switches one of a `link` hook's rules on, with the status it sets, or off
- * (`status: null`) — for this project or workspace (BARY-227). The status
- * is one of the workspace's; the rule one the plugin's manifest names.
+ * A `link` hook's rules for this project or workspace (BARY-227): per rule
+ * the status it sets, or `null` for off — and the target branches a pull
+ * request's rules count for (none: every branch). Saved together, with
+ * the settings page's Save button. Statuses are the workspace's, rules the
+ * ones the plugin's manifest names.
  */
-export async function setInboundRule(input: {
+export async function saveInboundRules(input: {
   hookId: string;
-  ruleId: string;
-  status: string | null;
+  statuses: Record<string, string | null>;
+  bases: string[];
 }): Promise<PluginResult> {
   const hook = await db.pluginInboundHook.findUnique({
     where: { id: input.hookId },
@@ -1205,25 +1207,42 @@ export async function setInboundRule(input: {
   });
   const parsed = row ? validateManifest(row.manifest) : null;
   if (!parsed?.ok) return { error: "not_activated" };
-  const rule = parsed.manifest.contributes.inboundHooks
-    ?.find((h) => h.id === hook.hookId)
-    ?.rules?.find((r) => r.id === input.ruleId);
-  if (!rule) return { error: "invalid_setting" };
-  if (input.status) {
+  const declared =
+    parsed.manifest.contributes.inboundHooks?.find((h) => h.id === hook.hookId)
+      ?.rules ?? [];
+  const ids = Object.keys(input.statuses);
+  if (ids.some((id) => !declared.some((r) => r.id === id)))
+    return { error: "invalid_setting" };
+  const chosen = [
+    ...new Set(Object.values(input.statuses).filter((s): s is string => !!s)),
+  ];
+  if (chosen.length > 0) {
     const known = await db.workspaceStatus.count({
-      where: { workspaceId: activation.workspaceId, statusId: input.status },
+      where: {
+        workspaceId: activation.workspaceId,
+        statusId: { in: chosen },
+      },
     });
-    if (known === 0) return { error: "invalid_setting" };
+    if (known !== chosen.length) return { error: "invalid_setting" };
   }
+  const bases = [...new Set(input.bases.map((b) => b.trim()).filter(Boolean))];
+  if (
+    bases.length > LINK_BASES_MAX ||
+    bases.some((b) => b.length > 250 || /[\s~^:?[\\]/.test(b))
+  )
+    return { error: "invalid_setting" };
 
-  const rules = linkRuleStatuses(hook.rules);
-  if (input.status) rules[rule.id] = input.status;
-  else delete rules[rule.id];
+  const rules: Record<string, unknown> = linkRuleStatuses(hook.rules);
+  for (const [id, status] of Object.entries(input.statuses)) {
+    if (status) rules[id] = status;
+    else delete rules[id];
+  }
+  if (bases.length > 0) rules._bases = bases;
   await db.pluginInboundHook.update({
     where: { id: hook.id },
-    data: { rules },
+    data: { rules: rules as Prisma.InputJsonValue },
   });
-  if (input.status) await ensureBot(activation.id, parsed.manifest);
+  if (chosen.length > 0) await ensureBot(activation.id, parsed.manifest);
   await recordAudit({
     action: "plugin.inbound.rules",
     actorId: activation.actorId,
@@ -1234,7 +1253,7 @@ export async function setInboundRule(input: {
     },
     workspaceId: activation.workspaceId,
     projectId: activation.projectId,
-    meta: { hook: hook.hookId, rule: rule.id, status: input.status },
+    meta: { hook: hook.hookId, rules: input.statuses, bases },
   });
   done();
   return { ok: true };

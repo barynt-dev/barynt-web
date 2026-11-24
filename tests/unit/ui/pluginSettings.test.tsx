@@ -450,47 +450,98 @@ describe("PluginSettings", () => {
     expect(running).toContain("service.test");
   });
 
-  it("offers a link hook's rules, each with the status it sets (BARY-227)", () => {
+  const linkHook = (
+    over: Partial<PluginSettingsView["inbound"][number]> = {},
+  ): PluginSettingsView["inbound"][number] => ({
+    id: "row-1",
+    hookId: "github",
+    title: "GitHub repository",
+    provider: "github",
+    handle: "link",
+    url: "https://barynt.test/api/plugins/hooks/tok",
+    secret: "s",
+    last: null,
+    rules: [
+      {
+        id: "opened",
+        title: "When a pull request is opened",
+        on: "pull_request.opened",
+        status: null,
+      },
+      {
+        id: "merged",
+        title: "When a pull request is merged",
+        on: "pull_request.merged",
+        status: "done",
+      },
+      {
+        id: "checks-failed",
+        title: "When checks fail",
+        on: "checks.failed",
+        status: null,
+      },
+    ],
+    bases: ["main"],
+    statuses: [
+      { id: "in_review", label: "In Review" },
+      { id: "done", label: "Done" },
+    ],
+    viaApp: false,
+    ...over,
+  });
+
+  it("offers a link hook's rules in the form, by pull request and checks (BARY-227)", () => {
+    const html = render(view({ fields: [], inbound: [linkHook()] }));
+    // Set up by hand: the address to give GitHub.
+    expect(html).toContain("inbound.howtoGithubLink");
+    // The rules, in their sections, saved with the button at the top.
+    expect(html).toContain("rules.prTitle");
+    expect(html).toContain("rules.checksTitle");
+    expect(html.indexOf("When a pull request is merged")).toBeLessThan(
+      html.indexOf("rules.checksTitle"),
+    );
+    expect(html.indexOf("When checks fail")).toBeGreaterThan(
+      html.indexOf("rules.checksTitle"),
+    );
+    expect(html).toMatch(/<option value="done" selected="">/);
+    expect(html).toContain('data-on="false"');
+    // The target branches, as kept.
+    expect(html).toMatch(/id="rules-bases-row-1"[^>]*value="main"/);
+    expect(html.slice(0, html.indexOf("</header>"))).toContain("actions.save");
+  });
+
+  it("leaves out the address when a GitHub connection's app reports (BARY-238)", () => {
+    const html = render(
+      view({ fields: [], inbound: [linkHook({ viaApp: true })] }),
+    );
+    expect(html).not.toContain("inbound.howtoGithubLink");
+    expect(html).not.toContain("inbound.title");
+    expect(html).toContain("rules.prTitle");
+  });
+
+  it("puts a group's heading over its settings", () => {
+    const field = (key: string, group?: string) => ({
+      key,
+      type: "text" as const,
+      label: key,
+      description: null,
+      default: null,
+      options: [],
+      ...(group && { group }),
+    });
     const html = render(
       view({
-        fields: [],
-        inbound: [
-          {
-            id: "row-1",
-            hookId: "github",
-            title: "GitHub repository",
-            provider: "github",
-            handle: "link",
-            url: "https://barynt.test/api/plugins/hooks/tok",
-            secret: "s",
-            last: null,
-            rules: [
-              {
-                id: "opened",
-                title: "When a pull request is opened",
-                on: "pull_request.opened",
-                status: null,
-              },
-              {
-                id: "merged",
-                title: "When a pull request is merged",
-                on: "pull_request.merged",
-                status: "done",
-              },
-            ],
-            statuses: [
-              { id: "in_review", label: "In Review" },
-              { id: "done", label: "Done" },
-            ],
-          },
+        fields: [
+          field("repos"),
+          field("a", "Branches"),
+          field("b", "Branches"),
         ],
       }),
     );
-    expect(html).toContain("inbound.howtoGithubLink");
-    expect(html).toContain("inbound.rulesTitle");
-    expect(html).toContain("When a pull request is merged");
-    expect(html).toMatch(/<option value="done" selected="">/);
-    expect(html).toContain('data-on="false"');
+    expect(html.match(/>Branches<\/h2>/g)).toHaveLength(1);
+    expect(html.indexOf(">Branches</h2>")).toBeGreaterThan(
+      html.indexOf("repos"),
+    );
   });
 
   it("asks again after an update wants more", () => {
