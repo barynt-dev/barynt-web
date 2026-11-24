@@ -25,6 +25,8 @@ export const APP_PERMISSIONS = {
   actions: "write",
   // What was deployed where, for the deployment rules.
   deployments: "read",
+  // Write: a new repository, created from the settings.
+  administration: "write",
   metadata: "read",
 } as const;
 

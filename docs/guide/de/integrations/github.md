@@ -23,6 +23,10 @@ Barynt verbindet sich über eine eigene **GitHub App** mit GitHub, so wie Linear
 
 Das war's: Pull Requests, Branches, Commits und Checks dieser Repositories kommen von selbst. Wenn die App später mehr oder weniger Repositories sehen soll, geht das über **Repositories auf GitHub ändern** neben dem Konto.
 
+Ein Projekt kann mit mehreren Repositories arbeiten; **Branch erstellen** fragt dann, in welchem.
+
+**Ein neues Repository** legst du direkt in den Einstellungen an: **Neues Repository erstellen** unten im Menü **Repository hinzufügen** eines Projekts (es kommt gleich ins Projekt) oder der Button neben der Verbindung im Workspace. Konto, Name, eine Zeile dazu und privat oder öffentlich wählen; es startet mit einer README. In einer Organisation legt die App es an, in einem persönlichen Konto nur sein Besitzer – mit seinem im Tab **Persönlich** verbundenen GitHub-Konto. Sieht die App nur ausgewählte Repositories, gibt Barynt ihr das neue frei; geht das nicht, sagt es das.
+
 > [!NOTE]
 > GitHub muss Barynt für seine Meldungen unter `<deine Adresse>/api/github/webhook` erreichen. Ist eine Instanz nur im eigenen Netz (oder unter `localhost`) erreichbar, wird die App ohne Webhook angelegt. Verbinden und Repositories auswählen funktioniert dann, Pull Requests und Checks kommen aber nicht an.
 
@@ -51,4 +55,4 @@ Im Menü eines Issues, in den Schnellaktionen einer Karte und in der Befehlspale
 
 ## Neue Rechte
 
-Kommentare im Pull Request, Workflows und Deployments brauchen Rechte, die eine früher erstellte App nicht hat: _Pull requests_ und _Actions_ schreiben, _Deployments_ lesen, und das Ereignis _Deployment status_. **Admin → Plugins → GitHub** zeigt das auf der Karte **GitHub App**, mit Link zu den Rechten der App auf GitHub — dort setzen und speichern. Danach bestätigt jeder Besitzer einer Installation sie einmal; bis dahin steht das in den Plugin-Einstellungen beim Konto, mit Link.
+Kommentare im Pull Request, Workflows und Deployments brauchen Rechte, die eine früher erstellte App nicht hat: _Pull requests_, _Actions_ und _Administration_ schreiben (Letzteres für neue Repositories), _Deployments_ lesen, und das Ereignis _Deployment status_. **Admin → Plugins → GitHub** zeigt das auf der Karte **GitHub App**, mit Link zu den Rechten der App auf GitHub — dort setzen und speichern. Danach bestätigt jeder Besitzer einer Installation sie einmal; bis dahin steht das in den Plugin-Einstellungen beim Konto, mit Link.

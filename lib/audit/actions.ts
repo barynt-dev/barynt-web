@@ -132,6 +132,7 @@ export const AUDIT_ACTIONS = {
   // a plugin, or taken off; the instance's GitHub App created.
   "plugin.connection.added": "Plugin connected to GitHub",
   "plugin.connection.removed": "Plugin's GitHub connection removed",
+  "plugin.repository.created": "GitHub repository created from a plugin",
   "github.app.created": "GitHub App created",
 
   // ── Webhooks (BARY-211) ───────────────────────────────────────────────────

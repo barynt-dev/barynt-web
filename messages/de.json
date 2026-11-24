@@ -1631,6 +1631,7 @@
       "pluginInboundRules": "Regel eines Plugin-Webhooks geändert",
       "pluginConnectionAdded": "Plugin mit GitHub verbunden",
       "pluginConnectionRemoved": "GitHub-Verbindung eines Plugins entfernt",
+      "pluginRepositoryCreated": "GitHub-Repository erstellt",
       "githubAppCreated": "GitHub App erstellt",
       "pluginServiceAddress": "Adresse des Plugin-Servers geändert"
     },
@@ -2589,7 +2590,13 @@
       "invalid_ref": "Branch oder Tag enthält Zeichen, die es nicht geben kann.",
       "invalid_setting": "Eine Einstellung hat einen Wert, den das Plugin nicht kennt.",
       "github_choice_expired": "Die Auswahl ist abgelaufen. Verbinde erneut.",
-      "forbidden": "Das darfst du hier nicht."
+      "forbidden": "Das darfst du hier nicht.",
+      "github_repo_name": "Der Name darf nur Buchstaben, Ziffern, Punkte, Binde- und Unterstriche enthalten.",
+      "github_repo_exists": "Dieses Konto hat schon ein Repository mit diesem Namen.",
+      "github_repo_no_right": "GitHub lässt das nicht zu: Die App braucht das Recht „Administration schreiben“, oder du darfst in diesem Konto keine Repositories anlegen.",
+      "github_link_needed": "Ein Repository in einem persönlichen Konto legt nur sein Besitzer an: Verbinde dein GitHub-Konto unter Plugins → GitHub → Persönlich.",
+      "github_not_your_account": "Ein Repository in einem persönlichen Konto legt nur sein Besitzer an – das verbundene GitHub-Konto ist ein anderes.",
+      "github_failed": "GitHub hat nicht geantwortet. Versuch es noch einmal."
     },
     "noCapabilities": "Verlangt nichts.",
     "newCapability": "Neu",
@@ -3080,7 +3087,8 @@
         "checks": "Checks lesen",
         "actions": "Actions schreiben",
         "deployments": "Deployments lesen",
-        "metadata": "Metadaten lesen"
+        "metadata": "Metadaten lesen",
+        "administration": "Repositories anlegen"
       },
       "meTitle": "Dein GitHub-Konto",
       "meHint": "Verbinde dein GitHub-Konto, damit Plugins in deinem Namen arbeiten – etwa Branches mit deinem Login benennen. Repositories des Projekts erreichen sie weiter über seine Verbindung.",
@@ -3089,7 +3097,18 @@
       "meExpired": "Abgelaufen – verbinde es neu",
       "meSignedIn": "Du bist mit GitHub angemeldet (@{login}). Ein Klick verbindet das Konto auch für Plugins.",
       "meConnect": "Mit GitHub verbinden",
-      "meReconnect": "Neu verbinden"
+      "meReconnect": "Neu verbinden",
+      "newRepo": "Neues Repository erstellen",
+      "newRepoTitle": "Neues Repository auf GitHub",
+      "newRepoOwner": "Konto",
+      "newRepoName": "Name",
+      "newRepoDescription": "Beschreibung (optional)",
+      "newRepoHint": "Mit einer README, damit es gleich einen Standard-Branch hat.",
+      "newRepoCreate": "Erstellen",
+      "newRepoCreated": "{repo} erstellt.",
+      "newRepoNotShared": "{repo} erstellt – die App sieht es noch nicht. Gib es auf GitHub für die App frei.",
+      "newRepoPrivate": "Privat",
+      "newRepoPublic": "Öffentlich"
     },
     "githubApp": {
       "title": "GitHub App",

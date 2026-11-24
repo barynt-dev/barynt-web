@@ -479,6 +479,8 @@ GitHub account they sign in with (`Account`, provider `github`) where its token 
 repositories (`lib/github/app#loginTokenReaches`: signing in through the app itself, or
 the `repo` scope).
 
+`features/github/create-repo.ts#createRepository` makes a new repository from the settings (`createGitHubRepository`, `plugin.enable` in the place): in an organization the place is connected to with the installation's token (`POST /orgs/{org}/repos`, the app's `administration: write`), else — and in a personal account always — as the person (`POST /user/repos`, only their own account). Where the installation doesn't see it then, it's added with the person's token (`PUT /user/installations/{id}/repositories/{repo}`); audited as `plugin.repository.created`.
+
 ## Smaller pieces
 
 | Piece | File | What it does |

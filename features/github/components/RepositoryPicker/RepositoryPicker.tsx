@@ -1,12 +1,14 @@
 "use client";
 
 import { Icon } from "@iconify/react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import { InlinePicker } from "@/components/ui/atoms/InlinePicker/InlinePicker";
 import { usePluginText } from "@/features/plugins/components/shared";
 import type { PluginSettingField } from "@/features/plugins/queries";
 import { repositoryList } from "@/lib/plugins/settings";
+import { useCreateRepository } from "../CreateRepository/CreateRepository";
 import { RepoBadges, RepoName } from "../RepoBadges/RepoBadges";
 import styles from "./repositoryPicker.module.scss";
 
@@ -20,13 +22,22 @@ export function RepositoryPicker({
   value,
   disabled,
   onChange,
+  place,
 }: {
   field: PluginSettingField;
   value: unknown;
   disabled: boolean;
   onChange: (value: string[]) => void;
+  /** Where a new repository is created from (BARY-238). */
+  place?: { pluginId: string; workspaceId: string; projectId: string | null };
 }) {
   const text = usePluginText();
+  const router = useRouter();
+  const createRepository = useCreateRepository();
+  const [created, setCreated] = useState<{
+    fullName: string;
+    notShared: boolean;
+  } | null>(null);
   const chosen = repositoryList(value);
   const [query, setQuery] = useState("");
   const [typed, setTyped] = useState(chosen.join("\n"));
@@ -65,6 +76,17 @@ export function RepositoryPicker({
   const remove = (name: string) =>
     onChange(chosen.filter((c) => key(c) !== key(name)));
   const add = (name: string) => onChange([...chosen, name]);
+  // A new one, in one of the connected accounts — added to the list, and
+  // the list of what's there loaded again.
+  const accounts = field.accounts ?? [];
+  const createNew = async () => {
+    if (!place) return;
+    const repo = await createRepository(place, accounts);
+    if (!repo) return;
+    add(repo.fullName);
+    setCreated(repo);
+    router.refresh();
+  };
   // What can still be added, found by the search in the menu.
   const needle = query.trim().toLowerCase();
   const addable = field.options.filter(
@@ -161,7 +183,7 @@ export function RepositoryPicker({
             <Button
               type="button"
               variant="outline"
-              disabled={disabled || left <= 0}
+              disabled={disabled || (left <= 0 && accounts.length === 0)}
               icon={<Icon icon="lucide:plus" width={15} />}
               iconRight={<Icon icon="lucide:chevron-down" width={14} />}
             >
@@ -218,6 +240,19 @@ export function RepositoryPicker({
                   </li>
                 )}
               </ul>
+              {place && accounts.length > 0 && (
+                <button
+                  type="button"
+                  className={styles.createNew}
+                  onClick={() => {
+                    close();
+                    void createNew();
+                  }}
+                >
+                  <Icon icon="lucide:book-plus" width={15} aria-hidden />
+                  {text.t("github.newRepo")}
+                </button>
+              )}
             </div>
           )}
         </InlinePicker>
@@ -234,6 +269,25 @@ export function RepositoryPicker({
           )}
         </span>
       </div>
+      {created && (
+        <p
+          className={styles.created}
+          data-tone={created.notShared ? "warning" : "success"}
+          role="status"
+        >
+          <Icon
+            icon={created.notShared ? "lucide:info" : "lucide:circle-check"}
+            width={15}
+            aria-hidden
+          />
+          {text.t(
+            created.notShared
+              ? "github.newRepoNotShared"
+              : "github.newRepoCreated",
+            { repo: created.fullName },
+          )}
+        </p>
+      )}
     </fieldset>
   );
 }

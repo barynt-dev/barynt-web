@@ -152,6 +152,7 @@ export function PluginSettings({
           value={values[field.key]}
           disabled={isPending}
           onChange={(v) => set(field.key, v)}
+          place={{ pluginId: plugin.pluginId, ...scope }}
         />
       ))}
     </form>
@@ -557,11 +558,14 @@ function Field({
   value,
   disabled,
   onChange,
+  place,
 }: {
   field: PluginSettingField;
   value: Value;
   disabled: boolean;
   onChange: (value: Value) => void;
+  /** The plugin and its place — a `repositories` setting creates one there. */
+  place: { pluginId: string; workspaceId: string; projectId: string | null };
 }) {
   const id = `setting-${field.key}`;
   if (field.type === "repositories")
@@ -571,6 +575,7 @@ function Field({
         value={value}
         disabled={disabled}
         onChange={onChange}
+        place={place}
       />
     );
   if (field.type === "boolean")

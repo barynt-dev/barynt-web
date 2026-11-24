@@ -15,6 +15,10 @@ import {
 import type { PluginConnectionView } from "@/features/github/queries";
 import { ErrorLine, usePluginText } from "@/features/plugins/components/shared";
 import { Link } from "@/i18n/navigation";
+import {
+  type CreatedRepository,
+  useCreateRepository,
+} from "../CreateRepository/CreateRepository";
 import { RepoBadges, RepoName } from "../RepoBadges/RepoBadges";
 import styles from "./gitHubConnection.module.scss";
 
@@ -52,6 +56,9 @@ export function GitHubConnection({
   const inProject = scope.projectId !== null;
   const outcome = OUTCOMES.find((o) => o === params.get("github"));
   const own = view.connections.filter((c) => !c.inherited);
+  const working = view.connections.filter((c) => !c.broken);
+  const createRepository = useCreateRepository();
+  const [created, setCreated] = useState<CreatedRepository | null>(null);
   const inherited = view.connections.filter((c) => c.inherited);
 
   const run = (action: () => Promise<{ ok: true } | { error: string }>) =>
@@ -231,6 +238,25 @@ export function GitHubConnection({
       {view.repositories && view.connections.some((c) => !c.broken) && (
         <RepositoryLinks repositories={view.repositories} />
       )}
+      {created && (
+        <p
+          className={styles.outcome}
+          data-tone={created.notShared ? "warning" : "success"}
+          role="status"
+        >
+          <Icon
+            icon={created.notShared ? "lucide:info" : "lucide:circle-check"}
+            width={15}
+            aria-hidden
+          />
+          {text.t(
+            created.notShared
+              ? "github.newRepoNotShared"
+              : "github.newRepoCreated",
+            { repo: created.fullName },
+          )}
+        </p>
+      )}
 
       <ErrorLine message={error} />
 
@@ -244,6 +270,30 @@ export function GitHubConnection({
                 ? text.t("github.connectOwn")
                 : text.t("github.connect")}
           </a>
+          {/* In the workspace: a new repository in a connected account. */}
+          {!inProject && working.length > 0 && (
+            <Button
+              variant="outline"
+              icon={<Icon icon="lucide:book-plus" width={15} />}
+              disabled={isPending}
+              onClick={async () => {
+                const repo = await createRepository(
+                  { pluginId, ...scope },
+                  working.map((c) => ({
+                    id: c.installationId,
+                    account: c.account,
+                    accountType: c.accountType,
+                    avatar: c.avatar,
+                  })),
+                );
+                if (!repo) return;
+                setCreated(repo);
+                router.refresh();
+              }}
+            >
+              {text.t("github.newRepo")}
+            </Button>
+          )}
           {view.connections.length > 0 && (
             <Button
               variant="outline"

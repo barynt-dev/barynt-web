@@ -21,7 +21,9 @@ Barynt connects to GitHub through a **GitHub App** of its own, the way Linear or
 3. **Connect:** under **Settings → Plugins → GitHub → Workspace**, click **Connect GitHub**. GitHub asks you to sign in, then to install the app on an account and pick its repositories — or, if it's installed already, Barynt lists the accounts you can reach. A connection in the workspace counts for **every project** in it. A project can also connect an account of its own on the **Project** tab there.
 4. **In the project:** under **Settings → Plugins → GitHub → Project**, pick the project at the right, confirm what it may do and switch it on. **Repositories** now lists everything the connected accounts share: tick the ones this project works with and save.
 
-That's it: pull requests, branches, commits and checks of those repositories come in on their own. To give the app more or fewer repositories later, use **Change repositories on GitHub** beside the account.
+That's it: pull requests, branches, commits and checks of those repositories come in on their own. A project can work with several repositories; **Create branch** then asks which one.
+
+**A new repository** is quick to make from the settings: **Create new repository** at the bottom of the project's **Add repository** menu (it's added to the project right away), or the button beside the connection in the workspace. Pick the account, a name, a line about it and whether it's private; it starts with a README. In an organization the app creates it; in a personal account only its owner can, with their GitHub account connected on the **Personal** tab. Where the app only sees chosen repositories, Barynt shares the new one with it — if it can't, it says so. To give the app more or fewer repositories later, use **Change repositories on GitHub** beside the account.
 
 > [!NOTE]
 > GitHub has to reach Barynt for its reports, at `<your address>/api/github/webhook`. On an instance only reachable inside your network (or `localhost`), the app is created without a webhook: connecting and picking repositories work, but pull requests and checks don't arrive.
@@ -51,4 +53,4 @@ In an issue's menu, a card's quick actions and the command palette:
 
 ## New permissions
 
-Commenting on pull requests, running workflows and deployments need permissions an app created before doesn't have: _Pull requests_ and _Actions_ to write, _Deployments_ to read, and the event _Deployment status_. **Admin → Plugins → GitHub** says so on the **GitHub App** card, with a link to the app's permissions on GitHub — set them there and save. Each installation's owner then accepts them once; the account's row in the plugin settings says so until they did, with a link.
+Commenting on pull requests, running workflows and deployments need permissions an app created before doesn't have: _Pull requests_, _Actions_ and _Administration_ to write (the last for new repositories), _Deployments_ to read, and the event _Deployment status_. **Admin → Plugins → GitHub** says so on the **GitHub App** card, with a link to the app's permissions on GitHub — set them there and save. Each installation's owner then accepts them once; the account's row in the plugin settings says so until they did, with a link.

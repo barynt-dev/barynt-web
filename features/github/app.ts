@@ -310,6 +310,20 @@ export async function asInstallation<T>(
   return call<T>(path, { ...init, token });
 }
 
+/** A call to GitHub's API as a person, with their token. */
+export function asUser<T>(
+  token: string,
+  path: string,
+  init: { method?: string; body?: unknown } = {},
+): Promise<{ status: number; data: T | null }> {
+  return call<T>(path, { ...init, token });
+}
+
+/** Forgets what an installation reaches — a repository was just added. */
+export function forgetRepositories(installationId: string) {
+  repoCache.delete(installationId);
+}
+
 export interface GitHubRepository {
   fullName: string;
   private: boolean;

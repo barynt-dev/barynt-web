@@ -48,6 +48,12 @@ const KNOWN_ERRORS = [
   "invalid_setting",
   "invalid_ref",
   "github_choice_expired",
+  "github_repo_name",
+  "github_repo_exists",
+  "github_repo_no_right",
+  "github_link_needed",
+  "github_not_your_account",
+  "github_failed",
   "forbidden",
 ] as const;
 

@@ -362,6 +362,10 @@ export const AUDIT_ACTION_META = {
     icon: "lucide:unlink",
     message: "pluginConnectionRemoved",
   },
+  "plugin.repository.created": {
+    icon: "lucide:book-plus",
+    message: "pluginRepositoryCreated",
+  },
   "github.app.created": {
     icon: "lucide:github",
     message: "githubAppCreated",

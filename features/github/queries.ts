@@ -44,6 +44,8 @@ export interface PluginConnectionView {
   appReady: boolean;
   connections: {
     rowId: string;
+    /** The installation. */
+    installationId: string;
     account: string;
     accountType: string;
     avatar: string | null;
@@ -122,6 +124,7 @@ export async function getConnectionView(
     appReady: app !== null,
     connections: connections.map((c) => ({
       rowId: c.rowId,
+      installationId: c.id,
       account: c.account,
       accountType: c.accountType,
       avatar: c.avatar,

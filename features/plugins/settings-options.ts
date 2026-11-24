@@ -25,7 +25,18 @@ export type PlacedSetting = Omit<Setting, "options"> & {
    *  them from, and the accounts GitHub didn't answer for (BARY-238). */
   connected?: boolean;
   failed?: string[];
+  /** The connected accounts — where a new repository can be created. */
+  accounts?: RepositoryAccount[];
 };
+
+/** A connected GitHub account a new repository can be created in. */
+export interface RepositoryAccount {
+  /** The installation. */
+  id: string;
+  account: string;
+  accountType: string;
+  avatar: string | null;
+}
 
 /** The manifest's settings with `member`, `label` and `status` given the
  *  place's options: in a project its members and the labels it shows, in the
@@ -67,6 +78,12 @@ export async function placeSettings(
         })),
         connected: repos.connections.length > 0,
         failed: repos.failed,
+        accounts: repos.connections.map((c) => ({
+          id: c.id,
+          account: c.account,
+          accountType: c.accountType,
+          avatar: c.avatar,
+        })),
       };
     return placed[s.type] ? { ...s, options: placed[s.type] } : s;
   });

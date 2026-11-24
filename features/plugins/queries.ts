@@ -58,7 +58,11 @@ import {
 } from "@/lib/webhooks/plugin-targets";
 import { listDevPlugins } from "./dev";
 import { linkRuleBases, linkRuleOptions, linkRuleStatuses } from "./link";
-import { placeSettings, placeStatuses } from "./settings-options";
+import {
+  placeSettings,
+  placeStatuses,
+  type RepositoryAccount,
+} from "./settings-options";
 
 // What the plugin pages show (BARY-143). Every view checks its own
 // permission and answers `null` without it — the page then 404s; a hidden
@@ -702,6 +706,8 @@ export interface PluginSettingField {
    *  the accounts GitHub didn't answer for. */
   connected?: boolean;
   failed?: string[];
+  /** `repositories`: the connected accounts, to create one in. */
+  accounts?: RepositoryAccount[];
   /** The heading it's shown under, with the settings next to it that
    *  share it. */
   group?: string;
@@ -1042,6 +1048,7 @@ export async function getPluginSettingsView(
       ...(f.type === "repositories" && {
         connected: f.connected ?? false,
         failed: f.failed ?? [],
+        accounts: f.accounts ?? [],
       }),
       ...(f.group && { group: f.group }),
       ...(f.group && f.groupIcon && { groupIcon: f.groupIcon }),

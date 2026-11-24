@@ -370,6 +370,7 @@ describe("what the app needs (BARY-238)", () => {
       "pull_requests",
       "actions",
       "deployments",
+      "administration",
     ]);
     expect(missing.events).toContain("deployment_status");
   });
@@ -383,6 +384,7 @@ describe("what the app needs (BARY-238)", () => {
           checks: "write",
           actions: "write",
           deployments: "read",
+          administration: "write",
           metadata: "read",
           issues: "write",
         },

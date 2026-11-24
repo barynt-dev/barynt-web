@@ -149,6 +149,7 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
           connections: [
             {
               rowId: "c1",
+              installationId: "1",
               account: "acme",
               accountType: "Organization",
               avatar: null,
@@ -200,6 +201,7 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
           connections: [
             {
               rowId: "c1",
+              installationId: "1",
               account: "acme",
               accountType: "Organization",
               avatar: null,
@@ -267,6 +269,7 @@ describe("PluginSettings, connected to GitHub (BARY-238)", () => {
           connections: [
             {
               rowId: "c1",
+              installationId: "1",
               account: "acme",
               accountType: "Organization",
               avatar: null,

@@ -1631,6 +1631,7 @@
       "pluginInboundRules": "Changed a rule of the plugin's webhook",
       "pluginConnectionAdded": "Connected a plugin to GitHub",
       "pluginConnectionRemoved": "Removed a plugin's GitHub connection",
+      "pluginRepositoryCreated": "Created a GitHub repository",
       "githubAppCreated": "Created the GitHub App",
       "pluginServiceAddress": "Changed the address of the plugin's server"
     },
@@ -2589,7 +2590,13 @@
       "invalid_ref": "The branch or tag contains characters it can't have.",
       "invalid_setting": "A setting has a value the plugin doesn’t know.",
       "github_choice_expired": "That choice has expired. Connect again.",
-      "forbidden": "You may not do that here."
+      "forbidden": "You may not do that here.",
+      "github_repo_name": "The name may only hold letters, digits, dots, hyphens and underscores.",
+      "github_repo_exists": "This account has a repository with this name already.",
+      "github_repo_no_right": "GitHub doesn't allow it: the app needs \"Administration: write\", or you may not create repositories in this account.",
+      "github_link_needed": "Only its owner creates a repository in a personal account: connect your GitHub account under Plugins → GitHub → Personal.",
+      "github_not_your_account": "Only its owner creates a repository in a personal account — your connected GitHub account is another one.",
+      "github_failed": "GitHub didn't answer. Try again."
     },
     "noCapabilities": "Asks for nothing.",
     "newCapability": "New",
@@ -3080,7 +3087,8 @@
         "checks": "Checks: read",
         "actions": "Actions: write",
         "deployments": "Deployments: read",
-        "metadata": "Metadata: read"
+        "metadata": "Metadata: read",
+        "administration": "Create repositories"
       },
       "meTitle": "Your GitHub account",
       "meHint": "Connect your GitHub account so plugins act as you — naming branches after your login, say. The project's repositories they still reach through its connection.",
@@ -3089,7 +3097,18 @@
       "meExpired": "Expired — connect it again",
       "meSignedIn": "You sign in with GitHub (@{login}). One click connects that account for plugins too.",
       "meConnect": "Connect GitHub",
-      "meReconnect": "Connect again"
+      "meReconnect": "Connect again",
+      "newRepo": "Create new repository",
+      "newRepoTitle": "New repository on GitHub",
+      "newRepoOwner": "Account",
+      "newRepoName": "Name",
+      "newRepoDescription": "Description (optional)",
+      "newRepoHint": "With a README, so it has a default branch right away.",
+      "newRepoCreate": "Create",
+      "newRepoCreated": "{repo} created.",
+      "newRepoNotShared": "{repo} created — the app doesn't see it yet. Share it with the app on GitHub.",
+      "newRepoPrivate": "Private",
+      "newRepoPublic": "Public"
     },
     "githubApp": {
       "title": "GitHub App",

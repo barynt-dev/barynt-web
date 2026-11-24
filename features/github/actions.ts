@@ -9,6 +9,11 @@ import { currentUserId } from "@/lib/permissions";
 import { forgetInstallation } from "./app";
 import { connectTarget, saveConnection } from "./connect";
 import { placeConnections } from "./connections";
+import {
+  type CreateRepoInput,
+  type CreateRepoResult,
+  createRepository,
+} from "./create-repo";
 import { removeUserLink } from "./user-link";
 
 // What the GitHub connection card does (BARY-238): connect one of the
@@ -111,4 +116,15 @@ export async function unlinkGitHubAccount(): Promise<Result> {
   await removeUserLink(userId);
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+/** A new repository in one of the place's connected accounts (BARY-238). */
+export async function createGitHubRepository(
+  input: CreateRepoInput,
+): Promise<CreateRepoResult> {
+  const userId = await currentUserId();
+  if (!userId) return { error: "forbidden" };
+  const result = await createRepository(userId, input);
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
 }
