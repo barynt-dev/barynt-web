@@ -64,6 +64,9 @@ interface Props {
   groups?: SettingsNavSection[];
   /** Below the sections — a link out of the nav, say. */
   footer?: ReactNode;
+  /** The rows without a heading over them — a nav of one kind of thing.
+   *  `title` still names the nav for screen readers. */
+  untitled?: boolean;
 }
 
 /**
@@ -94,6 +97,7 @@ export function SettingsNav({
   items,
   groups = [],
   footer,
+  untitled = false,
 }: Props) {
   // The header only becomes a switcher when there's something to switch
   // between: one's own account has no siblings, and a single project isn't
@@ -126,7 +130,7 @@ export function SettingsNav({
         </div>
       )}
       <SettingsNavSections
-        sections={[...sectionsOf(items, title), ...groups]}
+        sections={[...sectionsOf(items, untitled ? "" : title), ...groups]}
       />
       {footer}
     </nav>

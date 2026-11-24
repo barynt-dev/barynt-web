@@ -127,6 +127,7 @@ export default async function PluginsLayout({
             siblings={siblings}
             siblingsLabel={t("settings.scopeWorkspace")}
             title={t("plugins.area.title")}
+            untitled
             items={items}
             // Where the next one comes from — a way out, not a page here.
             footer={
