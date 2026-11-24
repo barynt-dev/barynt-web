@@ -79,7 +79,12 @@ const RUNTIME = `(() => {
         if (!actionHandler)
           return send({ type: "actionDone", seq, ok: false, result: "no actions" });
         Promise.resolve()
-          .then(() => actionHandler(String(m.actionId), { issueId: m.issueId || null }))
+          .then(() =>
+            actionHandler(String(m.actionId), {
+              issueId: m.issueId || null,
+              ...(typeof m.choice === "string" && { choice: m.choice }),
+            }),
+          )
           .then((result) => send({ type: "actionDone", seq, ok: true, result: result || {} }))
           .catch((error) =>
             send({

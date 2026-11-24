@@ -95,6 +95,7 @@ export abstract class Plugin {
     string,
     (context: {
       issueId: string | null;
+      choice?: string;
     }) => ActionResult | undefined | Promise<ActionResult | undefined>
   >();
 
@@ -170,12 +171,15 @@ export abstract class Plugin {
    * "…" menu, a card's quick actions and the command palette (as the
    * manifest's `where` says). Barynt runs it in a hidden frame when someone
    * picks it, for that issue (`issueId`); what you return shows as a toast.
+   * Return `pick` to ask first — which repository, say: Barynt shows the
+   * options and runs it again with the one picked as `choice`.
    * Do the work through `this.api` — it's checked like everything else.
    */
   registerAction(action: {
     id: string;
     run(context: {
       issueId: string | null;
+      choice?: string;
     }): ActionResult | undefined | Promise<ActionResult | undefined>;
   }): void {
     if (this.context.slot.kind !== "actions") return;

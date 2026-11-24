@@ -136,6 +136,8 @@ export type HostMessage =
       seq: number;
       actionId: string;
       issueId: string | null;
+      /** What was picked, when the action asked (`pick`). */
+      choice?: string;
     }
   /** Save its settings page: Barynt's Save button was pressed. */
   | { type: "settings:save"; seq: number };

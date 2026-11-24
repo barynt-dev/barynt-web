@@ -42,7 +42,7 @@ In the project's plugin settings, pick a status for each rule, or leave it off, 
 
 In an issue's menu, a card's quick actions and the command palette:
 
-- **Create branch** — in the project's first repository, from its default branch, named after the pattern in the settings (`{type}/{key}-{title}`, for example `feature/web-42-keep-the-cookie`). With your own token if you keep one, otherwise through the connection; as the project set it, the issue is then assigned to you and moved to a status.
+- **Create branch** — in one of the project's repositories (with several, it asks which; the first is the default), from its default branch, named after the pattern in the settings (`{type}/{key}-{title}`, for example `feature/web-42-keep-the-cookie`). With your own token if you keep one, otherwise through the connection; as the project set it, the issue is then assigned to you and moved to a status.
 - **Copy branch name** — the issue's branch, or the name it would get.
 - **Open pull request** — its open pull request, or GitHub's page to open one, the title starting with the issue's key.
 - **Run workflow** — the workflow named under **GitHub Actions** in the project's settings (a file in `.github/workflows` with `on: workflow_dispatch`), started on the issue's branch. The **Development** panel has the same button.

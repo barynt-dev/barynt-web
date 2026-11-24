@@ -93,6 +93,8 @@ export function PluginFrame({
     seq: number;
     actionId: string;
     issueId: string | null;
+    /** What was picked, when the action asked first. */
+    choice?: string;
   } | null;
   /** How it went: its answer (unchecked), or the error. */
   onActionDone?: (seq: number, ok: boolean, result: unknown) => void;

@@ -134,7 +134,7 @@ frame is for one of them.
 ### `registerAction()`
 
 ```ts
-registerAction(action: { id: string; run(context: { issueId }): ActionResult | void }): void;
+registerAction(action: { id: string; run(context: { issueId, choice? }): ActionResult | void }): void;
 ```
 
 An action from `contributes.actions`. When someone picks it, Barynt starts
@@ -160,10 +160,23 @@ this.registerAction({
 | `openPanel` | open this one of your `issuePanels` in the issue |
 | `copy` | text Barynt puts on the clipboard, up to 500 characters — the hidden frame can't |
 | `open` | an `https` address Barynt opens in a new tab |
+| `pick` | `{ title, options: [{ id, label, hint? }] }` (up to 20): ask first — Barynt shows the options and runs the action again with the one picked as `context.choice`; dismissed, nothing runs |
+
+```ts
+run: async ({ issueId, choice }) => {
+  if (!choice && repos.length > 1)
+    return { pick: { title: "Which repository?", options: repos.map((r) => ({ id: r, label: r })) } };
+  await createBranch(issueId!, choice ?? repos[0]);
+  return { message: "Branch created", tone: "success" };
+},
+```
+
+Check `choice` against what you offered — it comes back from the frame
+like any other input.
 
 What `run` throws shows as the plugin's error in a toast. In tests,
 `createTestHost({ context: { slot: { kind: "actions", id: "actions" } } })`
-and `host.runAction(id, { issueId })` run it as a menu would.
+and `host.runAction(id, { issueId, choice? })` run it as a menu would.
 
 ### `registerBadges()`
 

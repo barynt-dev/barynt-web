@@ -1,0 +1,19 @@
+/* A pick of a few: the choices as rows, one under the other. */
+
+.body {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  button {
+    width: 100%;
+  }
+}

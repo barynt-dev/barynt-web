@@ -3071,7 +3071,7 @@
       "noneChosen": "Noch kein Repository. Füge eins hinzu, damit Pull Requests, Branches und Checks hier ankommen.",
       "allChosen": "Alle Repositories sind schon dabei.",
       "branchesHere": "Branches",
-      "branchesHereHint": "Neue Branches aus Barynt werden in diesem Repository angelegt.",
+      "branchesHereHint": "Neue Branches aus Barynt werden standardmäßig in diesem Repository angelegt; bei mehreren wird gefragt.",
       "pending": "Neue Rechte warten auf deine Bestätigung auf GitHub: {permissions}.",
       "acceptOnGitHub": "Auf GitHub bestätigen",
       "permission": {
@@ -3139,6 +3139,7 @@
       "workspace": "Workspace",
       "pickProject": "Projekt",
       "pickWorkspace": "Workspace"
-    }
+    },
+    "actionCancel": "Abbrechen"
   }
 }

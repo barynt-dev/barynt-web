@@ -205,6 +205,12 @@ export interface ActionResult {
   copy?: string;
   /** An `https` address Barynt opens in a new tab. */
   open?: string;
+  /** Ask first: Barynt shows these options (up to 20) and runs the action
+   *  again with the one picked as `context.choice`. */
+  pick?: {
+    title: string;
+    options: { id: string; label: string; hint?: string }[];
+  };
 }
 
 /** The object Barynt hands a plugin's default export. */
@@ -218,7 +224,7 @@ export interface Host {
   serveActions?(
     handler: (
       actionId: string,
-      context: { issueId: string | null },
+      context: { issueId: string | null; choice?: string },
     ) => ActionResult | undefined | Promise<ActionResult | undefined>,
   ): void;
   /** What saves its settings page when Barynt's Save button is pressed. */

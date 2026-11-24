@@ -40,7 +40,19 @@ export interface ActionResult {
   copy?: string;
   /** An `https` address Barynt opens in a new tab (BARY-230). */
   open?: string;
+  /** A question first (BARY-238): Barynt shows the options, then runs the
+   *  action again with the one picked as `choice`. */
+  pick?: ActionPick;
 }
+
+/** What an action asks to pick before it goes on. */
+export interface ActionPick {
+  title: string;
+  options: { id: string; label: string; hint?: string }[];
+}
+
+/** Most options an action may offer to pick from. */
+export const ACTION_PICK_MAX = 20;
 
 /** Most text an action may put on the clipboard. */
 export const ACTION_COPY_MAX = 500;
@@ -70,6 +82,25 @@ export function actionIcon(icon: string | undefined): string | null {
     : null;
 }
 
+/** What an action asks to pick, checked — `null` for anything else. */
+function pickOf(raw: unknown): ActionPick | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const text = (v: unknown, max: number) =>
+    typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null;
+  const title = text(r.title, 120);
+  if (!title || !Array.isArray(r.options)) return null;
+  const options = r.options.slice(0, ACTION_PICK_MAX).flatMap((o: unknown) => {
+    if (!o || typeof o !== "object") return [];
+    const x = o as Record<string, unknown>;
+    const id = text(x.id, 200);
+    const label = text(x.label, 120);
+    const hint = text(x.hint, 120);
+    return id && label ? [{ id, label, ...(hint && { hint }) }] : [];
+  });
+  return options.length > 0 ? { title, options } : null;
+}
+
 /** An action's answer as Barynt uses it — anything else dropped. */
 export function parseActionResult(input: unknown): ActionResult {
   if (!input || typeof input !== "object" || Array.isArray(input)) return {};
@@ -93,5 +124,6 @@ export function parseActionResult(input: unknown): ActionResult {
       r.copy &&
       r.copy.length <= ACTION_COPY_MAX && { copy: r.copy }),
     ...(openable(r.open) && { open: openable(r.open) as string }),
+    ...(pickOf(r.pick) && { pick: pickOf(r.pick) as ActionPick }),
   };
 }

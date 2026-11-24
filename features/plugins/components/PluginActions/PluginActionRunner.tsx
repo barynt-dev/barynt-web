@@ -3,12 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+import { useChoose } from "@/components/ui/layout/ChoiceDialog/ChoiceDialog";
 import { parseActionResult } from "@/lib/plugins/plugin-actions";
 import { useUI } from "@/lib/ui-store";
 import { focusPanelNext } from "../PluginBadges/panelFocus";
 import { PluginFrame } from "../PluginFrame/PluginFrame";
 import styles from "./pluginActions.module.scss";
-import { type ActionJob, actionJobs, finishPluginAction } from "./runner";
+import {
+  type ActionJob,
+  actionJobs,
+  finishPluginAction,
+  startPluginAction,
+} from "./runner";
 
 /** How long an action may take before Barynt gives up on it. */
 const ACTION_TIMEOUT_MS = 20_000;
@@ -40,11 +46,17 @@ function ActionFrame({ job }: { job: ActionJob }) {
   const locale = useLocale();
   const router = useRouter();
   const { toast } = useUI();
+  const choose = useChoose();
   const { entry } = job;
   // Once per job: a new object would send it again.
   const request = useMemo(
-    () => ({ seq: job.key, actionId: entry.actionId, issueId: job.issueId }),
-    [job.key, entry.actionId, job.issueId],
+    () => ({
+      seq: job.key,
+      actionId: entry.actionId,
+      issueId: job.issueId,
+      ...(job.choice !== undefined && { choice: job.choice }),
+    }),
+    [job.key, entry.actionId, job.issueId, job.choice],
   );
 
   const fail = useCallback(
@@ -81,6 +93,22 @@ function ActionFrame({ job }: { job: ActionJob }) {
         if (seq !== job.key) return;
         if (!ok) return fail(String(raw));
         const result = parseActionResult(raw);
+        // It asks first (BARY-238): the options, then the action again with
+        // the one picked — nothing, when the dialog is dismissed.
+        if (result.pick) {
+          const pick = result.pick;
+          finishPluginAction(job.key);
+          void choose({
+            title: pick.title,
+            choices: pick.options,
+            cancelLabel: t("actionCancel"),
+          }).then((choice) => {
+            if (choice === null) return;
+            const { key: _key, ...rest } = job;
+            startPluginAction({ ...rest, choice });
+          });
+          return;
+        }
         // Done here, not in its frame: a hidden, sandboxed frame can neither
         // write the clipboard nor open a tab (BARY-230).
         if (result.copy) void navigator.clipboard?.writeText(result.copy);

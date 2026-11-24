@@ -27,7 +27,7 @@ export interface TestHost extends Host {
   /** Runs one of the plugin's actions, as a menu would. */
   runAction(
     id: string,
-    context?: { issueId: string | null },
+    context?: { issueId: string | null; choice?: string },
   ): Promise<ActionResult>;
   /** Whether its settings page says it has changes to save — `null` while
    *  it doesn't save with Barynt's button (`registerSettings` `save`). */

@@ -37,6 +37,43 @@ describe("an action's answer", () => {
       expect(parseActionResult(input)).toEqual({});
   });
 
+  it("may ask to pick one of a few first (BARY-238)", () => {
+    expect(
+      parseActionResult({
+        pick: {
+          title: "Which repository?",
+          options: [
+            { id: "acme/web", label: "acme/web", hint: "Default" },
+            { id: "", label: "no id" },
+            { id: "acme/api", label: "acme/api", extra: 1 },
+          ],
+        },
+      }),
+    ).toEqual({
+      pick: {
+        title: "Which repository?",
+        options: [
+          { id: "acme/web", label: "acme/web", hint: "Default" },
+          { id: "acme/api", label: "acme/api" },
+        ],
+      },
+    });
+    // Nothing to pick from, or no question: no pick.
+    expect(parseActionResult({ pick: { title: "x", options: [] } })).toEqual(
+      {},
+    );
+    expect(
+      parseActionResult({ pick: { options: [{ id: "a", label: "a" }] } }),
+    ).toEqual({});
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      id: `${i}`,
+      label: `${i}`,
+    }));
+    expect(
+      parseActionResult({ pick: { title: "x", options: many } }).pick?.options,
+    ).toHaveLength(20);
+  });
+
   it("may ask Barynt to copy a text or open an https address (BARY-230)", () => {
     expect(
       parseActionResult({

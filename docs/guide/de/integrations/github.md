@@ -42,7 +42,7 @@ In den Plugin-Einstellungen des Projekts wählst du je Regel einen Status oder l
 
 Im Menü eines Issues, in den Schnellaktionen einer Karte und in der Befehlspalette:
 
-- **Branch erstellen** — im ersten Repository des Projekts, ausgehend von dessen Standard-Branch, benannt nach dem Schema aus den Einstellungen (`{type}/{key}-{title}`, z. B. `feature/web-42-session-cookie-behalten`). Angelegt mit deinem Token, falls du eins hinterlegt hast, sonst über die Verbindung. Danach wird das Issue je nach Einstellung dir zugewiesen und auf einen Status gesetzt.
+- **Branch erstellen** — in einem Repository des Projekts (bei mehreren fragt es, in welchem; das erste ist Standard), ausgehend von dessen Standard-Branch, benannt nach dem Schema aus den Einstellungen (`{type}/{key}-{title}`, z. B. `feature/web-42-session-cookie-behalten`). Angelegt mit deinem Token, falls du eins hinterlegt hast, sonst über die Verbindung. Danach wird das Issue je nach Einstellung dir zugewiesen und auf einen Status gesetzt.
 - **Branch-Namen kopieren** — der Branch des Issues, oder der Name, den er bekäme.
 - **Pull Request öffnen** — sein offener Pull Request, oder GitHubs Seite zum Öffnen eines neuen, der Titel beginnt mit dem Schlüssel des Issues.
 - **Workflow starten** — der Workflow, der in den Projekteinstellungen unter **GitHub Actions** eingetragen ist (eine Datei in `.github/workflows` mit `on: workflow_dispatch`), gestartet auf dem Branch des Issues. Das Panel **Entwicklung** hat denselben Button.
