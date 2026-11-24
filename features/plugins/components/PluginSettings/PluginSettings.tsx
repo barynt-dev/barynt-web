@@ -397,7 +397,14 @@ export function PluginSettings({
               <Fragment key={field.key}>
                 {/* A group's heading, over the first of its settings. */}
                 {field.group && field.group !== view.fields[i - 1]?.group && (
-                  <h2 className={styles.groupTitle}>{field.group}</h2>
+                  <GroupTitle
+                    title={field.group}
+                    icon={
+                      view.fields.find(
+                        (f) => f.group === field.group && f.groupIcon,
+                      )?.groupIcon
+                    }
+                  />
                 )}
                 <Field
                   field={field}
@@ -478,6 +485,16 @@ export function PluginSettings({
         )}
       </div>
     </>
+  );
+}
+
+/** A group's heading, with the icon the plugin gave it. */
+function GroupTitle({ title, icon }: { title: string; icon?: string }) {
+  return (
+    <h2 className={styles.groupTitle}>
+      {icon && <Icon icon={icon} width={17} aria-hidden />}
+      {title}
+    </h2>
   );
 }
 

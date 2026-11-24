@@ -68,10 +68,8 @@ export function GitHubConnection({
 
   return (
     <section className={styles.section} aria-labelledby="plugin-github">
-      <h2 id="plugin-github">
-        <Icon icon="lucide:github" width={17} aria-hidden />
-        {view.title}
-      </h2>
+      {/* The connection's title — the page's first, general section. */}
+      <h2 id="plugin-github">{view.title}</h2>
       <p className={styles.hint}>
         {inProject
           ? text.t("github.hintProject")

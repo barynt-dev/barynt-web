@@ -127,6 +127,9 @@
 
 /* A group of settings: its heading, like the sections around the form. */
 .groupTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0.5rem 0 -0.25rem;
   font-size: var(--text-md);
   font-weight: 650;

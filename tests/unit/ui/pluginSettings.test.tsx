@@ -573,8 +573,8 @@ describe("PluginSettings", () => {
         ],
       }),
     );
-    expect(html.match(/>Branches<\/h2>/g)).toHaveLength(1);
-    expect(html.indexOf(">Branches</h2>")).toBeGreaterThan(
+    expect(html.match(/Branches<\/h2>/g)).toHaveLength(1);
+    expect(html.indexOf("Branches</h2>")).toBeGreaterThan(
       html.indexOf("repos"),
     );
   });

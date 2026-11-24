@@ -704,6 +704,8 @@ export interface PluginSettingField {
   /** The heading it's shown under, with the settings next to it that
    *  share it. */
   group?: string;
+  /** The icon beside that heading. */
+  groupIcon?: string;
   /** `text`: ready-made values to pick from a menu beside the field. */
   suggestions?: {
     id: string;
@@ -1041,6 +1043,7 @@ export async function getPluginSettingsView(
         failed: f.failed ?? [],
       }),
       ...(f.group && { group: f.group }),
+      ...(f.group && f.groupIcon && { groupIcon: f.groupIcon }),
       ...(f.suggestions?.length && {
         suggestions: f.suggestions.map((x) => ({
           id: x.id,

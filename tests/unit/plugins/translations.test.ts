@@ -190,6 +190,27 @@ describe("manifest translations", () => {
     ).toContain("suggestion ids must be unique");
   });
 
+  it("gives a group an icon only with a group", () => {
+    const settings = (extra: object) => ({
+      ...plugin,
+      locales: undefined,
+      contributes: {
+        ...plugin.contributes,
+        settings: [
+          {
+            key: "x",
+            type: "text",
+            label: "X",
+            groupIcon: "lucide:git-branch",
+            ...extra,
+          },
+        ],
+      },
+    });
+    expect(issues(settings({})).join()).toContain("a group icon needs a group");
+    expect(issues(settings({ group: "Branches" }))).toEqual([]);
+  });
+
   it("still takes a language with only its description", () => {
     expect(issues(withDe({ description: { short: "Zählt." } }))).toEqual([]);
   });

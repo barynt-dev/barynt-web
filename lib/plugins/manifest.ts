@@ -368,6 +368,8 @@ const settingSchema = z.strictObject({
   /** The heading it's shown under: settings in a row with the same group
    *  share one. */
   group: title.optional(),
+  /** The icon beside its group's heading — the first in the group wins. */
+  groupIcon: icon.optional(),
   default: z
     .union([
       z.string().max(500),
@@ -827,6 +829,11 @@ export const manifestSchema = z
         add(
           ["contributes", "settings", i, "options"],
           "only select and multiselect settings have options",
+        );
+      if (s.groupIcon && !s.group)
+        add(
+          ["contributes", "settings", i, "groupIcon"],
+          "a group icon needs a group",
         );
       if (s.suggestions && s.type !== "text")
         add(
