@@ -38,6 +38,10 @@ export const BRIDGE_METHODS = {
   // What its server keeps on issues (BARY-216); `issueIds` for a whole
   // board at once.
   "issueData.list": "issues:read",
+  // Its frames keeping entries too (BARY-238) — what it changed itself
+  // and GitHub, say, doesn't report back to it.
+  "issueData.set": "issues:write",
+  "issueData.delete": "issues:write",
   "storage.get": "storage:own",
   "storage.set": "storage:own",
   "storage.delete": "storage:own",
@@ -121,7 +125,10 @@ export type FrameMessage =
    *  one says it saves at all: Barynt's Save button then covers it. */
   | { type: "unsaved"; unsaved: boolean }
   /** How saving its settings page went: done, or the error it threw. */
-  | { type: "saveDone"; seq: number; ok: boolean; error?: string };
+  | { type: "saveDone"; seq: number; ok: boolean; error?: string }
+  /** An issue panel starts one of its plugin's actions for its issue
+   *  (BARY-238) — as if it were picked from the issue's menu. */
+  | { type: "runAction"; actionId: string; choice?: string };
 
 /** Host → frame. */
 export type HostMessage =
@@ -138,6 +145,8 @@ export type HostMessage =
       issueId: string | null;
       /** What was picked, when the action asked (`pick`). */
       choice?: string;
+      /** What was filled in, when the action asked (`form`). */
+      values?: Record<string, string>;
     }
   /** Save its settings page: Barynt's Save button was pressed. */
   | { type: "settings:save"; seq: number };
@@ -215,6 +224,16 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
   }
   if (m.type === "error")
     return { type: "error", message: String(m.message ?? "").slice(0, 500) };
+  if (m.type === "runAction")
+    return typeof m.actionId === "string" &&
+      /^[a-z][a-z0-9-]{0,39}$/.test(m.actionId)
+      ? {
+          type: "runAction",
+          actionId: m.actionId,
+          ...(typeof m.choice === "string" &&
+            m.choice.length <= 200 && { choice: m.choice }),
+        }
+      : null;
   if (
     m.type === "call" &&
     Number.isSafeInteger(m.id) &&

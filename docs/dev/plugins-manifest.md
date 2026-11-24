@@ -279,7 +279,7 @@ hidden frame and shows what it answers as a toast.
 
 | Field | |
 | --- | --- |
-| `where` | `issueMenu`, `cardMenu`, `commandPalette` — every place by default |
+| `where` | `issueMenu`, `cardMenu`, `commandPalette` — every place by default; `[]`: in no menu, only started from the plugin's issue panel (`runAction`) |
 | `confirm` | up to 120 characters: Barynt asks this first, and runs the action only on yes |
 | `danger` | the question's button is red |
 | `icon` | one of the badge icons (`lucide:rocket`, `lucide:git-pull-request` …); any other shows the puzzle |

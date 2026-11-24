@@ -66,6 +66,7 @@ export function PluginFrame({
   onBadges,
   actionRequest,
   onActionDone,
+  onRunAction,
   saveRequest,
   onUnsaved,
   onSaveDone,
@@ -95,9 +96,13 @@ export function PluginFrame({
     issueId: string | null;
     /** What was picked, when the action asked first. */
     choice?: string;
+    /** What was filled in, when the action asked for a form. */
+    values?: Record<string, string>;
   } | null;
   /** How it went: its answer (unchecked), or the error. */
   onActionDone?: (seq: number, ok: boolean, result: unknown) => void;
+  /** An issue panel starts one of its plugin's actions (BARY-238). */
+  onRunAction?: (actionId: string, choice?: string) => void;
   /** Save its settings page — Barynt's Save button was pressed. */
   saveRequest?: { seq: number } | null;
   /** Its settings page has changes to save, or none any more — the first
@@ -118,6 +123,7 @@ export function PluginFrame({
     onBlockData,
     onBadges,
     onActionDone,
+    onRunAction,
     onUnsaved,
     onSaveDone,
     onError,
@@ -126,6 +132,7 @@ export function PluginFrame({
     onBlockData,
     onBadges,
     onActionDone,
+    onRunAction,
     onUnsaved,
     onSaveDone,
     onError,
@@ -241,6 +248,8 @@ export function PluginFrame({
             message.ok,
             message.error,
           );
+        } else if (message.type === "runAction") {
+          callbacks.current.onRunAction?.(message.actionId, message.choice);
         } else {
           void forward(message.id, message.method, message.params);
         }

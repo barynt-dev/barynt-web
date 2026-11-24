@@ -3,6 +3,7 @@
 import { Icon } from "@iconify/react";
 import { useLocale } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import { usePluginAction } from "@/features/plugins/components/PluginActions/usePluginAction";
 import { takePanelFocus } from "@/features/plugins/components/PluginBadges/panelFocus";
 import { usePluginDataChanges } from "@/features/plugins/components/PluginBadges/usePluginDataChanges";
 import { PluginFrame } from "@/features/plugins/components/PluginFrame/PluginFrame";
@@ -57,6 +58,7 @@ function PluginPanel({
   workspaceId: string;
 }) {
   const locale = useLocale();
+  const runAction = usePluginAction();
   const [open, setOpen] = useState(true);
   const section = useRef<HTMLElement>(null);
   // Its server changed what it keeps on this issue (BARY-225): a fresh
@@ -77,6 +79,17 @@ function PluginPanel({
   // Taking the focus and scrolling are apart: the issue often renders again
   // right after it opens (a refresh, fresh data), and that mustn't cancel
   // the scroll of a focus already taken.
+  // One of its plugin's actions changed something here (BARY-238).
+  useEffect(() => {
+    const onRefresh = (e: Event) => {
+      const d = (e as CustomEvent<{ pluginId: string; issueId: string }>)
+        .detail;
+      if (d?.pluginId === panel.pluginId && d.issueId === issue.id)
+        setLoaded((n) => n + 1);
+    };
+    window.addEventListener("barynt:plugin-refresh", onRefresh);
+    return () => window.removeEventListener("barynt:plugin-refresh", onRefresh);
+  }, [panel.pluginId, issue.id]);
   const [focused, setFocused] = useState(0);
   useEffect(() => {
     if (focused === 0) return;
@@ -164,6 +177,20 @@ function PluginPanel({
               projectId: issue.project,
               issueId: issue.id,
               locale,
+            }}
+            // One of its plugin's actions, started from the panel
+            // (BARY-238) — run like from the issue's menu.
+            onRunAction={(actionId, choice) => {
+              const entry = issue.pluginActions.find(
+                (a) => a.pluginId === panel.pluginId && a.actionId === actionId,
+              );
+              if (!entry) return;
+              void runAction(entry, {
+                issueId: issue.id,
+                workspaceId,
+                projectId: issue.project,
+                ...(choice !== undefined && { choice }),
+              });
             }}
           />
         )}

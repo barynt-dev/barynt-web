@@ -12,7 +12,13 @@ export function usePluginAction() {
   const confirm = useConfirm();
   return async (
     entry: PluginActionEntry,
-    target: { issueId: string | null; workspaceId: string; projectId: string },
+    target: {
+      issueId: string | null;
+      workspaceId: string;
+      projectId: string;
+      /** Already picked — a panel starting it for one of its rows. */
+      choice?: string;
+    },
   ) => {
     if (entry.confirm) {
       const ok = await confirm({

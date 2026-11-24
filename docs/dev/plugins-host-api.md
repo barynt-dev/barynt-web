@@ -118,6 +118,13 @@ const data = await api.issueData.list([issue.id]);
 const mr = data[issue.id]?.find((e) => e.key.startsWith("mr:"));
 ```
 
+With `issues:write` its frames keep entries too:
+`api.issueData.set(issueId, key, value)` and
+`api.issueData.delete(issueId, key)` — for what the plugin changed itself
+and won't hear back about (a service doesn't report an app's own changes to
+it). Keys `[A-Za-z0-9_.:-]`, up to 100 characters, values up to 16 KB; the
+issue's panel reloads like after its server wrote.
+
 ## Storage
 
 Needs `storage:own`. The plugin's own key–value store, **per place**: a

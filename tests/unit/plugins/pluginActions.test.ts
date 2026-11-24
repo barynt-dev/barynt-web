@@ -166,6 +166,46 @@ describe("actions in the manifest", () => {
     expect(manifest([{ id: "x", title: "X", where: ["toolbar"] }]).ok).toBe(
       false,
     );
-    expect(manifest([{ id: "x", title: "X", where: [] }]).ok).toBe(false);
+    // In no menu: only its issue panel starts it (BARY-238).
+    expect(manifest([{ id: "x", title: "X", where: [] }]).ok).toBe(true);
+  });
+
+  it("may ask to fill in a form first, checked (BARY-238)", () => {
+    const parsed = parseActionResult({
+      form: {
+        title: "Create branch",
+        submitLabel: "Create",
+        fields: [
+          {
+            id: "name",
+            label: "Name",
+            type: "text",
+            value: "x",
+            mono: true,
+            required: true,
+          },
+          {
+            id: "base",
+            label: "From",
+            type: "select",
+            options: [{ id: "main", label: "main" }],
+          },
+          { id: "empty", label: "Nothing", type: "select", options: [] },
+          { id: "1bad", label: "Bad id", type: "text" },
+        ],
+      },
+    });
+    expect(parsed.form?.fields.map((f) => f.id)).toEqual(["name", "base"]);
+    expect(parsed.form?.fields[0]).toMatchObject({
+      mono: true,
+      required: true,
+    });
+    // A confirmation: no fields, in red.
+    expect(
+      parseActionResult({
+        form: { title: "Delete?", fields: [], danger: true },
+      }).form,
+    ).toEqual({ title: "Delete?", fields: [], danger: true });
+    expect(parseActionResult({ form: { fields: [] } })).toEqual({});
   });
 });

@@ -21,6 +21,8 @@ export const METHODS = [
   "members.list",
   "fields.list",
   "issueData.list",
+  "issueData.set",
+  "issueData.delete",
   "storage.get",
   "storage.set",
   "storage.delete",
@@ -99,6 +101,12 @@ export function createApi(host: Host) {
       /** What its server keeps on these issues, by issue id — one call
        *  for a whole board. */
       list: (issueIds: string[]) => call("issueData.list", { issueIds }),
+      /** Keeps an entry of yours on an issue (`issues:write`) — what you
+       *  changed yourself and won't hear back about. */
+      set: (issueId: string, key: string, value: Json) =>
+        call("issueData.set", { issueId, key, value }),
+      delete: (issueId: string, key: string) =>
+        call("issueData.delete", { issueId, key }),
     },
     storage: {
       get: <T extends Json = Json>(key: string) =>

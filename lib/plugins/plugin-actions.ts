@@ -43,7 +43,39 @@ export interface ActionResult {
   /** A question first (BARY-238): Barynt shows the options, then runs the
    *  action again with the one picked as `choice`. */
   pick?: ActionPick;
+  /** A form first (BARY-238): Barynt shows it, then runs the action again
+   *  with what was filled in as `values` — `choice` kept. */
+  form?: ActionForm;
 }
+
+/** A field of an action's form. */
+export interface ActionFormField {
+  id: string;
+  label: string;
+  type: "text" | "select";
+  value?: string;
+  /** `select`: what to pick from. */
+  options?: { id: string; label: string }[];
+  hint?: string;
+  required?: boolean;
+  /** `text`: shown as code — a branch's name, say. */
+  mono?: boolean;
+}
+
+/** What an action asks to fill in before it goes on. */
+export interface ActionForm {
+  title: string;
+  /** Under the title. */
+  description?: string;
+  fields: ActionFormField[];
+  submitLabel?: string;
+  /** It costs something — deleting, say: its button in red. Without
+   *  fields it's a confirmation. */
+  danger?: boolean;
+}
+
+/** Most fields an action's form may have. */
+export const ACTION_FORM_FIELDS_MAX = 8;
 
 /** What an action asks to pick before it goes on. */
 export interface ActionPick {
@@ -105,6 +137,60 @@ function pickOf(raw: unknown): ActionPick | null {
   return { title, options, ...(icon && { icon }) };
 }
 
+/** What an action asks to fill in, checked — `null` for anything else. */
+function formOf(raw: unknown): ActionForm | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const text = (v: unknown, max: number) =>
+    typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null;
+  const title = text(r.title, 120);
+  if (!title) return null;
+  const fields = (Array.isArray(r.fields) ? r.fields : [])
+    .slice(0, ACTION_FORM_FIELDS_MAX)
+    .flatMap((f: unknown): ActionFormField[] => {
+      if (!f || typeof f !== "object") return [];
+      const x = f as Record<string, unknown>;
+      const id = text(x.id, 40);
+      const label = text(x.label, 80);
+      const type = x.type === "select" ? "select" : "text";
+      if (!id || !/^[a-zA-Z][\w-]*$/.test(id) || !label) return [];
+      const options =
+        type === "select" && Array.isArray(x.options)
+          ? x.options.slice(0, 100).flatMap((o: unknown) => {
+              if (!o || typeof o !== "object") return [];
+              const oo = o as Record<string, unknown>;
+              const oid = text(oo.id, 200);
+              const olabel = text(oo.label, 120);
+              return oid && olabel ? [{ id: oid, label: olabel }] : [];
+            })
+          : undefined;
+      if (type === "select" && !options?.length) return [];
+      const value = typeof x.value === "string" ? x.value.slice(0, 500) : "";
+      const hint = text(x.hint, 160);
+      return [
+        {
+          id,
+          label,
+          type,
+          ...(value && { value }),
+          ...(options && { options }),
+          ...(hint && { hint }),
+          ...(x.required === true && { required: true }),
+          ...(x.mono === true && { mono: true }),
+        },
+      ];
+    });
+  const description = text(r.description, 300);
+  const submitLabel = text(r.submitLabel, 40);
+  return {
+    title,
+    fields,
+    ...(description && { description }),
+    ...(submitLabel && { submitLabel }),
+    ...(r.danger === true && { danger: true }),
+  };
+}
+
 /** An action's answer as Barynt uses it — anything else dropped. */
 export function parseActionResult(input: unknown): ActionResult {
   if (!input || typeof input !== "object" || Array.isArray(input)) return {};
@@ -129,5 +215,6 @@ export function parseActionResult(input: unknown): ActionResult {
       r.copy.length <= ACTION_COPY_MAX && { copy: r.copy }),
     ...(openable(r.open) && { open: openable(r.open) as string }),
     ...(pickOf(r.pick) && { pick: pickOf(r.pick) as ActionPick }),
+    ...(formOf(r.form) && { form: formOf(r.form) as ActionForm }),
   };
 }

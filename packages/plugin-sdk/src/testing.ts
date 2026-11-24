@@ -24,10 +24,16 @@ export interface TestHost extends Host {
   readonly calls: { method: string; params: unknown }[];
   /** Every building block's data the plugin showed, in order. */
   readonly shown: BlockData[];
+  /** Every action an issue panel started (`runAction`), in order. */
+  readonly started: { actionId: string; choice?: string }[];
   /** Runs one of the plugin's actions, as a menu would. */
   runAction(
     id: string,
-    context?: { issueId: string | null; choice?: string },
+    context?: {
+      issueId: string | null;
+      choice?: string;
+      values?: Record<string, string>;
+    },
   ): Promise<ActionResult>;
   /** Whether its settings page says it has changes to save — `null` while
    *  it doesn't save with Barynt's button (`registerSettings` `save`). */
@@ -54,6 +60,7 @@ export function createTestHost(
 ): TestHost {
   const calls: TestHost["calls"] = [];
   const shown: TestHost["shown"] = [];
+  const started: TestHost["started"] = [];
   let badgeHandler: Parameters<NonNullable<Host["serveBadges"]>>[0] | null =
     null;
   let actionHandler: Parameters<NonNullable<Host["serveActions"]>>[0] | null =
@@ -63,6 +70,7 @@ export function createTestHost(
   return {
     calls,
     shown,
+    started,
     show: (data) => void shown.push(data),
     serveBadges: (handler) => {
       badgeHandler = handler;
@@ -74,6 +82,12 @@ export function createTestHost(
     serveSave: (handler) => {
       saveHandler = handler;
       unsavedState = false;
+    },
+    startAction: (actionId, context) => {
+      started.push({
+        actionId,
+        ...(context?.choice !== undefined && { choice: context.choice }),
+      });
     },
     unsaved: (on) => {
       if (saveHandler) unsavedState = on;

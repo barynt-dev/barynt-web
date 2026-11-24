@@ -213,6 +213,31 @@ export interface ActionResult {
     /** Before each option, as `lucide:<BadgeIcon>`. */
     icon?: string;
   };
+  /** Ask to fill in a form first: Barynt shows it as a window and runs the
+   *  action again with what was filled in as `context.values` (`choice`
+   *  kept). Without fields and with `danger`, it's a confirmation. */
+  form?: ActionForm;
+}
+
+/** A form an action asks to fill in (up to 8 fields). */
+export interface ActionForm {
+  title: string;
+  description?: string;
+  fields: {
+    id: string;
+    label: string;
+    type: "text" | "select";
+    value?: string;
+    /** `select`: what to pick from. */
+    options?: { id: string; label: string }[];
+    hint?: string;
+    required?: boolean;
+    /** `text`: shown as code — a branch's name, say. */
+    mono?: boolean;
+  }[];
+  submitLabel?: string;
+  /** It costs something: its button in red. */
+  danger?: boolean;
 }
 
 /** The object Barynt hands a plugin's default export. */
@@ -226,9 +251,15 @@ export interface Host {
   serveActions?(
     handler: (
       actionId: string,
-      context: { issueId: string | null; choice?: string },
+      context: {
+        issueId: string | null;
+        choice?: string;
+        values?: Record<string, string>;
+      },
     ) => ActionResult | undefined | Promise<ActionResult | undefined>,
   ): void;
+  /** An issue panel starts one of its plugin's actions for its issue. */
+  startAction?(actionId: string, context?: { choice?: string }): void;
   /** What saves its settings page when Barynt's Save button is pressed. */
   serveSave?(handler: () => void | Promise<void>): void;
   /** Whether its settings page has changes to save. */
@@ -375,6 +406,8 @@ export interface Methods {
     { issueId?: string; issueIds?: string[] },
     Record<string, IssueDataEntry[]>,
   ];
+  "issueData.set": [{ issueId: string; key: string; value: Json }, null];
+  "issueData.delete": [{ issueId: string; key: string }, null];
   "storage.get": [{ key: string }, Json];
   "storage.set": [{ key: string; value: Json }, null];
   "storage.delete": [{ key: string }, null];

@@ -1,0 +1,50 @@
+/* A few fields in a window: one under the other, a line about it first. */
+
+.body {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.description {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* As an `Input`'s label. */
+.label {
+  font-size: var(--text-sm);
+  font-weight: 550;
+  color: var(--on-surface);
+  line-height: var(--leading-tight);
+}
+
+.hint {
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+}
+
+/* A name that's code, a branch's say. */
+.mono.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+/* Like a confirmation that costs something. */
+.danger.danger {
+  background: var(--error);
+  color: var(--on-error);
+}

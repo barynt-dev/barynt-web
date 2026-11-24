@@ -83,6 +83,7 @@ const RUNTIME = `(() => {
             actionHandler(String(m.actionId), {
               issueId: m.issueId || null,
               ...(typeof m.choice === "string" && { choice: m.choice }),
+              ...(m.values && typeof m.values === "object" && { values: m.values }),
             }),
           )
           .then((result) => send({ type: "actionDone", seq, ok: true, result: result || {} }))
@@ -162,6 +163,13 @@ const RUNTIME = `(() => {
           if (saveHandler) send({ type: "unsaved", unsaved: false });
         },
         unsaved: (on) => send({ type: "unsaved", unsaved: on === true }),
+        // An issue panel starts one of its actions (BARY-238).
+        startAction: (actionId, context) =>
+          send({
+            type: "runAction",
+            actionId: String(actionId),
+            ...(context && typeof context.choice === "string" && { choice: context.choice }),
+          }),
       });
       instance = new Plugin(host);
       if (instance && typeof instance.onload === "function") await instance.onload();

@@ -626,6 +626,8 @@ export function sectionHeader(options: {
   /** `sm`: a quiet head, like the field names in an issue's sidebar —
    *  for a panel there (`placement: "sidebar"`). `md` by default. */
   size?: "sm" | "md";
+  /** On the right of the head — a "+" button, say (`button`, `iconOnly`). */
+  actions?: Child[];
   fold?: {
     content: Child | Child[];
     open?: boolean;
@@ -648,6 +650,8 @@ export function sectionHeader(options: {
     node.append(s);
   } else if (options.meta)
     node.append(el("span", "bui-section-meta", options.meta));
+  if (options.actions?.length)
+    node.append(el("span", "bui-section-actions", ...options.actions));
   if (!fold) return node;
 
   const chevron = icon("chevron-down", { size: 15 });
@@ -672,6 +676,14 @@ export function copyField(options: {
   href?: string;
   /** What the buttons say to screen readers: "Copy branch". */
   label?: string;
+  /** More buttons after those — rename, delete: an icon each, its label
+   *  the tip; `danger` turns it red on hover. */
+  actions?: {
+    icon: IconName;
+    label: string;
+    danger?: boolean;
+    onClick: () => void;
+  }[];
 }): HTMLElement {
   styled();
   const node = el(
@@ -722,6 +734,15 @@ export function copyField(options: {
     open.setAttribute("aria-label", kitText("open"));
     open.dataset.buiTip = kitText("open");
     node.append(open);
+  }
+  for (const action of options.actions ?? []) {
+    const b = el("button", "bui-copy-button", icon(action.icon, { size: 15 }));
+    b.type = "button";
+    b.setAttribute("aria-label", action.label);
+    b.dataset.buiTip = action.label;
+    if (action.danger) b.dataset.danger = "";
+    b.addEventListener("click", () => action.onClick());
+    node.append(b);
   }
   return node;
 }

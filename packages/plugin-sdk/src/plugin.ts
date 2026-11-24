@@ -91,6 +91,7 @@ export abstract class Plugin {
   readonly #serveActions: Host["serveActions"];
   readonly #serveSave: Host["serveSave"];
   readonly #unsaved: Host["unsaved"];
+  readonly #startAction: Host["startAction"];
   readonly #actions = new Map<
     string,
     (context: {
@@ -105,6 +106,7 @@ export abstract class Plugin {
     this.#serveActions = host.serveActions;
     this.#serveSave = host.serveSave;
     this.#unsaved = host.unsaved;
+    this.#startAction = host.startAction;
     this.api = createApi(host);
     this.context = host.context;
     this.root = host.root;
@@ -167,12 +169,25 @@ export abstract class Plugin {
   }
 
   /**
+   * From an issue panel: starts one of your actions for its issue, as if
+   * it were picked from the issue's menu — with `choice` already made, if
+   * you pass one. Its answer shows like that too (a toast, a form). An
+   * action with `"where": []` in the manifest is only started like this.
+   */
+  runAction(id: string, context: { choice?: string } = {}): void {
+    if (this.context.slot.kind !== "issuePanel") return;
+    this.#startAction?.(id, context);
+  }
+
+  /**
    * An action from the manifest's `contributes.actions` — in an issue's
    * "…" menu, a card's quick actions and the command palette (as the
    * manifest's `where` says). Barynt runs it in a hidden frame when someone
    * picks it, for that issue (`issueId`); what you return shows as a toast.
    * Return `pick` to ask first — which repository, say: Barynt shows the
-   * options and runs it again with the one picked as `choice`.
+   * options and runs it again with the one picked as `choice`. Return
+   * `form` to have something filled in first — a branch's name, say:
+   * Barynt shows it as a window and runs it again with `values`.
    * Do the work through `this.api` — it's checked like everything else.
    */
   registerAction(action: {

@@ -305,7 +305,7 @@ const entry = z.strictObject({ id: localId, title, icon: icon.optional() });
 const actionEntry = entry.extend({
   where: z
     .array(z.enum(["issueMenu", "cardMenu", "commandPalette"]))
-    .min(1)
+    // None: only its issue panel starts it (`runAction`, BARY-238).
     .max(3)
     .optional(),
   confirm: z.string().trim().min(1).max(120).optional(),

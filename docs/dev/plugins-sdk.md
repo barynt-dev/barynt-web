@@ -134,7 +134,8 @@ frame is for one of them.
 ### `registerAction()`
 
 ```ts
-registerAction(action: { id: string; run(context: { issueId, choice? }): ActionResult | void }): void;
+registerAction(action: { id: string; run(context: { issueId, choice?, values? }): ActionResult | void }): void;
+runAction(id: string, context?: { choice? }): void; // from an issue panel
 ```
 
 An action from `contributes.actions`. When someone picks it, Barynt starts
@@ -173,6 +174,18 @@ run: async ({ issueId, choice }) => {
 
 Check `choice` against what you offered — it comes back from the frame
 like any other input.
+
+`form` — `{ title, description?, fields, submitLabel?, danger? }`, up to 8
+fields `{ id, label, type: "text" | "select", value?, options?, hint?,
+required?, mono? }` — has something filled in first: Barynt shows it as a
+window and runs the action again with `context.values` (`choice` kept).
+Without fields and with `danger`, it's a confirmation (`values` is `{}`).
+
+From an issue panel, `this.runAction(id, { choice })` starts one of your
+actions for its issue, as if it were picked from the issue's menu — its
+`pick`, `form` and answer show the same way, and `refresh` draws the panel
+again. An action with `"where": []` in the manifest shows in no menu and is
+only started like this — rename or delete for a row of the panel, say.
 
 What `run` throws shows as the plugin's error in a toast. In tests,
 `createTestHost({ context: { slot: { kind: "actions", id: "actions" } } })`
@@ -551,6 +564,7 @@ method returns a `Promise` and rejects with a [`BaryntError`](#errors).
 | `api.members.list(params?)` | `members.list` |
 | `api.fields.list(params?)` | `fields.list` |
 | `api.issueData.list(issueIds)` | `issueData.list` |
+| `api.issueData.set(issueId, key, value)`, `api.issueData.delete(issueId, key)` | `issueData.set`, `issueData.delete` |
 | `api.storage.get<T>(key)` | `storage.get` |
 | `api.storage.set(key, value)` | `storage.set` |
 | `api.storage.delete(key)` | `storage.delete` |
@@ -725,8 +739,8 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `status()` | a line that says how it went: `set(text, tone?)`, `clear()` |
 | `spinner({ label? })`, `skeleton({ lines? })` | while something loads |
 | `emptyState({ title, text?, icon?, action? })` | where there's nothing yet |
-| `sectionHeader({ title, icon?, meta?, status?, size?, fold? })` | a head over a card or section: icon, title, on the right a note or a state in its tone; `size: "sm"` is a quiet one, like the field names in an issue's sidebar. With `fold: { content, open?, onToggle? }` it holds its content too, and a click on the head folds it away — `onToggle(open)` to keep that, e.g. in `storage` |
-| `copyField({ value, icon?, href?, label? })` | a value to copy — a branch, a hash — with a copy button and, with `href`, one to open it |
+| `sectionHeader({ title, icon?, meta?, status?, size?, actions?, fold? })` | a head over a card or section: icon, title, on the right a note or a state in its tone, then `actions` (a "+" button, say); `size: "sm"` is a quiet one, like the field names in an issue's sidebar. With `fold: { content, open?, onToggle? }` it holds its content too, and a click on the head folds it away — `onToggle(open)` to keep that, e.g. in `storage` |
+| `copyField({ value, icon?, href?, label?, actions? })` | a value to copy — a branch, a hash — with a copy button, with `href` one to open it, and `actions` — `{ icon, label, danger?, onClick }` — as more icon buttons (rename, delete) |
 | `stepList({ steps })` | steps with their state (`success`, `running`, `warning`, `danger`, `pending`) and, on the right, a note — a pipeline |
 | `navList({ items })` | rows that lead somewhere: `{ label, icon?, count?, href? \| onClick? }` with a › at the end |
 | `diffStat({ added, removed })` | "+9 −4" |

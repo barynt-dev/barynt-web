@@ -16,7 +16,12 @@ import {
   listProjectsForUser,
   listWorkspaceMembersForUser,
 } from "@/features/api-v1/queries";
-import { ISSUE_DATA_BATCH, readIssueData } from "@/features/plugins/issue-data";
+import {
+  deleteIssueData,
+  ISSUE_DATA_BATCH,
+  readIssueData,
+  writeIssueData,
+} from "@/features/plugins/issue-data";
 import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
@@ -27,6 +32,7 @@ import {
   STORAGE_LIMITS,
 } from "@/lib/plugins/bridge";
 import { checkSettings } from "@/lib/plugins/settings";
+import { recordPluginDataChange } from "@/lib/realtime/store";
 import { proxyFetch } from "./proxy";
 import type { RunningPlugin } from "./runtime";
 import { placeSettings } from "./settings-options";
@@ -213,6 +219,40 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
         plugin.projectId,
       ),
     );
+  },
+
+  async "issueData.set"(userId, plugin, p) {
+    const issue = await issueOf(userId, plugin, p.issueId);
+    if (refused(issue)) return issue;
+    const key = str(p.key);
+    if (!key || !("value" in p)) return no("invalid_params");
+    const result = await writeIssueData(
+      plugin.activationId,
+      issue.id,
+      key,
+      p.value,
+    );
+    if (result !== "ok") return no("invalid_params");
+    recordPluginDataChange(plugin.workspaceId, {
+      pluginId: plugin.pluginId,
+      issueId: issue.id,
+      projectId: issue.project.id,
+    });
+    return ok(null);
+  },
+
+  async "issueData.delete"(userId, plugin, p) {
+    const issue = await issueOf(userId, plugin, p.issueId);
+    if (refused(issue)) return issue;
+    const key = str(p.key);
+    if (!key) return no("invalid_params");
+    await deleteIssueData(plugin.activationId, issue.id, key);
+    recordPluginDataChange(plugin.workspaceId, {
+      pluginId: plugin.pluginId,
+      issueId: issue.id,
+      projectId: issue.project.id,
+    });
+    return ok(null);
   },
 
   async "comments.list"(userId, plugin, p) {
