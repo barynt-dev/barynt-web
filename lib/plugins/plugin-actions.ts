@@ -49,6 +49,8 @@ export interface ActionResult {
 export interface ActionPick {
   title: string;
   options: { id: string; label: string; hint?: string }[];
+  /** Before each option — a bundled icon (`lucide:…`). */
+  icon?: string;
 }
 
 /** Most options an action may offer to pick from. */
@@ -98,7 +100,9 @@ function pickOf(raw: unknown): ActionPick | null {
     const hint = text(x.hint, 120);
     return id && label ? [{ id, label, ...(hint && { hint }) }] : [];
   });
-  return options.length > 0 ? { title, options } : null;
+  if (options.length === 0) return null;
+  const icon = typeof r.icon === "string" ? actionIcon(r.icon) : null;
+  return { title, options, ...(icon && { icon }) };
 }
 
 /** An action's answer as Barynt uses it — anything else dropped. */

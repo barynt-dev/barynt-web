@@ -210,6 +210,8 @@ export interface ActionResult {
   pick?: {
     title: string;
     options: { id: string; label: string; hint?: string }[];
+    /** Before each option, as `lucide:<BadgeIcon>`. */
+    icon?: string;
   };
 }
 

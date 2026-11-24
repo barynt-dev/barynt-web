@@ -160,7 +160,7 @@ this.registerAction({
 | `openPanel` | open this one of your `issuePanels` in the issue |
 | `copy` | text Barynt puts on the clipboard, up to 500 characters — the hidden frame can't |
 | `open` | an `https` address Barynt opens in a new tab |
-| `pick` | `{ title, options: [{ id, label, hint? }] }` (up to 20): ask first — Barynt shows the options and runs the action again with the one picked as `context.choice`; dismissed, nothing runs |
+| `pick` | `{ title, options: [{ id, label, hint? }], icon? }` (up to 20; `icon` as `lucide:<BadgeIcon>`): ask first — Barynt shows the options and runs the action again with the one picked as `context.choice`; dismissed, nothing runs |
 
 ```ts
 run: async ({ issueId, choice }) => {

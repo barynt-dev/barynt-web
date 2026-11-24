@@ -42,6 +42,7 @@ describe("an action's answer", () => {
       parseActionResult({
         pick: {
           title: "Which repository?",
+          icon: "lucide:made-up",
           options: [
             { id: "acme/web", label: "acme/web", hint: "Default" },
             { id: "", label: "no id" },

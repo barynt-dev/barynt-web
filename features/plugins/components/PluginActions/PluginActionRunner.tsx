@@ -101,6 +101,7 @@ function ActionFrame({ job }: { job: ActionJob }) {
           void choose({
             title: pick.title,
             choices: pick.options,
+            ...(pick.icon && { icon: pick.icon }),
             cancelLabel: t("actionCancel"),
           }).then((choice) => {
             if (choice === null) return;
