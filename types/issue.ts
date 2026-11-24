@@ -229,4 +229,7 @@ export interface IssuePluginPanel {
   title: string;
   /** In the main column, or a section of the sidebar (BARY-209). */
   placement: "main" | "sidebar";
+  /** Before its title: the manifest's icon, if Barynt bundles it
+   *  (`lucide:…`) — else a puzzle. */
+  icon: string;
 }

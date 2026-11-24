@@ -913,6 +913,8 @@ describe("issue panels (BARY-150)", () => {
         panelId: "schedule",
         title: "Schedule",
         placement: "main",
+        // No icon of its own: a puzzle.
+        icon: "lucide:puzzle",
       },
     ]);
     expect(db.pluginActivation.findMany.mock.calls.at(-1)?.[0]).toMatchObject({

@@ -514,14 +514,15 @@
   }
 }
 
-.pluginPanelFrom {
-  margin-left: auto;
-  font-size: var(--text-xs);
+/* Its icon, like the other sections' — no plugin's mark in the row. */
+.pluginPanelIcon {
+  flex: none;
   color: var(--on-surface-variant);
 }
 
 .pluginPanelChevron {
   flex: none;
+  margin-left: auto;
   color: var(--on-surface-variant);
   transition: transform 0.15s;
 

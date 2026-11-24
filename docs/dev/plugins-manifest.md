@@ -223,8 +223,10 @@ capability, and each entry an `id` that's unique in its list.
 | `issueBadges` | on the project's board cards and list rows (the list's "Fields" column); each can be hidden in **Display** | — |
 
 Each entry carries the plugin's mark, and its page names the plugin under
-the title, so it's always clear what comes from a plugin. `icon` isn't
-shown yet.
+the title, so it's always clear what comes from a plugin. An issue panel is
+the exception: it's headed like Barynt's own sections, with its `icon`
+(one Barynt bundles, like an action's; else a puzzle) and the plugin's name
+on hover.
 
 A widget is added like any other: **Add widget**, then the plugin's entry
 in the gallery, in the sizes S, M, L, T and XL. Its frame fills the widget

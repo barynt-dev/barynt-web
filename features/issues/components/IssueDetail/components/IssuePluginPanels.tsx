@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import { takePanelFocus } from "@/features/plugins/components/PluginBadges/panelFocus";
 import { usePluginDataChanges } from "@/features/plugins/components/PluginBadges/usePluginDataChanges";
 import { PluginFrame } from "@/features/plugins/components/PluginFrame/PluginFrame";
-import { PluginTile } from "@/features/plugins/components/PluginStore/PluginTile";
 import type { IssueDetail, IssuePluginPanel } from "@/types/issue";
 import styles from "../issueDetail.module.scss";
 
@@ -132,10 +131,17 @@ function PluginPanel({
           aria-expanded={open}
           aria-controls={bodyId}
           onClick={toggle}
+          // Where it comes from, on hover — the row itself reads like
+          // Barynt's own sections.
+          title={`${panel.title} · ${panel.pluginName}`}
         >
-          <PluginTile id={panel.pluginId} name={panel.pluginName} size="sm" />
+          <Icon
+            icon={panel.icon}
+            width={15}
+            className={styles.pluginPanelIcon}
+            aria-hidden
+          />
           <h3 className={styles.sectionTitle}>{panel.title}</h3>
-          <span className={styles.pluginPanelFrom}>{panel.pluginName}</span>
           <Icon
             icon="lucide:chevron-down"
             width={15}
