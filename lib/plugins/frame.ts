@@ -203,6 +203,9 @@ const BASE_CSS = `
 ${tokenCss()}
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
+/* Barynt gives a frame its width: it never scrolls sideways — whatever
+   pokes past the edge (a tip, a shadow) is cut off instead. */
+html, body { overflow-x: clip; }
 body {
   background: var(--frame-bg, var(--barynt-color-surface, transparent));
   color: var(--barynt-color-text, CanvasText);

@@ -222,14 +222,15 @@ export const CSS = `
 .bui-toast[data-tone="warning"] > .bui-icon { color: var(--barynt-color-warning); }
 
 [data-bui-tip] { position: relative; }
-[data-bui-tip]::after {
+/* The tip exists only while it shows: a hidden one past the frame's edge
+   would still let the frame scroll sideways. */
+[data-bui-tip]:is(:hover, :focus-visible)::after {
   content: attr(data-bui-tip); position: absolute; z-index: 5; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
   width: max-content; max-width: 16rem; padding: 0.3125rem 0.5rem; border-radius: var(--barynt-radius-sm);
   background: var(--barynt-color-surface-pressed); color: var(--barynt-color-text); box-shadow: var(--barynt-shadow-overlay);
   font-size: var(--barynt-font-size-xs); font-weight: var(--barynt-font-weight-medium); line-height: var(--barynt-line-height-tight);
-  white-space: normal; pointer-events: none; opacity: 0; transition: opacity var(--barynt-duration-fast);
+  white-space: normal; pointer-events: none;
 }
-[data-bui-tip]:hover::after, [data-bui-tip]:focus-visible::after { opacity: 1; }
 .bui-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .bui-progress { display: flex; flex-direction: column; gap: 0.375rem; }
