@@ -13,7 +13,7 @@
   padding: 0.75rem 1.5rem 2rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--settings-gap);
 }
 
 /* Three values deviate from the table's defaults. A setting isn't a list of
