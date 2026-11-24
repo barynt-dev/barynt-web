@@ -725,7 +725,7 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `status()` | a line that says how it went: `set(text, tone?)`, `clear()` |
 | `spinner({ label? })`, `skeleton({ lines? })` | while something loads |
 | `emptyState({ title, text?, icon?, action? })` | where there's nothing yet |
-| `sectionHeader({ title, icon?, meta?, status?, fold? })` | a head over a card or section: icon, title, on the right a note or a state in its tone. With `fold: { content, open?, onToggle? }` it holds its content too, and a click on the head folds it away — `onToggle(open)` to keep that, e.g. in `storage` |
+| `sectionHeader({ title, icon?, meta?, status?, size?, fold? })` | a head over a card or section: icon, title, on the right a note or a state in its tone; `size: "sm"` is a quiet one, like the field names in an issue's sidebar. With `fold: { content, open?, onToggle? }` it holds its content too, and a click on the head folds it away — `onToggle(open)` to keep that, e.g. in `storage` |
 | `copyField({ value, icon?, href?, label? })` | a value to copy — a branch, a hash — with a copy button and, with `href`, one to open it |
 | `stepList({ steps })` | steps with their state (`success`, `running`, `warning`, `danger`, `pending`) and, on the right, a note — a pipeline |
 | `navList({ items })` | rows that lead somewhere: `{ label, icon?, count?, href? \| onClick? }` with a › at the end |

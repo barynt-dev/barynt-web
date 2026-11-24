@@ -623,6 +623,9 @@ export function sectionHeader(options: {
   icon?: IconName;
   meta?: string;
   status?: { text: string; tone?: Tone };
+  /** `sm`: a quiet head, like the field names in an issue's sidebar —
+   *  for a panel there (`placement: "sidebar"`). `md` by default. */
+  size?: "sm" | "md";
   fold?: {
     content: Child | Child[];
     open?: boolean;
@@ -631,12 +634,14 @@ export function sectionHeader(options: {
 }): HTMLElement {
   styled();
   const fold = options.fold;
+  const small = options.size === "sm";
   const node = el(
     fold ? "summary" : "div",
     "bui-section-head",
-    options.icon && icon(options.icon, { size: 16 }),
+    options.icon && icon(options.icon, { size: small ? 14 : 16 }),
     el("span", "bui-section-title", options.title),
   );
+  if (small) node.dataset.size = "sm";
   if (options.status) {
     const s = el("span", "bui-section-status", options.status.text);
     s.dataset.tone = options.status.tone ?? "neutral";

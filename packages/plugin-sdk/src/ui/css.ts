@@ -319,6 +319,9 @@ a.bui-list-title:hover { text-decoration: underline; }
 
 .bui-section-head { display: flex; align-items: center; gap: var(--barynt-space-2); min-width: 0; font-size: var(--barynt-font-size-base); }
 .bui-section-head > .bui-icon { color: var(--barynt-color-success); }
+.bui-section-head[data-size="sm"] { gap: var(--barynt-space-1); font-size: var(--barynt-font-size-sm); }
+.bui-section-head[data-size="sm"] > .bui-icon { color: var(--barynt-color-text-subtle); }
+.bui-section-head[data-size="sm"] .bui-section-title { font-weight: var(--barynt-font-weight-medium); color: var(--barynt-color-text-subtle); }
 .bui-section-title { flex: 1; min-width: 0; font-weight: var(--barynt-font-weight-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bui-fold > .bui-section-head { list-style: none; cursor: pointer; user-select: none; border-radius: var(--barynt-radius-sm); }
 .bui-fold > .bui-section-head::-webkit-details-marker { display: none; }
