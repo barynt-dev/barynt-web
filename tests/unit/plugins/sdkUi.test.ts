@@ -13,6 +13,7 @@ import {
   textArea,
   textField,
   toggle,
+  userNote,
 } from "@barynt/plugin-sdk/ui";
 import { Window } from "happy-dom";
 
@@ -163,6 +164,25 @@ describe("the UI kit", () => {
     foot.open = true;
     foot.dispatchEvent(new window.Event("toggle"));
     expect(seen.at(-1)).toBe(true);
+  });
+
+  it("shows what someone said on one line, all of it on a click (BARY-238)", () => {
+    const node = userNote({
+      name: "Barynt-App",
+      tag: "Bot",
+      status: { text: "Approved", tone: "success" },
+      text: "Looks good",
+    });
+    expect(node.querySelector(".bui-note-tag")?.textContent).toBe("Bot");
+    expect(node.querySelector(".bui-badge")?.textContent).toContain("Approved");
+    const line = node.querySelector("button.bui-note-text") as unknown as {
+      click: () => void;
+      getAttribute: (n: string) => string | null;
+    };
+    expect(line.getAttribute("aria-expanded")).toBe("false");
+    line.click();
+    expect(line.getAttribute("aria-expanded")).toBe("true");
+    expect(userNote({ name: "ada" }).querySelector("button")).toBeNull();
   });
 
   it("puts a list row's lead before its title (BARY-238)", () => {

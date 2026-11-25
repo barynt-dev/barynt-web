@@ -71,6 +71,7 @@ export {
   toast,
   tooltip,
   user,
+  userNote,
 } from "./ui/display";
 export { ICONS, type IconName } from "./ui/icons";
 export {

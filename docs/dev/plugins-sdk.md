@@ -732,6 +732,7 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `tag({ text, color?, onRemove? })` | a coloured tag, removable |
 | `labelChip({ name, color? })` | a label as Barynt shows one |
 | `avatar({ name, color?, size? })`, `user({ name, color?, meta? })` | initials; a person with a line about them |
+| `userNote({ name, color?, tag?, status?, text? })` | what someone said — a review, a remark: avatar and name (cut off when long, whole on hover), a small `tag` ("Bot"), `status: { text, tone }` as a badge that moves under the name when room is short, and `text` on one line under it that a click opens in full |
 | `statusDot({ label, category })` | a status by its category: `backlog`, `unstarted`, `started`, `completed`, `canceled` |
 | `tooltip(element, text)` | shows on hover and focus, read out by screen readers |
 | `notice({ text, title?, tone?, action?, compact? })` | a message in the page — `danger` is announced at once; `compact` makes it one quiet line with the `action` (a `link`) at its end, for inside a card |

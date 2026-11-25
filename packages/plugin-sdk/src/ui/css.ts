@@ -173,6 +173,22 @@ export const CSS = `
 }
 .bui-avatar[data-size="sm"] { width: 1.375rem; height: 1.375rem; font-size: 0.5625rem; }
 .bui-avatar[data-size="lg"] { width: 2.5rem; height: 2.5rem; font-size: var(--barynt-font-size-sm); }
+.bui-note { display: flex; flex-direction: column; gap: 0.375rem; min-width: 0; padding: var(--barynt-space-2) 0.625rem; border-radius: var(--barynt-radius-md); background: var(--barynt-color-surface-sunken); }
+/* Short of room the verdict moves under the name, rather than cutting it. */
+.bui-note-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.375rem 0.5rem; min-width: 0; font-size: var(--barynt-font-size-sm); }
+.bui-note-who { display: inline-flex; align-items: center; gap: 0.4375rem; min-width: 0; max-width: 100%; }
+.bui-note-who > .bui-avatar { flex: none; }
+.bui-note-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--barynt-font-weight-semibold); }
+.bui-note-tag { flex: none; padding: 0 0.3125rem; border: 1px solid var(--barynt-color-border); border-radius: var(--barynt-radius-sm); font-size: var(--barynt-font-size-xxs); font-weight: var(--barynt-font-weight-semibold); line-height: 1rem; color: var(--barynt-color-text-subtle); text-transform: uppercase; letter-spacing: 0.02em; }
+.bui-note-head > .bui-badge { flex: none; }
+.bui-note-text {
+  display: flex; align-items: baseline; gap: 0.375rem; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: var(--barynt-font-size-xs); color: var(--barynt-color-text-subtle); text-align: left;
+}
+.bui-note-text > .bui-icon { flex: none; position: relative; top: 0.125rem; }
+.bui-note-text > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bui-note-text[aria-expanded="true"] > span { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--barynt-color-text); }
+.bui-note-text:focus-visible { outline: 2px solid var(--barynt-color-focus); outline-offset: 2px; border-radius: var(--barynt-radius-sm); }
 .bui-user { display: inline-flex; align-items: center; gap: var(--barynt-space-2); min-width: 0; }
 .bui-user-text { display: flex; flex-direction: column; min-width: 0; }
 .bui-user-name { font-size: var(--barynt-font-size-sm); font-weight: var(--barynt-font-weight-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

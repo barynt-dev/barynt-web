@@ -292,6 +292,55 @@ export function user(options: {
   );
 }
 
+/**
+ * What someone said — a review, a remark: who (with a small tag, "Bot"
+ * say), their verdict as a badge on the right and, under it, their words
+ * on one line. A click shows all of it; another folds it again. The name
+ * is cut off when long — whole on hover.
+ */
+export function userNote(options: {
+  name: string;
+  color?: string;
+  tag?: string;
+  status?: { text: string; tone?: Tone };
+  text?: string;
+}): HTMLElement {
+  styled();
+  const name = el("span", "bui-note-name", options.name);
+  name.title = options.name;
+  const head = el(
+    "div",
+    "bui-note-head",
+    el(
+      "span",
+      "bui-note-who",
+      avatar({ name: options.name, color: options.color, size: "sm" }),
+      name,
+      options.tag && el("span", "bui-note-tag", options.tag),
+    ),
+    options.status &&
+      badge({ text: options.status.text, tone: options.status.tone }),
+  );
+  const node = el("div", "bui-note", head);
+  const words = options.text?.trim();
+  if (words) {
+    const line = el(
+      "button",
+      "bui-note-text",
+      icon("message-square", { size: 13 }),
+      el("span", undefined, words),
+    );
+    line.type = "button";
+    line.setAttribute("aria-expanded", "false");
+    line.addEventListener("click", () => {
+      const open = line.getAttribute("aria-expanded") !== "true";
+      line.setAttribute("aria-expanded", String(open));
+    });
+    node.append(line);
+  }
+  return node;
+}
+
 /** A status as Barynt draws one, by its category. */
 export function statusDot(options: {
   label: string;
