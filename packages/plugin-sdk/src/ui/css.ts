@@ -230,8 +230,10 @@ export const CSS = `
 .bui-notice-body strong { font-weight: var(--barynt-font-weight-semibold); }
 .bui-notice[data-compact] { align-items: center; gap: var(--barynt-space-2); padding: var(--barynt-space-2) 0.625rem; border-color: transparent; color: var(--tone); }
 .bui-notice[data-compact] > .bui-icon { margin-top: 0; }
-.bui-notice[data-compact] .bui-notice-body { flex: 1; flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: var(--barynt-space-1); }
-.bui-notice[data-compact] .bui-notice-body > :last-child:not(span) { margin-left: auto; color: inherit; font-weight: var(--barynt-font-weight-semibold); font-size: var(--barynt-font-size-xs); }
+/* Narrow, its words wrap in their own column; the action stays beside them. */
+.bui-notice[data-compact] .bui-notice-body { flex: 1; flex-direction: row; align-items: center; gap: var(--barynt-space-2); }
+.bui-notice[data-compact] .bui-notice-body > span { flex: 1; min-width: 0; }
+.bui-notice[data-compact] .bui-notice-body > :last-child:not(span) { flex: none; color: inherit; font-weight: var(--barynt-font-weight-semibold); font-size: var(--barynt-font-size-xs); }
 
 .bui-pick { position: relative; display: inline-flex; max-width: 100%; }
 .bui-pick-panel {
