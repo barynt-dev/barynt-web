@@ -28,6 +28,14 @@ const RUNTIME = `(() => {
   // Its menus Barynt draws (BARY-238): by number, the pick they wait for.
   let menuSeq = 0;
   const menus = new Map();
+  // A click in the frame closes an open menu, as a click beside it would.
+  document.addEventListener(
+    "pointerdown",
+    () => {
+      if (menus.size > 0) send({ type: "menu:close" });
+    },
+    true,
+  );
   let saveHandler = null;
 
   const send = (message) => port && port.postMessage(message);

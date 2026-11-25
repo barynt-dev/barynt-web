@@ -131,6 +131,9 @@ export type FrameMessage =
   | { type: "runAction"; actionId: string; choice?: string }
   /** A message for Barynt's own toast (BARY-238). */
   | { type: "toast"; text: string }
+  /** A click in the frame while its menu is open: close it — Barynt
+   *  doesn't see clicks in there. */
+  | { type: "menu:close" }
   /** A menu for Barynt to draw at `anchor` (the button, in the frame's
    *  coordinates) — a frame is too small for one (BARY-238). */
   | {
@@ -245,6 +248,7 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
   }
   if (m.type === "error")
     return { type: "error", message: String(m.message ?? "").slice(0, 500) };
+  if (m.type === "menu:close") return { type: "menu:close" };
   if (m.type === "toast")
     return typeof m.text === "string" && m.text.trim()
       ? { type: "toast", text: m.text.trim().slice(0, 120) }

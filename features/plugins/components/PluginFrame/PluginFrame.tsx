@@ -139,6 +139,9 @@ export function PluginFrame({
     send.current?.({ type: "menu:pick", id: menu.id, itemId });
     setMenu(null);
   };
+  // The channel's handler is made once: it closes through the latest.
+  const closeMenuRef = useRef(closeMenu);
+  closeMenuRef.current = closeMenu;
   // The latest callbacks: the channel lives as long as the frame, the
   // callbacks change with every render of the caller.
   const callbacks = useRef({
@@ -272,6 +275,8 @@ export function PluginFrame({
           );
         } else if (message.type === "toast") {
           toastRef.current?.(message.text);
+        } else if (message.type === "menu:close") {
+          closeMenuRef.current(null);
         } else if (message.type === "menu") {
           setMenu({
             id: message.id,

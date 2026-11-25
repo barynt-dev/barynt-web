@@ -764,9 +764,21 @@ export function menuButton(options: {
     open = null;
     node.setAttribute("aria-expanded", "false");
   };
+  // Barynt's menu open: a press on the button closes it (the frame tells
+  // Barynt) — the click after it mustn't open it again.
+  let shown = false;
+  let skip = false;
+  node.addEventListener("pointerdown", () => {
+    skip = shown;
+  });
   node.addEventListener("click", async () => {
+    if (skip) {
+      skip = false;
+      return;
+    }
     if (uiHost.menu) {
       const r = node.getBoundingClientRect();
+      shown = true;
       const picked = await uiHost.menu(
         options.items.map((item, i) => ({
           id: String(i),
@@ -776,6 +788,7 @@ export function menuButton(options: {
         })),
         { x: r.left, y: r.top, width: r.width, height: r.height },
       );
+      shown = false;
       if (picked !== null) options.items[Number(picked)]?.onClick();
       return;
     }
