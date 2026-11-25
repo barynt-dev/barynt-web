@@ -114,6 +114,17 @@ export function createApi(host: Host) {
       set: (key: string, value: Json) => call("storage.set", { key, value }),
       delete: (key: string) => call("storage.delete", { key }),
       list: () => call("storage.list", {}),
+      /** The person's own entries in it — a panel folded away, say:
+       *  everyone keeps theirs, and nobody sees another's. */
+      personal: {
+        get: <T extends Json = Json>(key: string) =>
+          call("storage.get", { key, personal: true }) as Promise<T | null>,
+        set: (key: string, value: Json) =>
+          call("storage.set", { key, value, personal: true }),
+        delete: (key: string) =>
+          call("storage.delete", { key, personal: true }),
+        list: () => call("storage.list", { personal: true }),
+      },
     },
     settings: {
       get: () => call("settings.get", {}),

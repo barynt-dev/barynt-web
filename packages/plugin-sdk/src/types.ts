@@ -418,10 +418,10 @@ export interface Methods {
   ];
   "issueData.set": [{ issueId: string; key: string; value: Json }, null];
   "issueData.delete": [{ issueId: string; key: string }, null];
-  "storage.get": [{ key: string }, Json];
-  "storage.set": [{ key: string; value: Json }, null];
-  "storage.delete": [{ key: string }, null];
-  "storage.list": [Record<string, never>, string[]];
+  "storage.get": [{ key: string; personal?: boolean }, Json];
+  "storage.set": [{ key: string; value: Json; personal?: boolean }, null];
+  "storage.delete": [{ key: string; personal?: boolean }, null];
+  "storage.list": [{ personal?: boolean }, string[]];
   "settings.get": [Record<string, never>, Record<string, Json>];
   "settings.set": [{ values: Record<string, Json> }, null];
   "net.fetch": [

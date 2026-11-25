@@ -137,6 +137,10 @@ gone when someone deletes the plugin's data.
 | `api.storage.set(key, value)` | Stores any JSON value. |
 | `api.storage.delete(key)` | Removes it. |
 | `api.storage.list()` | All keys, sorted. |
+| `api.storage.personal.get/set/delete/list` | The same, for the person using it: everyone keeps their own (a panel folded away, say), and nobody reads another's. Barynt keeps them under the person, so the plugin never learns who that is. |
+
+A plain key can't start with `@` — that's where the personal ones are
+kept. They count towards the place's limits.
 
 | Limit | |
 | --- | --- |

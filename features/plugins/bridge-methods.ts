@@ -123,6 +123,21 @@ const touchesFields = (plugin: RunningPlugin, p: Params) =>
 const jsonSize = (value: unknown) =>
   new TextEncoder().encode(JSON.stringify(value) ?? "").length;
 
+/** Where a person's own entries are kept in a place's storage (BARY-238):
+ *  under them, so nobody else reads them — and a plain key can't start
+ *  so, to reach someone's. */
+const PERSONAL = "@";
+const personalPrefix = (userId: string) => `${PERSONAL}${userId}:`;
+
+/** A storage call's key: as given, or — `personal: true` — the person's
+ *  own. `undefined` for one that isn't valid. */
+function storageKey(userId: string, p: Params): string | undefined {
+  const key = str(p.key, STORAGE_LIMITS.keyLength);
+  if (!key) return undefined;
+  if (p.personal === true) return `${personalPrefix(userId)}${key}`;
+  return key.startsWith(PERSONAL) ? undefined : key;
+}
+
 export const HANDLERS: Record<BridgeMethod, Handler> = {
   async "issues.list"(userId, plugin, p) {
     const take = Math.min(
@@ -324,8 +339,8 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
     return fields ? ok(fields) : no("not_found");
   },
 
-  async "storage.get"(_userId, plugin, p) {
-    const key = str(p.key, STORAGE_LIMITS.keyLength);
+  async "storage.get"(userId, plugin, p) {
+    const key = storageKey(userId, p);
     if (!key) return no("invalid_params");
     const row = await db.pluginStorage.findUnique({
       where: { activationId_key: { activationId: plugin.activationId, key } },
@@ -334,8 +349,8 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
     return ok(row?.value ?? null);
   },
 
-  async "storage.set"(_userId, plugin, p) {
-    const key = str(p.key, STORAGE_LIMITS.keyLength);
+  async "storage.set"(userId, plugin, p) {
+    const key = storageKey(userId, p);
     if (!key || p.value === undefined) return no("invalid_params");
     const size = jsonSize(p.value);
     if (size > STORAGE_LIMITS.valueBytes) return no("storage_full");
@@ -364,8 +379,8 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
     return ok(null);
   },
 
-  async "storage.delete"(_userId, plugin, p) {
-    const key = str(p.key, STORAGE_LIMITS.keyLength);
+  async "storage.delete"(userId, plugin, p) {
+    const key = storageKey(userId, p);
     if (!key) return no("invalid_params");
     await db.pluginStorage.deleteMany({
       where: { activationId: plugin.activationId, key },
@@ -373,13 +388,21 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
     return ok(null);
   },
 
-  async "storage.list"(_userId, plugin) {
+  async "storage.list"(userId, plugin, p) {
+    const own = personalPrefix(userId);
     const rows = await db.pluginStorage.findMany({
-      where: { activationId: plugin.activationId },
+      where: {
+        activationId: plugin.activationId,
+        ...(p.personal === true
+          ? { key: { startsWith: own } }
+          : { NOT: { key: { startsWith: PERSONAL } } }),
+      },
       select: { key: true },
       orderBy: { key: "asc" },
     });
-    return ok(rows.map((r) => r.key));
+    return ok(
+      rows.map((r) => (p.personal === true ? r.key.slice(own.length) : r.key)),
+    );
   },
 
   async "settings.get"(_userId, plugin) {
