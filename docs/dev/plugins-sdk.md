@@ -183,6 +183,14 @@ window and runs the action again with `context.values` (`choice` kept).
 A `select` is Barynt's own dropdown: its `options` (`{ id, label, hint? }`,
 up to 100) with `hint` on the right — "Default", say — and a search past
 six; `mono` shows them as code, like a text field's value.
+
+A field is checked as it's typed: `invalid: [{ pattern, message }]`
+(regular expressions, `u` flag) and `taken: { values, message }` show their
+message under it and hold the window back — check again in `run`. With
+`dependsOn: "<a select's id>"` a field follows that select: `per[value]`
+gives its `options`, what's `taken` and the `value` it starts with — the
+branch to start from per repository, say. A select with one option shows
+as a plain value.
 Without fields and with `danger`, it's a confirmation (`values` is `{}`).
 
 From an issue panel, `this.runAction(id, { choice })` starts one of your

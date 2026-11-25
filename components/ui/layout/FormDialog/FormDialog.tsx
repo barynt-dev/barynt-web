@@ -23,6 +23,51 @@ export interface FormField {
   required?: boolean;
   /** Shown as code — a branch's name, say (a select's options too). */
   mono?: boolean;
+  /** Checked as it's typed: a value matching one of these is wrong — its
+   *  message shows under the field, and the window doesn't go on. */
+  invalid?: { pattern: string; message: string }[];
+  /** Values it can't have (a name that's taken), and what to say then. */
+  taken?: { values: string[]; message: string };
+  /** Another field (a select) it follows: `per` that field's value — its
+   *  options, what's taken, the value it starts with. */
+  dependsOn?: string;
+  per?: Record<
+    string,
+    {
+      options?: { id: string; label: string; hint?: string }[];
+      taken?: string[];
+      value?: string;
+    }
+  >;
+}
+
+/** A field as it is for what's picked in the one it follows. */
+function current(field: FormField, values: Record<string, string>) {
+  const per = field.dependsOn
+    ? field.per?.[values[field.dependsOn] ?? ""]
+    : undefined;
+  return {
+    options: per?.options ?? field.options ?? [],
+    taken: per?.taken ?? field.taken?.values ?? [],
+  };
+}
+
+/** What's wrong with a field's value, if anything — said as the plugin
+ *  says it. */
+function problem(
+  field: FormField,
+  values: Record<string, string>,
+): string | null {
+  const value = values[field.id] ?? "";
+  if (field.type !== "text" || !value) return null;
+  for (const rule of field.invalid ?? []) {
+    try {
+      if (new RegExp(rule.pattern, "u").test(value)) return rule.message;
+    } catch {}
+  }
+  if (field.taken && current(field, values).taken.includes(value.trim()))
+    return field.taken.message;
+  return null;
 }
 
 export interface FormOptions {
@@ -84,19 +129,32 @@ function FormDialog({
   options: FormOptions;
   onAnswer: (value: Record<string, string> | null) => void;
 }) {
-  const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      options.fields.map((f) => [
-        f.id,
-        f.value ?? (f.type === "select" ? (f.options?.[0]?.id ?? "") : ""),
-      ]),
-    ),
+  // What a field starts with: its own value, its `per` one, else a
+  // select's first option.
+  const start = (f: FormField, vals: Record<string, string>) =>
+    (f.dependsOn ? f.per?.[vals[f.dependsOn] ?? ""]?.value : undefined) ??
+    f.value ??
+    (f.type === "select" ? (current(f, vals).options[0]?.id ?? "") : "");
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    const vals: Record<string, string> = {};
+    for (const f of options.fields) vals[f.id] = start(f, vals);
+    return vals;
+  });
+  const problems = Object.fromEntries(
+    options.fields.map((f) => [f.id, problem(f, values)]),
   );
   const ready = options.fields.every(
-    (f) => !f.required || values[f.id]?.trim(),
+    (f) => (!f.required || values[f.id]?.trim()) && !problems[f.id],
   );
+  // A field that follows this one starts again from what's picked.
   const set = (id: string, value: string) =>
-    setValues((v) => ({ ...v, [id]: value }));
+    setValues((v) => {
+      const next = { ...v, [id]: value };
+      for (const f of options.fields)
+        if (f.dependsOn === id && f.type === "select")
+          next[f.id] = start(f, next);
+      return next;
+    });
 
   return (
     <Modal width={480} compact>
@@ -117,6 +175,7 @@ function FormDialog({
               <SelectField
                 key={field.id}
                 field={field}
+                options={current(field, values).options}
                 searchLabel={options.searchLabel}
                 value={values[field.id] ?? ""}
                 onChange={(v) => set(field.id, v)}
@@ -125,7 +184,8 @@ function FormDialog({
               <Input
                 key={field.id}
                 label={field.label}
-                hint={field.hint}
+                hint={problems[field.id] ? undefined : field.hint}
+                error={problems[field.id] ?? undefined}
                 value={values[field.id] ?? ""}
                 className={field.mono ? styles.mono : undefined}
                 // biome-ignore lint/a11y/noAutofocus: the window was opened to fill it in
@@ -167,20 +227,42 @@ const SEARCH_FROM = 7;
  */
 function SelectField({
   field,
+  options,
   searchLabel,
   value,
   onChange,
 }: {
   field: FormField;
+  options: { id: string; label: string; hint?: string }[];
   searchLabel?: string;
   value: string;
   onChange: (value: string) => void;
 }) {
   const labelId = useId();
-  const options = field.options ?? [];
-  const picked = options.find((o) => o.id === value);
   // The menu as wide as the field: measured as it's about to open.
   const [width, setWidth] = useState<number>();
+  const picked = options.find((o) => o.id === value);
+  // One to pick from is no choice: shown as it is.
+  if (options.length === 1)
+    return (
+      <div className={styles.field}>
+        <span id={labelId} className={styles.label}>
+          {field.label}
+        </span>
+        <div
+          className={styles.select}
+          data-static
+          data-mono={field.mono || undefined}
+          aria-labelledby={labelId}
+        >
+          <span className={styles.selectValue}>{options[0].label}</span>
+          {options[0].hint && (
+            <span className={styles.selectHint}>{options[0].hint}</span>
+          )}
+        </div>
+        {field.hint && <span className={styles.hint}>{field.hint}</span>}
+      </div>
+    );
   const measure = (e: React.SyntheticEvent<HTMLElement>) =>
     setWidth(e.currentTarget.offsetWidth);
   return (

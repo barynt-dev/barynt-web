@@ -241,6 +241,23 @@ export interface ActionForm {
     required?: boolean;
     /** Shown as code — a branch's name, say (a select's options too). */
     mono?: boolean;
+    /** Checked as it's typed (a regular expression, `u` flag): a value
+     *  matching one is wrong — its `message` shows under the field and
+     *  the window doesn't go on. Check again when it runs. */
+    invalid?: { pattern: string; message: string }[];
+    /** Values it can't have — a name that's taken — and what to say. */
+    taken?: { values: string[]; message: string };
+    /** Another field — a select — this one follows: `per` that field's
+     *  value, its options, what's taken and the value it starts with. */
+    dependsOn?: string;
+    per?: Record<
+      string,
+      {
+        options?: { id: string; label: string; hint?: string }[];
+        taken?: string[];
+        value?: string;
+      }
+    >;
   }[];
   submitLabel?: string;
   /** It costs something: its button in red. */

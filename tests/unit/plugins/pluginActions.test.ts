@@ -208,4 +208,50 @@ describe("actions in the manifest", () => {
     ).toEqual({ title: "Delete?", fields: [], danger: true });
     expect(parseActionResult({ form: { fields: [] } })).toEqual({});
   });
+
+  it("keeps a form's checks and what follows another field (BARY-238)", () => {
+    const [name, base] =
+      parseActionResult({
+        form: {
+          title: "Create branch",
+          fields: [
+            {
+              id: "name",
+              label: "Name",
+              type: "text",
+              invalid: [
+                { pattern: "\\s", message: "No spaces" },
+                // Doesn't compile: dropped, not run.
+                { pattern: "(", message: "Broken" },
+              ],
+              taken: { values: ["main"], message: "Taken" },
+              dependsOn: "repo",
+              per: { "acme/web": { taken: ["main", "dev"] } },
+            },
+            {
+              id: "base",
+              label: "From",
+              type: "select",
+              // Options only per repository.
+              dependsOn: "repo",
+              per: {
+                "acme/web": {
+                  options: [{ id: "main", label: "main", hint: "Default" }],
+                },
+              },
+            },
+          ],
+        },
+      }).form?.fields ?? [];
+    expect(name).toMatchObject({
+      invalid: [{ pattern: "\\s", message: "No spaces" }],
+      taken: { values: ["main"], message: "Taken" },
+      dependsOn: "repo",
+      per: { "acme/web": { taken: ["main", "dev"] } },
+    });
+    expect(name.invalid).toHaveLength(1);
+    expect(base.per?.["acme/web"]?.options).toEqual([
+      { id: "main", label: "main", hint: "Default" },
+    ]);
+  });
 });

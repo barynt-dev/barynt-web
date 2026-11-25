@@ -60,6 +60,17 @@
     box-shadow: 0 0 0 1px var(--tertiary);
   }
 
+  /* Nothing to pick: the value, quiet, no arrow. */
+  &[data-static] {
+    cursor: default;
+    background: transparent;
+    color: var(--on-surface-variant);
+
+    &:hover {
+      border-color: var(--outline-variant);
+    }
+  }
+
   &[data-mono] .selectValue {
     font-family: var(--font-mono);
     font-size: var(--text-sm);

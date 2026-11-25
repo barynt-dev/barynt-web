@@ -55,11 +55,30 @@ export interface ActionFormField {
   type: "text" | "select";
   value?: string;
   /** `select`: what to pick from — with a note on the right ("Default"). */
-  options?: { id: string; label: string; hint?: string }[];
+  options?: ActionFormOption[];
   hint?: string;
   required?: boolean;
   /** Shown as code — a branch's name, say (a select's options too). */
   mono?: boolean;
+  /** Checked as it's typed: a value matching one of these is wrong, and
+   *  says why — the window doesn't go on with it. */
+  invalid?: { pattern: string; message: string }[];
+  /** Values it can't have — a name that's taken — and what to say then. */
+  taken?: { values: string[]; message: string };
+  /** Another field (a select) this one follows: its `per` entry for that
+   *  field's value — the options, what's taken, a value — wins. */
+  dependsOn?: string;
+  per?: Record<
+    string,
+    { options?: ActionFormOption[]; taken?: string[]; value?: string }
+  >;
+}
+
+/** An option of a form's select. */
+export interface ActionFormOption {
+  id: string;
+  label: string;
+  hint?: string;
 }
 
 /** What an action asks to fill in before it goes on. */
@@ -155,19 +174,34 @@ function formOf(raw: unknown): ActionForm | null {
       const type = x.type === "select" ? "select" : "text";
       if (!id || !/^[a-zA-Z][\w-]*$/.test(id) || !label) return [];
       const options =
-        type === "select" && Array.isArray(x.options)
-          ? x.options.slice(0, 100).flatMap((o: unknown) => {
-              if (!o || typeof o !== "object") return [];
-              const oo = o as Record<string, unknown>;
-              const oid = text(oo.id, 200);
-              const olabel = text(oo.label, 120);
-              const ohint = text(oo.hint, 40);
-              return oid && olabel
-                ? [{ id: oid, label: olabel, ...(ohint && { hint: ohint }) }]
-                : [];
-            })
-          : undefined;
-      if (type === "select" && !options?.length) return [];
+        type === "select" ? formOptions(x.options, text) : undefined;
+      const per = formPer(x.per, type, text);
+      if (type === "select" && !options?.length && !per) return [];
+      const invalid = (Array.isArray(x.invalid) ? x.invalid : [])
+        .slice(0, 8)
+        .flatMap((r: unknown) => {
+          if (!r || typeof r !== "object") return [];
+          const rr = r as Record<string, unknown>;
+          const pattern =
+            typeof rr.pattern === "string" && rr.pattern.length <= 200
+              ? rr.pattern
+              : null;
+          const message = text(rr.message, 120);
+          // Only what compiles: it runs in the window.
+          if (!pattern || !message) return [];
+          try {
+            new RegExp(pattern, "u");
+          } catch {
+            return [];
+          }
+          return [{ pattern, message }];
+        });
+      const takenRaw = (x.taken ?? {}) as Record<string, unknown>;
+      const takenMessage = text(takenRaw.message, 120);
+      const taken = takenMessage
+        ? { values: formValues(takenRaw.values), message: takenMessage }
+        : null;
+      const dependsOn = text(x.dependsOn, 40);
       const value = typeof x.value === "string" ? x.value.slice(0, 500) : "";
       const hint = text(x.hint, 160);
       return [
@@ -180,6 +214,9 @@ function formOf(raw: unknown): ActionForm | null {
           ...(hint && { hint }),
           ...(x.required === true && { required: true }),
           ...(x.mono === true && { mono: true }),
+          ...(invalid.length > 0 && { invalid }),
+          ...(taken && { taken }),
+          ...(dependsOn && per && { dependsOn, per }),
         },
       ];
     });
@@ -192,6 +229,57 @@ function formOf(raw: unknown): ActionForm | null {
     ...(submitLabel && { submitLabel }),
     ...(r.danger === true && { danger: true }),
   };
+}
+
+type Text = (v: unknown, max: number) => string | null;
+
+/** A select's options as Barynt draws them — up to 100. */
+function formOptions(raw: unknown, text: Text): ActionFormOption[] {
+  return (Array.isArray(raw) ? raw : []).slice(0, 100).flatMap((o: unknown) => {
+    if (!o || typeof o !== "object") return [];
+    const oo = o as Record<string, unknown>;
+    const id = text(oo.id, 200);
+    const label = text(oo.label, 120);
+    const hint = text(oo.hint, 40);
+    return id && label ? [{ id, label, ...(hint && { hint }) }] : [];
+  });
+}
+
+/** Values to check against — up to 1000 of them. */
+function formValues(raw: unknown): string[] {
+  return (Array.isArray(raw) ? raw : [])
+    .slice(0, 1000)
+    .filter((v): v is string => typeof v === "string" && v.length <= 250);
+}
+
+/** What a field has per value of the one it follows — up to 20. */
+function formPer(
+  raw: unknown,
+  type: "text" | "select",
+  text: Text,
+): ActionFormField["per"] | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const entries = Object.entries(raw as Record<string, unknown>)
+    .slice(0, 20)
+    .flatMap(([key, v]) => {
+      if (key.length > 200 || !v || typeof v !== "object") return [];
+      const e = v as Record<string, unknown>;
+      const options =
+        type === "select" ? formOptions(e.options, text) : undefined;
+      const value =
+        typeof e.value === "string" ? e.value.slice(0, 500) : undefined;
+      return [
+        [
+          key,
+          {
+            ...(options?.length && { options }),
+            ...(Array.isArray(e.taken) && { taken: formValues(e.taken) }),
+            ...(value !== undefined && { value }),
+          },
+        ] as const,
+      ];
+    });
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
 }
 
 /** An action's answer as Barynt uses it — anything else dropped. */
