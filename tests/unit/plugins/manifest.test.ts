@@ -556,6 +556,24 @@ describe("issue panels in the sidebar (BARY-209)", () => {
   });
 });
 
+describe("an issue panel's height (BARY-238)", () => {
+  it("may set a limit to scroll past — a whole number in reason", () => {
+    const panels = (maxHeight: unknown) =>
+      errors({
+        ...base,
+        capabilities: ["ui:issue-panel"],
+        contributes: {
+          issuePanels: [{ id: "log", title: "Log", maxHeight }],
+        },
+      });
+    expect(panels(undefined)).toEqual([]);
+    expect(panels(480)).toEqual([]);
+    expect(panels(40)).not.toEqual([]);
+    expect(panels(480.5)).not.toEqual([]);
+    expect(panels("480")).not.toEqual([]);
+  });
+});
+
 describe("a plugin's server (BARY-212)", () => {
   const service = {
     ...base,

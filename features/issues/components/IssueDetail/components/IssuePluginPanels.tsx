@@ -10,8 +10,10 @@ import { PluginFrame } from "@/features/plugins/components/PluginFrame/PluginFra
 import type { IssueDetail, IssuePluginPanel } from "@/types/issue";
 import styles from "../issueDetail.module.scss";
 
-/** As tall as its content, between these (px); past the top it scrolls. */
-const PANEL_HEIGHT = { min: 48, max: 640 };
+/** As tall as its content, at least this (px) — and only as tall as its
+ *  manifest's `maxHeight` lets it, past which it scrolls inside. Without
+ *  one there's nothing to scroll in it: the issue scrolls (BARY-238). */
+const PANEL_MIN_HEIGHT = 48;
 
 const storageKey = (p: IssuePluginPanel) =>
   `barynt:issue-panel:${p.pluginId}:${p.panelId}`;
@@ -170,7 +172,10 @@ function PluginPanel({
             key={`${issue.id}:${loaded}`}
             pluginId={panel.pluginId}
             name={panel.pluginName}
-            autoHeight={PANEL_HEIGHT}
+            autoHeight={{
+              min: PANEL_MIN_HEIGHT,
+              max: panel.maxHeight ?? Number.POSITIVE_INFINITY,
+            }}
             context={{
               slot: { kind: "issuePanel", id: panel.panelId },
               workspaceId,

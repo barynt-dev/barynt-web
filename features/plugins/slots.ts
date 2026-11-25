@@ -245,6 +245,7 @@ export const getPluginIssuePanels = cache(
             icon:
               actionIcon(declared.find((p) => p.id === e.id)?.icon) ??
               "lucide:puzzle",
+            maxHeight: declared.find((p) => p.id === e.id)?.maxHeight ?? null,
           }));
       })
       .sort(

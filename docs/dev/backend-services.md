@@ -406,7 +406,7 @@ frame itself. `widgetData` resolves whether it runs (`getPluginSlotView`, now wi
 (`getPluginIssuePanels`, the project's activations, cached per request). `IssuePluginPanels`
 draws each in the stacked body, the dialog and the page; an open one is a `PluginFrame` with
 `issueId` in its context and `autoHeight` — the frame runtime measures `#root` and sends
-`resize`, which the host clamps (48–640 px).
+`resize`, which the host clamps (at least 48 px; at most the panel's `maxHeight`, without one no limit).
 
 **Actions (BARY-152).** `contributes.actions` (`ui:action`) come with the issue
 (`pluginActions`, `getPluginIssueActions`) for its "…" menu; a card's quick actions and the

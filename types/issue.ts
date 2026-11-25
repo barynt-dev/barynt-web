@@ -232,4 +232,7 @@ export interface IssuePluginPanel {
   /** Before its title: the manifest's icon, if Barynt bundles it
    *  (`lucide:…`) — else a puzzle. */
   icon: string;
+  /** How tall it may grow before it scrolls inside (px) — the manifest's
+   *  `maxHeight`; without, as tall as its content. */
+  maxHeight: number | null;
 }

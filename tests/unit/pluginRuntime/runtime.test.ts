@@ -944,6 +944,8 @@ describe("issue panels (BARY-150)", () => {
         placement: "main",
         // No icon of its own: a puzzle.
         icon: "lucide:puzzle",
+        // No limit of its own: as tall as its content.
+        maxHeight: null,
       },
     ]);
     expect(db.pluginActivation.findMany.mock.calls.at(-1)?.[0]).toMatchObject({

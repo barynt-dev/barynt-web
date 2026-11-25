@@ -316,6 +316,9 @@ const actionEntry = entry.extend({
  *  the sidebar next to its fields (BARY-209). */
 const panelEntry = entry.extend({
   placement: z.enum(["main", "sidebar"]).optional(),
+  /** How tall it may grow (px) before it scrolls inside — without, it's
+   *  as tall as its content and only the issue scrolls (BARY-238). */
+  maxHeight: z.number().int().min(120).max(4000).optional(),
 });
 
 /** A dashboard widget made of Barynt's own blocks (BARY-203): no code, no

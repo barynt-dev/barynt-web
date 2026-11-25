@@ -236,8 +236,14 @@ so instead of staying empty.
 An issue panel is a section of its own in the issue, after the attachments,
 headed by the panel's title and the plugin's name. People can fold it; only
 an open panel has a frame, and it stays folded for them. The frame grows to
-its content's height (up to 640 px, then it scrolls), so draw what you need
-and no more. See [`registerIssuePanel()`](plugins-sdk.md#registerissuepanel).
+its content's height, so draw what you need and no more: it never scrolls
+inside — the issue around it does. A panel that should stop growing and
+scroll inside instead sets `"maxHeight"` (px, 120–4000):
+
+```json
+"issuePanels": [{ "id": "log", "title": "Log", "maxHeight": 480 }]
+```
+ See [`registerIssuePanel()`](plugins-sdk.md#registerissuepanel).
 
 An issue panel can also live in the **sidebar**, next to the issue's
 properties, labels and custom fields — "Development" with a branch, a merge
