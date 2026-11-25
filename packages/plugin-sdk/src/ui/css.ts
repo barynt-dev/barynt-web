@@ -222,6 +222,9 @@ export const CSS = `
 .bui-toast[data-tone="warning"] > .bui-icon { color: var(--barynt-color-warning); }
 
 [data-bui-tip] { position: relative; }
+[data-bui-tip][data-bui-tip-align="end"]:is(:hover, :focus-visible)::after { left: auto; right: 0; transform: none; }
+[data-bui-tip][data-bui-tip-align="start"]:is(:hover, :focus-visible)::after { left: 0; transform: none; }
+[data-bui-tip][data-bui-tip-side="below"]:is(:hover, :focus-visible)::after { top: calc(100% + 6px); bottom: auto; }
 /* The tip exists only while it shows: a hidden one past the frame's edge
    would still let the frame scroll sideways. */
 [data-bui-tip]:is(:hover, :focus-visible)::after {

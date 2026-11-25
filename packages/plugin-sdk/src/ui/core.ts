@@ -14,6 +14,23 @@ export function styled(): void {
   style.id = STYLE_ID;
   style.textContent = CSS;
   document.head.append(style);
+  // A tip near the frame's edge would be cut off there: before it shows,
+  // it sides with the edge — to the right, the left, or below at the top.
+  const place = (e: Event) => {
+    const target = (e.target as Element | null)?.closest?.("[data-bui-tip]");
+    if (!(target instanceof HTMLElement)) return;
+    const r = target.getBoundingClientRect();
+    const room = 96;
+    target.dataset.buiTipAlign =
+      r.right > window.innerWidth - room
+        ? "end"
+        : r.left < room
+          ? "start"
+          : "center";
+    target.dataset.buiTipSide = r.top < 40 ? "below" : "above";
+  };
+  document.addEventListener("pointerover", place, true);
+  document.addEventListener("focusin", place, true);
 }
 
 /** A menu entry Barynt draws. */
