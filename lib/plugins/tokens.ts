@@ -35,6 +35,7 @@ export const TOKENS = {
   "color.secondary.text": { host: "--on-secondary" },
   "color.secondary.subtle": { host: "--secondary-container" },
   "color.secondary.subtle.text": { host: "--on-secondary-container" },
+  "color.tertiary": { host: "--tertiary" },
   "color.danger": { host: "--error" },
   "color.danger.text": { host: "--on-error" },
   "color.danger.subtle": { host: "--error-container" },

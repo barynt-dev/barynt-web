@@ -674,6 +674,35 @@ export function sectionHeader(options: {
   return details;
 }
 
+/**
+ * "Show 2 more" — a small centred toggle in the tertiary colour that folds
+ * content away below it, closed to start with (a `<details>`): the
+ * branches beyond the first, the done ones. `onToggle` hears each change.
+ */
+export function showMore(options: {
+  label: string;
+  content: Child | Child[];
+  open?: boolean;
+  onToggle?: (open: boolean) => void;
+}): HTMLElement {
+  styled();
+  const summary = el(
+    "summary",
+    "bui-more-toggle",
+    el("span", "", options.label),
+    icon("chevron-down", { size: 12 }),
+  );
+  const body = el(
+    "div",
+    "bui-more-body",
+    ...(Array.isArray(options.content) ? options.content : [options.content]),
+  );
+  const node = el("details", "bui-more", summary, body);
+  node.open = options.open ?? false;
+  node.addEventListener("toggle", () => options.onToggle?.(node.open));
+  return node;
+}
+
 /** Puts text on the clipboard — from a click in the frame, so the browser
  *  lets it. */
 async function copyText(value: string): Promise<boolean> {

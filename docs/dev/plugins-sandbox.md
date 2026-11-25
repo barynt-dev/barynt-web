@@ -61,7 +61,7 @@ instead of fixed colours and sizes, and your plugin fits in either theme:
 | --- | --- |
 | Surfaces | `color.surface`, `color.surface.sunken` (inputs), `.raised` (cards), `.overlay` (dialogs), `.hovered`, `.pressed` |
 | Text and lines | `color.text`, `color.text.subtle`, `color.text.inverse`, `color.border`, `color.border.strong`, `color.focus` |
-| Roles | `color.primary`, `color.secondary`, `color.danger` — each with `.text` (on it), `.subtle` and `.subtle.text`; `color.warning`, `color.success`, `color.info` |
+| Roles | `color.primary`, `color.secondary`, `color.danger` — each with `.text` (on it), `.subtle` and `.subtle.text`; `color.tertiary`, `color.warning`, `color.success`, `color.info` |
 | Palette | `color.blue`, `.teal`, `.green`, `.lime`, `.amber`, `.orange`, `.red`, `.purple`, `.indigo`, `color.chart.1`–`3`, `color.scrim` |
 | Type | `font.family`, `font.family.mono`, `font.size.xxs` … `2xl`, `font.weight.regular` … `bold`, `line.height.tight` / `normal` / `loose` |
 | Space | `space.0`, `1` (4px), `2`, `3`, `4` (16px), `5`, `6`, `8`, `10`, `12` |

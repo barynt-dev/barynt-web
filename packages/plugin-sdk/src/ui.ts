@@ -58,6 +58,7 @@ export {
   type StatusTone,
   type StepState,
   sectionHeader,
+  showMore,
   skeleton,
   spinner,
   stack,
