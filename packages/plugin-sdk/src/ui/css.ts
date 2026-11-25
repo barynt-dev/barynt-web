@@ -256,6 +256,11 @@ a.bui-list-title:hover { text-decoration: underline; }
 .bui-list-meta { flex: none; font-size: var(--barynt-font-size-xs); color: var(--barynt-color-text-subtle); }
 .bui-list-item:has(.bui-list-remove, .bui-list-aside, .bui-list-icon) { align-items: center; }
 .bui-list-icon { display: inline-flex; flex: none; color: var(--barynt-color-text-subtle); }
+.bui-list-lead { display: inline-flex; flex: none; align-items: baseline; gap: 0.375rem; }
+/* A row with a link opens it wherever it's clicked; its buttons stay its own. */
+.bui-list-item:has(> a.bui-list-title) { position: relative; }
+a.bui-list-title::after { content: ""; position: absolute; inset: 0; }
+:is(.bui-list-aside, .bui-list-remove) { position: relative; z-index: 1; }
 .bui-list-aside { display: inline-flex; flex: none; flex-wrap: wrap; justify-content: flex-end; gap: 0.25rem; }
 .bui-list-remove {
   display: grid; place-items: center; flex: none; width: 1.75rem; height: 1.75rem; padding: 0; border: none;

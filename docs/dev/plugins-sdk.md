@@ -756,7 +756,7 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `tabs({ tabs, value?, label?, onChange? })` | tabs (arrow keys); a tab's `content` can be a function, drawn when first opened |
 | `accordion({ items })` | sections that open and close |
 | `kpi({ value, label, trend? })` | a big number; `trend: { text, good? }` |
-| `list({ items, empty? })` | rows of `{ title, meta?, href?, icon?, aside?, onRemove?, removeLabel? }` — `aside` puts elements (badges) on the right, `onRemove` a ✕ at the end |
+| `list({ items, empty? })` | rows of `{ title, meta?, href?, icon?, lead?, aside?, onRemove?, removeLabel? }` — one line each; `lead` puts elements (an id, a hash) before the title, `aside` (badges) on the right, `onRemove` a ✕ at the end; with `href` the whole row opens it |
 | `barChart({ bars, max? })` | horizontal bars of `{ label, value, color? }` |
 | `progressBar({ value, max?, label?, tone? })`, `progressRing({ value, max?, label?, size? })` | how far along |
 

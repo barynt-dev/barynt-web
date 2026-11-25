@@ -136,6 +136,19 @@ describe("the UI kit", () => {
     expect(line.el.textContent).toBe("");
   });
 
+  it("puts a list row's lead before its title (BARY-238)", () => {
+    const lead = document.createElement("code") as unknown as HTMLElement;
+    lead.textContent = "652231c";
+    const row = list({
+      items: [
+        { title: "Fix it", href: "https://github.com/a/b", lead: [lead] },
+      ],
+    }).querySelector("li");
+    const parts = [...(row?.children ?? [])].map((c) => c.className);
+    expect(parts).toEqual(["bui-list-lead", "bui-list-title"]);
+    expect(row?.querySelector(".bui-list-lead")?.textContent).toBe("652231c");
+  });
+
   it("draws a number, a list, bars and a ring", () => {
     const number = kpi({
       value: 12,

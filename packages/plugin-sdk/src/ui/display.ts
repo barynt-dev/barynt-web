@@ -484,6 +484,8 @@ export interface ListItem {
   href?: string;
   /** A built-in icon before the title. */
   icon?: IconName;
+  /** Elements before the title, after the icon — an id, a key, a hash. */
+  lead?: Child[];
   /** Elements on the right, before `meta` — badges, say. */
   aside?: Child[];
   /** Shows a ✕ at the end that runs this — taking the row off a list. */
@@ -505,6 +507,8 @@ export function list(options: {
     const line = el("li", "bui-list-item");
     if (item.icon)
       line.append(el("span", "bui-list-icon", icon(item.icon, { size: 15 })));
+    if (item.lead?.length)
+      line.append(el("span", "bui-list-lead", ...item.lead));
     const href = item.href ? safeHref(item.href) : null;
     if (href) {
       const a = el("a", "bui-list-title", item.title);
