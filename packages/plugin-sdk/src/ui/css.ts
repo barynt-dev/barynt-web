@@ -394,7 +394,9 @@ a.bui-list-title::after { content: ""; position: absolute; inset: 0; }
 .bui-copy {
   position: relative; display: flex; align-items: center; gap: var(--barynt-space-1); min-width: 0; min-height: var(--barynt-size-control);
   padding: 0 var(--barynt-space-1) 0 0; border-radius: var(--barynt-radius-md);
-  background: var(--barynt-color-surface-raised); color: var(--barynt-color-text-subtle);
+  /* A tint, not a surface: it shows on whatever it sits on — a page, a
+     card, the issue's sidebar (which is the raised surface itself). */
+  background: color-mix(in srgb, var(--barynt-color-text) 6%, transparent); color: var(--barynt-color-text-subtle);
 }
 .bui-copy-value {
   display: flex; flex: 1; align-items: center; gap: var(--barynt-space-2); min-width: 0; min-height: var(--barynt-size-control);
