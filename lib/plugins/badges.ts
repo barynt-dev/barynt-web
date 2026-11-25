@@ -47,6 +47,9 @@ export const BADGE_ICONS = {
   "git-branch": "lucide:git-branch",
   rocket: "lucide:rocket",
   package: "lucide:package",
+  // A menu's rename and delete (BARY-238).
+  pencil: "lucide:pencil",
+  trash: "lucide:trash-2",
 } as const;
 export type BadgeIcon = keyof typeof BADGE_ICONS;
 

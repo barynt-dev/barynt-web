@@ -4,6 +4,8 @@ import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
+import { Popover } from "@/components/ui/atoms/Popover/Popover";
+import { SelectMenu } from "@/components/ui/atoms/SelectMenu/SelectMenu";
 import type { BadgeIssue } from "@/lib/plugins/badges";
 import type { BlockData } from "@/lib/plugins/blocks";
 import {
@@ -12,11 +14,14 @@ import {
   type BridgeResponse,
   FRAME_READY_TIMEOUT_MS,
   type FrameContext,
+  type FrameMenuItem,
   type HostMessage,
   type InitMessage,
   parseFrameMessage,
   THEME_TOKENS,
 } from "@/lib/plugins/bridge";
+import { actionIcon } from "@/lib/plugins/plugin-actions";
+import { useOptionalUI } from "@/lib/ui-store";
 import styles from "./pluginFrame.module.scss";
 import { useDevReload } from "./useDevReload";
 
@@ -117,6 +122,23 @@ export function PluginFrame({
   const frame = useRef<HTMLIFrameElement>(null);
   const [state, setState] = useState<FrameState>({ status: "loading" });
   const [height, setHeight] = useState<number | null>(null);
+  // Its toasts are Barynt's own; its menus Barynt draws over it — a frame
+  // is too small for one (BARY-238).
+  // Outside the app's provider (a test, say) a frame just has no toasts.
+  const ui = useOptionalUI();
+  const toastRef = useRef(ui?.toast);
+  toastRef.current = ui?.toast;
+  const [menu, setMenu] = useState<{
+    id: number;
+    items: FrameMenuItem[];
+    anchor: { x: number; y: number; width: number; height: number };
+  } | null>(null);
+  const menuAnchor = useRef<HTMLDivElement>(null);
+  const closeMenu = (itemId: string | null) => {
+    if (!menu) return;
+    send.current?.({ type: "menu:pick", id: menu.id, itemId });
+    setMenu(null);
+  };
   // The latest callbacks: the channel lives as long as the frame, the
   // callbacks change with every render of the caller.
   const callbacks = useRef({
@@ -248,6 +270,14 @@ export function PluginFrame({
             message.ok,
             message.error,
           );
+        } else if (message.type === "toast") {
+          toastRef.current?.(message.text);
+        } else if (message.type === "menu") {
+          setMenu({
+            id: message.id,
+            items: message.items,
+            anchor: message.anchor,
+          });
         } else if (message.type === "runAction") {
           callbacks.current.onRunAction?.(message.actionId, message.choice);
         } else {
@@ -342,6 +372,53 @@ export function PluginFrame({
         allow="clipboard-write"
         referrerPolicy="no-referrer"
       />
+      {/* Its menu: anchored where its button is in the frame. */}
+      {menu && (
+        <>
+          <div
+            ref={menuAnchor}
+            className={styles.menuAnchor}
+            style={{
+              left: menu.anchor.x,
+              top: menu.anchor.y,
+              width: menu.anchor.width,
+              height: menu.anchor.height,
+            }}
+            aria-hidden
+          />
+          <Popover
+            anchorRef={menuAnchor}
+            open
+            align="end"
+            width={220}
+            onClose={() => closeMenu(null)}
+          >
+            <SelectMenu
+              items={menu.items.map((item) => {
+                const icon = actionIcon(item.icon);
+                return {
+                  value: item.id,
+                  label: item.label,
+                  ...(icon && {
+                    icon: (
+                      <Icon
+                        icon={icon}
+                        width={15}
+                        className={item.danger ? styles.danger : undefined}
+                      />
+                    ),
+                  }),
+                };
+              })}
+              value={null}
+              onPick={(value) =>
+                closeMenu(value === null ? null : String(value))
+              }
+              onClose={() => closeMenu(null)}
+            />
+          </Popover>
+        </>
+      )}
       {state.status === "error" && (
         <div className={styles.error} role="alert">
           <Icon icon="lucide:puzzle" width={22} aria-hidden />

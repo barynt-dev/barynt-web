@@ -63,3 +63,13 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
 }
+
+/* Where a frame's menu hangs from (BARY-238): over its button, invisible. */
+.menuAnchor {
+  position: absolute;
+  pointer-events: none;
+}
+
+.danger {
+  color: var(--error);
+}

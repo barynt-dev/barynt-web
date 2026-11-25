@@ -107,6 +107,14 @@ export abstract class Plugin {
     this.#serveSave = host.serveSave;
     this.#unsaved = host.unsaved;
     this.#startAction = host.startAction;
+    // The UI kit's toasts and menus are Barynt's own (BARY-238) — kept
+    // where the kit, bundled apart, finds them.
+    const store = globalThis as Record<symbol, unknown>;
+    const key = Symbol.for("barynt.uiHost");
+    store[key] ??= {};
+    const ui = store[key] as Record<string, unknown>;
+    if (host.toast) ui.toast = host.toast;
+    if (host.menu) ui.menu = host.menu;
     this.api = createApi(host);
     this.context = host.context;
     this.root = host.root;

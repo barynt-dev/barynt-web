@@ -85,6 +85,8 @@ export type BadgeIcon =
   | "git-merge"
   | "git-branch"
   | "rocket"
+  | "pencil"
+  | "trash"
   | "package";
 
 export type BadgeTone =
@@ -258,6 +260,14 @@ export interface Host {
       },
     ) => ActionResult | undefined | Promise<ActionResult | undefined>,
   ): void;
+  /** A message as Barynt's own toast. */
+  toast?(text: string): void;
+  /** A menu Barynt draws over the frame, at `anchor` (the button, in the
+   *  frame's coordinates) — the picked item's id, `null` for none. */
+  menu?(
+    items: { id: string; label: string; icon?: string; danger?: boolean }[],
+    anchor: { x: number; y: number; width: number; height: number },
+  ): Promise<string | null>;
   /** An issue panel starts one of its plugin's actions for its issue. */
   startAction?(actionId: string, context?: { choice?: string }): void;
   /** What saves its settings page when Barynt's Save button is pressed. */

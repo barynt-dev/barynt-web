@@ -232,7 +232,7 @@ this.registerBadges({
 | --- | --- |
 | `badge` | which of your `issueBadges` — what "Display" hides |
 | `text` | up to 24 characters |
-| `icon` | `BadgeIcon`: `clock`, `timer`, `calendar`, `check`, `circle-check`, `circle-x`, `triangle-alert`, `info`, `flag`, `star`, `bug`, `zap`, `lock`, `eye`, `link`, `user`, `message-square`, `git-pull-request`, `git-merge`, `git-branch`, `rocket`, `package` |
+| `icon` | `BadgeIcon`: `clock`, `timer`, `calendar`, `check`, `circle-check`, `circle-x`, `triangle-alert`, `info`, `flag`, `star`, `bug`, `zap`, `lock`, `eye`, `link`, `user`, `message-square`, `git-pull-request`, `git-merge`, `git-branch`, `rocket`, `package`, `pencil`, `trash` |
 | `tone` | `neutral`, `primary`, `info`, `success`, `warning`, `danger` |
 | `tooltip` | up to 120 characters |
 
@@ -735,12 +735,13 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `statusDot({ label, category })` | a status by its category: `backlog`, `unstarted`, `started`, `completed`, `canceled` |
 | `tooltip(element, text)` | shows on hover and focus, read out by screen readers |
 | `notice({ text, title?, tone?, action? })` | a message in the page — `danger` is announced at once |
-| `toast(text, { tone?, duration? })` | a short message in the corner |
+| `toast(text, { tone?, duration? })` | a short message — in Barynt its own toast, elsewhere in the corner of the frame |
 | `status()` | a line that says how it went: `set(text, tone?)`, `clear()` |
 | `spinner({ label? })`, `skeleton({ lines? })` | while something loads |
 | `emptyState({ title, text?, icon?, action? })` | where there's nothing yet |
 | `sectionHeader({ title, icon?, meta?, status?, size?, actions?, fold? })` | a head over a card or section: icon, title, on the right a note or a state in its tone, then `actions` (a "+" button, say); `size: "sm"` is a quiet one, like the field names in an issue's sidebar. With `fold: { content, open?, onToggle? }` it holds its content too, and a click on the head folds it away — `onToggle(open)` to keep that, e.g. in `storage` |
-| `copyField({ value, icon?, href?, label?, actions? })` | a value to copy — a branch, a hash — with a copy button, with `href` one to open it, and `actions` — `{ icon, label, danger?, onClick }` — as more icon buttons (rename, delete) |
+| `copyField({ value, icon?, href?, label?, menu?, actions? })` | a value to copy — a branch, a hash: a click on it copies it and says so, with `href` a button to open it, `menu` (`MenuItem`s) a "…" after that, and `actions` — `{ icon, label, danger?, onClick }` — more icon buttons |
+| `menuButton({ items, label?, icon? })` | a "…" button with a menu: `{ label, icon?, danger?, onClick }` each. In Barynt it's Barynt's own menu, drawn over the frame so a small frame doesn't cut it off |
 | `stepList({ steps })` | steps with their state (`success`, `running`, `warning`, `danger`, `pending`) and, on the right, a note — a pipeline |
 | `navList({ items })` | rows that lead somewhere: `{ label, icon?, count?, href? \| onClick? }` with a › at the end |
 | `diffStat({ added, removed })` | "+9 −4" |

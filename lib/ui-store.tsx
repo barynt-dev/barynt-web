@@ -26,6 +26,11 @@ interface UIValue {
 
 const Ctx = createContext<UIValue | null>(null);
 
+/** Like `useUI`, for what also runs outside the provider — `null` there. */
+export function useOptionalUI() {
+  return useContext(Ctx);
+}
+
 export function useUI() {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error("useUI must be used within UIProvider");

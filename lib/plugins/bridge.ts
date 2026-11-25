@@ -128,7 +128,26 @@ export type FrameMessage =
   | { type: "saveDone"; seq: number; ok: boolean; error?: string }
   /** An issue panel starts one of its plugin's actions for its issue
    *  (BARY-238) — as if it were picked from the issue's menu. */
-  | { type: "runAction"; actionId: string; choice?: string };
+  | { type: "runAction"; actionId: string; choice?: string }
+  /** A message for Barynt's own toast (BARY-238). */
+  | { type: "toast"; text: string }
+  /** A menu for Barynt to draw at `anchor` (the button, in the frame's
+   *  coordinates) — a frame is too small for one (BARY-238). */
+  | {
+      type: "menu";
+      id: number;
+      items: FrameMenuItem[];
+      anchor: { x: number; y: number; width: number; height: number };
+    };
+
+/** An entry of a frame's menu. */
+export interface FrameMenuItem {
+  id: string;
+  label: string;
+  /** A bundled icon (`lucide:…`). */
+  icon?: string;
+  danger?: boolean;
+}
 
 /** Host → frame. */
 export type HostMessage =
@@ -149,7 +168,9 @@ export type HostMessage =
       values?: Record<string, string>;
     }
   /** Save its settings page: Barynt's Save button was pressed. */
-  | { type: "settings:save"; seq: number };
+  | { type: "settings:save"; seq: number }
+  /** What was picked from its menu — `null`: closed without. */
+  | { type: "menu:pick"; id: number; itemId: string | null };
 
 /** The first message, posted to the frame's window with the channel's port. */
 export interface InitMessage {
@@ -224,6 +245,53 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
   }
   if (m.type === "error")
     return { type: "error", message: String(m.message ?? "").slice(0, 500) };
+  if (m.type === "toast")
+    return typeof m.text === "string" && m.text.trim()
+      ? { type: "toast", text: m.text.trim().slice(0, 120) }
+      : null;
+  if (m.type === "menu") {
+    const a = (m.anchor ?? {}) as Record<string, unknown>;
+    const n = (v: unknown) =>
+      typeof v === "number" && Number.isFinite(v) ? v : null;
+    const anchor = {
+      x: n(a.x),
+      y: n(a.y),
+      width: n(a.width),
+      height: n(a.height),
+    };
+    if (!Number.isSafeInteger(m.id) || Object.values(anchor).includes(null))
+      return null;
+    const items = (Array.isArray(m.items) ? m.items : [])
+      .slice(0, 12)
+      .flatMap((i: unknown): FrameMenuItem[] => {
+        if (!i || typeof i !== "object") return [];
+        const x = i as Record<string, unknown>;
+        if (typeof x.id !== "string" || typeof x.label !== "string") return [];
+        const label = x.label.trim().slice(0, 80);
+        if (!x.id || x.id.length > 100 || !label) return [];
+        return [
+          {
+            id: x.id,
+            label,
+            ...(typeof x.icon === "string" && { icon: x.icon }),
+            ...(x.danger === true && { danger: true }),
+          },
+        ];
+      });
+    return items.length > 0
+      ? {
+          type: "menu",
+          id: m.id as number,
+          items,
+          anchor: anchor as {
+            x: number;
+            y: number;
+            width: number;
+            height: number;
+          },
+        }
+      : null;
+  }
   if (m.type === "runAction")
     return typeof m.actionId === "string" &&
       /^[a-z][a-z0-9-]{0,39}$/.test(m.actionId)

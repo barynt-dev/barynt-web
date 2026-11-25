@@ -47,6 +47,8 @@ export {
   labelChip,
   link,
   list,
+  type MenuItem,
+  menuButton,
   navList,
   notice,
   progressBar,

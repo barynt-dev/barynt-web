@@ -8,6 +8,7 @@ import {
   safeHref,
   styled,
   type Tone,
+  uiHost,
 } from "./core";
 import { ICONS, type IconName } from "./icons";
 
@@ -362,6 +363,11 @@ export function toast(
   message: string,
   options: { tone?: Tone; duration?: number } = {},
 ): void {
+  // In Barynt: its own toast, where people look for one.
+  if (uiHost.toast) {
+    uiHost.toast(message);
+    return;
+  }
   styled();
   let host = document.querySelector<HTMLElement>(".bui-toasts");
   if (!host) {
@@ -668,16 +674,117 @@ export function sectionHeader(options: {
   return details;
 }
 
-/** A value to copy — a branch, a hash, a command — with a copy button and,
- *  with `href`, one to open it. */
+/** Puts text on the clipboard — from a click in the frame, so the browser
+ *  lets it. */
+async function copyText(value: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    // Without clipboard access: select it in a field and copy that.
+    const area = el("textarea");
+    area.value = value;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.append(area);
+    area.select();
+    const done = document.execCommand("copy");
+    area.remove();
+    return done;
+  }
+}
+
+/** An entry of a "…" menu. */
+export interface MenuItem {
+  label: string;
+  icon?: IconName;
+  /** It costs something — deleting, say. */
+  danger?: boolean;
+  onClick: () => void;
+}
+
+/**
+ * A "…" button with a menu of a few things to do — rename, delete. In
+ * Barynt the menu is Barynt's own, drawn over the frame, so it isn't cut
+ * off by a small one; elsewhere the kit draws it below the button.
+ */
+export function menuButton(options: {
+  items: MenuItem[];
+  /** Its accessible name and tip — "More" by default. */
+  label?: string;
+  icon?: IconName;
+}): HTMLButtonElement {
+  styled();
+  const label = options.label ?? kitText("more");
+  const node = el(
+    "button",
+    "bui-copy-button",
+    icon(options.icon ?? "ellipsis", { size: 15 }),
+  );
+  node.type = "button";
+  node.setAttribute("aria-label", label);
+  node.setAttribute("aria-haspopup", "menu");
+  node.dataset.buiTip = label;
+  let open: HTMLElement | null = null;
+  const close = () => {
+    open?.remove();
+    open = null;
+    node.setAttribute("aria-expanded", "false");
+  };
+  node.addEventListener("click", async () => {
+    if (uiHost.menu) {
+      const r = node.getBoundingClientRect();
+      const picked = await uiHost.menu(
+        options.items.map((item, i) => ({
+          id: String(i),
+          label: item.label,
+          ...(item.icon && { icon: `lucide:${item.icon}` }),
+          ...(item.danger && { danger: true }),
+        })),
+        { x: r.left, y: r.top, width: r.width, height: r.height },
+      );
+      if (picked !== null) options.items[Number(picked)]?.onClick();
+      return;
+    }
+    if (open) return close();
+    open = el("div", "bui-menu");
+    open.setAttribute("role", "menu");
+    for (const item of options.items) {
+      const entry = el(
+        "button",
+        "bui-menu-item",
+        item.icon && icon(item.icon, { size: 15 }),
+        item.label,
+      );
+      entry.type = "button";
+      entry.setAttribute("role", "menuitem");
+      if (item.danger) entry.dataset.danger = "";
+      entry.addEventListener("click", () => {
+        close();
+        item.onClick();
+      });
+      open.append(entry);
+    }
+    node.after(open);
+    node.setAttribute("aria-expanded", "true");
+    setTimeout(() => document.addEventListener("click", close, { once: true }));
+  });
+  return node;
+}
+
+/** A value to copy — a branch, a hash, a command: a click on it copies it
+ *  (Barynt says so), with `href` a button to open it, and `menu` a "…"
+ *  with more — rename, delete. */
 export function copyField(options: {
   value: string;
   icon?: IconName;
   href?: string;
-  /** What the buttons say to screen readers: "Copy branch". */
+  /** What copying says to screen readers: "Copy branch". */
   label?: string;
-  /** More buttons after those — rename, delete: an icon each, its label
-   *  the tip; `danger` turns it red on hover. */
+  /** In a "…" menu after the buttons. */
+  menu?: MenuItem[];
+  /** More buttons after those — an icon each, its label the tip; `danger`
+   *  turns it red on hover. */
   actions?: {
     icon: IconName;
     label: string;
@@ -686,41 +793,22 @@ export function copyField(options: {
   }[];
 }): HTMLElement {
   styled();
-  const node = el(
-    "div",
-    "bui-copy",
+  const value = el(
+    "button",
+    "bui-copy-value",
     options.icon && icon(options.icon, { size: 15 }),
-    el("span", "bui-copy-value", options.value),
+    el("span", "bui-copy-text", options.value),
   );
-  const copy = el("button", "bui-copy-button", icon("copy", { size: 15 }));
-  copy.type = "button";
-  copy.setAttribute("aria-label", options.label ?? `Copy ${options.value}`);
-  copy.dataset.buiTip = kitText("copy");
-  copy.addEventListener("click", async () => {
-    let done = false;
-    try {
-      await navigator.clipboard.writeText(options.value);
-      done = true;
-    } catch {
-      // Without clipboard access: select it in a field and copy that.
-      const area = el("textarea");
-      area.value = options.value;
-      area.style.position = "fixed";
-      area.style.opacity = "0";
-      document.body.append(area);
-      area.select();
-      done = document.execCommand("copy");
-      area.remove();
-    }
-    if (!done) return;
-    copy.replaceChildren(icon("check", { size: 15 }));
-    copy.dataset.buiTip = kitText("copied");
-    setTimeout(() => {
-      copy.replaceChildren(icon("copy", { size: 15 }));
-      copy.dataset.buiTip = kitText("copy");
-    }, 1500);
+  value.type = "button";
+  value.setAttribute("aria-label", options.label ?? `Copy ${options.value}`);
+  value.dataset.buiTip = kitText("copy");
+  value.addEventListener("click", async () => {
+    if (await copyText(options.value))
+      toast(kitText("copiedValue", { value: options.value }).slice(0, 120), {
+        tone: "success",
+      });
   });
-  node.append(copy);
+  const node = el("div", "bui-copy", value);
   const href = options.href ? safeHref(options.href) : null;
   if (href) {
     const open = el(
@@ -744,6 +832,7 @@ export function copyField(options: {
     b.addEventListener("click", () => action.onClick());
     node.append(b);
   }
+  if (options.menu?.length) node.append(menuButton({ items: options.menu }));
   return node;
 }
 

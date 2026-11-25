@@ -16,6 +16,33 @@ export function styled(): void {
   document.head.append(style);
 }
 
+/** A menu entry Barynt draws. */
+export interface HostMenuItem {
+  id: string;
+  label: string;
+  icon?: string;
+  danger?: boolean;
+}
+
+/** What Barynt does for the kit when the frame runs in it (BARY-238): its
+ *  own toasts, and menus drawn over the frame — a frame is too small for
+ *  one. Unset in a test or outside Barynt: the kit draws its own. */
+export interface UiHost {
+  toast?: (text: string) => void;
+  menu?: (
+    items: HostMenuItem[],
+    anchor: { x: number; y: number; width: number; height: number },
+  ) => Promise<string | null>;
+}
+
+/** The key it's kept under: the SDK and its UI kit are bundled apart, and
+ *  both must see the same one. */
+export const UI_HOST_KEY = Symbol.for("barynt.uiHost");
+
+const g = globalThis as { [UI_HOST_KEY]?: UiHost };
+g[UI_HOST_KEY] ??= {};
+export const uiHost: UiHost = g[UI_HOST_KEY];
+
 /** What a component takes as content: elements, or text — never HTML. */
 export type Child = Node | string | number | false | null | undefined;
 
@@ -150,6 +177,8 @@ export const kitText = translator({
     cancel: "Cancel",
     search: "Search",
     removeItem: "Remove {name}",
+    copiedValue: "Copied: {value}",
+    more: "More",
   },
   de: {
     nothingHere: "Hier ist nichts.",
@@ -162,5 +191,7 @@ export const kitText = translator({
     cancel: "Abbrechen",
     search: "Suchen",
     removeItem: "{name} entfernen",
+    copiedValue: "Kopiert: {value}",
+    more: "Mehr",
   },
 });

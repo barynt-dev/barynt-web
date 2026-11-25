@@ -25,6 +25,9 @@ const RUNTIME = `(() => {
   let instance = null;
   let badgeHandler = null;
   let actionHandler = null;
+  // Its menus Barynt draws (BARY-238): by number, the pick they wait for.
+  let menuSeq = 0;
+  const menus = new Map();
   let saveHandler = null;
 
   const send = (message) => port && port.postMessage(message);
@@ -127,6 +130,14 @@ const RUNTIME = `(() => {
           });
         return;
       }
+      if (m.type === "menu:pick") {
+        const done = menus.get(m.id);
+        if (done) {
+          menus.delete(m.id);
+          done(typeof m.itemId === "string" ? m.itemId : null);
+        }
+        return;
+      }
       if (m.type !== "result") return;
       const open = pending.get(m.id);
       if (!open) return;
@@ -163,6 +174,15 @@ const RUNTIME = `(() => {
           if (saveHandler) send({ type: "unsaved", unsaved: false });
         },
         unsaved: (on) => send({ type: "unsaved", unsaved: on === true }),
+        // A message as Barynt's own toast (BARY-238).
+        toast: (text) => send({ type: "toast", text: String(text) }),
+        // A menu Barynt draws over the frame, at the button (BARY-238).
+        menu: (items, anchor) =>
+          new Promise((resolve) => {
+            const id = ++menuSeq;
+            menus.set(id, resolve);
+            send({ type: "menu", id, items, anchor });
+          }),
         // An issue panel starts one of its actions (BARY-238).
         startAction: (actionId, context) =>
           send({
