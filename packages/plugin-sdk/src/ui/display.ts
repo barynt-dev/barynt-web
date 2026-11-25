@@ -632,6 +632,8 @@ export function sectionHeader(options: {
   /** `sm`: a quiet head, like the field names in an issue's sidebar —
    *  for a panel there (`placement: "sidebar"`). `md` by default. */
   size?: "sm" | "md";
+  /** How many it holds, as a badge right after the title — none for 0. */
+  count?: number;
   /** On the right of the head — a "+" button, say (`button`, `iconOnly`). */
   actions?: Child[];
   fold?: {
@@ -643,11 +645,19 @@ export function sectionHeader(options: {
   styled();
   const fold = options.fold;
   const small = options.size === "sm";
+  const title = el("span", "bui-section-title", options.title);
+  const count =
+    options.count && options.count > 0
+      ? el("span", "bui-section-count", String(options.count))
+      : null;
+  // With a count, the title fits its text and the badge sits right by it.
+  if (count) title.dataset.fit = "";
   const node = el(
     fold ? "summary" : "div",
     "bui-section-head",
     options.icon && icon(options.icon, { size: small ? 14 : 16 }),
-    el("span", "bui-section-title", options.title),
+    title,
+    count,
   );
   if (small) node.dataset.size = "sm";
   if (options.status) {

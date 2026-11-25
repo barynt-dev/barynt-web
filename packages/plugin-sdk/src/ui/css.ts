@@ -380,6 +380,12 @@ a.bui-list-title:hover { text-decoration: underline; }
 .bui-more-toggle > .bui-icon { transition: rotate var(--barynt-duration-fast); }
 .bui-more[open] > .bui-more-toggle > .bui-icon { rotate: 180deg; }
 .bui-more-body { display: flex; flex-direction: column; gap: var(--barynt-space-2); padding-top: var(--barynt-space-2); }
+.bui-section-title[data-fit] { flex: 0 1 auto; }
+.bui-section-count {
+  display: inline-flex; flex: none; align-items: center; height: 1.125rem; margin-right: auto; padding: 0 0.375rem;
+  border: 1px solid var(--barynt-color-border); border-radius: var(--barynt-radius-pill); background: var(--barynt-color-surface-raised);
+  color: var(--barynt-color-text-subtle); font-family: var(--barynt-font-family-mono); font-size: var(--barynt-font-size-xs); line-height: 1;
+}
 .bui-section-actions { display: inline-flex; flex: none; align-items: center; gap: var(--barynt-space-1); margin-left: auto; }
 .bui-section-title + .bui-more-toggle {
   display: flex; align-items: center; justify-content: center; gap: var(--barynt-space-1); padding: var(--barynt-space-1);
@@ -392,6 +398,12 @@ a.bui-list-title:hover { text-decoration: underline; }
 .bui-more-toggle > .bui-icon { transition: rotate var(--barynt-duration-fast); }
 .bui-more[open] > .bui-more-toggle > .bui-icon { rotate: 180deg; }
 .bui-more-body { display: flex; flex-direction: column; gap: var(--barynt-space-2); padding-top: var(--barynt-space-2); }
+.bui-section-title[data-fit] { flex: 0 1 auto; }
+.bui-section-count {
+  display: inline-flex; flex: none; align-items: center; height: 1.125rem; margin-right: auto; padding: 0 0.375rem;
+  border: 1px solid var(--barynt-color-border); border-radius: var(--barynt-radius-pill); background: var(--barynt-color-surface-raised);
+  color: var(--barynt-color-text-subtle); font-family: var(--barynt-font-family-mono); font-size: var(--barynt-font-size-xs); line-height: 1;
+}
 .bui-section-actions { margin-left: 0; }
 
 .bui-steps { display: flex; flex-direction: column; gap: var(--barynt-space-2); margin: 0; padding: 0; list-style: none; }
