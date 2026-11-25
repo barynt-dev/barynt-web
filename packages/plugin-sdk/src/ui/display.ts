@@ -656,8 +656,12 @@ export function sectionHeader(options: {
     node.append(s);
   } else if (options.meta)
     node.append(el("span", "bui-section-meta", options.meta));
-  if (options.actions?.length)
-    node.append(el("span", "bui-section-actions", ...options.actions));
+  if (options.actions?.length) {
+    const actions = el("span", "bui-section-actions", ...options.actions);
+    // In a folding head, its buttons do their own thing — not fold it.
+    if (fold) actions.addEventListener("click", (e) => e.preventDefault());
+    node.append(actions);
+  }
   if (!fold) return node;
 
   const chevron = icon("chevron-down", { size: 15 });
