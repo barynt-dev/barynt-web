@@ -137,6 +137,15 @@ export function card(options: {
   actions?: Child[];
   tone?: Tone;
   compact?: boolean;
+  /** A foot that folds: what's only needed now and then — details, a
+   *  log. `aside` sits before its label (a size, a count). */
+  more?: {
+    label: string;
+    content: Child | Child[];
+    aside?: Child[];
+    open?: boolean;
+    onToggle?: (open: boolean) => void;
+  };
 }): HTMLElement {
   styled();
   const node = el("section", "bui-card");
@@ -160,6 +169,28 @@ export function card(options: {
     node.append(head);
   }
   append(node, options.children ?? []);
+  if (options.more) {
+    const more = options.more;
+    const foot = el(
+      "details",
+      "bui-card-more",
+      el(
+        "summary",
+        undefined,
+        ...(more.aside ?? []),
+        el("span", "bui-card-more-label", more.label),
+        icon("chevron-down", { size: 14 }),
+      ),
+      el(
+        "div",
+        "bui-card-more-body",
+        ...(Array.isArray(more.content) ? more.content : [more.content]),
+      ),
+    );
+    foot.open = more.open ?? false;
+    foot.addEventListener("toggle", () => more.onToggle?.(foot.open));
+    node.append(foot);
+  }
   return node;
 }
 
@@ -338,6 +369,8 @@ export function notice(options: {
   title?: string;
   tone?: Tone;
   action?: Child;
+  /** One line, the action at its end — inside a card, say. */
+  compact?: boolean;
 }): HTMLElement {
   styled();
   const tone = options.tone ?? "info";
@@ -354,6 +387,7 @@ export function notice(options: {
     ),
   );
   node.dataset.tone = tone;
+  if (options.compact) node.dataset.compact = "";
   node.setAttribute("role", tone === "danger" ? "alert" : "status");
   return node;
 }
@@ -893,6 +927,30 @@ export function copyField(options: {
     node.append(b);
   }
   if (options.menu?.length) node.append(menuButton({ items: options.menu }));
+  return node;
+}
+
+/**
+ * The way through a few stations — ready, checks, review, merge — as a bar
+ * of segments, each in its state's colour with its name under it: where
+ * something stands and what holds it up, at a glance.
+ */
+export function stageBar(options: {
+  stages: { label: string; state: StepState }[];
+}): HTMLElement {
+  styled();
+  const node = el("ol", "bui-stages");
+  for (const stage of options.stages) {
+    const item = el(
+      "li",
+      "bui-stage",
+      el("span", "bui-stage-bar"),
+      el("span", "bui-stage-label", stage.label),
+    );
+    item.dataset.state = stage.state;
+    item.setAttribute("aria-label", `${stage.label}: ${stage.state}`);
+    node.append(item);
+  }
   return node;
 }
 

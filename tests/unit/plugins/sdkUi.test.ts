@@ -2,10 +2,13 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import {
   barChart,
   button,
+  card,
   kpi,
   list,
+  notice,
   progressRing,
   select,
+  stageBar,
   status,
   textArea,
   textField,
@@ -134,6 +137,32 @@ describe("the UI kit", () => {
     expect(line.el.dataset.tone).toBe("success");
     line.clear();
     expect(line.el.textContent).toBe("");
+  });
+
+  it("draws stations, a one-line notice and a card's folding foot (BARY-238)", () => {
+    const bar = stageBar({
+      stages: [
+        { label: "Checks", state: "danger" },
+        { label: "Merge", state: "pending" },
+      ],
+    });
+    expect(
+      [...bar.querySelectorAll("li")].map((li) => li.dataset.state),
+    ).toEqual(["danger", "pending"]);
+    expect(notice({ text: "x", compact: true }).dataset.compact).toBe("");
+    const seen: boolean[] = [];
+    const node = card({
+      title: "#5",
+      more: { label: "Details", content: [], onToggle: (o) => seen.push(o) },
+    });
+    const foot = node.querySelector("details.bui-card-more") as unknown as {
+      open: boolean;
+      dispatchEvent: (e: unknown) => void;
+    };
+    expect(foot.open).toBe(false);
+    foot.open = true;
+    foot.dispatchEvent(new window.Event("toggle"));
+    expect(seen.at(-1)).toBe(true);
   });
 
   it("puts a list row's lead before its title (BARY-238)", () => {

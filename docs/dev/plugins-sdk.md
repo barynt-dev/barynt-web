@@ -720,7 +720,7 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `link({ text, href })` | a link out, in a new tab |
 | `stack(...children)`, `row(...children)` | under each other / next to each other, with room between |
 | `grid({ children, minWidth? })` | as many columns as fit, each at least `minWidth` (`12rem`) |
-| `card({ title?, description?, children?, actions?, tone?, compact? })` | a framed section; `tone` colours its edge, `compact` takes less room (a sidebar) |
+| `card({ title?, description?, children?, actions?, tone?, compact?, more? })` | a framed section; `tone` colours its edge, `compact` takes less room (a sidebar); `more: { label, content, aside?, open?, onToggle? }` adds a foot that folds — details only needed now and then, `aside` before its label (a size), `onToggle(open)` to load them when they open |
 | `divider()` | a line |
 | `icon(name, { size?, label? })` | one of the built-in icons (`IconName`: `check`, `x`, `plus`, `search`, `calendar`, `git-pull-request` … — `ICONS` lists them); no network needed |
 
@@ -734,7 +734,7 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `avatar({ name, color?, size? })`, `user({ name, color?, meta? })` | initials; a person with a line about them |
 | `statusDot({ label, category })` | a status by its category: `backlog`, `unstarted`, `started`, `completed`, `canceled` |
 | `tooltip(element, text)` | shows on hover and focus, read out by screen readers |
-| `notice({ text, title?, tone?, action? })` | a message in the page — `danger` is announced at once |
+| `notice({ text, title?, tone?, action?, compact? })` | a message in the page — `danger` is announced at once; `compact` makes it one quiet line with the `action` (a `link`) at its end, for inside a card |
 | `toast(text, { tone?, duration? })` | a short message — in Barynt its own toast, elsewhere in the corner of the frame |
 | `status()` | a line that says how it went: `set(text, tone?)`, `clear()` |
 | `spinner({ label? })`, `skeleton({ lines? })` | while something loads |
@@ -743,6 +743,7 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `copyField({ value, icon?, href?, label?, menu?, actions? })` | a value to copy — a branch, a hash: a click on it copies it and says so, with `href` a button to open it, `menu` (`MenuItem`s) a "…" after that, and `actions` — `{ icon, label, danger?, onClick }` — more icon buttons |
 | `showMore({ label, content, open?, onToggle? })` | "Show 2 more": a small centred toggle in the tertiary colour that folds content away below it, closed to start with |
 | `menuButton({ items, label?, icon? })` | a "…" button with a menu: `{ label, icon?, danger?, onClick }` each. In Barynt it's Barynt's own menu, drawn over the frame so a small frame doesn't cut it off |
+| `stageBar({ stages })` | the way through a few stations as a bar of segments — `{ label, state }` with `stepList`'s states — where something stands and what holds it up |
 | `stepList({ steps })` | steps with their state (`success`, `running`, `warning`, `danger`, `pending`) and, on the right, a note — a pipeline |
 | `navList({ items })` | rows that lead somewhere: `{ label, icon?, count?, href? \| onClick? }` with a › at the end |
 | `diffStat({ added, removed })` | "+9 −4" |

@@ -62,6 +62,7 @@ export {
   skeleton,
   spinner,
   stack,
+  stageBar,
   status,
   statusDot,
   stepList,
