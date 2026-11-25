@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { Icon } from "@iconify/react";
+import { useCallback, useId, useState } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
+import { InlinePicker } from "@/components/ui/atoms/InlinePicker/InlinePicker";
 import { Input } from "@/components/ui/atoms/Input/Input";
-import { NativeSelect } from "@/components/ui/atoms/NativeSelect/NativeSelect";
+import { SelectMenu } from "@/components/ui/atoms/SelectMenu/SelectMenu";
 import { ModalFooter } from "@/components/ui/layout/Modal/components/ModalFooter";
 import { ModalHeader } from "@/components/ui/layout/Modal/components/ModalHeader";
 import { Modal, ModalBody } from "@/components/ui/layout/Modal/Modal";
@@ -15,10 +17,11 @@ export interface FormField {
   label: string;
   type: "text" | "select";
   value?: string;
-  options?: { id: string; label: string }[];
+  /** `select`: what to pick from — a note on the right ("Default"). */
+  options?: { id: string; label: string; hint?: string }[];
   hint?: string;
   required?: boolean;
-  /** Shown as code — a branch's name, say. */
+  /** Shown as code — a branch's name, say (a select's options too). */
   mono?: boolean;
 }
 
@@ -28,6 +31,8 @@ export interface FormOptions {
   fields: FormField[];
   submitLabel: string;
   cancelLabel: string;
+  /** A long select's search field. */
+  searchLabel?: string;
   /** Its button in red — the answer costs something. */
   danger?: boolean;
 }
@@ -109,25 +114,13 @@ function FormDialog({
           )}
           {options.fields.map((field, i) =>
             field.type === "select" ? (
-              <div key={field.id} className={styles.field}>
-                {/* The select has no label of its own: shown here, like
-                    the text fields' above them. */}
-                <span className={styles.label} aria-hidden>
-                  {field.label}
-                </span>
-                <NativeSelect
-                  label={field.label}
-                  items={(field.options ?? []).map((o) => ({
-                    value: o.id,
-                    label: o.label,
-                  }))}
-                  value={values[field.id] ?? ""}
-                  onChange={(v) => set(field.id, v)}
-                />
-                {field.hint && (
-                  <span className={styles.hint}>{field.hint}</span>
-                )}
-              </div>
+              <SelectField
+                key={field.id}
+                field={field}
+                searchLabel={options.searchLabel}
+                value={values[field.id] ?? ""}
+                onChange={(v) => set(field.id, v)}
+              />
             ) : (
               <Input
                 key={field.id}
@@ -161,5 +154,84 @@ function FormDialog({
         </Button>
       </ModalFooter>
     </Modal>
+  );
+}
+
+/** Past this many options, the menu has a search. */
+const SEARCH_FROM = 7;
+
+/**
+ * A select as Barynt draws its own: a field that opens its menu — with a
+ * search for a long list (a repository's branches) and each option's note
+ * on the right.
+ */
+function SelectField({
+  field,
+  searchLabel,
+  value,
+  onChange,
+}: {
+  field: FormField;
+  searchLabel?: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const labelId = useId();
+  const options = field.options ?? [];
+  const picked = options.find((o) => o.id === value);
+  // The menu as wide as the field: measured as it's about to open.
+  const [width, setWidth] = useState<number>();
+  const measure = (e: React.SyntheticEvent<HTMLElement>) =>
+    setWidth(e.currentTarget.offsetWidth);
+  return (
+    <div
+      className={styles.field}
+      onPointerDownCapture={measure}
+      onFocusCapture={measure}
+    >
+      <span id={labelId} className={styles.label}>
+        {field.label}
+      </span>
+      <InlinePicker
+        title={field.label}
+        width={width}
+        stop
+        trigger={
+          <button
+            type="button"
+            className={styles.select}
+            data-mono={field.mono || undefined}
+            aria-labelledby={labelId}
+            aria-haspopup="listbox"
+          >
+            <span className={styles.selectValue}>{picked?.label ?? ""}</span>
+            {picked?.hint && (
+              <span className={styles.selectHint}>{picked.hint}</span>
+            )}
+            <Icon icon="lucide:chevron-down" width={15} aria-hidden />
+          </button>
+        }
+      >
+        {(close) => (
+          <SelectMenu
+            items={options.map((o) => ({
+              value: o.id,
+              label: o.label,
+              ...(o.hint && { hint: o.hint }),
+            }))}
+            value={value}
+            searchable={options.length >= SEARCH_FROM}
+            placeholder={searchLabel}
+            checkMark
+            onPick={(v) => {
+              onChange(String(v ?? ""));
+              close();
+            }}
+            onClose={close}
+          />
+        )}
+      </InlinePicker>
+      {field.hint && <span className={styles.hint}>{field.hint}</span>}
+    </div>
   );
 }

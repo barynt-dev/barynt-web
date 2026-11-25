@@ -32,6 +32,59 @@
   line-height: var(--leading-tight);
 }
 
+/* A select, drawn like the text fields beside it. */
+.select {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  height: var(--control-h);
+  padding: 0 0.625rem 0 0.6875rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-lowest);
+  color: var(--on-surface);
+  font: inherit;
+  font-size: var(--text-base);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s;
+
+  &:hover {
+    border-color: var(--outline);
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--tertiary);
+    box-shadow: 0 0 0 1px var(--tertiary);
+  }
+
+  &[data-mono] .selectValue {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+  }
+
+  > svg {
+    flex: none;
+    color: var(--on-surface-variant);
+  }
+}
+
+.selectValue {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selectHint {
+  flex: none;
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+}
+
 .hint {
   color: var(--on-surface-variant);
   font-size: var(--text-xs);

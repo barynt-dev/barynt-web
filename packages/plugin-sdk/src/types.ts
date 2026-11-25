@@ -234,11 +234,12 @@ export interface ActionForm {
     label: string;
     type: "text" | "select";
     value?: string;
-    /** `select`: what to pick from. */
-    options?: { id: string; label: string }[];
+    /** `select`: what to pick from — `hint` a note on the right
+     *  ("Default"); past six, the menu has a search. */
+    options?: { id: string; label: string; hint?: string }[];
     hint?: string;
     required?: boolean;
-    /** `text`: shown as code — a branch's name, say. */
+    /** Shown as code — a branch's name, say (a select's options too). */
     mono?: boolean;
   }[];
   submitLabel?: string;

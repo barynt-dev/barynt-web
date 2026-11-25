@@ -54,11 +54,11 @@ export interface ActionFormField {
   label: string;
   type: "text" | "select";
   value?: string;
-  /** `select`: what to pick from. */
-  options?: { id: string; label: string }[];
+  /** `select`: what to pick from — with a note on the right ("Default"). */
+  options?: { id: string; label: string; hint?: string }[];
   hint?: string;
   required?: boolean;
-  /** `text`: shown as code — a branch's name, say. */
+  /** Shown as code — a branch's name, say (a select's options too). */
   mono?: boolean;
 }
 
@@ -161,7 +161,10 @@ function formOf(raw: unknown): ActionForm | null {
               const oo = o as Record<string, unknown>;
               const oid = text(oo.id, 200);
               const olabel = text(oo.label, 120);
-              return oid && olabel ? [{ id: oid, label: olabel }] : [];
+              const ohint = text(oo.hint, 40);
+              return oid && olabel
+                ? [{ id: oid, label: olabel, ...(ohint && { hint: ohint }) }]
+                : [];
             })
           : undefined;
       if (type === "select" && !options?.length) return [];

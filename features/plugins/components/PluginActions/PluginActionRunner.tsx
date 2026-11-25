@@ -44,6 +44,7 @@ export function PluginActionRunner() {
 
 function ActionFrame({ job }: { job: ActionJob }) {
   const t = useTranslations("plugins");
+  const tp = useTranslations("placeholders");
   const locale = useLocale();
   const router = useRouter();
   const { toast } = useUI();
@@ -124,6 +125,7 @@ function ActionFrame({ job }: { job: ActionJob }) {
             fields: form.fields,
             submitLabel: form.submitLabel ?? entry.title,
             cancelLabel: t("actionCancel"),
+            searchLabel: tp("search"),
             danger: form.danger,
           }).then((values) => {
             if (values === null) return;

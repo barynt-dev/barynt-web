@@ -180,6 +180,9 @@ like any other input.
 fields `{ id, label, type: "text" | "select", value?, options?, hint?,
 required?, mono? }` — has something filled in first: Barynt shows it as a
 window and runs the action again with `context.values` (`choice` kept).
+A `select` is Barynt's own dropdown: its `options` (`{ id, label, hint? }`,
+up to 100) with `hint` on the right — "Default", say — and a search past
+six; `mono` shows them as code, like a text field's value.
 Without fields and with `danger`, it's a confirmation (`values` is `{}`).
 
 From an issue panel, `this.runAction(id, { choice })` starts one of your
