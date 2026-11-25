@@ -62,6 +62,9 @@ type FrameState =
   | { status: "ready" }
   | { status: "error"; message: string };
 
+/** How tall a panel is while its frame starts — its skeleton's room (px). */
+const SKELETON_HEIGHT = 96;
+
 export function PluginFrame({
   pluginId,
   name,
@@ -374,7 +377,10 @@ export function PluginFrame({
           ? {
               height: Math.min(
                 autoHeight.max,
-                Math.max(autoHeight.min, height ?? autoHeight.min),
+                // Still starting: room for its skeleton.
+                state.status === "loading"
+                  ? Math.max(autoHeight.min, SKELETON_HEIGHT)
+                  : Math.max(autoHeight.min, height ?? autoHeight.min),
               ),
             }
           : undefined
@@ -392,6 +398,14 @@ export function PluginFrame({
         allow="clipboard-write"
         referrerPolicy="no-referrer"
       />
+      {/* A panel still starting: a skeleton where it'll be. */}
+      {autoHeight && state.status === "loading" && (
+        <div className={styles.skeleton} aria-hidden>
+          <span />
+          <span />
+          <span />
+        </div>
+      )}
       {/* Its menu: anchored where its button is in the frame. */}
       {menu && (
         <>
