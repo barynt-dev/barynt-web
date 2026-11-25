@@ -34,6 +34,9 @@ export const CSS = `
 .bui-stage[data-state="warning"] { --tone: var(--barynt-color-warning); color: var(--tone); font-weight: var(--barynt-font-weight-semibold); }
 .bui-stage[data-state="danger"] { --tone: var(--barynt-color-danger); color: var(--tone); font-weight: var(--barynt-font-weight-semibold); }
 .bui-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--barynt-space-3); }
+/* Its actions stay on one line beside the title; the title wraps instead. */
+.bui-card-head > .bui-row { flex: none; flex-wrap: nowrap; }
+.bui-card-head > div:first-child { min-width: 0; }
 .bui-card-title { margin: 0; font-size: var(--barynt-font-size-base); font-weight: var(--barynt-font-weight-semibold); }
 .bui-card-desc { margin: var(--barynt-space-1) 0 0; color: var(--barynt-color-text-subtle); font-size: var(--barynt-font-size-sm); }
 
