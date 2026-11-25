@@ -155,6 +155,8 @@ export interface Badge {
   parts?: RowPart[];
   /** A row's click opens the issue at this issue panel of the plugin's. */
   panel?: string;
+  /** …and asks it to show this part of it — its frame's `context.focus`. */
+  section?: string;
 }
 
 /** An issue as the plugin gets it: always its id and reference; with
@@ -216,6 +218,10 @@ export function parseBadges(
         ...(row &&
           typeof b.panel === "string" &&
           /^[a-z][a-z0-9-]{0,39}$/.test(b.panel) && { panel: b.panel }),
+        ...(row &&
+          typeof b.panel === "string" &&
+          typeof b.section === "string" &&
+          /^[a-z][a-z0-9-]{0,39}$/.test(b.section) && { section: b.section }),
         text: label,
         ...(typeof b.icon === "string" &&
           Object.hasOwn(BADGE_ICONS, b.icon) && { icon: b.icon as BadgeIcon }),

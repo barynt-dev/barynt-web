@@ -93,6 +93,10 @@ function PluginPanel({
     return () => window.removeEventListener("barynt:plugin-refresh", onRefresh);
   }, [panel.pluginId, issue.id]);
   const [focused, setFocused] = useState(0);
+  // The part of it a badge asked for (`context.focus`): a fresh frame
+  // gets it, so it opens there.
+  const [focus, setFocus] = useState<string | null>(null);
+
   useEffect(() => {
     if (focused === 0) return;
     const timer = window.setTimeout(
@@ -104,17 +108,28 @@ function PluginPanel({
   }, [focused]);
   useEffect(() => {
     const onFocus = () => {
-      if (!takePanelFocus(issue.id, panel.pluginId, panel.panelId)) return;
-      setOpen(true);
-      setFocused((n) => n + 1);
+      const asked = takePanelFocus(issue.id, panel.pluginId, panel.panelId);
+      if (asked) {
+        setOpen(true);
+        setFocused((n) => n + 1);
+        if (asked.section) {
+          setFocus(asked.section);
+          setLoaded((n) => n + 1);
+        }
+      }
     };
     window.addEventListener("barynt:focus-panel", onFocus);
     return () => window.removeEventListener("barynt:focus-panel", onFocus);
   }, [panel, issue.id]);
   useEffect(() => {
-    if (takePanelFocus(issue.id, panel.pluginId, panel.panelId)) {
+    const asked = takePanelFocus(issue.id, panel.pluginId, panel.panelId);
+    if (asked) {
       setOpen(true);
       setFocused((n) => n + 1);
+      if (asked.section) {
+        setFocus(asked.section);
+        setLoaded((n) => n + 1);
+      }
       return;
     }
     // Asked for once: a later render doesn't fold it away again.
@@ -182,6 +197,7 @@ function PluginPanel({
               projectId: issue.project,
               issueId: issue.id,
               locale,
+              ...(focus && { focus }),
             }}
             // One of its plugin's actions, started from the panel
             // (BARY-238) — run like from the issue's menu.

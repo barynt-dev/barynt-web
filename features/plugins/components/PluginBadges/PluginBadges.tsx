@@ -357,6 +357,7 @@ export function PluginBadgeRows({
                       issueId,
                       pluginId: b.pluginId,
                       panelId: panel,
+                      ...(b.section && { section: b.section }),
                     })
                 : undefined
             }

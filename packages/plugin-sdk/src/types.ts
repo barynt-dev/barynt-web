@@ -23,6 +23,9 @@ export interface Context {
   };
   /** In an issue panel: the issue it's about — `api.issues.get(issueId)`. */
   issueId?: string;
+  /** In an issue panel opened from a board's badge: the part of it the
+   *  badge asked for (its `section`) — unfold that one. */
+  focus?: string;
   workspaceId: string;
   /** `null` for a workspace's plugin. */
   projectId: string | null;
@@ -195,6 +198,8 @@ export interface Badge {
   /** A row's click opens the issue at this one of your `issuePanels` —
    *  where you can draw whatever you like. */
   panel?: string;
+  /** …and asks the panel to show this part of it: its `context.focus`. */
+  section?: string;
 }
 
 /** What an action answers — all of it optional. */

@@ -343,6 +343,8 @@ won't take, is dropped; a row with nothing left to read isn't drawn.
 **More than a card can hold?** Give the row a `panel` — one of your
 `issuePanels`. A click on the row opens the issue at that panel, where you
 draw whatever you like ([`registerIssuePanel()`](#registerissuepanel)).
+With a `section` too, the panel's frame gets it as `context.focus` — unfold
+that part of it (the GitHub plugin opens its pull requests).
 
 The demo plugin **Demo Code Review** (`scripts/plugins/demo-plugins/code-review.ts`)
 does all of this.
