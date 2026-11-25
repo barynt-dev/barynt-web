@@ -8,6 +8,7 @@ import type {
   Host,
   Method,
   Methods,
+  SettingsLevel,
 } from "./types";
 
 // Testing a plugin without Barynt: a host that answers from your handlers
@@ -26,6 +27,8 @@ export interface TestHost extends Host {
   readonly shown: BlockData[];
   /** Every action an issue panel started (`runAction`), in order. */
   readonly started: { actionId: string; choice?: string }[];
+  /** Every settings page it opened (`openSettings`), in order. */
+  readonly openedSettings: SettingsLevel[];
   /** Runs one of the plugin's actions, as a menu would. */
   runAction(
     id: string,
@@ -61,6 +64,7 @@ export function createTestHost(
   const calls: TestHost["calls"] = [];
   const shown: TestHost["shown"] = [];
   const started: TestHost["started"] = [];
+  const openedSettings: SettingsLevel[] = [];
   let badgeHandler: Parameters<NonNullable<Host["serveBadges"]>>[0] | null =
     null;
   let actionHandler: Parameters<NonNullable<Host["serveActions"]>>[0] | null =
@@ -71,6 +75,7 @@ export function createTestHost(
     calls,
     shown,
     started,
+    openedSettings,
     show: (data) => void shown.push(data),
     serveBadges: (handler) => {
       badgeHandler = handler;
@@ -82,6 +87,9 @@ export function createTestHost(
     serveSave: (handler) => {
       saveHandler = handler;
       unsavedState = false;
+    },
+    openSettings: (level) => {
+      openedSettings.push(level);
     },
     startAction: (actionId, context) => {
       started.push({

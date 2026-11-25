@@ -136,6 +136,7 @@ frame is for one of them.
 ```ts
 registerAction(action: { id: string; run(context: { issueId, choice?, values? }): ActionResult | void }): void;
 runAction(id: string, context?: { choice? }): void; // from an issue panel
+openSettings(level: "personal" | "project" | "workspace"): void;
 ```
 
 An action from `contributes.actions`. When someone picks it, Barynt starts
@@ -186,6 +187,12 @@ actions for its issue, as if it were picked from the issue's menu — its
 `pick`, `form` and answer show the same way, and `refresh` draws the panel
 again. An action with `"where": []` in the manifest shows in no menu and is
 only started like this — rename or delete for a row of the panel, say.
+
+`this.openSettings(level)` opens your page in Barynt's plugin settings:
+`personal` for what's the person's own (their account), `project` for the
+frame's project, `workspace`. For a panel that can't show anything until
+something is set — "Connect repository" there. In tests,
+`host.openedSettings` lists the levels it opened.
 
 What `run` throws shows as the plugin's error in a toast. In tests,
 `createTestHost({ context: { slot: { kind: "actions", id: "actions" } } })`

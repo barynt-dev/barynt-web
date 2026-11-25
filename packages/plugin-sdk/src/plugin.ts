@@ -7,6 +7,7 @@ import type {
   Context,
   Host,
   Json,
+  SettingsLevel,
 } from "./types";
 
 /** Something that undoes what a plugin set up. */
@@ -92,6 +93,7 @@ export abstract class Plugin {
   readonly #serveSave: Host["serveSave"];
   readonly #unsaved: Host["unsaved"];
   readonly #startAction: Host["startAction"];
+  readonly #openSettings: Host["openSettings"];
   readonly #actions = new Map<
     string,
     (context: {
@@ -107,6 +109,7 @@ export abstract class Plugin {
     this.#serveSave = host.serveSave;
     this.#unsaved = host.unsaved;
     this.#startAction = host.startAction;
+    this.#openSettings = host.openSettings;
     // The UI kit's toasts and menus are Barynt's own (BARY-238) — kept
     // where the kit, bundled apart, finds them.
     const store = globalThis as Record<symbol, unknown>;
@@ -185,6 +188,16 @@ export abstract class Plugin {
   runAction(id: string, context: { choice?: string } = {}): void {
     if (this.context.slot.kind !== "issuePanel") return;
     this.#startAction?.(id, context);
+  }
+
+  /**
+   * Opens your settings page in Barynt on a level — `personal` for what's
+   * the person's own (their GitHub account, say), `project` for the
+   * frame's project (its repositories), `workspace`. For a panel with
+   * nothing to show yet because something isn't set: a button there.
+   */
+  openSettings(level: SettingsLevel): void {
+    this.#openSettings?.(level);
   }
 
   /**

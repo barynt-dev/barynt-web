@@ -191,6 +191,8 @@ const RUNTIME = `(() => {
             menus.set(id, resolve);
             send({ type: "menu", id, items, anchor });
           }),
+        // Its own settings page in Barynt, on a level (BARY-238).
+        openSettings: (level) => send({ type: "openSettings", level: String(level) }),
         // An issue panel starts one of its actions (BARY-238).
         startAction: (actionId, context) =>
           send({

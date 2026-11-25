@@ -85,6 +85,15 @@ describe("bridge protocol", () => {
     ).toEqual({ type: "error", message: "x".repeat(500) });
   });
 
+  it("opens its own settings on a level it names, no other (BARY-238)", () => {
+    expect(
+      parseFrameMessage({ type: "openSettings", level: "project" }),
+    ).toEqual({ type: "openSettings", level: "project" });
+    expect(
+      parseFrameMessage({ type: "openSettings", level: "/admin" }),
+    ).toBeNull();
+  });
+
   it("takes a settings page's unsaved changes and how saving went", () => {
     expect(parseFrameMessage({ type: "unsaved", unsaved: true })).toEqual({
       type: "unsaved",

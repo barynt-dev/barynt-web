@@ -131,6 +131,9 @@ export type FrameMessage =
   | { type: "runAction"; actionId: string; choice?: string }
   /** A message for Barynt's own toast (BARY-238). */
   | { type: "toast"; text: string }
+  /** Its own settings page, on a level: what's the person's, the frame's
+   *  project's or the workspace's (BARY-238). */
+  | { type: "openSettings"; level: "personal" | "project" | "workspace" }
   /** A click in the frame while its menu is open: close it — Barynt
    *  doesn't see clicks in there. */
   | { type: "menu:close" }
@@ -249,6 +252,12 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
   if (m.type === "error")
     return { type: "error", message: String(m.message ?? "").slice(0, 500) };
   if (m.type === "menu:close") return { type: "menu:close" };
+  if (m.type === "openSettings")
+    return m.level === "personal" ||
+      m.level === "project" ||
+      m.level === "workspace"
+      ? { type: "openSettings", level: m.level }
+      : null;
   if (m.type === "toast")
     return typeof m.text === "string" && m.text.trim()
       ? { type: "toast", text: m.text.trim().slice(0, 120) }

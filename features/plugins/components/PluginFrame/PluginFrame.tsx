@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
 import { Popover } from "@/components/ui/atoms/Popover/Popover";
 import { SelectMenu } from "@/components/ui/atoms/SelectMenu/SelectMenu";
+import { useRouter } from "@/i18n/navigation";
+import { pluginPath } from "@/lib/nav";
 import type { BadgeIssue } from "@/lib/plugins/badges";
 import type { BlockData } from "@/lib/plugins/blocks";
 import {
@@ -126,6 +128,10 @@ export function PluginFrame({
   // is too small for one (BARY-238).
   // Outside the app's provider (a test, say) a frame just has no toasts.
   const ui = useOptionalUI();
+  // Its settings page, when it asks for it (BARY-238).
+  const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const toastRef = useRef(ui?.toast);
   toastRef.current = ui?.toast;
   const [menu, setMenu] = useState<{
@@ -283,6 +289,15 @@ export function PluginFrame({
             items: message.items,
             anchor: message.anchor,
           });
+        } else if (message.type === "openSettings") {
+          // Its page in the plugins' area — the project's by its id, which
+          // the page turns into its address.
+          const query = new URLSearchParams({ level: message.level });
+          if (message.level === "project" && projectId)
+            query.set("project", projectId);
+          routerRef.current.push(
+            `${pluginPath(workspaceId, pluginId)}?${query}`,
+          );
         } else if (message.type === "runAction") {
           callbacks.current.onRunAction?.(message.actionId, message.choice);
         } else {

@@ -3,6 +3,10 @@
 // is likely to use; the objects carry more.
 
 /** Where a plugin's frame runs. */
+/** Where a plugin's settings are: the person's own, the project's (the
+ *  frame's), or the workspace's. */
+export type SettingsLevel = "personal" | "project" | "workspace";
+
 export interface Context {
   /** Which of its views or pages this frame is for. */
   slot: {
@@ -270,6 +274,8 @@ export interface Host {
   ): Promise<string | null>;
   /** An issue panel starts one of its plugin's actions for its issue. */
   startAction?(actionId: string, context?: { choice?: string }): void;
+  /** Opens its own settings page in Barynt, on a level. */
+  openSettings?(level: SettingsLevel): void;
   /** What saves its settings page when Barynt's Save button is pressed. */
   serveSave?(handler: () => void | Promise<void>): void;
   /** Whether its settings page has changes to save. */
