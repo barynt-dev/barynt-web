@@ -253,7 +253,6 @@ function SelectField({
           className={styles.select}
           data-static
           data-mono={field.mono || undefined}
-          aria-labelledby={labelId}
         >
           <span className={styles.selectValue}>{options[0].label}</span>
           {options[0].hint && (

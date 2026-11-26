@@ -32,6 +32,22 @@
   line-height: var(--leading-tight);
 }
 
+/* A select's value and its note — before the select, whose `[data-mono]`
+   narrows the value. */
+.selectValue {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selectHint {
+  flex: none;
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+}
+
 /* A select, drawn like the text fields beside it. */
 .select {
   display: flex;
@@ -80,20 +96,6 @@
     flex: none;
     color: var(--on-surface-variant);
   }
-}
-
-.selectValue {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.selectHint {
-  flex: none;
-  color: var(--on-surface-variant);
-  font-size: var(--text-xs);
 }
 
 .hint {
