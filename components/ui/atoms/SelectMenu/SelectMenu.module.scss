@@ -13,6 +13,14 @@
   overflow: visible;
 }
 
+/* A line between two runs of items (`ISelectItem.divider`). */
+.divider {
+  height: 1px;
+  margin: 0.25rem 0.5625rem;
+  border: 0;
+  background: var(--outline-variant);
+}
+
 /* A heading over a run of items (`ISelectItem.group`). Not an item: arrow
    keys skip it. */
 .group {

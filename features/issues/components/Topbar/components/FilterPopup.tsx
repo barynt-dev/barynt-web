@@ -2,7 +2,7 @@
 
 import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { Avatar } from "@/components/ui/atoms/Avatar/Avatar";
 import { Badge } from "@/components/ui/atoms/Badge/Badge";
 import { Button } from "@/components/ui/atoms/Button/Button";
@@ -100,6 +100,9 @@ export interface FilterOption {
   value: string | number;
   label: string;
   icon?: React.ReactNode;
+  /** A line above it — where a plugin filter's values found begin, after
+   *  its own options (BARY-238). */
+  divider?: boolean;
 }
 
 /** One filter as the panel draws it. */
@@ -527,7 +530,12 @@ export function buildFacets(
       title: filter.title,
       selected: chipValues(filters, filter.field),
       negatable: true,
-      options: filter.options.map((o) => ({ value: o.id, label: o.label })),
+      // A line between its own options and the values found.
+      options: filter.options.map((o, i) => ({
+        value: o.id,
+        label: o.label,
+        divider: o.found === true && i > 0 && !filter.options[i - 1].found,
+      })),
     });
   return facets;
 }
@@ -791,27 +799,31 @@ export function FilterOptions({
         aria-multiselectable={!single}
         aria-label={facet.title}
       >
-        {shown.map((option) => {
+        {shown.map((option, i) => {
           const on = facet.selected.includes(option.value);
           return (
-            <button
-              key={option.value}
-              type="button"
-              role="option"
-              aria-selected={on}
-              className={styles.optionRow}
-              onClick={() => onToggle(option.value)}
-            >
-              <span className={styles.optionIcon}>{option.icon}</span>
-              <span className={styles.optionLabel}>{option.label}</span>
-              {on && (
-                <Icon
-                  icon="lucide:check"
-                  width={18}
-                  className={styles.optionCheck}
-                />
+            <Fragment key={option.value}>
+              {option.divider && i > 0 && (
+                <hr className={styles.optionDivider} aria-hidden />
               )}
-            </button>
+              <button
+                type="button"
+                role="option"
+                aria-selected={on}
+                className={styles.optionRow}
+                onClick={() => onToggle(option.value)}
+              >
+                <span className={styles.optionIcon}>{option.icon}</span>
+                <span className={styles.optionLabel}>{option.label}</span>
+                {on && (
+                  <Icon
+                    icon="lucide:check"
+                    width={18}
+                    className={styles.optionCheck}
+                  />
+                )}
+              </button>
+            </Fragment>
           );
         })}
         {shown.length === 0 && (

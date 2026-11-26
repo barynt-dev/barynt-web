@@ -16,6 +16,8 @@ export interface ISelectItem {
    * names a different group. Items of one group belong together in `items`.
    */
   group?: string;
+  /** A line above it — one run of items after another, unnamed. */
+  divider?: boolean;
 }
 
 interface SelectMenuProps {
@@ -159,6 +161,9 @@ export function SelectMenu({
       >
         {filtered.map((it, i) => (
           <Fragment key={String(it.value)}>
+            {it.divider && i > 0 && (
+              <hr className={styles.divider} aria-hidden />
+            )}
             {it.group && it.group !== filtered[i - 1]?.group && (
               <div className={styles.group} role="presentation">
                 {it.group}

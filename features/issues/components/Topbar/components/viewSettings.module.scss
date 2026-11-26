@@ -177,6 +177,14 @@
   width: 100%;
 }
 
+/* Between a plugin filter's own options and the values found (BARY-238). */
+.optionDivider {
+  height: 1px;
+  margin: 0.25rem 0.5rem;
+  border: 0;
+  background: var(--outline-variant);
+}
+
 .optionRow {
   display: flex;
   align-items: center;

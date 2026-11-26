@@ -94,9 +94,9 @@ describe("a plugin's filter, matched", () => {
 
   it("offers the values found, sorted, for a filter of values", () => {
     expect(filterOptions(action, entries)).toEqual([
-      { id: "build", label: "build" },
-      { id: "lint", label: "lint" },
-      { id: "test", label: "test" },
+      { id: "build", label: "build", found: true },
+      { id: "lint", label: "lint", found: true },
+      { id: "test", label: "test", found: true },
     ]);
     expect(matchTerms(action, ["lint"], entries)[0].issueIds).toEqual(["i2"]);
   });
@@ -142,8 +142,8 @@ describe("a filter with its own options and the values found", () => {
   it("offers its own first, then the values — named, numbers in order, the gone ones left out", () => {
     expect(filterOptions(branches, found)).toEqual([
       { id: "none", label: "Without" },
-      { id: "web-9", label: "web-9 (acme/web)" },
-      { id: "web-10", label: "web-10 (acme/web)" },
+      { id: "web-9", label: "web-9 (acme/web)", found: true },
+      { id: "web-10", label: "web-10 (acme/web)", found: true },
     ]);
   });
 

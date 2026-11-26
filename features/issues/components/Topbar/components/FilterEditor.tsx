@@ -143,9 +143,10 @@ export function FilterEditor({
     if (isCustomFilterField(field)) return customOptions(field);
     if (isPluginFilterField(field))
       return (
-        pluginFilterOf(lookups, field)?.options.map((o) => ({
+        pluginFilterOf(lookups, field)?.options.map((o, i, all) => ({
           value: o.id,
           label: o.label,
+          divider: o.found === true && i > 0 && !all[i - 1].found,
         })) ?? []
       );
     switch (field) {

@@ -55,7 +55,8 @@ export interface PluginFilterFacet {
   pluginName: string;
   title: string;
   icon?: string;
-  options: { id: string; label: string }[];
+  /** `found`: one of the values found, after its own options. */
+  options: { id: string; label: string; found?: true }[];
 }
 
 /** An entry as stored: on which issue, and what. */
@@ -166,7 +167,7 @@ function labelOf(template: string | undefined, value: string, entry: unknown) {
 export function filterOptions(
   def: PluginFilterDef,
   entries: FilterEntry[],
-): { id: string; label: string }[] {
+): { id: string; label: string; found?: true }[] {
   const own = (def.options ?? []).map((o) => ({ id: o.id, label: o.label }));
   const values = def.values;
   if (!values) return own;
@@ -179,7 +180,7 @@ export function filterOptions(
           found.set(id, labelOf(values.label, id, e.value) || id);
       }
   const listed = [...found]
-    .map(([id, label]) => ({ id, label }))
+    .map(([id, label]) => ({ id, label, found: true as const }))
     .sort((a, b) =>
       a.label.localeCompare(b.label, undefined, { numeric: true }),
     )
