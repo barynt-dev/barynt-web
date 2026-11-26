@@ -523,8 +523,9 @@ export function buildFacets(
     });
   }
   // The plugins' filters, after Barynt's own (BARY-238): their options as
-  // the plugin names them.
-  for (const filter of pluginFilters)
+  // the plugin names them. Only those it puts in the menu — the others are
+  // the advanced editor's.
+  for (const filter of pluginFilters.filter((f) => f.menu === "main"))
     facets.push({
       key: filter.field,
       title: filter.title,
@@ -555,7 +556,17 @@ function FilterPanel(props: FilterPanelProps) {
   } = props;
   const facets = buildFacets(props, t);
   const open = facets.find((f) => f.key === facet);
-  const extras = extraNodes(props.tree).length;
+  // Set conditions the rows don't show — a plugin's filter that's only
+  // the editor's among them.
+  const advancedOnly = new Set(
+    (props.pluginFilters ?? [])
+      .filter((f) => f.menu !== "main")
+      .map((f) => f.field as string),
+  );
+  const extras =
+    extraNodes(props.tree).length +
+    props.tree.rules.filter((n) => !isGroup(n) && advancedOnly.has(n.field))
+      .length;
 
   if (facet === "advanced") {
     return (

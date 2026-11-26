@@ -467,6 +467,10 @@ const connectionSchema = z.strictObject({
   provider: z.enum(CONNECTION_PROVIDERS),
 });
 
+/** A plugin's filters in the filter menu's rows, at most — the rest are
+ *  the advanced editor's (BARY-238). */
+export const MAIN_FILTERS_MAX = 3;
+
 /** A dotted path into an entry — `state`, `runs.name`. */
 const entryPath = z
   .string()
@@ -507,6 +511,8 @@ const filterSchema = z
     kind: z
       .string()
       .regex(/^[a-z][a-z0-9_]{0,39}$/, "lower-case letters, digits and _"),
+    // In the filter menu's rows, or only in the advanced editor (default).
+    menu: z.enum(["main", "advanced"]).optional(),
     options: z.array(filterOptionSchema).min(1).max(20).optional(),
     values: z
       .strictObject({
@@ -539,7 +545,15 @@ const contributesSchema = z.strictObject({
   credentials: z.array(credentialSchema).max(10).optional(),
   inboundHooks: z.array(inboundHookSchema).max(5).optional(),
   connections: z.array(connectionSchema).max(3).optional(),
-  filters: z.array(filterSchema).max(10).optional(),
+  filters: z
+    .array(filterSchema)
+    .max(10)
+    .refine(
+      (list) =>
+        list.filter((f) => f.menu === "main").length <= MAIN_FILTERS_MAX,
+      `at most ${MAIN_FILTERS_MAX} filters in the main menu`,
+    )
+    .optional(),
   /** Draws its settings itself, in its own frame, instead of Barynt's form
    *  of `settings` (BARY-149) — or, `"section"`, below that form (BARY-204).
    *  Saving still goes through Barynt, checked against `settings`. */

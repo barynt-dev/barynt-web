@@ -575,8 +575,13 @@ first:
   into objects and through lists. `label` names each one from its entry
   (`"#{number} {title}"`, `{path}` filled in; the value itself without),
   `when` takes only the entries meeting its conditions.
-- A filter without an option to offer (no values found) doesn't show. An
-  option id a saved view still has but the filter dropped matches nothing.
+- `"menu": "main"` puts it in the filter menu's rows, at most 3 per
+  plugin; without, it's only in the advanced editor (`"advanced"`). Either
+  way it works in saved views and the URL, and a set one shows as a chip.
+- A filter without an option to offer (no values found) doesn't show, nor
+  one made of values alone with only one (a project with one repository).
+  An option id a saved view still has but the filter dropped matches
+  nothing.
 - Titles and option labels translate under `locales.<lang>.contributes.filters`
   (`{ "title": "…", "options": { "<id>": "…" } }`).
 

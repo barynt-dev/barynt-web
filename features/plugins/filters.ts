@@ -95,12 +95,16 @@ export const getPluginFilters = cache(
           ? await entriesOf(pluginId, def.kind, workspaceId)
           : [];
         const options = filterOptions(def, entries);
-        if (options.length === 0) continue;
+        // Nothing to pick — or, made of values alone, one value: no choice
+        // (a project with one repository).
+        if (options.length === 0 || (!def.options && options.length < 2))
+          continue;
         facets.push({
           field: pluginFilterField(pluginId, def.id),
           pluginName: manifest.name,
           title: def.title,
           ...(def.icon && { icon: def.icon }),
+          menu: def.menu ?? "advanced",
           options,
         });
       }

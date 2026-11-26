@@ -36,6 +36,8 @@ export interface PluginFilterDef {
   icon?: string;
   /** Which entries it looks at: their `kind`. */
   kind: string;
+  /** In the filter menu's rows, or only in the advanced editor. */
+  menu?: "main" | "advanced";
   /** Its options, each with its conditions … */
   options?: PluginFilterOption[];
   /** … and/or the values of a field, as found, as further options: of the
@@ -55,6 +57,8 @@ export interface PluginFilterFacet {
   pluginName: string;
   title: string;
   icon?: string;
+  /** In the filter menu's rows, or only in the advanced editor. */
+  menu: "main" | "advanced";
   /** `found`: one of the values found, after its own options. */
   options: { id: string; label: string; found?: true }[];
 }

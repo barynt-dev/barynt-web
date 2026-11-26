@@ -53,7 +53,7 @@ In an issue's menu, a card's quick actions and the command palette:
 
 ## Filters
 
-The filter menu of a board or list has GitHub's filters too, once the plugin is on in the project: **Pull request** (with one, with an open one, without — or a particular one), **Pull request status** (draft, open without a review yet, approved, changes requested, merged, closed), **Branch** (with or without — or a particular one), **GitHub Action** (the workflows and checks that ran), **GitHub Actions status** (passed, failed, running), **Repository** and **Deployed to** (an environment). Each takes "is" and "is not", and they save with a view like any other filter.
+Once the plugin is on in the project, boards and lists filter by GitHub too. In the filter menu: **Pull request status** (draft, open without a review yet, approved, changes requested, merged, closed), **GitHub Actions status** (passed, failed, running) and **Pull request** (with one, with an open one, without — or a particular one). Under **Advanced filter settings** as well: **Branch** (with or without, or a particular one), **GitHub Action** (the workflows and checks that ran), **Repository** (with more than one) and **Deployed to** (an environment). Each takes "is" and "is not", shows as a chip once set, and saves with a view like any other filter.
 
 ## New permissions
 

@@ -265,6 +265,33 @@ describe("filters in a manifest", () => {
     return r.ok ? [] : r.errors;
   };
 
+  it("puts at most three in the menu's rows — the rest are the editor's", () => {
+    const filter = (id: string, menu?: string) => ({
+      id,
+      title: id,
+      kind: "checks",
+      values: { field: "runs.name" },
+      ...(menu && { menu }),
+    });
+    expect(
+      errors([
+        filter("a", "main"),
+        filter("b", "main"),
+        filter("c", "main"),
+        filter("d"),
+      ]),
+    ).toEqual([]);
+    expect(
+      errors([
+        filter("a", "main"),
+        filter("b", "main"),
+        filter("c", "main"),
+        filter("d", "main"),
+      ]),
+    ).not.toEqual([]);
+    expect(errors([filter("a", "sidebar")])).not.toEqual([]);
+  });
+
   it("takes options, values or both — no capability needed", () => {
     expect(
       errors([
