@@ -42,6 +42,7 @@ import styles from "./pluginStore.module.scss";
 import {
   ActiveFacets,
   activeFacets,
+  entryFacets,
   matchesFacets,
   NO_FACETS,
   type StoreFacet,
@@ -294,7 +295,7 @@ export function PluginStore({
       )
     )
       return false;
-    if (!matchesFacets(e, facets)) return false;
+    if (!matchesFacets(entryFacets(e), facets)) return false;
     if (filter === "installed") return !!e.installed;
     if (filter === "updates") return !!e.update;
     if (filter === "blocked") return !!e.installed?.blocked;
@@ -378,7 +379,7 @@ export function PluginStore({
             onChange={(e) => setQuery(e.target.value)}
             iconRight={
               <StoreFilterButton
-                entries={view.entries}
+                items={view.entries.map(entryFacets)}
                 facets={facets}
                 onChange={(next) => {
                   if (category && !next.category.includes(category)) {

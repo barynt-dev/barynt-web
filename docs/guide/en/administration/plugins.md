@@ -62,7 +62,7 @@ Two steps: the workspace releases a plugin, then each project switches it on in 
 
 Open **Settings** and pick **Store** in the switcher at the top, after Personal, Project, Workspace and Plugins. Only the workspace's managers see it — whoever has the permission _Switch installed plugins on and off and configure them_ in the workspace (owners, admins and managers) — and only once a plugin is installed on the server. A platform admin sees it before that too, with a start page on how plugins are installed.
 
-The store lists every plugin your platform admin installed, with search, categories, screenshots and what it may do. If you belong to several workspaces, pick one at the top of the list, the same way as in the workspace settings. Open a plugin; a line under its name says whether it's released in this workspace and in which projects it's on.
+The store is laid out like the admin's: on the left every plugin your platform admin installed, split into **Released** and **Available**, with a search and a filter for category, kind, level and source. If you belong to several workspaces, pick one at the top of the list, the same way as in the workspace settings. With no plugin open, the right side shows how many plugins are released, which ones wait for a confirmation after an update, what's still available and how many projects have one on — below that what was **recently added** and **all plugins** by category. Open a plugin; a line under its name says whether it's released in this workspace and in which projects it's on. Its overview shows the screenshots and its page, and beside them its links, what it asks for and where it comes from.
 
 **Release** shows what the plugin may do; confirm it and it's released. A plugin for workspaces then runs in the workspace; a plugin for projects shows up for every project under **Plugins**. After an update that asks for more, the line under the name offers **Confirm again**.
 
@@ -157,7 +157,7 @@ Every step is recorded in the [audit log](audit.md).
 
 Open **Settings** and pick **Store** in the switcher at the top, after Personal, Project, Workspace and Plugins. You see it if you have the permission _Switch installed plugins on and off and configure them_ in the workspace or in one of its projects; owners, admins, managers and project admins have it.
 
-The store lists every plugin your platform admin installed, with search, categories, screenshots and what it may do. If you belong to several workspaces, pick one at the top of the list, the same way as in the workspace settings. Open a plugin; a line under its name says whether it's released in this workspace and in which projects it's on.
+The store is laid out like the admin's: on the left every plugin your platform admin installed, split into **Released** and **Available**, with a search and a filter for category, kind, level and source. If you belong to several workspaces, pick one at the top of the list, the same way as in the workspace settings. With no plugin open, the right side shows how many plugins are released, which ones wait for a confirmation after an update, what's still available and how many projects have one on — below that what was **recently added** and **all plugins** by category. Open a plugin; a line under its name says whether it's released in this workspace and in which projects it's on. Its overview shows the screenshots and its page, and beside them its links, what it asks for and where it comes from.
 
 **Add** and **Edit** open one window with two steps:
 

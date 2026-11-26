@@ -573,6 +573,10 @@ export interface ScopeStorePlugin extends PluginSummary {
   blocked: boolean;
   /** From the directory, when a source lists it. */
   categories: string[];
+  /** Since when the directory lists it (`YYYY-MM-DD`). */
+  added: string | null;
+  /** The source that lists it, by name. */
+  source: string | null;
   /** The workspace released it for its projects. */
   granted: boolean;
   /** On in the workspace itself; `null` when it never was. */
@@ -667,11 +671,14 @@ export async function getScopeStoreView(
     for (const a of mine)
       if (a.projectId && projects.some((p) => p.id === a.projectId))
         byProject[a.projectId] = stateOf(a);
+    const listing = listings.get(current.pluginId);
     plugins.push({
       ...summary,
       version: current.version,
       blocked: current.status === "blocked",
-      categories: listings.get(current.pluginId)?.categories ?? [],
+      categories: listing?.categories ?? [],
+      added: listing?.added ?? null,
+      source: listing?.sourceName ?? null,
       granted: grants.some((g) => g.pluginId === current.pluginId),
       workspace: ws ? stateOf(ws) : null,
       projects: byProject,

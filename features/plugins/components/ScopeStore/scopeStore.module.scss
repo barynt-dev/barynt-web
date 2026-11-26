@@ -38,32 +38,6 @@
   font-weight: 600;
 }
 
-.intro {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-
-  h2 {
-    margin: 0;
-    font-size: var(--text-lg);
-    font-weight: 650;
-  }
-
-  p {
-    max-width: 62ch;
-    margin: 0;
-    color: var(--on-surface-variant);
-    font-size: var(--text-sm);
-  }
-}
-
-.overview {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  max-width: 56rem;
-}
-
 // ─── Where it's on ──────────────────────────────────────────────────────────
 
 /* One line under the plugin's header. */
