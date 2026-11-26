@@ -53,6 +53,10 @@ Im Menü eines Issues, in den Schnellaktionen einer Karte und in der Befehlspale
 
 **Issues im Pull Request verlinken:** ein Schalter unter **Pull Requests**. Sobald ein Pull Request an Issues arbeitet, kommentiert Barynt ihn mit einem Link zu jedem — einmal, als GitHub App.
 
+## Filter
+
+Das Filter-Menü eines Boards oder einer Liste hat auch GitHubs Filter, sobald das Plugin im Projekt an ist: **Pull Request** (mit einem, mit einem offenen, ohne), **PR-Status** (Entwurf, offen ohne Review, freigegeben, Änderungen gewünscht, gemergt, geschlossen), **Branch** (mit oder ohne), **GitHub Action** (die Workflows und Checks, die gelaufen sind), **GitHub-Actions-Status** (bestanden, fehlgeschlagen, läuft), **Repository** und **Deployt auf** (eine Umgebung). Jeder kennt „ist“ und „ist nicht“, und sie werden mit einer View gespeichert wie jeder andere Filter.
+
 ## Neue Rechte
 
 Kommentare im Pull Request, Workflows und Deployments brauchen Rechte, die eine früher erstellte App nicht hat: _Pull requests_, _Actions_ und _Administration_ schreiben (Letzteres für neue Repositories), _Deployments_ lesen, und das Ereignis _Deployment status_. **Admin → Plugins → GitHub** zeigt das auf der Karte **GitHub App**, mit Link zu den Rechten der App auf GitHub — dort setzen und speichern. Danach bestätigt jeder Besitzer einer Installation sie einmal; bis dahin steht das in den Plugin-Einstellungen beim Konto, mit Link.

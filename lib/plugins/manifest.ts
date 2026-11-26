@@ -467,6 +467,54 @@ const connectionSchema = z.strictObject({
   provider: z.enum(CONNECTION_PROVIDERS),
 });
 
+/** A dotted path into an entry — `state`, `runs.name`. */
+const entryPath = z
+  .string()
+  .regex(
+    /^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*){0,4}$/,
+    "a dotted path, e.g. runs.name",
+  );
+const whenValue = z.union([
+  z.string().max(100),
+  z.number(),
+  z.boolean(),
+  z.null(),
+]);
+
+/** One of a filter's options: its conditions on an entry (BARY-238). */
+const filterOptionSchema = z.strictObject({
+  id: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9_-]{0,39}$/, "lower-case letters, digits, _ and -"),
+  label: title,
+  when: z
+    .record(entryPath, z.union([whenValue, z.array(whenValue).max(10)]))
+    .refine((w) => Object.keys(w).length <= 5, "at most 5 conditions")
+    .optional(),
+  absent: z.boolean().optional(),
+});
+
+/**
+ * A filter for the issues' filter menu (BARY-238): which of the plugin's
+ * entries it looks at (`kind`), and its options — each with conditions —
+ * or the values of one field as options. Data only: Barynt matches it.
+ */
+const filterSchema = z
+  .strictObject({
+    id: localId,
+    title,
+    icon: icon.optional(),
+    kind: z
+      .string()
+      .regex(/^[a-z][a-z0-9_]{0,39}$/, "lower-case letters, digits and _"),
+    options: z.array(filterOptionSchema).min(1).max(20).optional(),
+    values: z.strictObject({ field: entryPath }).optional(),
+  })
+  .refine(
+    (f) => (f.options ? 1 : 0) + (f.values ? 1 : 0) === 1,
+    "expected options or values, one of them",
+  );
+
 const contributesSchema = z.strictObject({
   navItems: z.array(entry).max(5).optional(),
   projectViews: z.array(entry).max(5).optional(),
@@ -481,6 +529,7 @@ const contributesSchema = z.strictObject({
   credentials: z.array(credentialSchema).max(10).optional(),
   inboundHooks: z.array(inboundHookSchema).max(5).optional(),
   connections: z.array(connectionSchema).max(3).optional(),
+  filters: z.array(filterSchema).max(10).optional(),
   /** Draws its settings itself, in its own frame, instead of Barynt's form
    *  of `settings` (BARY-149) — or, `"section"`, below that form (BARY-204).
    *  Saving still goes through Barynt, checked against `settings`. */
@@ -493,7 +542,7 @@ type Contributes = z.infer<typeof contributesSchema>;
 const CONTRIBUTION_CAPABILITY: Record<
   Exclude<
     keyof Contributes,
-    "settings" | "credentials" | "settingsPage" | "connections"
+    "settings" | "credentials" | "settingsPage" | "connections" | "filters"
   >,
   Capability
 > = {
@@ -512,8 +561,15 @@ const CONTRIBUTION_CAPABILITY: Record<
 /** What each kind may contribute: no code, no browser surface for services.
  *  Widget templates are data Barynt draws, so every kind may bring them. */
 const KIND_CONTRIBUTIONS: Record<PluginKind, readonly (keyof Contributes)[]> = {
-  declarative: ["fields", "settings", "issueBadges", "widgetTemplates"],
-  service: ["fields", "settings", "widgetTemplates", "inboundHooks"],
+  // Filters are data Barynt matches, like templates: every kind.
+  declarative: [
+    "fields",
+    "settings",
+    "issueBadges",
+    "widgetTemplates",
+    "filters",
+  ],
+  service: ["fields", "settings", "widgetTemplates", "inboundHooks", "filters"],
   sandbox: [
     "widgetTemplates",
     "inboundHooks",
@@ -529,6 +585,7 @@ const KIND_CONTRIBUTIONS: Record<PluginKind, readonly (keyof Contributes)[]> = {
     "actions",
     "fields",
     "settings",
+    "filters",
   ],
 };
 
@@ -724,7 +781,10 @@ export const manifestSchema = z
         key !== "settings" &&
         key !== "credentials" &&
         key !== "settingsPage" &&
-        key !== "connections"
+        key !== "connections" &&
+        // Data Barynt matches against what the plugin keeps already — no
+        // capability of its own.
+        key !== "filters"
       ) {
         const needed = CONTRIBUTION_CAPABILITY[key];
         if (!m.capabilities.includes(needed))

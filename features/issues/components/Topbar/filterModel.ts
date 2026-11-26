@@ -14,6 +14,8 @@ import {
   type IssueFilter,
   isCustomFilterField,
   isGroup,
+  isPluginFilterField,
+  type PluginFilterField,
   rulesIn,
 } from "@/features/issues/filter";
 import { dueBucketOf } from "@/features/issues/filter-url";
@@ -30,15 +32,16 @@ export const CHIP_FIELDS = [
 ] as const;
 export type ChipField = (typeof CHIP_FIELDS)[number];
 
-/** A chip: a built-in field's, or a custom field's with a list of answers
- *  (BARY-196). */
-export type ChipKey = ChipField | CustomFilterField;
+/** A chip: a built-in field's, a custom field's with a list of answers
+ *  (BARY-196), or one of a plugin's filters (BARY-238). */
+export type ChipKey = ChipField | CustomFilterField | PluginFilterField;
 
 type Node = FilterNode;
 
 const isChipField = (field: string): field is ChipKey =>
   (CHIP_FIELDS as readonly string[]).includes(field) ||
-  isCustomFilterField(field);
+  isCustomFilterField(field) ||
+  isPluginFilterField(field);
 
 /** A top-level "any/none of a list" rule — what a chip shows. */
 function isChipRule(node: Node, field?: string): boolean {

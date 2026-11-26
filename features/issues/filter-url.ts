@@ -50,9 +50,13 @@ import {
   type IssueFilter,
   isCustomFilterField,
   isGroup,
+  isPluginFilterField,
   ME,
   mapNode,
   NONE_VALUE,
+  PLUGIN_FILTER_OPS,
+  pluginFilterField,
+  pluginFilterRef,
   type RuleField,
   rulesIn,
 } from "./filter";
@@ -100,10 +104,21 @@ const isListOp = (is: FilterOp) =>
 /** `cf.<key>` or `cf.<key>.suffix` — a custom field, still by its key. */
 const CUSTOM_KEY = /^cf\.([a-z0-9_]+)(?:\.([a-z]+))?$/;
 
+/** `pl.<plugin>.<filter>` or `….not` — one of a plugin's filters
+ *  (BARY-238); its values are the filter's option ids. */
+const PLUGIN_KEY = /^pl\.([a-z0-9-]{3,40})\.([a-z0-9-]{1,40})(?:\.([a-z]+))?$/;
+
 /** `field` or `field.suffix` → field and operator; `null` for any other key. */
 export function parseFilterKey(
   key: string,
 ): { field: RuleField; is: FilterOp } | null {
+  const plugin = key.match(PLUGIN_KEY);
+  if (plugin) {
+    const is = OP_OF_SUFFIX.get(plugin[3] ?? "");
+    return is && (PLUGIN_FILTER_OPS as readonly FilterOp[]).includes(is)
+      ? { field: pluginFilterField(plugin[1], plugin[2]), is }
+      : null;
+  }
   const custom = key.match(CUSTOM_KEY);
   if (custom) {
     const is = OP_OF_SUFFIX.get(custom[2] ?? "");
@@ -315,6 +330,7 @@ export function mapFilterValues(
     if (rule.is === "contains") return rule;
     if (
       !isCustomFilterField(rule.field) &&
+      !isPluginFilterField(rule.field) &&
       FILTER_FIELDS[rule.field].kind === "date"
     )
       return rule;
@@ -376,7 +392,9 @@ function keyOf(rule: FilterRule): string {
   const suffix = SUFFIX[rule.is];
   const name = isCustomFilterField(rule.field)
     ? `cf.${customFieldRef(rule.field)}`
-    : rule.field;
+    : isPluginFilterField(rule.field)
+      ? `pl.${pluginFilterRef(rule.field).pluginId}.${pluginFilterRef(rule.field).filterId}`
+      : rule.field;
   return suffix ? `${name}.${suffix}` : name;
 }
 

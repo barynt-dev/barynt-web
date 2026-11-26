@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { pluginFilterSource } from "@/features/plugins/filters";
 import {
   getPluginIssueActions,
   getPluginIssuePanels,
@@ -687,6 +688,10 @@ export async function filterContext(userId?: string): Promise<FilterContext> {
           }
         : null;
     },
+    // A plugin's filter (BARY-238): its definition, and what it keeps of
+    // that kind — in this workspace, when there's one to go by.
+    pluginFilter: async (pluginId, filterId) =>
+      pluginFilterSource(pluginId, filterId, await getCurrentWorkspaceId()),
   };
 }
 

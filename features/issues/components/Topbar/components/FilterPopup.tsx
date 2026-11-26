@@ -22,6 +22,7 @@ import {
   type IssueFilter,
   isCustomFilterField,
   isGroup,
+  isPluginFilterField,
   ME,
   NONE_VALUE,
 } from "@/features/issues/filter";
@@ -31,6 +32,7 @@ import { visibleDetailFields } from "@/features/projects/detail-fields";
 import type { Translator } from "@/i18n/types";
 import { useModal } from "@/lib/context";
 import type { FieldDefinition } from "@/lib/custom-fields";
+import type { PluginFilterFacet } from "@/lib/plugins/filters";
 import { fullName } from "@/lib/utils/string";
 import { PHONE_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
 import { useSwipeToClose } from "@/lib/utils/useSwipeToClose";
@@ -78,6 +80,8 @@ interface FilterPopupProps {
   /** The custom fields that apply here — a row each for those with a list
    *  of answers, all of them in the editor (BARY-196). */
   customFields?: FieldDefinition[];
+  /** The plugins' filters that apply here — a row each (BARY-238). */
+  pluginFilters?: PluginFilterFacet[];
   onToggle: (key: FilterKey, value: string | number) => void;
   onClearAll: () => void;
   /** The whole filter, for the advanced editor behind the last row
@@ -254,7 +258,7 @@ function FilterSheet({
         const next = list.includes(value)
           ? list.filter((v) => v !== value)
           : [...list, value];
-        return isCustomFilterField(key)
+        return isCustomFilterField(key) || isPluginFilterField(key)
           ? { ...current, custom: { ...current.custom, [key]: next } }
           : { ...current, [key]: next };
       });
@@ -354,6 +358,7 @@ export function buildFacets(
     projects,
     issueTypes,
     customFields = [],
+    pluginFilters = [],
   }: Pick<
     FilterPopupProps,
     | "filters"
@@ -366,6 +371,7 @@ export function buildFacets(
     | "projects"
     | "issueTypes"
     | "customFields"
+    | "pluginFilters"
   >,
   t: Translator,
 ): Facet[] {
@@ -513,6 +519,16 @@ export function buildFacets(
       options: customFilterAnswers(field, members, t),
     });
   }
+  // The plugins' filters, after Barynt's own (BARY-238): their options as
+  // the plugin names them.
+  for (const filter of pluginFilters)
+    facets.push({
+      key: filter.field,
+      title: filter.title,
+      selected: chipValues(filters, filter.field),
+      negatable: true,
+      options: filter.options.map((o) => ({ value: o.id, label: o.label })),
+    });
   return facets;
 }
 

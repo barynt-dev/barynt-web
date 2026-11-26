@@ -10,8 +10,10 @@ import {
   type FilterRule,
   isCustomFilterField,
   isGroup,
+  isPluginFilterField,
   ME,
   NONE_VALUE,
+  PLUGIN_FILTER_OPS,
   type RelativeDate,
   type RuleField,
 } from "@/features/issues/filter";
@@ -21,6 +23,7 @@ import {
   customFilterOps,
 } from "@/features/issues/filter-custom";
 import type { FieldDefinition } from "@/lib/custom-fields";
+import type { PluginFilterFacet } from "@/lib/plugins/filters";
 import { fullName } from "@/lib/utils/string";
 import type {
   IssueType,
@@ -41,6 +44,16 @@ export interface FilterLabelLookups {
   projects: Project[];
   /** The custom fields that apply here (BARY-196). */
   customFields?: FieldDefinition[];
+  /** The plugins' filters that apply here (BARY-238). */
+  pluginFilters?: PluginFilterFacet[];
+}
+
+/** The plugin filter behind `pl:<plugin>:<filter>`, if it's still here. */
+export function pluginFilterOf(
+  lookups: Pick<FilterLabelLookups, "pluginFilters">,
+  field: RuleField,
+): PluginFilterFacet | undefined {
+  return lookups.pluginFilters?.find((f) => f.field === field);
 }
 
 /** The custom field behind `cf:<id>`, if it's still there. */
@@ -57,6 +70,7 @@ export function editorOps(
   lookups: Pick<FilterLabelLookups, "customFields">,
   field: RuleField,
 ): FilterOp[] | undefined {
+  if (isPluginFilterField(field)) return [...PLUGIN_FILTER_OPS];
   if (!isCustomFilterField(field)) return EDITOR_OPS[field];
   const def = customFieldOf(lookups, field);
   return def ? customFilterOps(def) : undefined;
@@ -135,6 +149,8 @@ export function useFilterLabels(lookups: FilterLabelLookups) {
   };
 
   const field = (f: RuleField): string => {
+    if (isPluginFilterField(f))
+      return pluginFilterOf(lookups, f)?.title ?? t("filters.unknownField");
     if (isCustomFilterField(f))
       return customFieldOf(lookups, f)?.name ?? t("filters.unknownField");
     switch (f) {
@@ -254,6 +270,11 @@ export function useFilterLabels(lookups: FilterLabelLookups) {
     if (v === ME) return t("filters.me");
     if (v === NONE_VALUE) return t("filters.notSet");
     if (isCustomFilterField(f)) return customValue(f, v);
+    if (isPluginFilterField(f))
+      return (
+        pluginFilterOf(lookups, f)?.options.find((o) => o.id === v)?.label ??
+        String(v)
+      );
     switch (f) {
       case "status":
         return lookups.statuses.find((s) => s.id === v)?.name ?? String(v);

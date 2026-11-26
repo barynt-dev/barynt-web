@@ -1,5 +1,10 @@
 import { narrowFieldValue } from "@/lib/custom-fields";
 import type { Prisma } from "@/lib/generated/prisma/client";
+import {
+  type FilterEntry,
+  matchTerms,
+  type PluginFilterDef,
+} from "@/lib/plugins/filters";
 import type { StatusCategory } from "@/lib/status-category";
 import {
   customFieldRef,
@@ -8,8 +13,11 @@ import {
   type IssueFilter,
   isCustomFilterField,
   isGroup,
+  isPluginFilterField,
   ME,
   NONE_VALUE,
+  type PluginFilterField,
+  pluginFilterRef,
   type RelativeDate,
 } from "./filter";
 import { type CustomFilterFieldShape, customRuleTest } from "./filter-custom";
@@ -37,6 +45,13 @@ export interface FilterContext {
     field: CustomFilterFieldShape;
     rows: { issueId: string; value: unknown }[];
   } | null>;
+  /** One of a plugin's filters and the entries it keeps of that filter's
+   *  kind (`pl:<plugin>:<filter>` rules, BARY-238) — `null` for a filter
+   *  that's gone. Without it, those rules drop out. */
+  pluginFilter?: (
+    pluginId: string,
+    filterId: string,
+  ) => Promise<{ def: PluginFilterDef; entries: FilterEntry[] } | null>;
 }
 
 /** Local midnight of `date`, plus `days`. Same local-time convention the
@@ -126,10 +141,46 @@ async function customRuleWhere(
   return test(null) ? { id: { notIn: failing } } : { id: { in: matching } };
 }
 
+/**
+ * A rule on one of a plugin's filters. Matched in memory over what the
+ * plugin keeps of that kind (`matchTerms`), like a custom field: each
+ * option picked is a set of issues — or, for "has none", every issue but
+ * a set — and "is not" turns the lot round.
+ */
+async function pluginRuleWhere(
+  rule: FilterRule & { field: PluginFilterField },
+  ctx: FilterContext,
+): Promise<Where | null> {
+  const { pluginId, filterId } = pluginFilterRef(rule.field);
+  const found = await ctx.pluginFilter?.(pluginId, filterId);
+  if (!found) return null;
+  const picked = list<string>(rule.value).filter(
+    (v): v is string => typeof v === "string",
+  );
+  if (picked.length === 0) return null;
+  const terms = matchTerms(found.def, picked, found.entries).map(
+    (t): Where =>
+      t.except ? { id: { notIn: t.issueIds } } : { id: { in: t.issueIds } },
+  );
+  // None of its options known any more: nothing matches.
+  const any: Where =
+    terms.length === 0
+      ? { id: { in: [] } }
+      : terms.length === 1
+        ? terms[0]
+        : { OR: terms };
+  return rule.is === "none" ? { NOT: any } : any;
+}
+
 async function ruleWhere(
   rule: FilterRule,
   ctx: FilterContext,
 ): Promise<Where | null> {
+  if (isPluginFilterField(rule.field))
+    return pluginRuleWhere(
+      rule as FilterRule & { field: PluginFilterField },
+      ctx,
+    );
   if (isCustomFilterField(rule.field))
     return customRuleWhere(rule as FilterRule & { field: `cf:${string}` }, ctx);
   const { field, is, value } = rule;

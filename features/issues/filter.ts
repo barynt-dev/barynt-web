@@ -118,14 +118,47 @@ export const FILTER_FIELD_KEYS = Object.keys(FILTER_FIELDS) as FilterField[];
  */
 export type CustomFilterField = `cf:${string}`;
 
-/** Anything a rule can name: a built-in field or a custom one. */
-export type RuleField = FilterField | CustomFilterField;
+/**
+ * One of a plugin's filters as a rule's field: `pl:<pluginId>:<filterId>`
+ * (BARY-238) — declared in its manifest (`contributes.filters`), matched
+ * against what it keeps on issues. Its values are the filter's option ids;
+ * `any`/`none` only.
+ */
+export type PluginFilterField = `pl:${string}:${string}`;
+
+/** Anything a rule can name: a built-in field, a custom one or a plugin's. */
+export type RuleField = FilterField | CustomFilterField | PluginFilterField;
 
 const CUSTOM_PREFIX = "cf:";
 
 export function isCustomFilterField(field: string): field is CustomFilterField {
   return field.startsWith(CUSTOM_PREFIX) && field.length > CUSTOM_PREFIX.length;
 }
+
+const PLUGIN_FIELD = /^pl:([a-z0-9-]{3,40}):([a-z0-9-]{1,40})$/;
+
+export function isPluginFilterField(field: string): field is PluginFilterField {
+  return PLUGIN_FIELD.test(field);
+}
+
+export function pluginFilterField(
+  pluginId: string,
+  filterId: string,
+): PluginFilterField {
+  return `pl:${pluginId}:${filterId}`;
+}
+
+/** The plugin and its filter behind `pl:…`. */
+export function pluginFilterRef(field: PluginFilterField): {
+  pluginId: string;
+  filterId: string;
+} {
+  const [, pluginId = "", filterId = ""] = field.match(PLUGIN_FIELD) ?? [];
+  return { pluginId, filterId };
+}
+
+/** The operators a plugin's filter takes: one of its options, or none. */
+export const PLUGIN_FILTER_OPS = ["any", "none"] as const;
 
 export function customFilterField(fieldId: string): CustomFilterField {
   return `${CUSTOM_PREFIX}${fieldId}`;
@@ -232,6 +265,9 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** Whether `value` has the shape `field`+`is` expects — the part a plain
  *  Zod union can't express, since it depends on both. */
 function valueFits(field: RuleField, is: FilterOp, value: unknown): boolean {
+  // A plugin's filter: a list of its option ids.
+  if (isPluginFilterField(field))
+    return Array.isArray(value) && value.every((v) => typeof v === "string");
   const kind = isCustomFilterField(field)
     ? "custom"
     : FILTER_FIELDS[field].kind;
@@ -271,6 +307,10 @@ const ruleSchema = z
         .string()
         .regex(/^cf:[A-Za-z0-9_-]{1,100}$/)
         .transform((f) => f as CustomFilterField),
+      z
+        .string()
+        .regex(PLUGIN_FIELD)
+        .transform((f) => f as PluginFilterField),
     ]),
     is: z.enum(FILTER_OPS),
     value: z
@@ -285,9 +325,11 @@ const ruleSchema = z
   .superRefine((rule, ctx) => {
     // A custom field takes any operator here; one that doesn't suit the
     // field's type drops out when the filter is applied (`filter-custom.ts`).
-    const ops: readonly FilterOp[] = isCustomFilterField(rule.field)
-      ? FILTER_OPS
-      : FILTER_FIELDS[rule.field].ops;
+    const ops: readonly FilterOp[] = isPluginFilterField(rule.field)
+      ? PLUGIN_FILTER_OPS
+      : isCustomFilterField(rule.field)
+        ? FILTER_OPS
+        : FILTER_FIELDS[rule.field].ops;
     if (!ops.includes(rule.is)) {
       ctx.addIssue({
         code: "custom",

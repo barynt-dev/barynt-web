@@ -51,6 +51,10 @@ In an issue's menu, a card's quick actions and the command palette:
 
 **Link the issues in the pull request:** a switch under **Pull requests**. Once a pull request works on issues, Barynt comments on it with a link to each — once, as the GitHub App.
 
+## Filters
+
+The filter menu of a board or list has GitHub's filters too, once the plugin is on in the project: **Pull request** (with one, with an open one, without), **Pull request status** (draft, open without a review yet, approved, changes requested, merged, closed), **Branch** (with or without), **GitHub Action** (the workflows and checks that ran), **GitHub Actions status** (passed, failed, running), **Repository** and **Deployed to** (an environment). Each takes "is" and "is not", and they save with a view like any other filter.
+
 ## New permissions
 
 Commenting on pull requests, running workflows and deployments need permissions an app created before doesn't have: _Pull requests_, _Actions_ and _Administration_ to write (the last for new repositories), _Deployments_ to read, and the event _Deployment status_. **Admin → Plugins → GitHub** says so on the **GitHub App** card, with a link to the app's permissions on GitHub — set them there and save. Each installation's owner then accepts them once; the account's row in the plugin settings says so until they did, with a link.

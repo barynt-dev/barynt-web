@@ -31,6 +31,7 @@ export const TRANSLATABLE_KINDS = [
   "credentials",
   "inboundHooks",
   "connections",
+  "filters",
 ] as const;
 
 /** The texts of an item, with the length each may have. */

@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 import {
   getWorkspaceCustomFields,
@@ -17,6 +17,7 @@ import {
   getMyIssuesViewGroups,
   getMyIssuesViewPreference,
 } from "@/features/issues/queries";
+import { getPluginFilters } from "@/features/plugins/filters";
 import type { ViewTab } from "@/features/views/components/ViewTabs/ViewTabs";
 import { getProjectViews, getWorkspaceViews } from "@/features/views/queries";
 import type { SavedView } from "@/features/views/schema";
@@ -89,6 +90,13 @@ export async function Topbar({
 
   if (!workspace) return null;
 
+  // The filters of the plugins switched on here (BARY-238).
+  const pluginFilters = await getPluginFilters(
+    workspace.id,
+    projectId ?? null,
+    await getLocale(),
+  );
+
   // Only the fields that can be grouped by, and — inside one project — only
   // the ones that apply there: the workspace's and that project's own.
   const inScope = allCustomFields.filter((f) =>
@@ -145,6 +153,7 @@ export async function Topbar({
         issueTypes={issueTypes}
         customFields={customFields}
         displayFields={inScope}
+        pluginFilters={pluginFilters}
         hiddenGroups={groups.hiddenGroups}
         hideEmptyGroups={groups.hideEmptyGroups}
         showSubIssues={groups.showSubIssues}

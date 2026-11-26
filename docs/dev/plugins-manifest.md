@@ -208,6 +208,7 @@ capability, and each entry an `id` that's unique in its list.
 | `settings` | settings, up to 30 | — | all |
 | `credentials` | credentials, up to 10 | a host in `network` | sandbox |
 | `connections` | [connections](#connections), `{ id, title, provider }`, up to 3 | the provider's API host in `network` | sandbox |
+| `filters` | [filters](#filters) for the issues' filter menu, up to 10 | — | all |
 
 `icon` is an [Iconify](https://icon-sets.iconify.design) name like
 `lucide:clock`.
@@ -538,6 +539,39 @@ A plugin can bring custom fields its issues carry:
 `type` is one of `TEXT`, `NUMBER`, `DATE`, `SELECT`, `MULTI_SELECT`,
 `CHECKBOX`, `URL`, `USER`. `SELECT` and `MULTI_SELECT` need `options`
 (`{ id, label, color? }`, up to 50), the others must not have them.
+
+### Filters
+
+A plugin can add filters to the filter menu of boards and lists — next to
+status, labels and custom fields, in the advanced editor, in saved views and
+in the URL (`pl.<plugin>.<filter>=a,b`, `….not=` for "is not"). Barynt
+matches them itself against what the plugin keeps on issues (`issueData`,
+`handle: "link"`): no code runs, so they need no capability. A filter looks
+at the entries of one `kind` and has either options, each with conditions
+on an entry's fields, or the values of one field as its options:
+
+```json
+"filters": [
+  { "id": "pr-status", "title": "Pull request status", "kind": "pull_request",
+    "options": [
+      { "id": "approved", "label": "Approved", "when": { "state": "open", "review": "approved" } },
+      { "id": "done", "label": "Done", "when": { "state": ["merged", "closed"] } },
+      { "id": "none", "label": "Without a pull request", "absent": true }
+    ] },
+  { "id": "action", "title": "GitHub Action", "kind": "checks", "values": { "field": "runs.name" } }
+]
+```
+
+- An option takes in the issues with an entry of that `kind` meeting every
+  condition in `when` (up to 5; a value or a list of them; `null` matches a
+  field that's missing). Without `when`, any entry of the kind.
+  `"absent": true` turns it round: the issues with no such entry.
+- `values: { field }` offers the values found at that field (up to 50,
+  sorted) — a path with dots walks into objects and through lists.
+- A filter without an option to offer (no values found) doesn't show. An
+  option id a saved view still has but the filter dropped matches nothing.
+- Titles and option labels translate under `locales.<lang>.contributes.filters`
+  (`{ "title": "…", "options": { "<id>": "…" } }`).
 
 ## Its server
 
