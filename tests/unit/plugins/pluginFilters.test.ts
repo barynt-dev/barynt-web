@@ -102,6 +102,61 @@ describe("a plugin's filter, matched", () => {
   });
 });
 
+describe("a filter with its own options and the values found", () => {
+  const branches: PluginFilterDef = {
+    id: "branch",
+    title: "Branch",
+    kind: "branch",
+    options: [{ id: "none", label: "Without", absent: true }],
+    values: {
+      field: "name",
+      label: "{name} ({repo})",
+      when: { deleted: false },
+    },
+  };
+  const found = [
+    {
+      issueId: "i1",
+      value: {
+        kind: "branch",
+        name: "web-10",
+        repo: "acme/web",
+        deleted: false,
+      },
+    },
+    {
+      issueId: "i2",
+      value: {
+        kind: "branch",
+        name: "web-9",
+        repo: "acme/web",
+        deleted: false,
+      },
+    },
+    {
+      issueId: "i3",
+      value: { kind: "branch", name: "old", repo: "acme/web", deleted: true },
+    },
+  ];
+
+  it("offers its own first, then the values — named, numbers in order, the gone ones left out", () => {
+    expect(filterOptions(branches, found)).toEqual([
+      { id: "none", label: "Without" },
+      { id: "web-9", label: "web-9 (acme/web)" },
+      { id: "web-10", label: "web-10 (acme/web)" },
+    ]);
+  });
+
+  it("matches an option of its own, or a value", () => {
+    expect(matchTerms(branches, ["web-9"], found)).toEqual([
+      { issueIds: ["i2"], except: false },
+    ]);
+    // A deleted branch's name isn't one to pick.
+    expect(matchTerms(branches, ["old"], found)[0].issueIds).toEqual([]);
+    expect(matchTerms(branches, ["none"], found)[0].except).toBe(true);
+  });
+});
+
 describe("a rule on a plugin's filter", () => {
   const ctx = (def: PluginFilterDef): FilterContext => ({
     userId: null,
@@ -210,7 +265,7 @@ describe("filters in a manifest", () => {
     return r.ok ? [] : r.errors;
   };
 
-  it("takes options or values, one of them — no capability needed", () => {
+  it("takes options, values or both — no capability needed", () => {
     expect(
       errors([
         {

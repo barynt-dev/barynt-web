@@ -508,11 +508,21 @@ const filterSchema = z
       .string()
       .regex(/^[a-z][a-z0-9_]{0,39}$/, "lower-case letters, digits and _"),
     options: z.array(filterOptionSchema).min(1).max(20).optional(),
-    values: z.strictObject({ field: entryPath }).optional(),
+    values: z
+      .strictObject({
+        field: entryPath,
+        // "#{number} {title}" — `{path}` from the entry.
+        label: z.string().trim().min(1).max(80).optional(),
+        when: z
+          .record(entryPath, z.union([whenValue, z.array(whenValue).max(10)]))
+          .refine((w) => Object.keys(w).length <= 5, "at most 5 conditions")
+          .optional(),
+      })
+      .optional(),
   })
   .refine(
-    (f) => (f.options ? 1 : 0) + (f.values ? 1 : 0) === 1,
-    "expected options or values, one of them",
+    (f) => f.options !== undefined || f.values !== undefined,
+    "expected options, values or both",
   );
 
 const contributesSchema = z.strictObject({

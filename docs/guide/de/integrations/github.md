@@ -55,7 +55,7 @@ Im Menü eines Issues, in den Schnellaktionen einer Karte und in der Befehlspale
 
 ## Filter
 
-Das Filter-Menü eines Boards oder einer Liste hat auch GitHubs Filter, sobald das Plugin im Projekt an ist: **Pull Request** (mit einem, mit einem offenen, ohne), **PR-Status** (Entwurf, offen ohne Review, freigegeben, Änderungen gewünscht, gemergt, geschlossen), **Branch** (mit oder ohne), **GitHub Action** (die Workflows und Checks, die gelaufen sind), **GitHub-Actions-Status** (bestanden, fehlgeschlagen, läuft), **Repository** und **Deployt auf** (eine Umgebung). Jeder kennt „ist“ und „ist nicht“, und sie werden mit einer View gespeichert wie jeder andere Filter.
+Das Filter-Menü eines Boards oder einer Liste hat auch GitHubs Filter, sobald das Plugin im Projekt an ist: **Pull Request** (mit einem, mit einem offenen, ohne — oder ein bestimmter), **PR-Status** (Entwurf, offen ohne Review, freigegeben, Änderungen gewünscht, gemergt, geschlossen), **Branch** (mit oder ohne — oder ein bestimmter), **GitHub Action** (die Workflows und Checks, die gelaufen sind), **GitHub-Actions-Status** (bestanden, fehlgeschlagen, läuft), **Repository** und **Deployt auf** (eine Umgebung). Jeder kennt „ist“ und „ist nicht“, und sie werden mit einer View gespeichert wie jeder andere Filter.
 
 ## Neue Rechte
 

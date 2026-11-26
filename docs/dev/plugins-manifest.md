@@ -547,8 +547,9 @@ status, labels and custom fields, in the advanced editor, in saved views and
 in the URL (`pl.<plugin>.<filter>=a,b`, `….not=` for "is not"). Barynt
 matches them itself against what the plugin keeps on issues (`issueData`,
 `handle: "link"`): no code runs, so they need no capability. A filter looks
-at the entries of one `kind` and has either options, each with conditions
-on an entry's fields, or the values of one field as its options:
+at the entries of one `kind` and has options, each with conditions on an
+entry's fields, the values of one field as its options — or both, its own
+first:
 
 ```json
 "filters": [
@@ -558,7 +559,10 @@ on an entry's fields, or the values of one field as its options:
       { "id": "done", "label": "Done", "when": { "state": ["merged", "closed"] } },
       { "id": "none", "label": "Without a pull request", "absent": true }
     ] },
-  { "id": "action", "title": "GitHub Action", "kind": "checks", "values": { "field": "runs.name" } }
+  { "id": "action", "title": "GitHub Action", "kind": "checks", "values": { "field": "runs.name" } },
+  { "id": "branch", "title": "Branch", "kind": "branch",
+    "options": [{ "id": "none", "label": "Without a branch", "absent": true }],
+    "values": { "field": "name", "label": "{name} ({repo})", "when": { "deleted": false } } }
 ]
 ```
 
@@ -566,8 +570,11 @@ on an entry's fields, or the values of one field as its options:
   condition in `when` (up to 5; a value or a list of them; `null` matches a
   field that's missing). Without `when`, any entry of the kind.
   `"absent": true` turns it round: the issues with no such entry.
-- `values: { field }` offers the values found at that field (up to 50,
-  sorted) — a path with dots walks into objects and through lists.
+- `values: { field, label?, when? }` offers the values found at that field
+  (up to 50, sorted by name, numbers in order) — a path with dots walks
+  into objects and through lists. `label` names each one from its entry
+  (`"#{number} {title}"`, `{path}` filled in; the value itself without),
+  `when` takes only the entries meeting its conditions.
 - A filter without an option to offer (no values found) doesn't show. An
   option id a saved view still has but the filter dropped matches nothing.
 - Titles and option labels translate under `locales.<lang>.contributes.filters`

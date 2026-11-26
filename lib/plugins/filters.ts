@@ -38,8 +38,14 @@ export interface PluginFilterDef {
   kind: string;
   /** Its options, each with its conditions … */
   options?: PluginFilterOption[];
-  /** … or the values of a field, as found, as its options. */
-  values?: { field: string };
+  /** … and/or the values of a field, as found, as further options: of the
+   *  entries meeting `when`, named by `label` — `{path}` filled in from
+   *  the entry ("#{number} {title}"), the value itself without. */
+  values?: {
+    field: string;
+    label?: string;
+    when?: Record<string, FilterWhen>;
+  };
 }
 
 /** A plugin's filter as the filter menu shows it: the rule's field
@@ -118,44 +124,65 @@ export function matchTerms(
     ...new Set(own.filter((e) => test(e.value)).map((e) => e.issueId)),
   ];
   return picked.flatMap((id): MatchTerm[] => {
-    if (def.values) {
-      const field = def.values.field;
+    // Its own option first …
+    const option = def.options?.find((o) => o.id === id);
+    if (option)
       return [
         {
-          issueIds: issuesWhere((v) =>
-            valuesAt(v, field).some((x) => String(x) === id),
-          ),
-          except: false,
+          issueIds: issuesWhere((v) => meets(v, option.when)),
+          except: option.absent === true,
         },
       ];
-    }
-    const option = def.options?.find((o) => o.id === id);
-    if (!option) return [];
+    // … else one of the values.
+    const values = def.values;
+    if (!values) return [];
     return [
       {
-        issueIds: issuesWhere((v) => meets(v, option.when)),
-        except: option.absent === true,
+        issueIds: issuesWhere(
+          (v) =>
+            meets(v, values.when) &&
+            valuesAt(v, values.field).some((x) => String(x) === id),
+        ),
+        except: false,
       },
     ];
   });
 }
 
-/** The options to offer: its own, or the values found (sorted, at most
- *  `FILTER_VALUES_MAX`). */
+/** A value's name: the template with `{path}` filled in from its entry. */
+function labelOf(template: string | undefined, value: string, entry: unknown) {
+  if (!template) return value;
+  return template
+    .replace(/\{([A-Za-z0-9_.]+)\}/g, (_, path: string) => {
+      const found = valuesAt(entry, path)[0];
+      return found === undefined || found === null ? "" : String(found);
+    })
+    .trim()
+    .slice(0, 120);
+}
+
+/** The options to offer: its own first, then the values found (sorted
+ *  by name, numbers as numbers, at most `FILTER_VALUES_MAX`). */
 export function filterOptions(
   def: PluginFilterDef,
   entries: FilterEntry[],
 ): { id: string; label: string }[] {
-  if (!def.values)
-    return (def.options ?? []).map((o) => ({ id: o.id, label: o.label }));
-  const field = def.values.field;
-  const found = new Set<string>();
+  const own = (def.options ?? []).map((o) => ({ id: o.id, label: o.label }));
+  const values = def.values;
+  if (!values) return own;
+  const found = new Map<string, string>();
   for (const e of entries)
-    if (kindOf(e.value) === def.kind)
-      for (const v of valuesAt(e.value, field))
-        if (v !== null && v !== "") found.add(String(v));
-  return [...found]
-    .sort((a, b) => a.localeCompare(b))
-    .slice(0, FILTER_VALUES_MAX)
-    .map((v) => ({ id: v, label: v }));
+    if (kindOf(e.value) === def.kind && meets(e.value, values.when))
+      for (const v of valuesAt(e.value, values.field)) {
+        const id = v === null ? "" : String(v);
+        if (id && !found.has(id) && !own.some((o) => o.id === id))
+          found.set(id, labelOf(values.label, id, e.value) || id);
+      }
+  const listed = [...found]
+    .map(([id, label]) => ({ id, label }))
+    .sort((a, b) =>
+      a.label.localeCompare(b.label, undefined, { numeric: true }),
+    )
+    .slice(0, FILTER_VALUES_MAX);
+  return [...own, ...listed];
 }
