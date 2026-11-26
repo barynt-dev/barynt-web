@@ -134,6 +134,8 @@ export type RowPart =
   | { type: "status"; status: RowStatus }
   /** Pushes what follows to its line's right end. */
   | { type: "spacer" }
+  /** A thin upright line between what's before and after it (BARY-238). */
+  | { type: "divider" }
   /** Starts the row's second line — a row is two lines at most. */
   | { type: "break" };
 
@@ -454,6 +456,8 @@ function parsePart(
         : null;
     case "spacer":
       return { type: "spacer" };
+    case "divider":
+      return { type: "divider" };
     case "break":
       if (depth > 0 || budget.breaks <= 0) return null;
       budget.breaks--;

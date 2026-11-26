@@ -322,6 +322,7 @@ There are two ways to fill a row, and you can mix them:
 | `{ type: "dot", tone? }` | a small dot |
 | `{ type: "image", src, alt, width, height, rounded? }` | a `data:image/png`, `jpeg` or `webp` URL up to 24 kB — draw on a canvas and `toDataURL()`; up to 64 × 32 px; no SVG, no address |
 | `{ type: "spacer" }` | pushes what follows to its line's right end |
+| `{ type: "divider" }` | a thin upright line between what's before and after it |
 | `{ type: "break" }` | starts the second line (once, at the top level) |
 
 | Building blocks | |

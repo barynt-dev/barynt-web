@@ -255,6 +255,16 @@
   flex: 1;
 }
 
+/* Between the parts of a row: a thin upright line in its own colour. */
+.divider {
+  flex: none;
+  align-self: center;
+  width: 1px;
+  height: 0.75rem;
+  background: currentColor;
+  opacity: 0.25;
+}
+
 .srOnly {
   position: absolute;
   width: 1px;

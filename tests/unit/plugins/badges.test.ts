@@ -108,6 +108,7 @@ describe("rows across the card (BARY-207)", () => {
             [
               { type: "icon", icon: "git-pull-request", tone: "success" },
               { type: "text", text: "#410", mono: true, tone: "subtle" },
+              { type: "divider" },
               {
                 type: "text",
                 text: "Changes requested",
@@ -133,6 +134,7 @@ describe("rows across the card (BARY-207)", () => {
       parts: [
         { type: "icon", icon: "git-pull-request", tone: "success" },
         { type: "text", text: "#410", mono: true, tone: "subtle" },
+        { type: "divider" },
         {
           type: "text",
           text: "Changes requested",

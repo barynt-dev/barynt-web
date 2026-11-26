@@ -176,6 +176,8 @@ export type RowPart =
   | { type: "status"; status: "success" | "danger" | "warning" | "pending" }
   /** Pushes what follows to its line's right end. */
   | { type: "spacer" }
+  /** A thin upright line between what's before and after it. */
+  | { type: "divider" }
   /** Starts the row's second line. */
   | { type: "break" };
 
