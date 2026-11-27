@@ -575,6 +575,13 @@ export interface ListItem {
   onRemove?: () => void;
   /** What the ✕ says to screen readers — `Remove <title>` by default. */
   removeLabel?: string;
+  /** A quieter second line under the title — where, how long, when. */
+  note?: string;
+  /** Makes the whole row a button — open its details. */
+  onClick?: () => void;
+  /** Its state: the icon in its colour — `danger` and `warning` also
+   *  mark the row with a line on its left. */
+  tone?: "success" | "danger" | "warning" | "info";
 }
 
 /** Rows of a title and a note. `empty` shows when there are none. */
@@ -592,14 +599,32 @@ export function list(options: {
       line.append(el("span", "bui-list-icon", icon(item.icon, { size: 15 })));
     if (item.lead?.length)
       line.append(el("span", "bui-list-lead", ...item.lead));
+    if (item.tone) line.dataset.tone = item.tone;
     const href = item.href ? safeHref(item.href) : null;
+    let title: HTMLElement;
     if (href) {
       const a = el("a", "bui-list-title", item.title);
       a.href = href;
       a.target = "_blank";
       a.rel = "noopener noreferrer";
-      line.append(a);
-    } else line.append(el("span", "bui-list-title", item.title));
+      title = a;
+    } else if (item.onClick) {
+      const b = el("button", "bui-list-title", item.title);
+      b.type = "button";
+      const onClick = item.onClick;
+      b.addEventListener("click", () => onClick());
+      title = b;
+    } else title = el("span", "bui-list-title", item.title);
+    line.append(
+      item.note
+        ? el(
+            "span",
+            "bui-list-body",
+            title,
+            el("span", "bui-list-note", item.note),
+          )
+        : title,
+    );
     if (item.aside?.length)
       line.append(el("span", "bui-list-aside", ...item.aside));
     if (item.meta) line.append(el("span", "bui-list-meta", item.meta));

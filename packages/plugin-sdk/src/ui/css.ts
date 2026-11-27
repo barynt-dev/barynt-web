@@ -397,8 +397,23 @@ a.bui-list-title:hover { text-decoration: underline; }
 .bui-list-icon { display: inline-flex; flex: none; color: var(--barynt-color-text-subtle); }
 .bui-list-lead { display: inline-flex; flex: none; align-items: baseline; gap: 0.375rem; }
 /* A row with a link opens it wherever it's clicked; its buttons stay its own. */
-.bui-list-item:has(> a.bui-list-title) { position: relative; }
-a.bui-list-title::after { content: ""; position: absolute; inset: 0; }
+.bui-list-item:has(.bui-list-title:is(a, button)) { position: relative; }
+:is(a, button).bui-list-title::after { content: ""; position: absolute; inset: 0; }
+button.bui-list-title { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+button.bui-list-title:focus-visible { outline: none; }
+.bui-list-item:has(button.bui-list-title:focus-visible) { outline: 2px solid var(--barynt-color-focus); outline-offset: -2px; border-radius: var(--barynt-radius-sm); }
+.bui-list-item:has(button.bui-list-title):hover { background: var(--barynt-color-surface-hovered); }
+.bui-list-body { flex: 1; display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
+.bui-list-body > .bui-list-title { flex: none; font-weight: var(--barynt-font-weight-semibold); }
+.bui-list-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--barynt-font-size-xs); color: var(--barynt-color-text-subtle); }
+.bui-list-item:has(.bui-list-body) { align-items: center; }
+.bui-list-item[data-tone="success"] .bui-list-icon { color: var(--barynt-color-success); }
+.bui-list-item[data-tone="info"] .bui-list-icon { color: var(--barynt-color-info); }
+.bui-list-item[data-tone="warning"] .bui-list-icon { color: var(--barynt-color-warning); }
+.bui-list-item[data-tone="danger"] .bui-list-icon { color: var(--barynt-color-danger); }
+.bui-list-item[data-tone="danger"], .bui-list-item[data-tone="warning"] { --line: var(--barynt-color-danger); padding-left: var(--barynt-space-2); border-radius: var(--barynt-radius-sm); background: var(--barynt-color-surface-sunken); box-shadow: inset 3px 0 var(--line); }
+.bui-list-item[data-tone="warning"] { --line: var(--barynt-color-warning); }
+.bui-list-item:has(.bui-list-body) { padding-left: var(--barynt-space-2); padding-right: var(--barynt-space-1); }
 :is(.bui-list-aside, .bui-list-remove) { position: relative; z-index: 1; }
 .bui-list-aside { display: inline-flex; flex: none; flex-wrap: wrap; justify-content: flex-end; gap: 0.25rem; }
 .bui-list-remove {
