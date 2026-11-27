@@ -14,6 +14,9 @@ export const CSS = `
   background: var(--barynt-color-surface-raised); min-width: 0;
 }
 .bui-card-more { margin: 0 calc(-1 * var(--bui-card-pad)) calc(-1 * var(--bui-card-pad)); border-top: 1px solid var(--barynt-color-border); }
+.bui-card[data-clickable] { cursor: pointer; transition: border-color var(--barynt-duration-fast), background var(--barynt-duration-fast); }
+.bui-card[data-clickable]:hover { border-color: var(--barynt-color-border-strong); background: color-mix(in srgb, var(--barynt-color-surface-hovered) 50%, transparent); }
+.bui-card[data-clickable]:focus-visible { outline: 2px solid var(--barynt-color-focus); outline-offset: 2px; }
 button.bui-card-more { width: calc(100% + 2 * var(--bui-card-pad)); border-right: 0; border-bottom: 0; border-left: 0; background: none; font: inherit; text-align: start; border-radius: 0 0 var(--barynt-radius-lg) var(--barynt-radius-lg); }
 .bui-card-more > summary, button.bui-card-more {
   display: flex; align-items: center; gap: var(--barynt-space-2); padding: var(--barynt-space-2) var(--bui-card-pad);

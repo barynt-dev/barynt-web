@@ -219,6 +219,31 @@ describe("the UI kit", () => {
     expect(node.querySelectorAll("[data-hit]")).toHaveLength(1);
   });
 
+  it("opens a whole card on a click — not when its own button is pressed (BARY-238)", () => {
+    let opened = 0;
+    let pressed = 0;
+    const node = card({
+      title: "#8",
+      onClick: () => {
+        opened++;
+      },
+      actions: [
+        button({
+          label: "GitHub",
+          onClick: () => {
+            pressed++;
+          },
+        }),
+      ],
+      children: [notice({ text: "Checks running" })],
+    });
+    (node.querySelector(".bui-notice") as HTMLElement).click();
+    expect(opened).toBe(1);
+    (node.querySelector("button") as HTMLButtonElement).click();
+    expect([opened, pressed]).toEqual([1, 1]);
+    expect(node.dataset.clickable).toBe("");
+  });
+
   it("draws a pipeline's stops — a button, a link, one not reached (BARY-238)", () => {
     const opened: string[] = [];
     const node = pipeline({

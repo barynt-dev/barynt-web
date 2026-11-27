@@ -149,9 +149,34 @@ export function card(options: {
     /** The foot as a button: opens the details elsewhere — a window. */
     onOpen?: () => void;
   };
+  /** The whole card opens something — its details. Its own buttons and
+   *  links still do theirs. */
+  onClick?: () => void;
 }): HTMLElement {
   styled();
   const node = el("section", "bui-card");
+  if (options.onClick) {
+    const onClick = options.onClick;
+    node.dataset.clickable = "";
+    node.tabIndex = 0;
+    node.addEventListener("click", (event) => {
+      // A button or link inside does its own thing.
+      if (
+        (event.target as Element).closest(
+          "a, button, input, select, textarea, summary",
+        )
+      )
+        return;
+      onClick();
+    });
+    node.addEventListener("keydown", (event) => {
+      if (event.target !== node) return;
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onClick();
+      }
+    });
+  }
   if (options.tone && options.tone !== "neutral")
     node.dataset.tone = options.tone;
   if (options.compact) node.dataset.compact = "";
