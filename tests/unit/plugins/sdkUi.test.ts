@@ -6,6 +6,7 @@ import {
   kpi,
   list,
   notice,
+  pipeline,
   progressRing,
   select,
   stageBar,
@@ -138,6 +139,46 @@ describe("the UI kit", () => {
     expect(line.el.dataset.tone).toBe("success");
     line.clear();
     expect(line.el.textContent).toBe("");
+  });
+
+  it("draws a pipeline's stops — a button, a link, one not reached (BARY-238)", () => {
+    const opened: string[] = [];
+    const node = pipeline({
+      label: "Deployments",
+      stations: [
+        {
+          label: "staging",
+          state: "success",
+          status: "Ready",
+          meta: "2 h ago",
+          onClick: () => opened.push("staging"),
+          link: { href: "https://staging.acme.dev", label: "Open app" },
+          selected: true,
+        },
+        { label: "production", state: "pending", status: "Not yet" },
+        {
+          label: "x",
+          state: "danger",
+          link: { href: "javascript:alert(1)", label: "x" },
+        },
+      ],
+    });
+    const stops = [...node.querySelectorAll("li")];
+    expect(stops.map((s) => s.dataset.state)).toEqual([
+      "success",
+      "pending",
+      "danger",
+    ]);
+    expect(stops[0].dataset.selected).toBe("");
+    (stops[0].querySelector("button") as HTMLButtonElement).click();
+    expect(opened).toEqual(["staging"]);
+    expect(stops[0].querySelector("a")?.getAttribute("aria-label")).toBe(
+      "Open app",
+    );
+    // Without a click it's no button; an unsafe link isn't drawn.
+    expect(stops[1].querySelector("button")).toBeNull();
+    expect(stops[2].querySelector("a")).toBeNull();
+    expect(node.getAttribute("aria-label")).toBe("Deployments");
   });
 
   it("draws stations, a one-line notice and a card's folding foot (BARY-238)", () => {

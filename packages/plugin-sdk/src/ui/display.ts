@@ -1003,6 +1003,82 @@ export function stageBar(options: {
   return node;
 }
 
+/** A stop of a `pipeline`: where something got to, and how it went. */
+export interface PipelineStation {
+  label: string;
+  icon?: IconName;
+  /** Its tone: `pending` is a stop not reached yet — drawn dashed. */
+  state: StepState;
+  /** How it went, in words, in its tone — "Ready", "Failed". */
+  status?: string;
+  /** Small text under it — when, which version. */
+  meta?: string;
+  /** Makes the whole stop a button — open its details. */
+  onClick?: () => void;
+  /** A link out in its corner — the running app, say. */
+  link?: { href: string; label: string };
+  /** Marks it as the one shown elsewhere. */
+  selected?: boolean;
+}
+
+/** Stops from left to right — environments a change went through, a
+ *  rollout's regions — each with its state, a note and, optionally, a
+ *  click and a link. Scrolls sideways when there are more than fit. */
+export function pipeline(options: {
+  stations: PipelineStation[];
+  /** What the stops are, for screen readers. */
+  label?: string;
+}): HTMLElement {
+  styled();
+  const node = el("ol", "bui-pipeline");
+  if (options.label) node.setAttribute("aria-label", options.label);
+  for (const station of options.stations) {
+    const item = el("li", "bui-station");
+    item.dataset.state = station.state;
+    if (station.selected) item.dataset.selected = "";
+    const body = [
+      el("span", "bui-station-bar"),
+      el(
+        "span",
+        "bui-station-label",
+        station.icon && icon(station.icon, { size: 13 }),
+        el("span", undefined, station.label),
+      ),
+      station.status &&
+        el(
+          "span",
+          "bui-station-status",
+          icon(STEP_ICON[station.state], { size: 12 }),
+          station.status,
+        ),
+      station.meta && el("span", "bui-station-meta", station.meta),
+    ];
+    if (station.onClick) {
+      const b = el("button", "bui-station-main", ...body);
+      b.type = "button";
+      const onClick = station.onClick;
+      b.addEventListener("click", () => onClick());
+      item.append(b);
+    } else item.append(el("div", "bui-station-main", ...body));
+    const href = station.link ? safeHref(station.link.href) : null;
+    if (station.link && href) {
+      const a = el(
+        "a",
+        "bui-station-link",
+        icon("external-link", { size: 13 }),
+      );
+      a.href = href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.setAttribute("aria-label", station.link.label);
+      a.dataset.buiTip = station.link.label;
+      item.append(a);
+    }
+    node.append(item);
+  }
+  return node;
+}
+
 /** Steps of a pipeline, a checklist, a rollout — each with its state and,
  *  on the right, how long it took. */
 export function stepList(options: {

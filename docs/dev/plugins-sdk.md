@@ -137,6 +137,8 @@ frame is for one of them.
 registerAction(action: { id: string; run(context: { issueId, choice?, values? }): ActionResult | void }): void;
 runAction(id: string, context?: { choice? }): void; // from an issue panel
 openSettings(level: "personal" | "project" | "workspace"): void;
+openModal(options: { view: string; title: string; data?: unknown; size?: "sm" | "md" | "lg" }): void;
+closeModal(): void; // from inside that window
 ```
 
 An action from `contributes.actions`. When someone picks it, Barynt starts
@@ -204,6 +206,18 @@ only started like this — rename or delete for a row of the panel, say.
 frame's project, `workspace`. For a panel that can't show anything until
 something is set — "Connect repository" there. In tests,
 `host.openedSettings` lists the levels it opened.
+
+`this.openModal({ view, title, data?, size? })` opens a window of
+Barynt's over the page — a dialog, a bottom sheet on a phone — with
+another frame of your plugin in it, for the same place (same `issueId`,
+project and slot). Barynt draws its head with `title` and the ✕; your
+frame reads `context.modal` (`{ view, data }`) and draws that view
+instead of its usual one. For what doesn't fit a panel: an environment's
+details and history, say. `view` is a plain name (`a-z`, `0-9`, `-`),
+`data` JSON up to 8 KB; `size` is `sm` 420px, `md` 560px (default) or `lg`
+760px wide. From inside, `this.closeModal()` closes it. In tests,
+`host.openedModals` lists what it opened, `host.closedModals` counts the
+closes.
 
 What `run` throws shows as the plugin's error in a toast. In tests,
 `createTestHost({ context: { slot: { kind: "actions", id: "actions" } } })`
@@ -765,6 +779,7 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `copyField({ value, icon?, href?, label?, menu?, actions? })` | a value to copy — a branch, a hash: a click on it copies it and says so, with `href` a button to open it, `menu` (`MenuItem`s) a "…" after that, and `actions` — `{ icon, label, danger?, onClick }` — more icon buttons |
 | `showMore({ label, content, open?, onToggle? })` | "Show 2 more": a small centred toggle in the tertiary colour that folds content away below it, closed to start with |
 | `menuButton({ items, label?, icon? })` | a "…" button with a menu: `{ label, icon?, danger?, onClick }` each. In Barynt it's Barynt's own menu, drawn over the frame so a small frame doesn't cut it off |
+| `pipeline({ stations, label? })` | stops from left to right — environments a change went through, a rollout's regions: `{ label, icon?, state, status?, meta?, onClick?, link?, selected? }` with `stepList`'s states (`pending` is drawn dashed: not reached). `onClick` makes the stop a button, `link` puts a link out in its corner; more than fit scroll sideways |
 | `stageBar({ stages })` | the way through a few stations as a bar of segments — `{ label, state }` with `stepList`'s states — where something stands and what holds it up |
 | `stepList({ steps })` | steps with their state (`success`, `running`, `warning`, `danger`, `pending`) and, on the right, a note — a pipeline |
 | `navList({ items })` | rows that lead somewhere: `{ label, icon?, count?, href? \| onClick? }` with a › at the end |

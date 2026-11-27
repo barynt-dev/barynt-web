@@ -121,12 +121,16 @@ export function PluginDialog({
   close,
   children,
   footer,
+  width,
 }: {
   title: string;
   sheet: boolean;
   close: () => void;
   children: React.ReactNode;
-  footer: React.ReactNode;
+  /** Its buttons — none: no footer. */
+  footer?: React.ReactNode;
+  /** As `Modal`'s — 620px by default. */
+  width?: number;
 }) {
   const t = useTranslations();
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -134,6 +138,7 @@ export function PluginDialog({
   return (
     <Modal
       variant={sheet ? "sheet" : "dialog"}
+      width={width}
       style={sheet ? swipe.style : undefined}
       {...(sheet ? swipe.handlers : {})}
     >
@@ -153,7 +158,7 @@ export function PluginDialog({
       <ModalBody ref={bodyRef} className={styles.dialogBody}>
         {children}
       </ModalBody>
-      <ModalFooter>{footer}</ModalFooter>
+      {footer && <ModalFooter>{footer}</ModalFooter>}
     </Modal>
   );
 }

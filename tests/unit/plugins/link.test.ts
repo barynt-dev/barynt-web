@@ -2,7 +2,9 @@ import { describe, expect, it } from "bun:test";
 import {
   deploymentFinding,
   findIssueRefs,
+  type LinkEntry,
   linkKey,
+  MAX_DEPLOYMENTS,
   mergeEntry,
   type PullRequestEntry,
   readLinkFindings,
@@ -314,6 +316,54 @@ describe("what a pull request works on (BARY-227)", () => {
     ).toBe("deployment.production");
     expect(deploy("in_progress").trigger).toBeUndefined();
     expect(deploy("failure").entry).toMatchObject({ state: "failure" });
+  });
+
+  it("keeps an environment's deployments before the latest", () => {
+    const status = (id: number, state: string, sha = `s${id}`) =>
+      deploymentFinding(
+        "acme/web",
+        {
+          id,
+          ref: "main",
+          sha,
+          environment: "staging",
+          creator: { login: "ada" },
+        },
+        { state, log_url: `https://github.com/acme/web/actions/runs/${id}` },
+        at.toISOString(),
+        ["WEB-1"],
+        { id: 900 + id, name: "Deploy" },
+      )?.entry as LinkEntry;
+    let kept = mergeEntry(undefined, status(1, "in_progress"));
+    kept = mergeEntry(kept, status(1, "success"));
+    expect(kept).toMatchObject({
+      id: 1,
+      state: "success",
+      workflow: "Deploy",
+      runId: 901,
+      creator: "ada",
+      logUrl: "https://github.com/acme/web/actions/runs/1",
+      history: [],
+    });
+    // A newer one: the one before is history, no longer what runs there.
+    kept = mergeEntry(kept, status(2, "failure"));
+    expect(kept).toMatchObject({ id: 2, state: "failure" });
+    expect((kept as { history: unknown[] }).history).toMatchObject([
+      { id: 1, sha: "s1", state: "inactive" },
+    ]);
+    // GitHub marking an older one inactive changes it in the history only.
+    kept = mergeEntry(kept, status(3, "success"));
+    kept = mergeEntry(kept, status(2, "inactive"));
+    expect(kept).toMatchObject({ id: 3, state: "success" });
+    expect((kept as { history: unknown[] }).history).toMatchObject([
+      { id: 2, state: "inactive" },
+      { id: 1, state: "inactive" },
+    ]);
+    for (let id = 4; id < 20; id++)
+      kept = mergeEntry(kept, status(id, "success"));
+    expect((kept as { history: unknown[] }).history).toHaveLength(
+      MAX_DEPLOYMENTS,
+    );
   });
 
   it("takes the keys a deployment of main shipped from the host", () => {

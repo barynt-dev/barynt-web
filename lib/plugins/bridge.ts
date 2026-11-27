@@ -104,7 +104,24 @@ export interface FrameContext {
   /** A building block's own settings, as the widget's builder set them
    *  (BARY-205). */
   config?: BlockSettingValues;
+  /** In an issue panel opened from a board's badge: the part it asked for
+   *  (BARY-238). */
+  focus?: string;
+  /** In a window a frame of the plugin opened (`openModal`, BARY-238):
+   *  which of its views, and what it passed along. */
+  modal?: { view: string; data?: unknown };
 }
+
+/** A window of Barynt's with a frame of the plugin in it (BARY-238). */
+export interface FrameModal {
+  view: string;
+  title: string;
+  data?: unknown;
+  size: "sm" | "md" | "lg";
+}
+
+/** Most a window's `data` may hold, as JSON. */
+export const MODAL_DATA_MAX = 8 * 1024;
 
 /** Frame → host, over the private channel. */
 export type FrameMessage =
@@ -134,6 +151,10 @@ export type FrameMessage =
   /** Its own settings page, on a level: what's the person's, the frame's
    *  project's or the workspace's (BARY-238). */
   | { type: "openSettings"; level: "personal" | "project" | "workspace" }
+  /** A window of Barynt's with another frame of the plugin in it — and,
+   *  from that frame, closing it (BARY-238). */
+  | ({ type: "openModal" } & FrameModal)
+  | { type: "closeModal" }
   /** A click in the frame while its menu is open: close it — Barynt
    *  doesn't see clicks in there. */
   | { type: "menu:close" }
@@ -252,6 +273,31 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
   if (m.type === "error")
     return { type: "error", message: String(m.message ?? "").slice(0, 500) };
   if (m.type === "menu:close") return { type: "menu:close" };
+  if (m.type === "closeModal") return { type: "closeModal" };
+  if (m.type === "openModal") {
+    const view = typeof m.view === "string" ? m.view : "";
+    const title = typeof m.title === "string" ? m.title.trim() : "";
+    if (!/^[a-z0-9-]{1,40}$/.test(view) || !title) return null;
+    let data: unknown;
+    if (m.data !== undefined) {
+      const json = (() => {
+        try {
+          return JSON.stringify(m.data);
+        } catch {
+          return undefined;
+        }
+      })();
+      if (json === undefined || json.length > MODAL_DATA_MAX) return null;
+      data = JSON.parse(json);
+    }
+    return {
+      type: "openModal",
+      view,
+      title: title.slice(0, 120),
+      ...(data !== undefined && { data }),
+      size: m.size === "sm" || m.size === "lg" ? m.size : "md",
+    };
+  }
   if (m.type === "openSettings")
     return m.level === "personal" ||
       m.level === "project" ||

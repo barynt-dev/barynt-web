@@ -8,6 +8,7 @@ import type {
   Host,
   Method,
   Methods,
+  ModalOptions,
   SettingsLevel,
 } from "./types";
 
@@ -29,6 +30,10 @@ export interface TestHost extends Host {
   readonly started: { actionId: string; choice?: string }[];
   /** Every settings page it opened (`openSettings`), in order. */
   readonly openedSettings: SettingsLevel[];
+  /** Every window it opened (`openModal`), in order. */
+  readonly openedModals: ModalOptions[];
+  /** How often it closed its window (`closeModal`). */
+  readonly closedModals: number;
   /** Runs one of the plugin's actions, as a menu would. */
   runAction(
     id: string,
@@ -65,6 +70,8 @@ export function createTestHost(
   const shown: TestHost["shown"] = [];
   const started: TestHost["started"] = [];
   const openedSettings: SettingsLevel[] = [];
+  const openedModals: ModalOptions[] = [];
+  let closedModals = 0;
   let badgeHandler: Parameters<NonNullable<Host["serveBadges"]>>[0] | null =
     null;
   let actionHandler: Parameters<NonNullable<Host["serveActions"]>>[0] | null =
@@ -76,6 +83,16 @@ export function createTestHost(
     shown,
     started,
     openedSettings,
+    openedModals,
+    get closedModals() {
+      return closedModals;
+    },
+    openModal: (options) => {
+      openedModals.push(options);
+    },
+    closeModal: () => {
+      closedModals += 1;
+    },
     show: (data) => void shown.push(data),
     serveBadges: (handler) => {
       badgeHandler = handler;

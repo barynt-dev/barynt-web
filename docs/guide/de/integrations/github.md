@@ -34,6 +34,16 @@ Ein Projekt kann mit mehreren Repositories arbeiten; **Branch erstellen** fragt 
 
 **Ohne App:** Wie bisher die Repositories eintragen (`owner/repo`, eins pro Zeile), den Webhook aus der Karte **Webhooks anderer Dienste** in den Repository-Einstellungen auf GitHub anlegen und jeder ein eigenes Token hinterlegen. Mit einer Verbindung wird diese Karte nicht gezeigt: GitHub meldet über die App.
 
+## Deployments
+
+Wo die Arbeit eines Issues läuft, zeigt das Panel **Development** als Strecke der Umgebungen, in der Reihenfolge, die eine Änderung nimmt: Preview zuerst, dann Test und Staging, Produktion zuletzt (nach dem Namen der Umgebung; Produktion ist, was GitHub so kennzeichnet). Jede sagt, wie ihr letztes Deployment lief — _Bereit_, _Läuft_, _Fehlgeschlagen_ — und wann. Eine Umgebung, in die das Repository deployt, die das Issue aber noch nicht erreicht hat (Staging, Produktion), steht gestrichelt als _Noch nicht_ da. Der Pfeil in der Ecke einer Umgebung öffnet die App dort.
+
+Läuft eine Umgebung weiter hinten eine ältere Version als eine davor — Produktion hinter Staging —, sagt das eine Zeile darunter, mit der Zahl der Commits, wenn Barynt sie kennt.
+
+Ein Klick auf eine Umgebung öffnet ein Fenster mit ihren Details: Status, Adresse, Version (Commit und Branch), Repository und der Workflow, der deployt hat, wann und von wem. Darunter ihr **Verlauf**: die Deployments davor, das neueste zuerst, jedes mit Link zum Log. **Erneut deployen** startet den Workflow-Lauf des Deployments noch einmal (braucht _Actions_ schreiben; GitHub erlaubt das 30 Tage lang), **Log** und **App öffnen** führen zu GitHub und zur App.
+
+Auf einer Board-Karte stehen rechts in der Zeile des Pull Requests eine Rakete und ein Balken je Umgebung, Produktion zuletzt; ist der Pull Request gemergt, öffnet ein Klick das Panel bei den Deployments.
+
 ## Wie Issues gefunden werden
 
 Barynt sucht die Issue-Schlüssel des Projekts im Branch-Namen, Titel und in der Beschreibung eines Pull Requests, in Commit-Nachrichten und Branch-Namen: `WEB-42`, `web-42-fix-login` und `feature/WEB_42` nennen alle WEB-42. Es zählen nur die Schlüssel des Projekts, in dem das Plugin läuft.

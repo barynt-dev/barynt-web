@@ -29,19 +29,35 @@ export interface PullRequestEntry {
   at: string;
 }
 
-export interface DeploymentEntry {
-  kind: "deployment";
-  repo: string;
-  environment: string;
-  /** GitHub's mark for what people use — `production` by default. */
-  production: boolean;
-  state: "success" | "failure" | "pending";
+/** One deployment to an environment — the latest, or one before it. */
+export interface DeploymentRun {
+  /** GitHub's id of it: its statuses update it, a newer one replaces it. */
+  id: number | null;
+  /** `inactive`: replaced by a newer one, no longer what runs there. */
+  state: "success" | "failure" | "pending" | "inactive";
   /** The branch or tag deployed, and its commit. */
   ref: string | null;
   sha: string | null;
   /** The environment's address, else the run's. */
   url: string | null;
+  /** Where its log is — the workflow run's page. */
+  logUrl: string | null;
+  /** The workflow that deployed it, and its run — to run it again. */
+  workflow: string | null;
+  runId: number | null;
+  /** Who started it. */
+  creator: string | null;
   at: string;
+}
+
+export interface DeploymentEntry extends DeploymentRun {
+  kind: "deployment";
+  repo: string;
+  environment: string;
+  /** GitHub's mark for what people use — `production` by default. */
+  production: boolean;
+  /** The deployments before it, newest first — at most `MAX_DEPLOYMENTS`. */
+  history: DeploymentRun[];
 }
 
 export interface BranchEntry {
@@ -103,6 +119,8 @@ export interface LinkFinding {
 /** Most commits one push files, and most check runs kept per branch. */
 export const MAX_COMMITS = 20;
 export const MAX_RUNS = 20;
+/** Most deployments kept per environment before the latest. */
+export const MAX_DEPLOYMENTS = 10;
 
 type Json = Record<string, unknown>;
 const obj = (v: unknown): Json =>
@@ -325,6 +343,8 @@ function github(event: string, body: Json, at: string): LinkFinding[] {
       obj(body.deployment),
       obj(body.deployment_status),
       at,
+      undefined,
+      obj(body.workflow_run),
     );
     return found ? [found] : [];
   }
@@ -381,6 +401,7 @@ export function deploymentFinding(
   status: Json,
   at: string,
   texts?: string[],
+  run: Json = {},
 ): LinkFinding | null {
   const environment =
     str(status.environment) ?? str(deployment.environment) ?? null;
@@ -391,13 +412,19 @@ export function deploymentFinding(
       ? "success"
       : raw === "failure" || raw === "error"
         ? "failure"
-        : "pending";
+        : raw === "inactive"
+          ? "inactive"
+          : "pending";
   const production =
     typeof deployment.production_environment === "boolean"
       ? deployment.production_environment
       : environment.toLowerCase() === "production";
   const ref = str(deployment.ref, 300);
   const look = texts ?? [ref ?? ""];
+  const logUrl =
+    str(status.log_url, 500) ??
+    str(status.target_url, 500) ??
+    str(run.html_url, 500);
   return {
     key: linkKey.deployment(repo, environment),
     entry: {
@@ -405,17 +432,76 @@ export function deploymentFinding(
       repo,
       environment,
       production,
+      id: num(deployment.id),
       state,
       ref,
       sha: str(deployment.sha, 64),
-      url: str(status.environment_url, 500) ?? str(status.log_url, 500),
+      url: str(status.environment_url, 500) ?? logUrl,
+      logUrl,
+      workflow: str(run.name, 120),
+      runId: num(run.id),
+      creator: str(obj(deployment.creator).login, 80),
       at,
+      history: [],
     },
     texts: look,
     ...(state === "success" && {
       trigger: production ? "deployment.production" : "deployment.test",
       closes: look,
     }),
+  };
+}
+
+/** A deployment's own fields, without where it went or its history. */
+function runOf(entry: Json): DeploymentRun {
+  const e = entry as unknown as DeploymentRun;
+  return {
+    id: e.id ?? null,
+    state: e.state,
+    ref: e.ref ?? null,
+    sha: e.sha ?? null,
+    url: e.url ?? null,
+    logUrl: e.logUrl ?? null,
+    workflow: e.workflow ?? null,
+    runId: e.runId ?? null,
+    creator: e.creator ?? null,
+    at: e.at,
+  };
+}
+
+/**
+ * A deployment's status, given what's kept for its environment: the same
+ * deployment updates it; a newer one puts the kept one in its history; an
+ * older one's (GitHub marking it inactive) updates it there.
+ */
+function mergeDeployment(
+  old: Json,
+  incoming: DeploymentEntry,
+): DeploymentEntry {
+  const history = (
+    Array.isArray(old.history) ? old.history : []
+  ) as DeploymentRun[];
+  const keptId = num(old.id);
+  // Same one — or kept before ids were: it goes on.
+  if (incoming.id === null || keptId === incoming.id)
+    return { ...incoming, history };
+  if (keptId !== null && incoming.id < keptId) {
+    const run = runOf(incoming as unknown as Json);
+    return {
+      ...(old as unknown as DeploymentEntry),
+      history: history.map((h) =>
+        h.id === incoming.id ? { ...h, ...run, at: h.at } : h,
+      ),
+    };
+  }
+  // A newer one: the kept one, no longer running there, is history.
+  const was = runOf(old);
+  return {
+    ...incoming,
+    history: [
+      { ...was, state: was.state === "success" ? "inactive" : was.state },
+      ...history.filter((h) => h.id === null || h.id !== was.id),
+    ].slice(0, MAX_DEPLOYMENTS),
   };
 }
 
@@ -458,6 +544,7 @@ export function mergeEntry(existing: unknown, incoming: LinkEntry): LinkEntry {
     ].slice(-MAX_RUNS);
     return { ...incoming, runs, state: overallState(runs) };
   }
+  if (incoming.kind === "deployment") return mergeDeployment(old, incoming);
   if (incoming.kind === "branch" && !incoming.deleted) {
     const was = old as unknown as BranchEntry;
     return { ...incoming, url: incoming.url ?? was.url ?? null };

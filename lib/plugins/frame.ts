@@ -193,6 +193,13 @@ const RUNTIME = `(() => {
           }),
         // Its own settings page in Barynt, on a level (BARY-238).
         openSettings: (level) => send({ type: "openSettings", level: String(level) }),
+        // A window of Barynt's with another frame of it, and closing the
+        // one it's in (BARY-238).
+        openModal: (options) => {
+          const o = options && typeof options === "object" ? options : {};
+          send({ type: "openModal", view: o.view, title: o.title, data: o.data, size: o.size });
+        },
+        closeModal: () => send({ type: "closeModal" }),
         // An issue panel starts one of its actions (BARY-238).
         startAction: (actionId, context) =>
           send({

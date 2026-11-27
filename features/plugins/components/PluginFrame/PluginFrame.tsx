@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/atoms/Button/Button";
 import { Popover } from "@/components/ui/atoms/Popover/Popover";
 import { SelectMenu } from "@/components/ui/atoms/SelectMenu/SelectMenu";
 import { useRouter } from "@/i18n/navigation";
+import { useOptionalModal } from "@/lib/context/ModalContext/modalContext";
 import { pluginPath } from "@/lib/nav";
 import type { BadgeIssue } from "@/lib/plugins/badges";
 import type { BlockData } from "@/lib/plugins/blocks";
@@ -17,6 +18,7 @@ import {
   FRAME_READY_TIMEOUT_MS,
   type FrameContext,
   type FrameMenuItem,
+  type FrameModal,
   type HostMessage,
   type InitMessage,
   parseFrameMessage,
@@ -24,6 +26,8 @@ import {
 } from "@/lib/plugins/bridge";
 import { actionIcon } from "@/lib/plugins/plugin-actions";
 import { useOptionalUI } from "@/lib/ui-store";
+import { PHONE_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
+import { PluginDialog } from "../shared";
 import styles from "./pluginFrame.module.scss";
 import { useDevReload } from "./useDevReload";
 
@@ -62,6 +66,13 @@ type FrameState =
   | { status: "ready" }
   | { status: "error"; message: string };
 
+/** How wide a plugin's window is, by its `size` (px). */
+const MODAL_WIDTH: Record<FrameModal["size"], number> = {
+  sm: 420,
+  md: 560,
+  lg: 760,
+};
+
 /** How tall a panel is while its frame starts — its skeleton's room (px). */
 const SKELETON_HEIGHT = 96;
 
@@ -81,6 +92,7 @@ export function PluginFrame({
   onUnsaved,
   onSaveDone,
   onError,
+  onCloseModal,
 }: {
   pluginId: string;
   /** The plugin's name — the frame's title, and in its error. */
@@ -122,6 +134,8 @@ export function PluginFrame({
   onSaveDone?: (seq: number, ok: boolean, error?: string) => void;
   /** It threw, or didn't start in time — besides showing so. */
   onError?: (message: string) => void;
+  /** In a window it opened (`openModal`): closes that window. */
+  onCloseModal?: () => void;
 }) {
   const t = useTranslations("plugins");
   const frame = useRef<HTMLIFrameElement>(null);
@@ -137,6 +151,42 @@ export function PluginFrame({
   routerRef.current = router;
   const toastRef = useRef(ui?.toast);
   toastRef.current = ui?.toast;
+  // A window of Barynt's with another frame of it (BARY-238): for the
+  // same place, told which view to show — a dialog, on a phone a sheet.
+  const modals = useOptionalModal();
+  const isPhone = useMediaQuery(PHONE_QUERY);
+  const openFrameModal = (m: FrameModal) => {
+    if (!modals) return;
+    const { focus: _, ...place } = context;
+    modals.openModal(
+      ({ close }) => (
+        <PluginDialog
+          title={m.title}
+          sheet={isPhone}
+          close={close}
+          width={MODAL_WIDTH[m.size]}
+        >
+          <PluginFrame
+            pluginId={pluginId}
+            name={name}
+            context={{
+              ...place,
+              modal: {
+                view: m.view,
+                ...(m.data !== undefined && { data: m.data }),
+              },
+            }}
+            autoHeight={{ min: 120, max: Number.POSITIVE_INFINITY }}
+            onRunAction={onRunAction}
+            onCloseModal={close}
+          />
+        </PluginDialog>
+      ),
+      { ...(isPhone && { placement: "bottom" as const }), label: m.title },
+    );
+  };
+  const openFrameModalRef = useRef(openFrameModal);
+  openFrameModalRef.current = openFrameModal;
   const [menu, setMenu] = useState<{
     id: number;
     items: FrameMenuItem[];
@@ -161,6 +211,7 @@ export function PluginFrame({
     onUnsaved,
     onSaveDone,
     onError,
+    onCloseModal,
   });
   callbacks.current = {
     onBlockData,
@@ -170,6 +221,7 @@ export function PluginFrame({
     onUnsaved,
     onSaveDone,
     onError,
+    onCloseModal,
   };
   // Sends to the frame's channel — set while one is open.
   const send = useRef<((message: HostMessage) => void) | null>(null);
@@ -301,6 +353,11 @@ export function PluginFrame({
           routerRef.current.push(
             `${pluginPath(workspaceId, pluginId)}?${query}`,
           );
+        } else if (message.type === "openModal") {
+          const { type: _, ...m } = message;
+          openFrameModalRef.current(m);
+        } else if (message.type === "closeModal") {
+          callbacks.current.onCloseModal?.();
         } else if (message.type === "runAction") {
           callbacks.current.onRunAction?.(message.actionId, message.choice);
         } else {

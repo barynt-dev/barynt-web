@@ -32,6 +32,16 @@ That's it: pull requests, branches, commits and checks of those repositories com
 
 **Without the app:** as before, type the repositories (`owner/repo`, one per line), add the webhook from the card **Webhooks from other services** in GitHub's repository settings, and keep a token each. With a connection, that card isn't shown: GitHub reports through the app.
 
+## Deployments
+
+Where an issue's work runs shows in its **Development** panel as a line of environments, in the order a change goes through: a preview first, then tests and staging, production last (by the environment's name; production is what GitHub marks as such). Each says how its latest deployment went — _Ready_, _Deploying_, _Failed_ — and when. An environment the repository deploys to that the issue hasn't reached yet (staging, production) shows dashed as _Not yet_. The arrow in an environment's corner opens the app there.
+
+When an environment further along runs an older version than one before it — production behind staging — a line under them says so, with the number of commits when Barynt knows them.
+
+A click on an environment opens a window with its details: state, address, version (commit and branch), repository, and the workflow that deployed it, when and by whom. Below, its **History**: the deployments before, newest first, each linking to its log. **Deploy again** runs the deployment's workflow run again (it needs _Actions_ write; GitHub does so within 30 days), **Log** and **Open app** lead to GitHub and the app.
+
+On a board card, a rocket and a bar per environment sit at the right of the pull request's row, production last; once the pull request is merged, a click opens the panel at the deployments.
+
 ## How issues are found
 
 Barynt looks for the project's issue keys in a pull request's branch name, title and description, in commit messages and branch names: `WEB-42`, `web-42-fix-login` and `feature/WEB_42` all name WEB-42. Only the keys of the project the plugin is on in count.

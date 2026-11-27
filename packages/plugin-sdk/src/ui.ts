@@ -51,6 +51,8 @@ export {
   menuButton,
   navList,
   notice,
+  type PipelineStation,
+  pipeline,
   progressBar,
   progressRing,
   row,

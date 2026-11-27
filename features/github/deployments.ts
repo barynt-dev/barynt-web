@@ -128,5 +128,6 @@ export async function deploymentFor(
     obj(data.deployment_status),
     new Date().toISOString(),
     texts,
+    obj(data.workflow_run),
   );
 }

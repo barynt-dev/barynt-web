@@ -740,10 +740,12 @@ issues showing the plugin ask it again on their own.
 | `create`, `delete` (branches), `push` deleting one | `branch`: `repo`, `name`, `url`, `deleted` | `branch:<owner>:<repo>:<hash>` |
 | `push` | `commit`: `repo`, `sha`, `message` (first line), `url`, `author`, `branch` — the last 20 | `commit:<owner>:<repo>:<sha12>` |
 | `check_run`, `check_suite` | `checks`: `repo`, `branch`, `sha`, `state` (`pending`/`success`/`failure`/`neutral`), `runs` (`name`, `state`, `url`) | `checks:<owner>:<repo>:<hash>` |
+| `deployment_status` | `deployment`: `repo`, `environment`, `production`, and of the latest deployment `id`, `state` (`pending`/`success`/`failure`/`inactive`), `ref`, `sha`, `url` (the environment's, else the log), `logUrl`, `workflow`, `runId`, `creator`, plus `history` — the 10 before it, newest first, with the same fields | `deploy:<owner>:<repo>:<hash>` |
 
 Every entry has `at`, the time of the call. A review is kept on its pull
-request until another one decides; check runs gather by name until a new
-commit starts them over. `link` reads GitHub only so far — GitLab comes
+request until another one decides; a newer deployment to an environment
+puts the one before into its `history` (marked `inactive` once
+replaced); check runs gather by name until a new commit starts them over. `link` reads GitHub only so far — GitLab comes
 next.
 
 #### Rules

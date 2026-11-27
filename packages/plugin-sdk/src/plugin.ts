@@ -7,6 +7,7 @@ import type {
   Context,
   Host,
   Json,
+  ModalOptions,
   SettingsLevel,
 } from "./types";
 
@@ -94,6 +95,8 @@ export abstract class Plugin {
   readonly #unsaved: Host["unsaved"];
   readonly #startAction: Host["startAction"];
   readonly #openSettings: Host["openSettings"];
+  readonly #openModal: Host["openModal"];
+  readonly #closeModal: Host["closeModal"];
   readonly #actions = new Map<
     string,
     (context: {
@@ -110,6 +113,8 @@ export abstract class Plugin {
     this.#unsaved = host.unsaved;
     this.#startAction = host.startAction;
     this.#openSettings = host.openSettings;
+    this.#openModal = host.openModal;
+    this.#closeModal = host.closeModal;
     // The UI kit's toasts and menus are Barynt's own (BARY-238) — kept
     // where the kit, bundled apart, finds them.
     const store = globalThis as Record<symbol, unknown>;
@@ -198,6 +203,23 @@ export abstract class Plugin {
    */
   openSettings(level: SettingsLevel): void {
     this.#openSettings?.(level);
+  }
+
+  /**
+   * Opens a window of Barynt's over the page — a dialog, on a phone a
+   * sheet — with another frame of yours in it, for the same place: the
+   * same `issueId` and project, and `context.modal` saying which `view`
+   * to show with what `data`. For what doesn't fit a panel: details, a
+   * history. Barynt draws its head with `title` and its ✕.
+   */
+  openModal(options: ModalOptions): void {
+    this.#openModal?.(options);
+  }
+
+  /** In a window opened with `openModal`: closes it. */
+  closeModal(): void {
+    if (!this.context.modal) return;
+    this.#closeModal?.();
   }
 
   /**

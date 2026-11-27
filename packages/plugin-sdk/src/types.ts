@@ -7,6 +7,19 @@
  *  frame's), or the workspace's. */
 export type SettingsLevel = "personal" | "project" | "workspace";
 
+/** A window of Barynt's over the page, with a frame of the plugin in it
+ *  (`openModal`) — as wide as `size` says, on a phone a sheet. */
+export interface ModalOptions {
+  /** Which of your views it shows — `context.modal.view` there. */
+  view: string;
+  /** Its title, in Barynt's head over it. */
+  title: string;
+  /** What that view needs — JSON, up to 8 KB: `context.modal.data`. */
+  data?: unknown;
+  /** `sm` 420px, `md` 560px (default), `lg` 760px. */
+  size?: "sm" | "md" | "lg";
+}
+
 export interface Context {
   /** Which of its views or pages this frame is for. */
   slot: {
@@ -26,6 +39,9 @@ export interface Context {
   /** In an issue panel opened from a board's badge: the part of it the
    *  badge asked for (its `section`) — unfold that one. */
   focus?: string;
+  /** In a window a frame of the plugin opened (`openModal`): which of its
+   *  views to show, and what it passed along. */
+  modal?: { view: string; data?: unknown };
   workspaceId: string;
   /** `null` for a workspace's plugin. */
   projectId: string | null;
@@ -301,6 +317,10 @@ export interface Host {
   startAction?(actionId: string, context?: { choice?: string }): void;
   /** Opens its own settings page in Barynt, on a level. */
   openSettings?(level: SettingsLevel): void;
+  /** Opens a window of Barynt's with another frame of the plugin in it. */
+  openModal?(options: ModalOptions): void;
+  /** Closes the window this frame is in. */
+  closeModal?(): void;
   /** What saves its settings page when Barynt's Save button is pressed. */
   serveSave?(handler: () => void | Promise<void>): void;
   /** Whether its settings page has changes to save. */

@@ -94,6 +94,41 @@ describe("bridge protocol", () => {
     ).toBeNull();
   });
 
+  it("opens a window with a view of its own, and closes it (BARY-238)", () => {
+    expect(
+      parseFrameMessage({
+        type: "openModal",
+        view: "deployment",
+        title: "  staging ",
+        data: { environment: "staging" },
+      }),
+    ).toEqual({
+      type: "openModal",
+      view: "deployment",
+      title: "staging",
+      data: { environment: "staging" },
+      size: "md",
+    });
+    expect(
+      parseFrameMessage({
+        type: "openModal",
+        view: "x",
+        title: "X",
+        size: "lg",
+      }),
+    ).toEqual({ type: "openModal", view: "x", title: "X", size: "lg" });
+    // A view that isn't a plain name, no title, or too much data: none.
+    for (const bad of [
+      { view: "../x", title: "X" },
+      { view: "x", title: " " },
+      { view: "x", title: "X", data: "y".repeat(9000) },
+    ])
+      expect(parseFrameMessage({ type: "openModal", ...bad })).toBeNull();
+    expect(parseFrameMessage({ type: "closeModal" })).toEqual({
+      type: "closeModal",
+    });
+  });
+
   it("takes a settings page's unsaved changes and how saving went", () => {
     expect(parseFrameMessage({ type: "unsaved", unsaved: true })).toEqual({
       type: "unsaved",
