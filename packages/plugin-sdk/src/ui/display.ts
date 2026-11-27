@@ -1531,6 +1531,8 @@ export function navList(options: {
     count?: number;
     href?: string;
     onClick?: () => void;
+    /** Its state, in colour: the icon — and, for `danger`, the row. */
+    tone?: "success" | "danger" | "warning" | "info";
   }[];
 }): HTMLElement {
   styled();
@@ -1560,6 +1562,7 @@ export function navList(options: {
       } else b.disabled = true;
       control = b;
     }
+    if (item.tone) control.dataset.tone = item.tone;
     node.append(el("li", undefined, control));
   }
   return node;
