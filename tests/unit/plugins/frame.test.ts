@@ -129,6 +129,44 @@ describe("bridge protocol", () => {
     });
   });
 
+  it("hands a file to save to Barynt — named safely, within its size (BARY-238)", () => {
+    expect(
+      parseFrameMessage({
+        type: "download",
+        name: "deploy/migrate:db.log",
+        text: "line 1",
+      }),
+    ).toEqual({
+      type: "download",
+      name: "deploy_migrate_db.log",
+      mime: "text/plain",
+      data: "line 1",
+      base64: false,
+    });
+    expect(
+      parseFrameMessage({
+        type: "download",
+        name: "logs.zip",
+        mime: "application/zip",
+        base64: "UEsDBA==",
+      }),
+    ).toMatchObject({ mime: "application/zip", base64: true });
+    expect(
+      parseFrameMessage({ type: "download", name: "", text: "x" }),
+    ).toBeNull();
+    expect(
+      parseFrameMessage({ type: "download", name: "x", base64: "<script>" }),
+    ).toBeNull();
+    expect(
+      parseFrameMessage({
+        type: "openModal",
+        view: "log",
+        title: "L",
+        size: "xl",
+      }),
+    ).toMatchObject({ size: "xl" });
+  });
+
   it("takes a settings page's unsaved changes and how saving went", () => {
     expect(parseFrameMessage({ type: "unsaved", unsaved: true })).toEqual({
       type: "unsaved",

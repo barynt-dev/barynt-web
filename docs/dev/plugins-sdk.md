@@ -214,8 +214,13 @@ project and slot). Barynt draws its head with `title` and the ✕; your
 frame reads `context.modal` (`{ view, data }`) and draws that view
 instead of its usual one. For what doesn't fit a panel: an environment's
 details and history, say. `view` is a plain name (`a-z`, `0-9`, `-`),
-`data` JSON up to 8 KB; `size` is `sm` 420px, `md` 560px (default) or `lg`
-760px wide. From inside, `this.closeModal()` closes it. In tests,
+`data` JSON up to 8 KB; `size` is `sm` 420px, `md` 560px (default), `lg`
+760px or `xl` 1120px wide. From inside, `this.closeModal()` closes it.
+
+`this.download({ name, text | base64, type? })` saves a file through
+Barynt — the frame is a sandbox that may not download itself: text, or
+base64 for anything else, up to 20 MB, `text/plain` unless `type` says.
+In tests, `host.downloads` lists them. In tests,
 `host.openedModals` lists what it opened, `host.closedModals` counts the
 closes.
 
@@ -780,7 +785,7 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `showMore({ label, content, open?, onToggle? })` | "Show 2 more": a small centred toggle in the tertiary colour that folds content away below it, closed to start with |
 | `menuButton({ items, label?, icon? })` | a "…" button with a menu: `{ label, icon?, danger?, onClick }` each. In Barynt it's Barynt's own menu, drawn over the frame so a small frame doesn't cut it off |
 | `pipeline({ stations, label? })` | stops from left to right — environments a change went through, a rollout's regions: `{ label, icon?, state, status?, meta?, onClick?, link?, selected?, segments?, count? }` with `stepList`'s states (`pending` is drawn dashed: not reached). `onClick` makes the stop a button, `link` puts a link out in its corner, `segments` splits its bar (regions, services), `count` sits beside its label; more than fit scroll sideways |
-| `logView({ lines, maxHeight?, start?, label? })` | a build's or a job's output: numbered lines `{ text, tone?, heading? }` in a box that scrolls, errors (`tone: "danger"`) marked — opened at the first error, or at the `end` |
+| `logView({ lines, maxHeight?, start?, label?, fold?, tools? })` | a build's or a job's output: numbered lines `{ text, parts?, tone?, heading?, time? }` in a box that scrolls (`maxHeight: "none"`: as tall as it is, in a window), errors (`tone: "danger"`) and warnings marked — opened at the first error, or at the `end`. `parts` are styled runs (`{ text, color?, bold?, dim?, italic?, underline? }`, a terminal's eight colours); `parseAnsi(text)` makes them from ANSI escapes. `fold` folds the lines after each `heading` (a part with an error opens); `tools` adds a bar to search it (Enter / Shift+Enter), show the `time`s and fold or unfold all. Up to 50,000 lines |
 | `stageBar({ stages })` | the way through a few stations as a bar of segments — `{ label, state }` with `stepList`'s states — where something stands and what holds it up |
 | `stepList({ steps })` | steps with their state (`success`, `running`, `warning`, `danger`, `pending`) and, on the right, a note — a pipeline |
 | `navList({ items })` | rows that lead somewhere: `{ label, icon?, count?, href? \| onClick? }` with a › at the end |

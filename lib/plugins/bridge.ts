@@ -117,8 +117,11 @@ export interface FrameModal {
   view: string;
   title: string;
   data?: unknown;
-  size: "sm" | "md" | "lg";
+  size: "sm" | "md" | "lg" | "xl";
 }
+
+/** Most a file a frame saves may hold (characters of text or base64). */
+export const DOWNLOAD_MAX = 20 * 1024 * 1024;
 
 /** Most a window's `data` may hold, as JSON. */
 export const MODAL_DATA_MAX = 8 * 1024;
@@ -155,6 +158,14 @@ export type FrameMessage =
    *  from that frame, closing it (BARY-238). */
   | ({ type: "openModal" } & FrameModal)
   | { type: "closeModal" }
+  /** A file to save — the sandbox may not download (BARY-238). */
+  | {
+      type: "download";
+      name: string;
+      mime: string;
+      data: string;
+      base64: boolean;
+    }
   /** A click in the frame while its menu is open: close it — Barynt
    *  doesn't see clicks in there. */
   | { type: "menu:close" }
@@ -274,6 +285,30 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
     return { type: "error", message: String(m.message ?? "").slice(0, 500) };
   if (m.type === "menu:close") return { type: "menu:close" };
   if (m.type === "closeModal") return { type: "closeModal" };
+  if (m.type === "download") {
+    // What a file's name mustn't hold — paths, wildcards, control
+    // characters — becomes `_`.
+    const name =
+      typeof m.name === "string"
+        ? [...m.name]
+            .map((c) =>
+              c.charCodeAt(0) < 32 || '\\/:*?"<>|'.includes(c) ? "_" : c,
+            )
+            .join("")
+            .trim()
+            .slice(0, 120)
+        : "";
+    const base64 = typeof m.base64 === "string";
+    const data = base64 ? m.base64 : m.text;
+    if (!name || typeof data !== "string" || data.length > DOWNLOAD_MAX)
+      return null;
+    if (base64 && !/^[A-Za-z0-9+/=\s]*$/.test(data)) return null;
+    const mime =
+      typeof m.mime === "string" && /^[\w.+-]+\/[\w.+-]+$/.test(m.mime)
+        ? m.mime
+        : "text/plain";
+    return { type: "download", name, mime, data, base64 };
+  }
   if (m.type === "openModal") {
     const view = typeof m.view === "string" ? m.view : "";
     const title = typeof m.title === "string" ? m.title.trim() : "";
@@ -295,7 +330,8 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
       view,
       title: title.slice(0, 120),
       ...(data !== undefined && { data }),
-      size: m.size === "sm" || m.size === "lg" ? m.size : "md",
+      size:
+        m.size === "sm" || m.size === "lg" || m.size === "xl" ? m.size : "md",
     };
   }
   if (m.type === "openSettings")

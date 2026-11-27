@@ -1095,53 +1095,280 @@ export function pipeline(options: {
   return node;
 }
 
+/** A colour in a log — a terminal's eight, in Barynt's palette. */
+export type LogColor =
+  | "red"
+  | "green"
+  | "yellow"
+  | "blue"
+  | "magenta"
+  | "cyan"
+  | "gray"
+  | "white";
+
+/** A run of a log line's text in one style. */
+export interface LogPart {
+  text: string;
+  color?: LogColor;
+  bold?: boolean;
+  dim?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+}
+
 /** A line of a `logView`. */
 export interface LogLine {
   text: string;
-  /** `danger` an error, `warning`, `muted` noise — or a `heading` that
-   *  starts a part ("Run npm test"). */
-  tone?: "danger" | "warning" | "muted";
+  /** The text in styled runs — `parseAnsi` makes them from a terminal's
+   *  colours. Without: `text` as it is. */
+  parts?: LogPart[];
+  /** `danger` an error, `warning`, `success`, `muted` noise. */
+  tone?: "danger" | "warning" | "success" | "muted";
+  /** Starts a part ("Run npm test") — with `fold`, the lines after it
+   *  fold under it. */
   heading?: boolean;
+  /** When it was written — shown with "Times". */
+  time?: string;
 }
 
-/** A build's or a job's output: numbered lines in a monospace box that
- *  scrolls, errors marked — opened at the first error, or at the end. */
+const ANSI_COLORS: LogColor[] = [
+  "gray",
+  "red",
+  "green",
+  "yellow",
+  "blue",
+  "magenta",
+  "cyan",
+  "white",
+];
+
+/** A terminal's text as styled runs: its colours (`\x1b[31m`, bright and
+ *  256 ones near enough), bold, dim, italic, underline. Other escapes go. */
+export function parseAnsi(text: string): LogPart[] {
+  const parts: LogPart[] = [];
+  let style: Omit<LogPart, "text"> = {};
+  let last = 0;
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escapes start with ESC
+  const re = /\u001b\[([\d;]*)([A-Za-z])/g;
+  const push = (to: number) => {
+    if (to > last) parts.push({ text: text.slice(last, to), ...style });
+  };
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    push(m.index);
+    last = re.lastIndex;
+    if (m[2] !== "m") continue;
+    const codes = (m[1] || "0").split(";").map(Number);
+    for (let i = 0; i < codes.length; i++) {
+      const c = codes[i];
+      if (c === 0) style = {};
+      else if (c === 1) style = { ...style, bold: true };
+      else if (c === 2) style = { ...style, dim: true };
+      else if (c === 3) style = { ...style, italic: true };
+      else if (c === 4) style = { ...style, underline: true };
+      else if (c === 22) style = { ...style, bold: undefined, dim: undefined };
+      else if (c === 23) style = { ...style, italic: undefined };
+      else if (c === 24) style = { ...style, underline: undefined };
+      else if (c === 39) style = { ...style, color: undefined };
+      else if (c >= 30 && c <= 37)
+        style = { ...style, color: ANSI_COLORS[c - 30] };
+      else if (c >= 90 && c <= 97)
+        style = { ...style, color: ANSI_COLORS[c - 90] };
+      else if (c === 38 && codes[i + 1] === 5) {
+        const n = codes[i + 2] ?? 0;
+        if (n < 16) style = { ...style, color: ANSI_COLORS[n % 8] };
+        i += 2;
+      } else if (c === 38 && codes[i + 1] === 2) i += 4;
+      else if (c === 48 && codes[i + 1] === 5) i += 2;
+      else if (c === 48 && codes[i + 1] === 2) i += 4;
+    }
+  }
+  push(text.length);
+  return parts.map(
+    (p) =>
+      Object.fromEntries(
+        Object.entries(p).filter(([, v]) => v !== undefined),
+      ) as unknown as LogPart,
+  );
+}
+
+/** Most lines a `logView` draws. */
+export const LOG_LINES_MAX = 50_000;
+
+/** A line's text, styled. */
+function logText(line: LogLine): HTMLElement {
+  const node = el("span", "bui-log-text");
+  if (!line.parts?.length) {
+    node.textContent = line.text.slice(0, 4000);
+    return node;
+  }
+  for (const part of line.parts) {
+    const run = el("span", undefined, part.text.slice(0, 4000));
+    if (part.color) run.dataset.color = part.color;
+    if (part.bold) run.dataset.bold = "";
+    if (part.dim) run.dataset.dim = "";
+    if (part.italic) run.dataset.italic = "";
+    if (part.underline) run.dataset.underline = "";
+    node.append(run);
+  }
+  return node;
+}
+
+/**
+ * A build's or a job's output: numbered lines in a monospace box, a
+ * terminal's colours kept, errors and warnings marked — opened at the
+ * first error, or at the end. With `fold`, a heading folds the lines after
+ * it (the ones with an error open); with `tools`, a bar on top to search
+ * it, show the times and fold or unfold all.
+ */
 export function logView(options: {
   lines: LogLine[];
-  /** Its most height before it scrolls (px). Default: 320. */
-  maxHeight?: number;
+  /** Its most height before it scrolls (px), or `none`: as tall as it is
+   *  — in a window that scrolls. Default: 320. */
+  maxHeight?: number | "none";
   /** Where it opens: the first error (default), or the end. */
   start?: "error" | "end";
   /** What screen readers call it. */
   label?: string;
+  fold?: boolean;
+  tools?: boolean;
 }): HTMLElement {
   styled();
-  const node = el("div", "bui-log");
-  node.tabIndex = 0;
-  node.setAttribute("role", "log");
-  if (options.label) node.setAttribute("aria-label", options.label);
-  node.style.maxHeight = `${options.maxHeight ?? 320}px`;
+  const wrap = el("div", "bui-logview");
+  const box = el("div", "bui-log");
+  box.tabIndex = 0;
+  box.setAttribute("role", "log");
+  if (options.label) box.setAttribute("aria-label", options.label);
+  if (options.maxHeight !== "none")
+    box.style.maxHeight = `${options.maxHeight ?? 320}px`;
+  const rows: HTMLElement[] = [];
+  const groups: HTMLDetailsElement[] = [];
   let first: HTMLElement | null = null;
-  options.lines.slice(0, 5000).forEach((line, i) => {
+  let into: HTMLElement = box;
+  options.lines.slice(0, LOG_LINES_MAX).forEach((line, i) => {
     const row = el(
       "div",
       "bui-log-line",
       el("span", "bui-log-no", String(i + 1)),
-      el("span", "bui-log-text", line.text.slice(0, 2000)),
+      el("span", "bui-log-time", line.time ?? ""),
+      logText(line),
     );
     if (line.tone) row.dataset.tone = line.tone;
     if (line.heading) row.dataset.heading = "";
-    if (line.tone === "danger" && !first) first = row;
-    node.append(row);
+    rows.push(row);
+    if (options.fold && line.heading) {
+      const group = el("details", "bui-log-group") as HTMLDetailsElement;
+      const summary = el("summary", undefined, row);
+      group.append(summary);
+      box.append(group);
+      groups.push(group);
+      into = group;
+    } else into.append(row);
+    if (line.tone === "danger") {
+      first ??= row;
+      if (into !== box) (into as HTMLDetailsElement).open = true;
+    }
   });
+  // Nothing failed: the last part open, where it ended.
+  if (!first && groups.length) groups[groups.length - 1].open = true;
+
+  const reveal = (row: HTMLElement) => {
+    const group = row.closest("details");
+    if (group) group.open = true;
+    box.scrollTop = Math.max(0, row.offsetTop - box.clientHeight / 3);
+    if (options.maxHeight === "none") row.scrollIntoView({ block: "center" });
+  };
+
+  if (options.tools) {
+    let hits: HTMLElement[] = [];
+    let at = -1;
+    const count = el("span", "bui-logview-count", "");
+    const search = el("input", "bui-input") as HTMLInputElement;
+    search.type = "search";
+    search.placeholder = kitText("searchLog");
+    search.setAttribute("aria-label", kitText("searchLog"));
+    const go = (by: number) => {
+      if (!hits.length) return;
+      hits[at]?.removeAttribute("data-current");
+      at = (at + by + hits.length) % hits.length;
+      hits[at].dataset.current = "";
+      count.textContent = `${at + 1}/${hits.length}`;
+      reveal(hits[at]);
+    };
+    search.addEventListener("input", () => {
+      const q = search.value.trim().toLowerCase();
+      for (const r of hits) {
+        r.removeAttribute("data-hit");
+        r.removeAttribute("data-current");
+      }
+      hits = q
+        ? rows.filter((r) =>
+            (r.querySelector(".bui-log-text")?.textContent ?? "")
+              .toLowerCase()
+              .includes(q),
+          )
+        : [];
+      for (const r of hits) r.dataset.hit = "";
+      at = -1;
+      count.textContent = q ? (hits.length ? `0/${hits.length}` : "0") : "";
+      if (hits.length) go(1);
+    });
+    search.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        go(event.shiftKey ? -1 : 1);
+      }
+    });
+    const iconButton = (name: IconName, label: string, onClick: () => void) => {
+      const b = el("button", "bui-logview-tool", icon(name, { size: 14 }));
+      b.type = "button";
+      b.setAttribute("aria-label", label);
+      b.dataset.buiTip = label;
+      b.addEventListener("click", onClick);
+      return b;
+    };
+    const hasTimes = options.lines.some((l) => l.time);
+    const times = iconButton("clock", kitText("logTimes"), () => {
+      const on = wrap.toggleAttribute("data-times");
+      times.setAttribute("aria-pressed", String(on));
+    });
+    times.setAttribute("aria-pressed", "false");
+    const bar = el(
+      "div",
+      "bui-logview-bar",
+      search,
+      count,
+      iconButton("chevron-up", kitText("previous"), () => go(-1)),
+      iconButton("chevron-down", kitText("next"), () => go(1)),
+      hasTimes && times,
+      groups.length > 0 &&
+        iconButton("plus", kitText("unfoldAll"), () => {
+          for (const g of groups) g.open = true;
+        }),
+      groups.length > 0 &&
+        iconButton("minus", kitText("foldAll"), () => {
+          for (const g of groups) g.open = false;
+        }),
+    );
+    wrap.append(bar);
+  }
+  wrap.append(box);
+  if (options.lines.length > LOG_LINES_MAX)
+    wrap.append(
+      el("p", "bui-hint", kitText("logCut", { count: LOG_LINES_MAX })),
+    );
   // Once it's in the page: at the first error, or at the end.
-  requestAnimationFrame(() => {
-    const at = first as HTMLElement | null;
-    if (options.start !== "end" && at)
-      node.scrollTop = Math.max(0, at.offsetTop - node.clientHeight / 3);
-    else if (options.start === "end") node.scrollTop = node.scrollHeight;
+  const later =
+    typeof requestAnimationFrame === "function"
+      ? requestAnimationFrame
+      : (fn: () => void) => setTimeout(fn, 0);
+  later(() => {
+    const row = first as HTMLElement | null;
+    if (options.start !== "end" && row) {
+      if (options.maxHeight !== "none")
+        box.scrollTop = Math.max(0, row.offsetTop - box.clientHeight / 3);
+    } else if (options.start === "end") box.scrollTop = box.scrollHeight;
   });
-  return node;
+  return wrap;
 }
 
 /** Steps of a pipeline, a checklist, a rollout — each with its state and,

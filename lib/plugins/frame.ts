@@ -200,6 +200,11 @@ const RUNTIME = `(() => {
           send({ type: "openModal", view: o.view, title: o.title, data: o.data, size: o.size });
         },
         closeModal: () => send({ type: "closeModal" }),
+        // A file to save: the sandbox may not download (BARY-238).
+        download: (file) => {
+          const f = file && typeof file === "object" ? file : {};
+          send({ type: "download", name: f.name, mime: f.type, text: f.text, base64: f.base64 });
+        },
         // An issue panel starts one of its actions (BARY-238).
         startAction: (actionId, context) =>
           send({

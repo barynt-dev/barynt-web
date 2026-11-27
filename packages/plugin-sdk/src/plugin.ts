@@ -5,6 +5,7 @@ import type {
   BadgeIssue,
   BlockData,
   Context,
+  DownloadFile,
   Host,
   Json,
   ModalOptions,
@@ -97,6 +98,7 @@ export abstract class Plugin {
   readonly #openSettings: Host["openSettings"];
   readonly #openModal: Host["openModal"];
   readonly #closeModal: Host["closeModal"];
+  readonly #download: Host["download"];
   readonly #actions = new Map<
     string,
     (context: {
@@ -115,6 +117,7 @@ export abstract class Plugin {
     this.#openSettings = host.openSettings;
     this.#openModal = host.openModal;
     this.#closeModal = host.closeModal;
+    this.#download = host.download;
     // The UI kit's toasts and menus are Barynt's own (BARY-238) — kept
     // where the kit, bundled apart, finds them.
     const store = globalThis as Record<symbol, unknown>;
@@ -214,6 +217,15 @@ export abstract class Plugin {
    */
   openModal(options: ModalOptions): void {
     this.#openModal?.(options);
+  }
+
+  /**
+   * Saves a file — a log, an export — through Barynt: the frame is a
+   * sandbox that may not download itself. Text, or `base64` for anything
+   * else; up to 20 MB.
+   */
+  download(file: DownloadFile): void {
+    this.#download?.(file);
   }
 
   /** In a window opened with `openModal`: closes it. */

@@ -5,7 +5,9 @@ import {
   card,
   kpi,
   list,
+  logView,
   notice,
+  parseAnsi,
   pipeline,
   progressRing,
   select,
@@ -139,6 +141,46 @@ describe("the UI kit", () => {
     expect(line.el.dataset.tone).toBe("success");
     line.clear();
     expect(line.el.textContent).toBe("");
+  });
+
+  it("reads a terminal's colours (BARY-238)", () => {
+    expect(parseAnsi("\u001b[1;31mError\u001b[0m: boom")).toEqual([
+      { text: "Error", color: "red", bold: true },
+      { text: ": boom" },
+    ]);
+    expect(parseAnsi("\u001b[92mok\u001b[39m done")).toEqual([
+      { text: "ok", color: "green" },
+      { text: " done" },
+    ]);
+    expect(parseAnsi("plain")).toEqual([{ text: "plain" }]);
+  });
+
+  it("draws a log folded by its parts, an error's part open, to search (BARY-238)", () => {
+    const node = logView({
+      fold: true,
+      tools: true,
+      lines: [
+        { text: "Set up", heading: true, time: "10:00:00" },
+        { text: "fine" },
+        { text: "Run tests", heading: true },
+        {
+          text: "boom",
+          tone: "danger",
+          parts: [{ text: "boom", color: "red" }],
+        },
+      ],
+    });
+    const groups = [...node.querySelectorAll("details")] as unknown as {
+      open: boolean;
+    }[];
+    expect(groups.map((g) => g.open)).toEqual([false, true]);
+    expect(node.querySelector('[data-color="red"]')?.textContent).toBe("boom");
+    const search = node.querySelector("input") as HTMLInputElement;
+    search.value = "fine";
+    search.dispatchEvent(new window.Event("input") as unknown as Event);
+    expect(node.querySelectorAll("[data-hit]")).toHaveLength(1);
+    // Found inside a folded part: opened.
+    expect(groups[0].open).toBe(true);
   });
 
   it("draws a pipeline's stops — a button, a link, one not reached (BARY-238)", () => {

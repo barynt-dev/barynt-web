@@ -16,8 +16,19 @@ export interface ModalOptions {
   title: string;
   /** What that view needs — JSON, up to 8 KB: `context.modal.data`. */
   data?: unknown;
-  /** `sm` 420px, `md` 560px (default), `lg` 760px. */
-  size?: "sm" | "md" | "lg";
+  /** `sm` 420px, `md` 560px (default), `lg` 760px, `xl` 1120px — a
+   *  log, a table. */
+  size?: "sm" | "md" | "lg" | "xl";
+}
+
+/** A file to save (`download`): its name, and what's in it — text, or
+ *  base64 for anything else. Up to 20 MB. */
+export interface DownloadFile {
+  name: string;
+  /** Its media type — `text/plain` by default. */
+  type?: string;
+  text?: string;
+  base64?: string;
 }
 
 export interface Context {
@@ -321,6 +332,8 @@ export interface Host {
   openModal?(options: ModalOptions): void;
   /** Closes the window this frame is in. */
   closeModal?(): void;
+  /** Saves a file through Barynt — the frame may not download itself. */
+  download?(file: DownloadFile): void;
   /** What saves its settings page when Barynt's Save button is pressed. */
   serveSave?(handler: () => void | Promise<void>): void;
   /** Whether its settings page has changes to save. */

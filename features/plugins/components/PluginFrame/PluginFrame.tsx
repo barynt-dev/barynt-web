@@ -66,11 +66,35 @@ type FrameState =
   | { status: "ready" }
   | { status: "error"; message: string };
 
+/** Saves a file a frame hands over — as the page, which may download. */
+function saveFile(file: {
+  name: string;
+  mime: string;
+  data: string;
+  base64: boolean;
+}) {
+  const blob = file.base64
+    ? new Blob([Uint8Array.from(atob(file.data), (c) => c.charCodeAt(0))], {
+        type: file.mime,
+      })
+    : new Blob([file.data], { type: file.mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = file.name;
+  a.rel = "noopener";
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 /** How wide a plugin's window is, by its `size` (px). */
 const MODAL_WIDTH: Record<FrameModal["size"], number> = {
   sm: 420,
   md: 560,
   lg: 760,
+  xl: 1120,
 };
 
 /** How tall a panel is while its frame starts — its skeleton's room (px). */
@@ -356,6 +380,8 @@ export function PluginFrame({
         } else if (message.type === "openModal") {
           const { type: _, ...m } = message;
           openFrameModalRef.current(m);
+        } else if (message.type === "download") {
+          saveFile(message);
         } else if (message.type === "closeModal") {
           callbacks.current.onCloseModal?.();
         } else if (message.type === "runAction") {

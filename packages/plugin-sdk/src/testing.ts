@@ -5,6 +5,7 @@ import type {
   BadgeIssue,
   BlockData,
   Context,
+  DownloadFile,
   Host,
   Method,
   Methods,
@@ -34,6 +35,8 @@ export interface TestHost extends Host {
   readonly openedModals: ModalOptions[];
   /** How often it closed its window (`closeModal`). */
   readonly closedModals: number;
+  /** Every file it saved (`download`), in order. */
+  readonly downloads: DownloadFile[];
   /** Runs one of the plugin's actions, as a menu would. */
   runAction(
     id: string,
@@ -72,6 +75,7 @@ export function createTestHost(
   const openedSettings: SettingsLevel[] = [];
   const openedModals: ModalOptions[] = [];
   let closedModals = 0;
+  const downloads: DownloadFile[] = [];
   let badgeHandler: Parameters<NonNullable<Host["serveBadges"]>>[0] | null =
     null;
   let actionHandler: Parameters<NonNullable<Host["serveActions"]>>[0] | null =
@@ -92,6 +96,10 @@ export function createTestHost(
     },
     closeModal: () => {
       closedModals += 1;
+    },
+    downloads,
+    download: (file) => {
+      downloads.push(file);
     },
     show: (data) => void shown.push(data),
     serveBadges: (handler) => {
