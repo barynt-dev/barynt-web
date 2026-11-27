@@ -8,6 +8,10 @@
   --row-h: 2.5rem;
   --card-pad: 0.8125rem;
 
+  /* Between the sections of a settings page, so each group reads as its
+     own (BARY-238). */
+  --settings-gap: 2.5rem;
+
   /* Height of a form control — Input, SegmentedControl & Co. share these so
      they line up when they sit next to each other. */
   --control-h: 2.25rem;

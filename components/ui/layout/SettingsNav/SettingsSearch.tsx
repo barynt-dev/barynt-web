@@ -235,6 +235,13 @@ function SettingsFocus() {
       );
       if (!target) return;
       const { row, control } = target;
+      // A group folded away (`FoldGroup`) opens to show it.
+      for (
+        let fold = row.closest("details");
+        fold;
+        fold = fold.parentElement?.closest("details") ?? null
+      )
+        fold.open = true;
       row.scrollIntoView({ block: "center", behavior: "smooth" });
       row.removeAttribute("data-setting-focus");
       // Read a layout value so the glow restarts on the same row too.
@@ -265,7 +272,7 @@ function findSetting(
   for (const el of candidates) {
     if (el.textContent?.trim().toLocaleLowerCase() !== wanted) continue;
     const row =
-      el.closest<HTMLElement>("[role='row'], tr, fieldset, section") ??
+      el.closest<HTMLElement>("[role='row'], tr, fieldset, section, details") ??
       el.parentElement ??
       el;
     const forId = el instanceof HTMLLabelElement ? el.htmlFor : "";

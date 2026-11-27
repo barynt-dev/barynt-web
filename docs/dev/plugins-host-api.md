@@ -118,6 +118,13 @@ const data = await api.issueData.list([issue.id]);
 const mr = data[issue.id]?.find((e) => e.key.startsWith("mr:"));
 ```
 
+With `issues:write` its frames keep entries too:
+`api.issueData.set(issueId, key, value)` and
+`api.issueData.delete(issueId, key)` — for what the plugin changed itself
+and won't hear back about (a service doesn't report an app's own changes to
+it). Keys `[A-Za-z0-9_.:-]`, up to 100 characters, values up to 16 KB; the
+issue's panel reloads like after its server wrote.
+
 ## Storage
 
 Needs `storage:own`. The plugin's own key–value store, **per place**: a
@@ -130,6 +137,10 @@ gone when someone deletes the plugin's data.
 | `api.storage.set(key, value)` | Stores any JSON value. |
 | `api.storage.delete(key)` | Removes it. |
 | `api.storage.list()` | All keys, sorted. |
+| `api.storage.personal.get/set/delete/list` | The same, for the person using it: everyone keeps their own (a panel folded away, say), and nobody reads another's. Barynt keeps them under the person, so the plugin never learns who that is. |
+
+A plain key can't start with `@` — that's where the personal ones are
+kept. They count towards the place's limits.
 
 | Limit | |
 | --- | --- |
@@ -155,6 +166,12 @@ send the ones you leave alone too.
 capability: the plugin's own [settings](plugins-manifest.md#settings) in this
 place, each with its saved value or its default.
 
+`api.me.get()` (`me.get`) needs no capability either: who's using the
+plugin (`id`, `name`) and `canManage` — whether they may change its
+settings here (`plugin.enable` in the project, or the workspace). For
+offering what only they should, starting a deploy workflow say; it's a
+hint for the UI, so anything that matters is also checked where it's done.
+
 ## Network
 
 ### `net.fetch`
@@ -173,6 +190,11 @@ Barynt sends the request for the plugin:
   request elsewhere.
 - It adds the [credentials](plugins-manifest.md#credentials) the manifest
   declares for that host. If one isn't kept, the request is refused with
+  `credential_missing`.
+- For a plugin with a GitHub [connection](plugins-manifest.md#connections),
+  a request about a repository the place ticked
+  (`https://api.github.com/repos/{owner}/{name}/…`) goes with the
+  connection's token when no credential of its own is kept — then it isn't
   `credential_missing`.
 - Redirects aren't followed: you get the `3xx` and its `location`, and may
   ask again — for a host you're allowed.
@@ -205,7 +227,7 @@ try {
   const mergeRequests = res.json<{ iid: number; title: string }[]>();
 } catch (error) {
   if (error instanceof BaryntError && error.code === "credential_missing")
-    showHint("Keep your GitLab token in your personal settings → Plugins.");
+    showHint("Keep your GitLab token under Settings → Plugins, tab Personal.");
   else throw error;
 }
 ```

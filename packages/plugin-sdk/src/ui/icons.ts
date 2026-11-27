@@ -193,6 +193,20 @@ export const ICONS = {
     ["rect", { width: "18", height: "11", x: "3", y: "11", rx: "2", ry: "2" }],
     ["path", { d: "M7 11V7a5 5 0 0 1 10 0v4" }],
   ],
+  globe: [
+    ["circle", { cx: "12", cy: "12", r: "10" }],
+    ["path", { d: "M12 2a14.5 14.5 0 0 0 0 20a14.5 14.5 0 0 0 0-20M2 12h20" }],
+  ],
+  archive: [
+    ["rect", { width: "20", height: "5", x: "2", y: "3", rx: "1" }],
+    ["path", { d: "M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8m-10 4h4" }],
+  ],
+  "git-fork": [
+    ["circle", { cx: "12", cy: "18", r: "3" }],
+    ["circle", { cx: "6", cy: "6", r: "3" }],
+    ["circle", { cx: "18", cy: "6", r: "3" }],
+    ["path", { d: "M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9m6 3v3" }],
+  ],
   circle: [["circle", { cx: "12", cy: "12", r: "10" }]],
   "circle-dot": [
     ["circle", { cx: "12", cy: "12", r: "1" }],

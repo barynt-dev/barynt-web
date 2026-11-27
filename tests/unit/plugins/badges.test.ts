@@ -108,6 +108,7 @@ describe("rows across the card (BARY-207)", () => {
             [
               { type: "icon", icon: "git-pull-request", tone: "success" },
               { type: "text", text: "#410", mono: true, tone: "subtle" },
+              { type: "divider" },
               {
                 type: "text",
                 text: "Changes requested",
@@ -133,6 +134,7 @@ describe("rows across the card (BARY-207)", () => {
       parts: [
         { type: "icon", icon: "git-pull-request", tone: "success" },
         { type: "text", text: "#410", mono: true, tone: "subtle" },
+        { type: "divider" },
         {
           type: "text",
           text: "Changes requested",
@@ -219,9 +221,11 @@ describe("free layout in a row (BARY-208)", () => {
         { type: "date", date: "2026-11-13T10:00:00Z", format: "short" },
         { type: "link", text: "Logs", href: "https://ci.example.com/b/1" },
       ],
-      { panel: "review" },
+      { panel: "review", section: "checks" },
     );
     expect(row?.panel).toBe("review");
+    // …at a part of it (BARY-238).
+    expect(row?.section).toBe("checks");
     expect(row?.text).toBe("Deploy build 1842 staging Logs");
     expect(row?.parts?.map((p) => p.type)).toEqual([
       "group",

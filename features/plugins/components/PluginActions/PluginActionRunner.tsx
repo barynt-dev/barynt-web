@@ -3,12 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+import { useChoose } from "@/components/ui/layout/ChoiceDialog/ChoiceDialog";
+import { useForm } from "@/components/ui/layout/FormDialog/FormDialog";
 import { parseActionResult } from "@/lib/plugins/plugin-actions";
 import { useUI } from "@/lib/ui-store";
 import { focusPanelNext } from "../PluginBadges/panelFocus";
 import { PluginFrame } from "../PluginFrame/PluginFrame";
 import styles from "./pluginActions.module.scss";
-import { type ActionJob, actionJobs, finishPluginAction } from "./runner";
+import {
+  type ActionJob,
+  actionJobs,
+  finishPluginAction,
+  startPluginAction,
+} from "./runner";
 
 /** How long an action may take before Barynt gives up on it. */
 const ACTION_TIMEOUT_MS = 20_000;
@@ -37,14 +44,23 @@ export function PluginActionRunner() {
 
 function ActionFrame({ job }: { job: ActionJob }) {
   const t = useTranslations("plugins");
+  const tp = useTranslations("placeholders");
   const locale = useLocale();
   const router = useRouter();
   const { toast } = useUI();
+  const choose = useChoose();
+  const ask = useForm();
   const { entry } = job;
   // Once per job: a new object would send it again.
   const request = useMemo(
-    () => ({ seq: job.key, actionId: entry.actionId, issueId: job.issueId }),
-    [job.key, entry.actionId, job.issueId],
+    () => ({
+      seq: job.key,
+      actionId: entry.actionId,
+      issueId: job.issueId,
+      ...(job.choice !== undefined && { choice: job.choice }),
+      ...(job.values !== undefined && { values: job.values }),
+    }),
+    [job.key, entry.actionId, job.issueId, job.choice, job.values],
   );
 
   const fail = useCallback(
@@ -81,6 +97,43 @@ function ActionFrame({ job }: { job: ActionJob }) {
         if (seq !== job.key) return;
         if (!ok) return fail(String(raw));
         const result = parseActionResult(raw);
+        // It asks first (BARY-238): the options, then the action again with
+        // the one picked — nothing, when the dialog is dismissed.
+        if (result.pick) {
+          const pick = result.pick;
+          finishPluginAction(job.key);
+          void choose({
+            title: pick.title,
+            choices: pick.options,
+            ...(pick.icon && { icon: pick.icon }),
+            cancelLabel: t("actionCancel"),
+          }).then((choice) => {
+            if (choice === null) return;
+            const { key: _key, ...rest } = job;
+            startPluginAction({ ...rest, choice });
+          });
+          return;
+        }
+        // A form first (BARY-238): filled in, the action again with what
+        // was filled in — its choice kept.
+        if (result.form) {
+          const form = result.form;
+          finishPluginAction(job.key);
+          void ask({
+            title: form.title,
+            description: form.description,
+            fields: form.fields,
+            submitLabel: form.submitLabel ?? entry.title,
+            cancelLabel: t("actionCancel"),
+            searchLabel: tp("search"),
+            danger: form.danger,
+          }).then((values) => {
+            if (values === null) return;
+            const { key: _key, ...rest } = job;
+            startPluginAction({ ...rest, values });
+          });
+          return;
+        }
         // Done here, not in its frame: a hidden, sandboxed frame can neither
         // write the clipboard nor open a tab (BARY-230).
         if (result.copy) void navigator.clipboard?.writeText(result.copy);
@@ -100,7 +153,15 @@ function ActionFrame({ job }: { job: ActionJob }) {
           });
           window.dispatchEvent(new Event("barynt:focus-panel"));
         }
-        if (result.refresh) router.refresh();
+        if (result.refresh) {
+          router.refresh();
+          // Its panels in the issue draw again too (BARY-238).
+          window.dispatchEvent(
+            new CustomEvent("barynt:plugin-refresh", {
+              detail: { pluginId: entry.pluginId, issueId: job.issueId },
+            }),
+          );
+        }
         finishPluginAction(job.key);
       }}
     />

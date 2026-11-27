@@ -2,7 +2,7 @@
 
 import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { Avatar } from "@/components/ui/atoms/Avatar/Avatar";
 import { Badge } from "@/components/ui/atoms/Badge/Badge";
 import { Button } from "@/components/ui/atoms/Button/Button";
@@ -22,6 +22,7 @@ import {
   type IssueFilter,
   isCustomFilterField,
   isGroup,
+  isPluginFilterField,
   ME,
   NONE_VALUE,
 } from "@/features/issues/filter";
@@ -31,6 +32,7 @@ import { visibleDetailFields } from "@/features/projects/detail-fields";
 import type { Translator } from "@/i18n/types";
 import { useModal } from "@/lib/context";
 import type { FieldDefinition } from "@/lib/custom-fields";
+import type { PluginFilterFacet } from "@/lib/plugins/filters";
 import { fullName } from "@/lib/utils/string";
 import { PHONE_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
 import { useSwipeToClose } from "@/lib/utils/useSwipeToClose";
@@ -78,6 +80,8 @@ interface FilterPopupProps {
   /** The custom fields that apply here — a row each for those with a list
    *  of answers, all of them in the editor (BARY-196). */
   customFields?: FieldDefinition[];
+  /** The plugins' filters that apply here — a row each (BARY-238). */
+  pluginFilters?: PluginFilterFacet[];
   onToggle: (key: FilterKey, value: string | number) => void;
   onClearAll: () => void;
   /** The whole filter, for the advanced editor behind the last row
@@ -96,6 +100,9 @@ export interface FilterOption {
   value: string | number;
   label: string;
   icon?: React.ReactNode;
+  /** A line above it — where a plugin filter's values found begin, after
+   *  its own options (BARY-238). */
+  divider?: boolean;
 }
 
 /** One filter as the panel draws it. */
@@ -254,7 +261,7 @@ function FilterSheet({
         const next = list.includes(value)
           ? list.filter((v) => v !== value)
           : [...list, value];
-        return isCustomFilterField(key)
+        return isCustomFilterField(key) || isPluginFilterField(key)
           ? { ...current, custom: { ...current.custom, [key]: next } }
           : { ...current, [key]: next };
       });
@@ -354,6 +361,7 @@ export function buildFacets(
     projects,
     issueTypes,
     customFields = [],
+    pluginFilters = [],
   }: Pick<
     FilterPopupProps,
     | "filters"
@@ -366,6 +374,7 @@ export function buildFacets(
     | "projects"
     | "issueTypes"
     | "customFields"
+    | "pluginFilters"
   >,
   t: Translator,
 ): Facet[] {
@@ -513,6 +522,22 @@ export function buildFacets(
       options: customFilterAnswers(field, members, t),
     });
   }
+  // The plugins' filters, after Barynt's own (BARY-238): their options as
+  // the plugin names them. Only those it puts in the menu — the others are
+  // the advanced editor's.
+  for (const filter of pluginFilters.filter((f) => f.menu === "main"))
+    facets.push({
+      key: filter.field,
+      title: filter.title,
+      selected: chipValues(filters, filter.field),
+      negatable: true,
+      // A line between its own options and the values found.
+      options: filter.options.map((o, i) => ({
+        value: o.id,
+        label: o.label,
+        divider: o.found === true && i > 0 && !filter.options[i - 1].found,
+      })),
+    });
   return facets;
 }
 
@@ -531,7 +556,17 @@ function FilterPanel(props: FilterPanelProps) {
   } = props;
   const facets = buildFacets(props, t);
   const open = facets.find((f) => f.key === facet);
-  const extras = extraNodes(props.tree).length;
+  // Set conditions the rows don't show — a plugin's filter that's only
+  // the editor's among them.
+  const advancedOnly = new Set(
+    (props.pluginFilters ?? [])
+      .filter((f) => f.menu !== "main")
+      .map((f) => f.field as string),
+  );
+  const extras =
+    extraNodes(props.tree).length +
+    props.tree.rules.filter((n) => !isGroup(n) && advancedOnly.has(n.field))
+      .length;
 
   if (facet === "advanced") {
     return (
@@ -775,27 +810,31 @@ export function FilterOptions({
         aria-multiselectable={!single}
         aria-label={facet.title}
       >
-        {shown.map((option) => {
+        {shown.map((option, i) => {
           const on = facet.selected.includes(option.value);
           return (
-            <button
-              key={option.value}
-              type="button"
-              role="option"
-              aria-selected={on}
-              className={styles.optionRow}
-              onClick={() => onToggle(option.value)}
-            >
-              <span className={styles.optionIcon}>{option.icon}</span>
-              <span className={styles.optionLabel}>{option.label}</span>
-              {on && (
-                <Icon
-                  icon="lucide:check"
-                  width={18}
-                  className={styles.optionCheck}
-                />
+            <Fragment key={option.value}>
+              {option.divider && i > 0 && (
+                <hr className={styles.optionDivider} aria-hidden />
               )}
-            </button>
+              <button
+                type="button"
+                role="option"
+                aria-selected={on}
+                className={styles.optionRow}
+                onClick={() => onToggle(option.value)}
+              >
+                <span className={styles.optionIcon}>{option.icon}</span>
+                <span className={styles.optionLabel}>{option.label}</span>
+                {on && (
+                  <Icon
+                    icon="lucide:check"
+                    width={18}
+                    className={styles.optionCheck}
+                  />
+                )}
+              </button>
+            </Fragment>
           );
         })}
         {shown.length === 0 && (

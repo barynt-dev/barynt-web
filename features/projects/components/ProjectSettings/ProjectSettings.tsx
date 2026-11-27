@@ -9,6 +9,7 @@ import { ColorPicker } from "@/components/ui/atoms/ColorPicker/ColorPicker";
 import { CopyField } from "@/components/ui/atoms/CopyField/CopyField";
 import { Input } from "@/components/ui/atoms/Input/Input";
 import { SegmentedControl } from "@/components/ui/atoms/SegmentedControl/SegmentedControl";
+import { FoldGroup } from "@/components/ui/layout/FoldGroup/FoldGroup";
 import { PageHeader } from "@/components/ui/layout/PageHeader/PageHeader";
 import { SettingsIdentity } from "@/components/ui/layout/SettingsIdentity/SettingsIdentity";
 import { Table, type TableColumn } from "@/components/ui/layout/Table/Table";
@@ -347,10 +348,13 @@ export function ProjectSettings({
           getRowKey={(row) => row.id}
         />
 
-        <section className={styles.group}>
-          <h2 className={styles.groupTitle}>
-            {t("projectSettings.visibility")}
-          </h2>
+        <FoldGroup
+          heading={
+            <h2 className={styles.groupTitle}>
+              {t("projectSettings.visibility")}
+            </h2>
+          }
+        >
           {/* Sits above the card, not inside it: the sentence explains the
               toggle's boundary, not its function. */}
           <p className={styles.groupDesc}>
@@ -365,13 +369,16 @@ export function ProjectSettings({
             rows={visibility}
             getRowKey={(row) => row.id}
           />
-        </section>
+        </FoldGroup>
 
         {canDelete && (
-          <section className={styles.group}>
-            <h2 className={`${styles.groupTitle} ${styles.dangerTitle}`}>
-              {t("projectSettings.dangerZone")}
-            </h2>
+          <FoldGroup
+            heading={
+              <h2 className={`${styles.groupTitle} ${styles.dangerTitle}`}>
+                {t("projectSettings.dangerZone")}
+              </h2>
+            }
+          >
             <Table
               variant="card"
               className={styles.dangerCard}
@@ -380,7 +387,7 @@ export function ProjectSettings({
               rows={danger}
               getRowKey={(row) => row.id}
             />
-          </section>
+          </FoldGroup>
         )}
       </div>
     </>

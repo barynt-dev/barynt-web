@@ -55,7 +55,7 @@ bun scripts/validate-plugin-manifest.ts path/to/manifest.json
 | `authorUrl` | no | An `http(s)` address, linked in the store. |
 | `description` | yes | In English: `short`, one or two sentences up to 300 characters, and optionally `about`, the plugin's page in the store — see [Page text and links](#page-text-and-links). |
 | `links` | no | Up to 10 addresses — homepage, docs, community — see [Page text and links](#page-text-and-links). |
-| `locales` | no | Texts in Barynt's other languages: `{ "de": { "description": { "short": "…", "about": "…" } } }`, either text optional. Barynt shows each person the texts in their language, else the English ones. |
+| `locales` | no | Texts in Barynt's other languages: the description (`{ "de": { "description": { "short": "…", "about": "…" } } }`, either text optional) and the titles, labels and descriptions of what it contributes, see [Translations](#translations). Barynt shows each person the texts in their language, else the English ones. |
 | `logo` | no | `logo.png` or `logo.webp`, a file in the release: the plugin's picture in the store, the sidebar and its settings, see [Publishing](plugins-publishing.md#logo-and-screenshots). Without one, its first letter. |
 | `license` | yes | E.g. `MIT`, `Apache-2.0`, `Proprietary`. |
 | `kind` | yes | `declarative`, `sandbox` or `service`, see [Building plugins](plugins.md#the-three-kinds). |
@@ -115,6 +115,50 @@ manifest. `description` as `{ short, about }` needs a Barynt released after
 1.1.0-beta.5; it's the only form Barynt takes — a plain string, or `about`
 beside `description`, is refused.
 
+## Translations
+
+The manifest is written in English, and English is what Barynt shows when a
+language has no text of its own. `locales.<lang>` (`de`) holds only what
+differs: the description (above), and the texts of the plugin's
+contributions and previews, **by id**:
+
+```json
+"locales": {
+  "de": {
+    "contributes": {
+      "actions": { "create-branch": "Branch erstellen" },
+      "issuePanels": { "development": "Entwicklung" },
+      "settings": {
+        "branchPattern": { "label": "Branch-Name", "description": "{key} ist der Schlüssel des Issues." },
+        "mode": { "label": "Modus", "options": { "fast": "Schnell" } }
+      },
+      "credentials": { "token": "Token" },
+      "inboundHooks": { "github": { "title": "GitHub-Repository", "rules": { "merged": "Wenn ein Pull Request gemergt wird" } } }
+    },
+    "previews": { "preview-1.webp": "Pull Requests auf dem Board" }
+  }
+}
+```
+
+- Under `contributes`, a list of the manifest (`actions`, `settings` …) maps
+  an item's `id` — a setting's or credential's `key` — to its texts.
+- A string translates the item's main text: its `title`, else its `label`.
+  An object names them: `title`, `label`, `description`, `hint`, and
+  `options`, `rules` or `suggestions` — those by their `id` again, the same
+  way.
+- `previews` maps a file to its caption.
+- Anything left out stays English, so a language can grow bit by bit.
+- `fields` can't be translated: a custom field becomes the project's own,
+  with one name for everyone.
+
+Barynt checks them like the rest: an id, a text or an option the manifest
+doesn't have is refused with where it is (most likely a typo, which would
+otherwise just stay English), and each text keeps its limit (60 characters
+for a title or label, 300 for a description).
+
+What the plugin draws itself in its frame isn't in the manifest — translate
+that with the SDK's [`translator()`](plugins-sdk.md#translations).
+
 ## Capabilities
 
 | Capability | Shown as | What it allows |
@@ -163,6 +207,8 @@ capability, and each entry an `id` that's unique in its list.
 | `fields` | custom fields, up to 20 | `fields:write` | all |
 | `settings` | settings, up to 30 | — | all |
 | `credentials` | credentials, up to 10 | a host in `network` | sandbox |
+| `connections` | [connections](#connections), `{ id, title, provider }`, up to 3 | the provider's API host in `network` | sandbox |
+| `filters` | [filters](#filters) for the issues' filter menu, up to 10 | — | all |
 
 `icon` is an [Iconify](https://icon-sets.iconify.design) name like
 `lucide:clock`.
@@ -178,8 +224,10 @@ capability, and each entry an `id` that's unique in its list.
 | `issueBadges` | on the project's board cards and list rows (the list's "Fields" column); each can be hidden in **Display** | — |
 
 Each entry carries the plugin's mark, and its page names the plugin under
-the title, so it's always clear what comes from a plugin. `icon` isn't
-shown yet.
+the title, so it's always clear what comes from a plugin. An issue panel is
+the exception: it's headed like Barynt's own sections, with its `icon`
+(one Barynt bundles, like an action's; else a puzzle) and the plugin's name
+on hover.
 
 A widget is added like any other: **Add widget**, then the plugin's entry
 in the gallery, in the sizes S, M, L, T and XL. Its frame fills the widget
@@ -189,8 +237,14 @@ so instead of staying empty.
 An issue panel is a section of its own in the issue, after the attachments,
 headed by the panel's title and the plugin's name. People can fold it; only
 an open panel has a frame, and it stays folded for them. The frame grows to
-its content's height (up to 640 px, then it scrolls), so draw what you need
-and no more. See [`registerIssuePanel()`](plugins-sdk.md#registerissuepanel).
+its content's height, so draw what you need and no more: it never scrolls
+inside — the issue around it does. A panel that should stop growing and
+scroll inside instead sets `"maxHeight"` (px, 120–4000):
+
+```json
+"issuePanels": [{ "id": "log", "title": "Log", "maxHeight": 480 }]
+```
+ See [`registerIssuePanel()`](plugins-sdk.md#registerissuepanel).
 
 An issue panel can also live in the **sidebar**, next to the issue's
 properties, labels and custom fields — "Development" with a branch, a merge
@@ -232,7 +286,7 @@ hidden frame and shows what it answers as a toast.
 
 | Field | |
 | --- | --- |
-| `where` | `issueMenu`, `cardMenu`, `commandPalette` — every place by default |
+| `where` | `issueMenu`, `cardMenu`, `commandPalette` — every place by default; `[]`: in no menu, only started from the plugin's issue panel (`runAction`) |
 | `confirm` | up to 120 characters: Barynt asks this first, and runs the action only on yes |
 | `danger` | the question's button is red |
 | `icon` | one of the badge icons (`lucide:rocket`, `lucide:git-pull-request` …); any other shows the puzzle |
@@ -342,8 +396,11 @@ under **Plugins** — and the plugin reads them with
 | `type` | One of the types below. |
 | `label` | Up to 60 characters. |
 | `description` | Optional, up to 300 characters, shown under the field. |
+| `group` | Optional, up to 60 characters: the heading it's shown under. Settings in a row with the same `group` share one heading. |
+| `groupIcon` | Optional, with `group` only: an icon (`"set:name"`, e.g. `"lucide:git-branch"`) beside the group's heading. The first setting of the group that has one sets it. |
 | `default` | Optional: a string, number or boolean — for `select` an option's `id`, for `multiselect` a list of them. |
 | `options` | For `select` and `multiselect` only, and required there: `{ id, label }`, up to 50. |
+| `suggestions` | For `text` only: ready-made values, up to 10 — `{ id, value, label, hint? }`. Barynt shows them in a menu beside the field (**Suggestions**); picking one fills it in, and the field stays free to type. `hint` (up to 120 characters) is an example of what the value gives: the menu shows it, and while the field holds that value, Barynt shows it under the field as **Example:** instead of the description. |
 
 | Type | Barynt draws | The plugin gets |
 | --- | --- | --- |
@@ -357,11 +414,19 @@ under **Plugins** — and the plugin reads them with
 | `member` | a choice of the place's people — the project's members, or the workspace's | a user id |
 | `label` | a choice of the place's labels — the ones the project shows, or the workspace's own | a label id |
 | `status` | a choice of the workspace's statuses, in board order — in a project too | a status id |
+| `repositories` | the repositories the place's [connections](#connections) reach, to tick — or, without one, a field for `owner/name` per line | a list of `owner/name` (up to 50) |
+| `json` | nothing — the plugin's own [settings section](#its-own-settings-page) draws it and saves it with `api.settings.set` | an object, up to 32 KB as JSON; saving Barynt's form keeps it |
 
 Barynt checks what's saved against these types — a `member`, `label` or
 `status` against the people, labels and statuses of that place, when it's
 saved. Something
 left empty isn't stored, so the plugin falls back to its default.
+
+The settings search finds each field by its `label`, and a
+[credential](#credentials) by its own, wherever the plugin runs. A hit opens
+the plugin's page there and shows the field. A plugin that draws its whole
+page itself (`settingsPage: true`) is found by its name only. So a label
+should say what the setting is about in words people would search for.
 
 ### Its own settings page
 
@@ -421,7 +486,7 @@ to the plugin's requests to that host itself. **The plugin never sees it.**
 | `key` | Starts with a letter: letters, digits, `_`, up to 40 characters. |
 | `label` | Up to 60 characters, shown above the field. |
 | `description` | Optional, up to 300 characters. |
-| `level` | Who keeps it, and for whom it counts: `workspace` (a workspace manager, once for the workspace — the plugin needs the `workspace` level), `project` (a project admin, per project — needs `project`), or `user` (each person their own, in their personal settings). |
+| `level` | Who keeps it, and for whom it counts: `workspace` (a workspace manager, once for the workspace — the plugin needs the `workspace` level), `project` (a project admin, per project — needs `project`), or `user` (each person their own, on the plugin's **Personal** tab under **Plugins**). |
 | `host` | The host it's sent to. Must be in `network`. |
 | `header` | The header it goes in. `Authorization` by default; not `Cookie`, `Host`, `Content-Length` or `Transfer-Encoding`. |
 | `format` | How the value is written into the header, with `{value}` where it goes. `Bearer {value}` by default. |
@@ -429,6 +494,40 @@ to the plugin's requests to that host itself. **The plugin never sees it.**
 Every request to `host` gets the header. If a credential the host needs
 isn't kept, the request is refused with `credential_missing` — tell the
 person where to keep it (see [Host API](plugins-host-api.md#netfetch)).
+
+### Connections
+
+A connection links a workspace or project to an account at another service
+— so far **GitHub**, through the instance's own GitHub App (BARY-238).
+Instead of everyone keeping a token, a workspace or project admin clicks
+**Connect GitHub** in the plugin's settings, installs the app on an
+organization there (picking its repositories on GitHub) and is back. A
+workspace's connection counts in every project of it.
+
+```json
+"network": ["api.github.com"],
+"contributes": {
+  "connections": [{ "id": "github", "title": "GitHub", "provider": "github" }],
+  "settings": [{ "key": "repositories", "type": "repositories", "label": "Repositories" }]
+}
+```
+
+- A `repositories` setting lists what the place's connections reach; the
+  project ticks the ones it works with. It needs a connection.
+- A request to `api.github.com/repos/{owner}/{name}/…` of a **ticked**
+  repository goes with the token of the connection on that owner —
+  unless the person keeps a credential of their own for the host, which
+  wins. Anything else (another repository, `/user`, GraphQL) goes without
+  the connection's token: a person sees no more of GitHub through the plugin
+  than the place's admins picked.
+- GitHub's webhooks reach Barynt through the app itself. A `link` hook of
+  `provider: "github"` gets every call about a ticked repository, in each
+  project connected to its installation — nobody adds a webhook per
+  repository. A repository's own webhook to the hook's address still works.
+- The platform admin creates the app once, in the plugin's page under
+  **Admin → Plugins** (GitHub's manifest flow), or sets `GITHUB_APP_ID`,
+  `GITHUB_APP_SLUG`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`,
+  `GITHUB_APP_PRIVATE_KEY` and `GITHUB_APP_WEBHOOK_SECRET`.
 
 ### Custom fields
 
@@ -441,6 +540,51 @@ A plugin can bring custom fields its issues carry:
 `type` is one of `TEXT`, `NUMBER`, `DATE`, `SELECT`, `MULTI_SELECT`,
 `CHECKBOX`, `URL`, `USER`. `SELECT` and `MULTI_SELECT` need `options`
 (`{ id, label, color? }`, up to 50), the others must not have them.
+
+### Filters
+
+A plugin can add filters to the filter menu of boards and lists — next to
+status, labels and custom fields, in the advanced editor, in saved views and
+in the URL (`pl.<plugin>.<filter>=a,b`, `….not=` for "is not"). Barynt
+matches them itself against what the plugin keeps on issues (`issueData`,
+`handle: "link"`): no code runs, so they need no capability. A filter looks
+at the entries of one `kind` and has options, each with conditions on an
+entry's fields, the values of one field as its options — or both, its own
+first:
+
+```json
+"filters": [
+  { "id": "pr-status", "title": "Pull request status", "kind": "pull_request",
+    "options": [
+      { "id": "approved", "label": "Approved", "when": { "state": "open", "review": "approved" } },
+      { "id": "done", "label": "Done", "when": { "state": ["merged", "closed"] } },
+      { "id": "none", "label": "Without a pull request", "absent": true }
+    ] },
+  { "id": "action", "title": "GitHub Action", "kind": "checks", "values": { "field": "runs.name" } },
+  { "id": "branch", "title": "Branch", "kind": "branch",
+    "options": [{ "id": "none", "label": "Without a branch", "absent": true }],
+    "values": { "field": "name", "label": "{name} ({repo})", "when": { "deleted": false } } }
+]
+```
+
+- An option takes in the issues with an entry of that `kind` meeting every
+  condition in `when` (up to 5; a value or a list of them; `null` matches a
+  field that's missing). Without `when`, any entry of the kind.
+  `"absent": true` turns it round: the issues with no such entry.
+- `values: { field, label?, when? }` offers the values found at that field
+  (up to 50, sorted by name, numbers in order) — a path with dots walks
+  into objects and through lists. `label` names each one from its entry
+  (`"#{number} {title}"`, `{path}` filled in; the value itself without),
+  `when` takes only the entries meeting its conditions.
+- `"menu": "main"` puts it in the filter menu's rows, at most 3 per
+  plugin; without, it's only in the advanced editor (`"advanced"`). Either
+  way it works in saved views and the URL, and a set one shows as a chip.
+- A filter without an option to offer (no values found) doesn't show, nor
+  one made of values alone with only one (a project with one repository).
+  An option id a saved view still has but the filter dropped matches
+  nothing.
+- Titles and option labels translate under `locales.<lang>.contributes.filters`
+  (`{ "title": "…", "options": { "<id>": "…" } }`).
 
 ## Its server
 
@@ -597,19 +741,31 @@ issues showing the plugin ask it again on their own.
 | `create`, `delete` (branches), `push` deleting one | `branch`: `repo`, `name`, `url`, `deleted` | `branch:<owner>:<repo>:<hash>` |
 | `push` | `commit`: `repo`, `sha`, `message` (first line), `url`, `author`, `branch` — the last 20 | `commit:<owner>:<repo>:<sha12>` |
 | `check_run`, `check_suite` | `checks`: `repo`, `branch`, `sha`, `state` (`pending`/`success`/`failure`/`neutral`), `runs` (`name`, `state`, `url`) | `checks:<owner>:<repo>:<hash>` |
+| `deployment_status` | `deployment`: `repo`, `environment`, `production`, and of the latest deployment `id`, `state` (`pending`/`running`/`waiting`/`success`/`failure`/`cancelled`/`inactive`), `ref`, `sha`, `url` (the environment's, else the log), `logUrl`, `workflow`, `runId`, `creator`, plus `history` — the 10 before it, newest first, with the same fields | `deploy:<owner>:<repo>:<hash>` |
 
 Every entry has `at`, the time of the call. A review is kept on its pull
-request until another one decides; check runs gather by name until a new
-commit starts them over. `link` reads GitHub only so far — GitLab comes
+request until another one decides; a newer deployment to an environment
+puts the one before into its `history` (marked `inactive` once
+replaced); check runs gather by name until a new commit starts them over. `link` reads GitHub only so far — GitLab comes
 next.
 
 #### Rules
 
 A `link` hook can name rules — what Barynt may do with an issue when a pull
-request that works on it is opened or merged. Each project that switches
-the plugin on picks, per rule, the status to set (any of the workspace's),
-or leaves it off; Barynt sets it as the plugin's app and, with
-`comments:write`, comments why. Rules need `issues:write`.
+request that works on it takes a step, the checks on its branch fail, or
+it's deployed.
+Each project that switches the plugin on picks, per rule, the status to set
+(any of the workspace's), or leaves it off, and may limit the pull
+request's rules to target branches (`main, release/*`; none: all). The
+settings page shows them in a section each — _Pull requests_, _Checks &
+Actions_ and _Deployments_ — saved with its Save button. A deployment
+names the issue by its branch (a preview); for one of `main`, a GitHub
+connection's app finds the issues the shipped commits close — merges since
+the environment's deployment before, and pull requests Barynt keeps whose
+merge commit is among them. With a connection, a place can also have
+Barynt comment the issues on the pull request (`_prComment`). Barynt sets the status as the
+plugin's app and, with `comments:write`, comments why. Rules need
+`issues:write`.
 
 ```json
 "capabilities": ["issues:read", "issues:write", "comments:write", "webhooks:receive"],
@@ -622,10 +778,33 @@ or leaves it off; Barynt sets it as the plugin's app and, with
 }]
 ```
 
+**Workflows as deployments.** Not every project deploys to a GitHub
+environment — some ship an image or a release from a workflow. A `link`
+hook's `workflowDeployments` names one of the plugin's `json` settings; its
+`workflows` list (`{ workflow, environment, branch?, production? }`, set
+per place) says which workflows' runs (`workflow_run`) count as a deployment
+to `environment`: the entry then has `workflowFile`, the run's state, and
+the issues it ships — its branch's, and what the commits since the
+workflow's last successful run on that branch close.
+
+```json
+"settings": [{ "key": "deployments", "type": "json", "label": "Deployments" }],
+"inboundHooks": [{ "id": "github", "title": "GitHub", "provider": "github",
+                   "handle": "link", "workflowDeployments": "deployments" }]
+```
+
 | `on` | When |
 | --- | --- |
+| `pull_request.draft` | opened as a draft, or turned back into one |
 | `pull_request.opened` | opened (not as a draft), or a draft marked ready |
+| `pull_request.review_requested` | a review asked for |
+| `pull_request.approved` | a review approved it |
+| `pull_request.changes_requested` | a review asked for changes |
 | `pull_request.merged` | merged |
+| `pull_request.closed` | closed without merging |
+| `checks.failed` | a check on the branch failed — GitHub Actions or any other (the branch's name carries the key) |
+| `deployment.test` | deployed successfully to an environment GitHub doesn't mark as production (staging, a preview) |
+| `deployment.production` | deployed successfully to production |
 
 A rule moves an issue only when the pull request works on it: its key is
 in the branch's name, or follows *fixes*, *closes* or *resolves* in the
@@ -647,10 +826,15 @@ already in the status stays as it is.
 - `settingsPage` needs `settings`, and only a `sandbox` plugin has it.
 - A credential's `host` is in `network`, and a `workspace` or `project`
   credential matches one of the plugin's `levels`.
+- A connection's API host (`api.github.com`) is in `network`, one connection
+  per provider; a `repositories` setting needs a connection and has no
+  default.
 - Ids are unique within each list; `select` and `multiselect` settings and
   choice fields need options, other types must not have them; only a
   `multiselect`'s default is a list.
 - `maxBaryntVersion` isn't lower than `minBaryntVersion`.
+- [Translations](#translations) name only ids, texts and options the
+  manifest has, within their limits; `fields` aren't translated.
 - `service` isn't for a `declarative` plugin; its `url` is `https` on a host
   in `network` (or local `http`), each of its `events` once and with its
   capability.

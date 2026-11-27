@@ -23,7 +23,53 @@ export interface PullRequestEntry {
   author: string | null;
   additions: number | null;
   deletions: number | null;
+  /** The commit a merge made — what a deployment of the target branch
+   *  is matched against. */
+  mergeSha?: string | null;
   at: string;
+}
+
+/** One deployment to an environment — the latest, or one before it. */
+export interface DeploymentRun {
+  /** GitHub's id of it: its statuses update it, a newer one replaces it. */
+  id: number | null;
+  /** `pending` queued, `running` under way, `waiting` for someone to
+   *  approve it, `cancelled` stopped (a newer one took over), `inactive`
+   *  replaced by a newer one — no longer what runs there. */
+  state:
+    | "success"
+    | "failure"
+    | "pending"
+    | "running"
+    | "waiting"
+    | "cancelled"
+    | "inactive";
+  /** The branch or tag deployed, and its commit. */
+  ref: string | null;
+  sha: string | null;
+  /** The environment's address, else the run's. */
+  url: string | null;
+  /** Where its log is — the workflow run's page. */
+  logUrl: string | null;
+  /** The workflow that deployed it, and its run — to run it again. */
+  workflow: string | null;
+  runId: number | null;
+  /** Who started it. */
+  creator: string | null;
+  at: string;
+}
+
+export interface DeploymentEntry extends DeploymentRun {
+  kind: "deployment";
+  repo: string;
+  environment: string;
+  /** GitHub's mark for what people use — `production` by default. */
+  production: boolean;
+  /** A workflow's run counted as a deployment (no GitHub environment):
+   *  its file, `beta.yml`. */
+  workflowFile?: string;
+  /** The deployments before it, newest first — at most `MAX_DEPLOYMENTS`. */
+  history: DeploymentRun[];
 }
 
 export interface BranchEntry {
@@ -65,7 +111,8 @@ export type LinkEntry =
   | PullRequestEntry
   | BranchEntry
   | CommitEntry
-  | ChecksEntry;
+  | ChecksEntry
+  | DeploymentEntry;
 
 /** An entry, where it's kept, and the texts to look for issue keys in. */
 export interface LinkFinding {
@@ -73,7 +120,8 @@ export interface LinkFinding {
   key: string;
   entry: LinkEntry;
   texts: string[];
-  /** A pull request's: what a rule may react to (BARY-227). */
+  /** What a rule may react to (BARY-227): a pull request's step, or its
+   *  branch's checks failing. */
   trigger?: LinkTrigger;
   /** Where a key means the pull request works on the issue — its branch
    *  name, `Fixes WEB-42` — not just names it. */
@@ -83,6 +131,8 @@ export interface LinkFinding {
 /** Most commits one push files, and most check runs kept per branch. */
 export const MAX_COMMITS = 20;
 export const MAX_RUNS = 20;
+/** Most deployments kept per environment before the latest. */
+export const MAX_DEPLOYMENTS = 10;
 
 type Json = Record<string, unknown>;
 const obj = (v: unknown): Json =>
@@ -111,6 +161,8 @@ export const linkKey = {
     `commit:${repoKey(repo)}:${sha.slice(0, 12)}`,
   checks: (repo: string, branch: string) =>
     `checks:${repoKey(repo)}:${nameKey(branch)}`,
+  deployment: (repo: string, environment: string) =>
+    `deploy:${repoKey(repo)}:${nameKey(environment)}`,
 };
 
 /** GitHub's check conclusion or status, as one of four. */
@@ -157,11 +209,23 @@ function pullRequest(
   const title = str(pr.title) ?? "";
   const description = str(pr.body, 4000) ?? "";
   const trigger: LinkTrigger | undefined =
-    (action === "opened" && state === "open") || action === "ready_for_review"
-      ? "pull_request.opened"
-      : action === "closed" && state === "merged"
-        ? "pull_request.merged"
-        : undefined;
+    review === "approved"
+      ? "pull_request.approved"
+      : review === "changes_requested"
+        ? "pull_request.changes_requested"
+        : (action === "opened" || action === "converted_to_draft") &&
+            state === "draft"
+          ? "pull_request.draft"
+          : (action === "opened" && state === "open") ||
+              action === "ready_for_review"
+            ? "pull_request.opened"
+            : action === "review_requested" && state === "open"
+              ? "pull_request.review_requested"
+              : action === "closed" && state === "merged"
+                ? "pull_request.merged"
+                : action === "closed" && state === "closed"
+                  ? "pull_request.closed"
+                  : undefined;
   return {
     key: linkKey.pullRequest(repo, number),
     entry: {
@@ -177,6 +241,7 @@ function pullRequest(
       author: str(obj(pr.user).login),
       additions: num(pr.additions),
       deletions: num(pr.deletions),
+      mergeSha: state === "merged" ? str(pr.merge_commit_sha, 64) : null,
       at,
     },
     texts: [branch ?? "", title, description],
@@ -284,6 +349,18 @@ function github(event: string, body: Json, at: string): LinkFinding[] {
     ];
   }
 
+  if (event === "deployment_status") {
+    const found = deploymentFinding(
+      repo,
+      obj(body.deployment),
+      obj(body.deployment_status),
+      at,
+      undefined,
+      obj(body.workflow_run),
+    );
+    return found ? [found] : [];
+  }
+
   if (event === "check_run" || event === "check_suite") {
     const run = obj(body[event]);
     const suite = event === "check_run" ? obj(run.check_suite) : run;
@@ -312,11 +389,238 @@ function github(event: string, body: Json, at: string): LinkFinding[] {
           at,
         },
         texts: [branch, ...prBranches],
+        // A run that failed: the branch works on the issue its name has.
+        ...(state === "failure" && {
+          trigger: "checks.failed" as const,
+          closes: [branch, ...prBranches],
+        }),
       },
     ];
   }
 
   return [];
+}
+
+/**
+ * A deployment's state as an entry — kept on the issues `texts` name. By
+ * default the deployed branch's name (a preview of `ada/web-42-…`); for a
+ * deployment of `main` the host passes the keys of what it shipped. A
+ * successful one is what the deployment rules react to.
+ */
+export function deploymentFinding(
+  repo: string,
+  deployment: Json,
+  status: Json,
+  at: string,
+  texts?: string[],
+  run: Json = {},
+): LinkFinding | null {
+  const environment =
+    str(status.environment) ?? str(deployment.environment) ?? null;
+  if (!environment) return null;
+  const raw = str(status.state);
+  const state: DeploymentEntry["state"] =
+    raw === "success"
+      ? "success"
+      : raw === "failure" || raw === "error"
+        ? "failure"
+        : raw === "inactive"
+          ? "inactive"
+          : raw === "in_progress"
+            ? "running"
+            : raw === "waiting"
+              ? "waiting"
+              : "pending";
+  const production =
+    typeof deployment.production_environment === "boolean"
+      ? deployment.production_environment
+      : environment.toLowerCase() === "production";
+  const ref = str(deployment.ref, 300);
+  const look = texts ?? [ref ?? ""];
+  const logUrl =
+    str(status.log_url, 500) ??
+    str(status.target_url, 500) ??
+    str(run.html_url, 500);
+  return {
+    key: linkKey.deployment(repo, environment),
+    entry: {
+      kind: "deployment",
+      repo,
+      environment,
+      production,
+      id: num(deployment.id),
+      state,
+      ref,
+      sha: str(deployment.sha, 64),
+      url: str(status.environment_url, 500) ?? logUrl,
+      logUrl,
+      workflow: str(run.name, 120),
+      runId: num(run.id),
+      creator: str(obj(deployment.creator).login, 80),
+      at,
+      history: [],
+    },
+    texts: look,
+    ...(state === "success" && {
+      trigger: production ? "deployment.production" : "deployment.test",
+      closes: look,
+    }),
+  };
+}
+
+/** Where a workflow's run counts as a deployment (`workflowDeployments`). */
+export interface WorkflowDeployment {
+  /** Its file in `.github/workflows`, `beta.yml`. */
+  workflow: string;
+  /** The environment it counts as — named as the plugin shows it. */
+  environment: string;
+  /** Only runs on this branch — none: any. */
+  branch?: string;
+  production?: boolean;
+}
+
+/** The workflows a place counts as deployments, as its setting has them. */
+export function workflowDeployments(raw: unknown): WorkflowDeployment[] {
+  const list = obj(raw).workflows;
+  if (!Array.isArray(list)) return [];
+  return list.slice(0, 20).flatMap((w) => {
+    const o = obj(w);
+    const workflow = str(o.workflow, 200);
+    const environment = str(o.environment, 100);
+    if (!workflow || !environment) return [];
+    const branch = str(o.branch, 300);
+    return [
+      {
+        workflow,
+        environment,
+        ...(branch && { branch }),
+        production: o.production === true,
+      },
+    ];
+  });
+}
+
+/** Which of them a run is: by its file, and its branch if one is set. */
+export function matchWorkflow(
+  run: Json,
+  list: WorkflowDeployment[],
+): WorkflowDeployment | null {
+  const file = (str(run.path, 300) ?? "").split("/").pop() ?? "";
+  const branch = str(run.head_branch, 300);
+  return (
+    list.find(
+      (w) => w.workflow === file && (!w.branch || w.branch === branch),
+    ) ?? null
+  );
+}
+
+/** A workflow's run as a deployment to the environment it counts as. */
+export function workflowRunFinding(
+  repo: string,
+  run: Json,
+  as: WorkflowDeployment,
+  at: string,
+  texts?: string[],
+): LinkFinding {
+  const status = str(run.status);
+  const conclusion = str(run.conclusion);
+  const state: DeploymentEntry["state"] =
+    status !== "completed"
+      ? status === "in_progress"
+        ? "running"
+        : status === "waiting"
+          ? "waiting"
+          : "pending"
+      : conclusion === "success"
+        ? "success"
+        : conclusion === "cancelled" || conclusion === "skipped"
+          ? "cancelled"
+          : conclusion === "action_required"
+            ? "waiting"
+            : "failure";
+  const production = as.production === true;
+  const branch = str(run.head_branch, 300);
+  const look = texts ?? [branch ?? ""];
+  const logUrl = str(run.html_url, 500);
+  return {
+    key: linkKey.deployment(repo, as.environment),
+    entry: {
+      kind: "deployment",
+      repo,
+      environment: as.environment,
+      production,
+      workflowFile: as.workflow,
+      id: num(run.id),
+      state,
+      ref: branch,
+      sha: str(run.head_sha, 64),
+      url: logUrl,
+      logUrl,
+      workflow: str(run.name, 120),
+      runId: num(run.id),
+      creator: str(obj(run.actor).login, 80),
+      at,
+      history: [],
+    },
+    texts: look,
+    ...(state === "success" && {
+      trigger: production ? "deployment.production" : "deployment.test",
+      closes: look,
+    }),
+  };
+}
+
+/** A deployment's own fields, without where it went or its history. */
+function runOf(entry: Json): DeploymentRun {
+  const e = entry as unknown as DeploymentRun;
+  return {
+    id: e.id ?? null,
+    state: e.state,
+    ref: e.ref ?? null,
+    sha: e.sha ?? null,
+    url: e.url ?? null,
+    logUrl: e.logUrl ?? null,
+    workflow: e.workflow ?? null,
+    runId: e.runId ?? null,
+    creator: e.creator ?? null,
+    at: e.at,
+  };
+}
+
+/**
+ * A deployment's status, given what's kept for its environment: the same
+ * deployment updates it; a newer one puts the kept one in its history; an
+ * older one's (GitHub marking it inactive) updates it there.
+ */
+function mergeDeployment(
+  old: Json,
+  incoming: DeploymentEntry,
+): DeploymentEntry {
+  const history = (
+    Array.isArray(old.history) ? old.history : []
+  ) as DeploymentRun[];
+  const keptId = num(old.id);
+  // Same one — or kept before ids were: it goes on.
+  if (incoming.id === null || keptId === incoming.id)
+    return { ...incoming, history };
+  if (keptId !== null && incoming.id < keptId) {
+    const run = runOf(incoming as unknown as Json);
+    return {
+      ...(old as unknown as DeploymentEntry),
+      history: history.map((h) =>
+        h.id === incoming.id ? { ...h, ...run, at: h.at } : h,
+      ),
+    };
+  }
+  // A newer one: the kept one, no longer running there, is history.
+  const was = runOf(old);
+  return {
+    ...incoming,
+    history: [
+      { ...was, state: was.state === "success" ? "inactive" : was.state },
+      ...history.filter((h) => h.id === null || h.id !== was.id),
+    ].slice(0, MAX_DEPLOYMENTS),
+  };
 }
 
 /** What a call is about — nothing for an event this doesn't read, or a
@@ -346,6 +650,7 @@ export function mergeEntry(existing: unknown, incoming: LinkEntry): LinkEntry {
       review: incoming.review ?? was.review ?? null,
       additions: incoming.additions ?? was.additions ?? null,
       deletions: incoming.deletions ?? was.deletions ?? null,
+      mergeSha: incoming.mergeSha ?? was.mergeSha ?? null,
     };
   }
   if (incoming.kind === "checks") {
@@ -357,6 +662,7 @@ export function mergeEntry(existing: unknown, incoming: LinkEntry): LinkEntry {
     ].slice(-MAX_RUNS);
     return { ...incoming, runs, state: overallState(runs) };
   }
+  if (incoming.kind === "deployment") return mergeDeployment(old, incoming);
   if (incoming.kind === "branch" && !incoming.deleted) {
     const was = old as unknown as BranchEntry;
     return { ...incoming, url: incoming.url ?? was.url ?? null };

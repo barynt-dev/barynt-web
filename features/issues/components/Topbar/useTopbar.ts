@@ -8,6 +8,8 @@ import {
   type IssueFilter,
   isCustomFilterField,
   isGroup,
+  isPluginFilterField,
+  type PluginFilterField,
 } from "@/features/issues/filter";
 import { hasChoiceList } from "@/features/issues/filter-custom";
 import {
@@ -33,6 +35,7 @@ import {
 } from "@/features/views/url";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import type { FieldDefinition } from "@/lib/custom-fields";
+import type { PluginFilterFacet } from "@/lib/plugins/filters";
 import { usePreferences } from "@/lib/preferences/PreferencesContext";
 import type { Label, Priority, Project, User } from "@/types";
 import {
@@ -67,7 +70,8 @@ export function filterStateOf(tree: IssueFilter): FilterState {
     dueDate: dueBuckets(tree),
     custom: Object.fromEntries(
       tree.rules.flatMap((node) =>
-        !isGroup(node) && isCustomFilterField(node.field)
+        !isGroup(node) &&
+        (isCustomFilterField(node.field) || isPluginFilterField(node.field))
           ? [[node.field, chipState(tree, node.field).values as string[]]]
           : [],
       ),
@@ -80,7 +84,9 @@ export function chipValues(
   filters: FilterState,
   key: FilterKey,
 ): (string | number)[] {
-  return isCustomFilterField(key) ? (filters.custom[key] ?? []) : filters[key];
+  return isCustomFilterField(key) || isPluginFilterField(key)
+    ? (filters.custom[key] ?? [])
+    : filters[key];
 }
 
 /**
@@ -106,8 +112,9 @@ export interface FilterState {
   storyPoints: number[];
   /** Due-date buckets: `overdue`, `today`, `week`, `none` (BARY-4). */
   dueDate: string[];
-  /** Custom fields' chips, by `cf:<fieldId>` (BARY-196). */
-  custom: Partial<Record<CustomFilterField, string[]>>;
+  /** Custom fields' chips, by `cf:<fieldId>` (BARY-196) — and the
+   *  plugins' filters', by `pl:<plugin>:<filter>` (BARY-238). */
+  custom: Partial<Record<CustomFilterField | PluginFilterField, string[]>>;
 }
 
 /** Keystrokes are cheap, navigations are not — wait for a pause before pushing. */
@@ -126,6 +133,8 @@ export interface UseTopbarArgs {
   labels: Label[];
   /** The custom fields that apply here (BARY-196). */
   customFields?: FieldDefinition[];
+  /** The plugins' filters that apply here (BARY-238). */
+  pluginFilters?: PluginFilterFacet[];
   /**
    * On a saved view's page (BARY-164): the layout comes from `?layout=` and
    * the board/list switch writes it there instead of changing the path, and a
@@ -141,6 +150,7 @@ export function useTopbar({
   members,
   labels,
   customFields = [],
+  pluginFilters = [],
   viewMode = false,
 }: UseTopbarArgs) {
   const router = useRouter();
@@ -221,6 +231,7 @@ export function useTopbar({
         .filter(hasChoiceList)
         .map((f) => [customFilterField(f.id), isNot(customFilterField(f.id))]),
     ),
+    ...Object.fromEntries(pluginFilters.map((f) => [f.field, isNot(f.field)])),
   };
 
   // The typed text belongs to the search box alone (see IssueSearch): it renders

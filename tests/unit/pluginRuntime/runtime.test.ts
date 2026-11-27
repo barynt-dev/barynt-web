@@ -41,6 +41,8 @@ const db = {
   project: { findUnique: mock(), findFirst: mock() },
 };
 mock.module("@/lib/db", () => ({ db }));
+// The slots read the manifest in the person's language.
+mock.module("next-intl/server", () => ({ getLocale: async () => "en" }));
 const can = mock(async (_u?: string, _permission?: string) => true);
 const canEnterWorkspace = mock(async () => true);
 const currentUserCanEnterWorkspace = mock(async () => true);
@@ -366,6 +368,35 @@ describe("callBridge (BARY-145)", () => {
     expect(
       await callBridge("u1", place, "storage.set", { key: "new", value: 1 }),
     ).toEqual({ ok: false, error: "storage_full" });
+  });
+
+  it("keeps a person's own entries under them, out of everyone else's reach (BARY-238)", async () => {
+    confirm("storage:own");
+    db.pluginStorage.aggregate.mockResolvedValue({
+      _sum: { size: 0 },
+      _count: 0,
+    });
+    db.pluginStorage.findUnique.mockResolvedValue(null);
+    await callBridge("u1", place, "storage.set", {
+      key: "fold",
+      value: false,
+      personal: true,
+    });
+    expect(db.pluginStorage.upsert.mock.calls.at(-1)?.[0]).toMatchObject({
+      create: { key: "@u1:fold" },
+    });
+    // Nobody reaches someone's with a plain key.
+    expect(
+      await callBridge("u2", place, "storage.get", { key: "@u1:fold" }),
+    ).toEqual({ ok: false, error: "invalid_params" });
+    // Their list holds theirs, without the prefix; the place's, none.
+    db.pluginStorage.findMany.mockResolvedValue([{ key: "@u1:fold" }]);
+    expect(
+      await callBridge("u1", place, "storage.list", { personal: true }),
+    ).toEqual({ ok: true, result: ["fold"] });
+    expect(db.pluginStorage.findMany.mock.calls.at(-1)?.[0]).toMatchObject({
+      where: { key: { startsWith: "@u1:" } },
+    });
   });
 
   it("gives a plugin its own settings, defaults filled in", async () => {
@@ -911,6 +942,10 @@ describe("issue panels (BARY-150)", () => {
         panelId: "schedule",
         title: "Schedule",
         placement: "main",
+        // No icon of its own: a puzzle.
+        icon: "lucide:puzzle",
+        // No limit of its own: as tall as its content.
+        maxHeight: null,
       },
     ]);
     expect(db.pluginActivation.findMany.mock.calls.at(-1)?.[0]).toMatchObject({

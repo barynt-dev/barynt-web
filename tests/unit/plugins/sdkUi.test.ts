@@ -2,14 +2,23 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import {
   barChart,
   button,
+  card,
   kpi,
+  link,
   list,
+  logView,
+  notice,
+  parseAnsi,
+  pipeline,
   progressRing,
   select,
+  stageBar,
   status,
+  text,
   textArea,
   textField,
   toggle,
+  userNote,
 } from "@barynt/plugin-sdk/ui";
 import { Window } from "happy-dom";
 
@@ -134,6 +143,224 @@ describe("the UI kit", () => {
     expect(line.el.dataset.tone).toBe("success");
     line.clear();
     expect(line.el.textContent).toBe("");
+  });
+
+  it("reads a terminal's colours (BARY-238)", () => {
+    expect(parseAnsi("\u001b[1;31mError\u001b[0m: boom")).toEqual([
+      { text: "Error", color: "red", bold: true },
+      { text: ": boom" },
+    ]);
+    expect(parseAnsi("\u001b[92mok\u001b[39m done")).toEqual([
+      { text: "ok", color: "green" },
+      { text: " done" },
+    ]);
+    expect(parseAnsi("plain")).toEqual([{ text: "plain" }]);
+  });
+
+  it("draws a log folded by its parts, an error's part open, to search (BARY-238)", () => {
+    const node = logView({
+      fold: true,
+      tools: true,
+      lines: [
+        { text: "Set up", heading: true, time: "10:00:00" },
+        { text: "fine" },
+        { text: "Run tests", heading: true },
+        {
+          text: "boom",
+          tone: "danger",
+          parts: [{ text: "boom", color: "red" }],
+        },
+      ],
+    });
+    const groups = [...node.querySelectorAll("details")] as unknown as {
+      open: boolean;
+    }[];
+    expect(groups.map((g) => g.open)).toEqual([false, true]);
+    expect(node.querySelector('[data-color="red"]')?.textContent).toBe("boom");
+    const search = node.querySelector("input") as HTMLInputElement;
+    search.value = "fine";
+    search.dispatchEvent(new window.Event("input") as unknown as Event);
+    expect(node.querySelectorAll("[data-hit]")).toHaveLength(1);
+    // Found inside a folded part: opened.
+    expect(groups[0].open).toBe(true);
+  });
+
+  it("draws a log by its steps — the failed one open, each from line 1 (BARY-238)", () => {
+    const node = logView({
+      tools: true,
+      sections: [
+        { title: "Set up job", state: "success", lines: [{ text: "runner" }] },
+        {
+          title: "Run tests",
+          state: "danger",
+          meta: "4s",
+          lines: [{ text: "start" }, { text: "boom", tone: "danger" }],
+        },
+        { title: "Deploy", state: "pending", lines: [] },
+      ],
+    });
+    const steps = [
+      ...node.querySelectorAll("details.bui-logstep"),
+    ] as unknown as {
+      open: boolean;
+      dataset: DOMStringMap;
+      querySelectorAll(s: string): NodeListOf<Element>;
+    }[];
+    expect(steps.map((x) => x.open)).toEqual([false, true, false]);
+    // A step that didn't run has nothing to open.
+    expect(steps[2].dataset.empty).toBe("");
+    expect(
+      [...steps[1].querySelectorAll(".bui-log-no")].map((n) => n.textContent),
+    ).toEqual(["1", "2"]);
+    // A closed step isn't drawn until it's opened — or a search finds it.
+    expect(steps[0].querySelectorAll(".bui-log-line")).toHaveLength(0);
+    const search = node.querySelector("input") as HTMLInputElement;
+    search.value = "runner";
+    search.dispatchEvent(new window.Event("input") as unknown as Event);
+    expect(steps[0].open).toBe(true);
+    expect(node.querySelectorAll("[data-hit]")).toHaveLength(1);
+  });
+
+  it("opens a whole card on a click — not when its own button is pressed (BARY-238)", () => {
+    let opened = 0;
+    let pressed = 0;
+    const node = card({
+      title: "#8",
+      onClick: () => {
+        opened++;
+      },
+      actions: [
+        button({
+          label: "GitHub",
+          onClick: () => {
+            pressed++;
+          },
+        }),
+      ],
+      children: [notice({ text: "Checks running" })],
+    });
+    (node.querySelector(".bui-notice") as HTMLElement).click();
+    expect(opened).toBe(1);
+    (node.querySelector("button") as HTMLButtonElement).click();
+    expect([opened, pressed]).toEqual([1, 1]);
+    expect(node.dataset.clickable).toBe("");
+  });
+
+  it("puts a link that acts into a sentence (BARY-238)", () => {
+    let opened = 0;
+    const node = text({
+      text: [
+        "Some are hidden — ",
+        link({ text: "change it", onClick: () => opened++ }),
+        ".",
+      ],
+    });
+    expect(node.textContent).toBe("Some are hidden — change it.");
+    const a = node.querySelector("button.bui-link") as HTMLButtonElement;
+    expect(a.type).toBe("button");
+    a.click();
+    expect(opened).toBe(1);
+    // An address still makes a link out, in a new tab.
+    const out = link({ text: "GitHub", href: "https://github.com" });
+    expect([out.tagName, out.getAttribute("target")]).toEqual(["A", "_blank"]);
+  });
+
+  it("draws a pipeline's stops — a button, a link, one not reached (BARY-238)", () => {
+    const opened: string[] = [];
+    const node = pipeline({
+      label: "Deployments",
+      stations: [
+        {
+          label: "staging",
+          state: "success",
+          status: "Ready",
+          meta: "2 h ago",
+          onClick: () => opened.push("staging"),
+          link: { href: "https://staging.acme.dev", label: "Open app" },
+          selected: true,
+        },
+        { label: "production", state: "pending", status: "Not yet" },
+        {
+          label: "x",
+          state: "danger",
+          link: { href: "javascript:alert(1)", label: "x" },
+        },
+      ],
+    });
+    const stops = [...node.querySelectorAll("li")];
+    expect(stops.map((s) => s.dataset.state)).toEqual([
+      "success",
+      "pending",
+      "danger",
+    ]);
+    expect(stops[0].dataset.selected).toBe("");
+    (stops[0].querySelector("button") as HTMLButtonElement).click();
+    expect(opened).toEqual(["staging"]);
+    expect(stops[0].querySelector("a")?.getAttribute("aria-label")).toBe(
+      "Open app",
+    );
+    // Without a click it's no button; an unsafe link isn't drawn.
+    expect(stops[1].querySelector("button")).toBeNull();
+    expect(stops[2].querySelector("a")).toBeNull();
+    expect(node.getAttribute("aria-label")).toBe("Deployments");
+  });
+
+  it("draws stations, a one-line notice and a card's folding foot (BARY-238)", () => {
+    const bar = stageBar({
+      stages: [
+        { label: "Checks", state: "danger" },
+        { label: "Merge", state: "pending" },
+      ],
+    });
+    expect(
+      [...bar.querySelectorAll("li")].map((li) => li.dataset.state),
+    ).toEqual(["danger", "pending"]);
+    expect(notice({ text: "x", compact: true }).dataset.compact).toBe("");
+    const seen: boolean[] = [];
+    const node = card({
+      title: "#5",
+      more: { label: "Details", content: [], onToggle: (o) => seen.push(o) },
+    });
+    const foot = node.querySelector("details.bui-card-more") as unknown as {
+      open: boolean;
+      dispatchEvent: (e: unknown) => void;
+    };
+    expect(foot.open).toBe(false);
+    foot.open = true;
+    foot.dispatchEvent(new window.Event("toggle"));
+    expect(seen.at(-1)).toBe(true);
+  });
+
+  it("shows what someone said on one line, all of it on a click (BARY-238)", () => {
+    const node = userNote({
+      name: "Barynt-App",
+      tag: "Bot",
+      status: { text: "Approved", tone: "success" },
+      text: "Looks good",
+    });
+    expect(node.querySelector(".bui-note-tag")?.textContent).toBe("Bot");
+    expect(node.querySelector(".bui-badge")?.textContent).toContain("Approved");
+    const line = node.querySelector("button.bui-note-text") as unknown as {
+      click: () => void;
+      getAttribute: (n: string) => string | null;
+    };
+    expect(line.getAttribute("aria-expanded")).toBe("false");
+    line.click();
+    expect(line.getAttribute("aria-expanded")).toBe("true");
+    expect(userNote({ name: "ada" }).querySelector("button")).toBeNull();
+  });
+
+  it("puts a list row's lead before its title (BARY-238)", () => {
+    const lead = document.createElement("code") as unknown as HTMLElement;
+    lead.textContent = "652231c";
+    const row = list({
+      items: [
+        { title: "Fix it", href: "https://github.com/a/b", lead: [lead] },
+      ],
+    }).querySelector("li");
+    const parts = [...(row?.children ?? [])].map((c) => c.className);
+    expect(parts).toEqual(["bui-list-lead", "bui-list-title"]);
+    expect(row?.querySelector(".bui-list-lead")?.textContent).toBe("652231c");
   });
 
   it("draws a number, a list, bars and a ring", () => {

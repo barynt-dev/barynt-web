@@ -1,0 +1,20 @@
+@use "breakpoints" as bp;
+
+/* A plugin's personal level: your credentials, as wide and as placed as
+   its other levels' pages (`pluginSettings.module.scss`). */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-gap);
+  --page-max: 64rem;
+  padding: 1.25rem max(1.5rem, calc((100% - var(--page-max)) / 2)) 3rem;
+  overflow-y: auto;
+
+  & > * {
+    flex: none;
+  }
+
+  @include bp.phone {
+    padding: 1rem;
+  }
+}

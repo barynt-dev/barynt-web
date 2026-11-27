@@ -94,6 +94,11 @@ export function useModal() {
   return ctx;
 }
 
+/** `useModal`, or `null` outside a provider — a test, say. */
+export function useOptionalModal() {
+  return useContext(Ctx);
+}
+
 /**
  * Whether a modal is currently open.
  *

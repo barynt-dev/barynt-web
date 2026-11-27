@@ -185,6 +185,12 @@
 /* The rows bring their own look (`components/ui/layout/NavLink`) — this
    file only holds how they're stacked. */
 /* A group after the main list: its own heading, a little air above. */
+/* Rows without a heading: as far below the nav's head as a heading
+   would sit. */
+.untitled {
+  margin-top: 1rem;
+}
+
 .group {
   margin-top: 1.25rem;
 }

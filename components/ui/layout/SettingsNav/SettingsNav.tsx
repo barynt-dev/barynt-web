@@ -12,6 +12,9 @@ export type { SettingsNavSubject };
 
 export interface SettingsNavItem {
   href: string;
+  /** Marks it active beyond its own address — `…/github/*` for a page
+   *  with pages under it. */
+  activeHref?: string;
   label: string;
   icon: string;
   /** A mark of its own in place of `icon` — a plugin's tile, say. */
@@ -59,6 +62,11 @@ interface Props {
    *  plugins switched on here that have settings, say. Empty ones aren't
    *  passed. */
   groups?: SettingsNavSection[];
+  /** Below the sections — a link out of the nav, say. */
+  footer?: ReactNode;
+  /** The rows without a heading over them — a nav of one kind of thing.
+   *  `title` still names the nav for screen readers. */
+  untitled?: boolean;
 }
 
 /**
@@ -88,6 +96,8 @@ export function SettingsNav({
   title,
   items,
   groups = [],
+  footer,
+  untitled = false,
 }: Props) {
   // The header only becomes a switcher when there's something to switch
   // between: one's own account has no siblings, and a single project isn't
@@ -120,8 +130,9 @@ export function SettingsNav({
         </div>
       )}
       <SettingsNavSections
-        sections={[...sectionsOf(items, title), ...groups]}
+        sections={[...sectionsOf(items, untitled ? "" : title), ...groups]}
       />
+      {footer}
     </nav>
   );
 }

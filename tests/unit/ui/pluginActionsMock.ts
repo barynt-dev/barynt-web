@@ -23,7 +23,7 @@ export const pluginActionsMock = () => ({
   setPluginGrant: mock(),
   setPluginServiceAddress: mock(async () => ({ ok: true })),
   setActivationServiceAddress: mock(async () => ({ ok: true })),
-  setInboundRule: mock(async () => ({ ok: true })),
+  saveInboundRules: mock(async () => ({ ok: true })),
   testPluginService: mock(async () => ({ ok: true })),
   uninstallPlugin: mock(),
   updatePluginSource: mock(),

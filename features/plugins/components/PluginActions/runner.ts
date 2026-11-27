@@ -10,6 +10,10 @@ export interface ActionJob {
   issueId: string | null;
   workspaceId: string;
   projectId: string;
+  /** What was picked, when the action asked first (`pick`). */
+  choice?: string;
+  /** What was filled in, when the action asked first (`form`). */
+  values?: Record<string, string>;
 }
 
 let jobs: ActionJob[] = [];

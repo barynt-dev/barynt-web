@@ -1,12 +1,19 @@
 import { describe, expect, it } from "bun:test";
 import {
+  type DeploymentEntry,
+  deploymentFinding,
   findIssueRefs,
+  type LinkEntry,
   linkKey,
+  MAX_DEPLOYMENTS,
+  matchWorkflow,
   mergeEntry,
   type PullRequestEntry,
   readLinkFindings,
+  workflowDeployments,
+  workflowRunFinding,
 } from "@/lib/plugins/link";
-import { closingMentions } from "@/lib/plugins/link-rules";
+import { baseMatches, closingMentions } from "@/lib/plugins/link-rules";
 
 // What Barynt reads of GitHub's webhooks (BARY-226) — payloads cut down
 // from GitHub's own examples to what's read.
@@ -52,6 +59,7 @@ describe("reading GitHub's events", () => {
       author: "ada",
       additions: 120,
       deletions: 34,
+      mergeSha: null,
       at: at.toISOString(),
     });
     expect(found.texts).toContain("ada/web-42-oauth-callback");
@@ -213,17 +221,248 @@ describe("keeping an entry", () => {
 });
 
 describe("what a pull request works on (BARY-227)", () => {
-  it("knows when it's opened, ready, or merged", () => {
+  it("knows each step of its way (BARY-238)", () => {
     const trigger = (action: string, over: Record<string, unknown> = {}) =>
       read("pull_request", { action, pull_request: pr(over) })[0].trigger;
+    expect(trigger("opened", { draft: true })).toBe("pull_request.draft");
+    expect(trigger("converted_to_draft", { draft: true })).toBe(
+      "pull_request.draft",
+    );
     expect(trigger("opened")).toBe("pull_request.opened");
-    expect(trigger("opened", { draft: true })).toBeUndefined();
     expect(trigger("ready_for_review")).toBe("pull_request.opened");
+    expect(trigger("review_requested")).toBe("pull_request.review_requested");
+    expect(trigger("review_requested", { draft: true })).toBeUndefined();
     expect(trigger("closed", { state: "closed", merged: true })).toBe(
       "pull_request.merged",
     );
-    expect(trigger("closed", { state: "closed" })).toBeUndefined();
+    expect(trigger("closed", { state: "closed" })).toBe("pull_request.closed");
     expect(trigger("synchronize")).toBeUndefined();
+  });
+
+  it("knows a review that decides", () => {
+    const trigger = (state: string) =>
+      read("pull_request_review", {
+        action: "submitted",
+        review: { state },
+        pull_request: pr(),
+      })[0]?.trigger;
+    expect(trigger("APPROVED")).toBe("pull_request.approved");
+    expect(trigger("CHANGES_REQUESTED")).toBe("pull_request.changes_requested");
+    expect(trigger("COMMENTED")).toBeUndefined();
+  });
+
+  it("knows checks that failed on the branch, and what it works on", () => {
+    const run = (conclusion: string | null) =>
+      read("check_run", {
+        check_run: {
+          name: "test",
+          status: conclusion ? "completed" : "in_progress",
+          conclusion,
+          head_sha: "abc",
+          check_suite: { head_branch: "ada/web-42-oauth-callback" },
+          pull_requests: [],
+        },
+      })[0];
+    const failed = run("failure");
+    expect(failed.trigger).toBe("checks.failed");
+    expect(findIssueRefs(failed.closes ?? [], ["WEB"])).toEqual([
+      { prefix: "WEB", key: 42 },
+    ]);
+    expect(run("success").trigger).toBeUndefined();
+    expect(run(null).trigger).toBeUndefined();
+  });
+
+  it("keeps the commit a merge made", () => {
+    const [found] = read("pull_request", {
+      action: "closed",
+      pull_request: pr({
+        state: "closed",
+        merged: true,
+        merge_commit_sha: "m1",
+      }),
+    });
+    expect(found.entry).toMatchObject({ mergeSha: "m1" });
+  });
+
+  it("reads a deployment, and what a rule reacts to", () => {
+    const deploy = (state: string, over: Record<string, unknown> = {}) =>
+      read("deployment_status", {
+        deployment: {
+          id: 7,
+          ref: "ada/web-42-oauth-callback",
+          sha: "abc",
+          environment: "preview",
+          production_environment: false,
+          ...over,
+        },
+        deployment_status: {
+          state,
+          environment_url: "https://web-42.preview.acme.dev",
+        },
+      })[0];
+    const preview = deploy("success");
+    expect(preview.entry).toMatchObject({
+      kind: "deployment",
+      environment: "preview",
+      production: false,
+      state: "success",
+      url: "https://web-42.preview.acme.dev",
+    });
+    expect(preview.trigger).toBe("deployment.test");
+    expect(findIssueRefs(preview.closes ?? [], ["WEB"])).toEqual([
+      { prefix: "WEB", key: 42 },
+    ]);
+    expect(
+      deploy("success", {
+        environment: "production",
+        production_environment: undefined,
+      }).trigger,
+    ).toBe("deployment.production");
+    expect(deploy("in_progress").trigger).toBeUndefined();
+    expect(deploy("failure").entry).toMatchObject({ state: "failure" });
+  });
+
+  it("keeps an environment's deployments before the latest", () => {
+    const status = (id: number, state: string, sha = `s${id}`) =>
+      deploymentFinding(
+        "acme/web",
+        {
+          id,
+          ref: "main",
+          sha,
+          environment: "staging",
+          creator: { login: "ada" },
+        },
+        { state, log_url: `https://github.com/acme/web/actions/runs/${id}` },
+        at.toISOString(),
+        ["WEB-1"],
+        { id: 900 + id, name: "Deploy" },
+      )?.entry as LinkEntry;
+    let kept = mergeEntry(undefined, status(1, "in_progress"));
+    kept = mergeEntry(kept, status(1, "success"));
+    expect(kept).toMatchObject({
+      id: 1,
+      state: "success",
+      workflow: "Deploy",
+      runId: 901,
+      creator: "ada",
+      logUrl: "https://github.com/acme/web/actions/runs/1",
+      history: [],
+    });
+    // A newer one: the one before is history, no longer what runs there.
+    kept = mergeEntry(kept, status(2, "failure"));
+    expect(kept).toMatchObject({ id: 2, state: "failure" });
+    expect((kept as { history: unknown[] }).history).toMatchObject([
+      { id: 1, sha: "s1", state: "inactive" },
+    ]);
+    // GitHub marking an older one inactive changes it in the history only.
+    kept = mergeEntry(kept, status(3, "success"));
+    kept = mergeEntry(kept, status(2, "inactive"));
+    expect(kept).toMatchObject({ id: 3, state: "success" });
+    expect((kept as { history: unknown[] }).history).toMatchObject([
+      { id: 2, state: "inactive" },
+      { id: 1, state: "inactive" },
+    ]);
+    for (let id = 4; id < 20; id++)
+      kept = mergeEntry(kept, status(id, "success"));
+    expect((kept as { history: unknown[] }).history).toHaveLength(
+      MAX_DEPLOYMENTS,
+    );
+  });
+
+  it("keeps a deployment's state apart: queued, running, waiting", () => {
+    const state = (raw: string) =>
+      deploymentFinding(
+        "acme/web",
+        { id: 1, environment: "production", ref: "main" },
+        { state: raw },
+        at.toISOString(),
+      )?.entry as DeploymentEntry | undefined;
+    expect(
+      ["queued", "pending", "in_progress", "waiting", "error"].map(
+        (raw) => state(raw)?.state,
+      ),
+    ).toEqual(["pending", "pending", "running", "waiting", "failure"]);
+  });
+
+  it("counts a workflow's run as a deployment where the place says so", () => {
+    const list = workflowDeployments({
+      workflows: [
+        { workflow: "beta.yml", environment: "beta", branch: "main" },
+        { workflow: "release.yml", environment: "release", production: true },
+        { workflow: "", environment: "x" },
+      ],
+    });
+    expect(list).toHaveLength(2);
+    const run = (over: Record<string, unknown>) => ({
+      id: 9,
+      name: "Beta image",
+      path: ".github/workflows/beta.yml",
+      head_branch: "main",
+      head_sha: "abc",
+      status: "completed",
+      conclusion: "success",
+      html_url: "https://github.com/acme/web/actions/runs/9",
+      actor: { login: "ada" },
+      ...over,
+    });
+    expect(matchWorkflow(run({}), list)?.environment).toBe("beta");
+    // Not on its branch, or another workflow: none.
+    expect(matchWorkflow(run({ head_branch: "dev" }), list)).toBeNull();
+    expect(
+      matchWorkflow(run({ path: ".github/workflows/tests.yml" }), list),
+    ).toBeNull();
+
+    const found = workflowRunFinding(
+      "acme/web",
+      run({}),
+      list[0],
+      at.toISOString(),
+      ["WEB-7"],
+    );
+    expect(found.entry).toMatchObject({
+      kind: "deployment",
+      environment: "beta",
+      workflowFile: "beta.yml",
+      state: "success",
+      runId: 9,
+      creator: "ada",
+      production: false,
+    });
+    expect(found.trigger).toBe("deployment.test");
+    const state = (over: Record<string, unknown>) =>
+      (
+        workflowRunFinding("acme/web", run(over), list[0], "x")
+          .entry as DeploymentEntry
+      ).state;
+    expect(state({ status: "in_progress", conclusion: null })).toBe("running");
+    expect(state({ status: "waiting", conclusion: null })).toBe("waiting");
+    expect(state({ conclusion: "cancelled" })).toBe("cancelled");
+    expect(state({ conclusion: "failure" })).toBe("failure");
+  });
+
+  it("takes the keys a deployment of main shipped from the host", () => {
+    const found = deploymentFinding(
+      "acme/web",
+      { ref: "main", environment: "production", production_environment: true },
+      { state: "success" },
+      at.toISOString(),
+      ["Merge pull request #42 from ada/web-42-oauth", "WEB-7"],
+    );
+    expect(found?.trigger).toBe("deployment.production");
+    expect(findIssueRefs(found?.closes ?? [], ["WEB"])).toEqual([
+      { prefix: "WEB", key: 42 },
+      { prefix: "WEB", key: 7 },
+    ]);
+  });
+
+  it("counts a target branch by the place's list", () => {
+    expect(baseMatches("develop", [])).toBe(true);
+    expect(baseMatches("main", ["main"])).toBe(true);
+    expect(baseMatches("develop", ["main"])).toBe(false);
+    expect(baseMatches("release/2.1", ["main", "release/*"])).toBe(true);
+    expect(baseMatches("release", ["release/*"])).toBe(false);
+    expect(baseMatches(null, ["main"])).toBe(false);
   });
 
   it("names what it closes: the branch, and what follows fixes/closes/resolves", () => {

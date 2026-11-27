@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
 import { useRef } from "react";
 import { Badge } from "@/components/ui/atoms/Badge/Badge";
+import { Button } from "@/components/ui/atoms/Button/Button";
 import { ModalFooter } from "@/components/ui/layout/Modal/components/ModalFooter";
 import { ModalHeader } from "@/components/ui/layout/Modal/components/ModalHeader";
 import { SheetHeader } from "@/components/ui/layout/Modal/components/SheetHeader";
@@ -47,6 +48,14 @@ const KNOWN_ERRORS = [
   "provider_required",
   "invalid_setting",
   "invalid_ref",
+  "github_choice_expired",
+  "github_repo_name",
+  "github_repo_exists",
+  "github_repo_no_right",
+  "github_link_needed",
+  "github_not_your_account",
+  "github_failed",
+  "forbidden",
 ] as const;
 
 export function usePluginText() {
@@ -113,12 +122,19 @@ export function PluginDialog({
   close,
   children,
   footer,
+  width,
+  onBack,
 }: {
   title: string;
   sheet: boolean;
   close: () => void;
   children: React.ReactNode;
-  footer: React.ReactNode;
+  /** Its buttons — none: no footer. */
+  footer?: React.ReactNode;
+  /** As `Modal`'s — 620px by default. */
+  width?: number;
+  /** A back arrow before the title — a second view inside. */
+  onBack?: () => void;
 }) {
   const t = useTranslations();
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -126,6 +142,7 @@ export function PluginDialog({
   return (
     <Modal
       variant={sheet ? "sheet" : "dialog"}
+      width={width}
       style={sheet ? swipe.style : undefined}
       {...(sheet ? swipe.handlers : {})}
     >
@@ -134,18 +151,31 @@ export function PluginDialog({
           title={title}
           onClose={close}
           closeLabel={t("actions.close")}
+          {...(onBack && { onBack, backLabel: t("actions.back") })}
         />
       ) : (
         <ModalHeader
           title={title}
           onClose={close}
           closeLabel={t("actions.close")}
+          {...(onBack && {
+            leading: (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<Icon icon="lucide:chevron-left" width={16} />}
+                aria-label={t("actions.back")}
+                title={t("actions.back")}
+                onClick={onBack}
+              />
+            ),
+          })}
         />
       )}
       <ModalBody ref={bodyRef} className={styles.dialogBody}>
         {children}
       </ModalBody>
-      <ModalFooter>{footer}</ModalFooter>
+      {footer && <ModalFooter>{footer}</ModalFooter>}
     </Modal>
   );
 }

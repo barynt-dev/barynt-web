@@ -6,7 +6,7 @@ import { WorkspaceApps } from "@/features/workspaces/components/WorkspaceApps/Wo
 import { WorkspaceMembers } from "@/features/workspaces/components/WorkspaceMembers/WorkspaceMembers";
 import { getWorkspaceMembersView } from "@/features/workspaces/queries";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
-import { projectSettingsPath, workspaceSettingsPath } from "@/lib/nav";
+import { pluginSettingsPath } from "@/lib/nav";
 
 export const dynamic = "force-dynamic";
 
@@ -48,13 +48,11 @@ export default async function MembersPage({
       <WorkspaceApps
         apps={apps.map((app) => ({
           ...app,
-          settingsHref: app.project
-            ? projectSettingsPath(
-                workspace,
-                app.project.slug,
-                `plugins/${app.pluginId}`,
-              )
-            : workspaceSettingsPath(workspace, `plugins/${app.pluginId}`),
+          settingsHref: pluginSettingsPath(
+            workspace,
+            app.project?.slug ?? null,
+            app.pluginId,
+          ),
         }))}
         tabs={tabs}
       />

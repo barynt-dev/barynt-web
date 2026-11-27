@@ -1,0 +1,25 @@
+/* A new repository: its owner, name, a line about it, and who sees it. */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.owner {
+  color: var(--on-surface-variant);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.visibility {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.hint {
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+}

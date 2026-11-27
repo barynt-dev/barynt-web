@@ -7,9 +7,11 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  max-width: 44rem;
-  padding: 1.25rem 1.5rem 3rem;
+  gap: var(--settings-gap);
+  // Up to 64rem wide, then centred — through the padding, so the scroll
+  // container stays full width and its scrollbar at the window's edge.
+  --page-max: 64rem;
+  padding: 1.25rem max(1.5rem, calc((100% - var(--page-max)) / 2)) 3rem;
   overflow-y: auto;
 
   & > * {
@@ -113,7 +115,15 @@
   overflow: hidden;
 
   &[data-part="section"] {
-    min-height: 12rem;
+    // As tall as what the plugin draws, with room around it — and as wide
+    // as the section.
+    min-height: 0;
+    padding: 1rem 1.125rem;
+
+    & > * {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
   }
 }
 
@@ -121,6 +131,25 @@
   display: flex;
   flex-direction: column;
   gap: 1.125rem;
+}
+
+/* A group of settings (`FoldGroup`): its heading, like the sections around
+   the form, and its fields as far below it as theirs. */
+.group {
+  --fold-gap: 0.625rem;
+}
+
+/* The general section's settings, set off from the connection above. */
+.lead {
+  margin-top: 0.75rem;
+}
+
+.groupTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--text-md);
+  font-weight: 650;
 }
 
 .field {

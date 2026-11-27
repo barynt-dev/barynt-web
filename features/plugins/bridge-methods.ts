@@ -16,7 +16,12 @@ import {
   listProjectsForUser,
   listWorkspaceMembersForUser,
 } from "@/features/api-v1/queries";
-import { ISSUE_DATA_BATCH, readIssueData } from "@/features/plugins/issue-data";
+import {
+  deleteIssueData,
+  ISSUE_DATA_BATCH,
+  readIssueData,
+  writeIssueData,
+} from "@/features/plugins/issue-data";
 import { recordAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
@@ -27,6 +32,7 @@ import {
   STORAGE_LIMITS,
 } from "@/lib/plugins/bridge";
 import { checkSettings } from "@/lib/plugins/settings";
+import { recordPluginDataChange } from "@/lib/realtime/store";
 import { proxyFetch } from "./proxy";
 import type { RunningPlugin } from "./runtime";
 import { placeSettings } from "./settings-options";
@@ -116,6 +122,21 @@ const touchesFields = (plugin: RunningPlugin, p: Params) =>
 
 const jsonSize = (value: unknown) =>
   new TextEncoder().encode(JSON.stringify(value) ?? "").length;
+
+/** Where a person's own entries are kept in a place's storage (BARY-238):
+ *  under them, so nobody else reads them — and a plain key can't start
+ *  so, to reach someone's. */
+const PERSONAL = "@";
+const personalPrefix = (userId: string) => `${PERSONAL}${userId}:`;
+
+/** A storage call's key: as given, or — `personal: true` — the person's
+ *  own. `undefined` for one that isn't valid. */
+function storageKey(userId: string, p: Params): string | undefined {
+  const key = str(p.key, STORAGE_LIMITS.keyLength);
+  if (!key) return undefined;
+  if (p.personal === true) return `${personalPrefix(userId)}${key}`;
+  return key.startsWith(PERSONAL) ? undefined : key;
+}
 
 export const HANDLERS: Record<BridgeMethod, Handler> = {
   async "issues.list"(userId, plugin, p) {
@@ -215,6 +236,40 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
     );
   },
 
+  async "issueData.set"(userId, plugin, p) {
+    const issue = await issueOf(userId, plugin, p.issueId);
+    if (refused(issue)) return issue;
+    const key = str(p.key);
+    if (!key || !("value" in p)) return no("invalid_params");
+    const result = await writeIssueData(
+      plugin.activationId,
+      issue.id,
+      key,
+      p.value,
+    );
+    if (result !== "ok") return no("invalid_params");
+    recordPluginDataChange(plugin.workspaceId, {
+      pluginId: plugin.pluginId,
+      issueId: issue.id,
+      projectId: issue.project.id,
+    });
+    return ok(null);
+  },
+
+  async "issueData.delete"(userId, plugin, p) {
+    const issue = await issueOf(userId, plugin, p.issueId);
+    if (refused(issue)) return issue;
+    const key = str(p.key);
+    if (!key) return no("invalid_params");
+    await deleteIssueData(plugin.activationId, issue.id, key);
+    recordPluginDataChange(plugin.workspaceId, {
+      pluginId: plugin.pluginId,
+      issueId: issue.id,
+      projectId: issue.project.id,
+    });
+    return ok(null);
+  },
+
   async "comments.list"(userId, plugin, p) {
     const issue = await issueOf(userId, plugin, p.issueId);
     if (refused(issue)) return issue;
@@ -284,8 +339,8 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
     return fields ? ok(fields) : no("not_found");
   },
 
-  async "storage.get"(_userId, plugin, p) {
-    const key = str(p.key, STORAGE_LIMITS.keyLength);
+  async "storage.get"(userId, plugin, p) {
+    const key = storageKey(userId, p);
     if (!key) return no("invalid_params");
     const row = await db.pluginStorage.findUnique({
       where: { activationId_key: { activationId: plugin.activationId, key } },
@@ -294,8 +349,8 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
     return ok(row?.value ?? null);
   },
 
-  async "storage.set"(_userId, plugin, p) {
-    const key = str(p.key, STORAGE_LIMITS.keyLength);
+  async "storage.set"(userId, plugin, p) {
+    const key = storageKey(userId, p);
     if (!key || p.value === undefined) return no("invalid_params");
     const size = jsonSize(p.value);
     if (size > STORAGE_LIMITS.valueBytes) return no("storage_full");
@@ -324,8 +379,8 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
     return ok(null);
   },
 
-  async "storage.delete"(_userId, plugin, p) {
-    const key = str(p.key, STORAGE_LIMITS.keyLength);
+  async "storage.delete"(userId, plugin, p) {
+    const key = storageKey(userId, p);
     if (!key) return no("invalid_params");
     await db.pluginStorage.deleteMany({
       where: { activationId: plugin.activationId, key },
@@ -333,13 +388,21 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
     return ok(null);
   },
 
-  async "storage.list"(_userId, plugin) {
+  async "storage.list"(userId, plugin, p) {
+    const own = personalPrefix(userId);
     const rows = await db.pluginStorage.findMany({
-      where: { activationId: plugin.activationId },
+      where: {
+        activationId: plugin.activationId,
+        ...(p.personal === true
+          ? { key: { startsWith: own } }
+          : { NOT: { key: { startsWith: PERSONAL } } }),
+      },
       select: { key: true },
       orderBy: { key: "asc" },
     });
-    return ok(rows.map((r) => r.key));
+    return ok(
+      rows.map((r) => (p.personal === true ? r.key.slice(own.length) : r.key)),
+    );
   },
 
   async "settings.get"(_userId, plugin) {
@@ -357,6 +420,27 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
         ]),
       ),
     );
+  },
+
+  async "me.get"(userId, plugin) {
+    const [user, manages] = await Promise.all([
+      db.user.findUnique({
+        where: { id: userId },
+        select: { firstName: true, lastName: true },
+      }),
+      can(
+        userId,
+        "plugin.enable",
+        plugin.projectId
+          ? { projectId: plugin.projectId }
+          : { workspaceId: plugin.workspaceId },
+      ),
+    ]);
+    return ok({
+      id: userId,
+      name: [user?.firstName, user?.lastName].filter(Boolean).join(" "),
+      canManage: manages === true,
+    });
   },
 
   async "settings.set"(userId, plugin, p) {
@@ -380,10 +464,11 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
       values,
     );
     if (!checked.ok) return no("invalid_params");
+    const saved = checked.values as Prisma.InputJsonObject;
     await db.pluginSettings.upsert({
       where: { activationId: plugin.activationId },
-      create: { activationId: plugin.activationId, values: checked.values },
-      update: { values: checked.values },
+      create: { activationId: plugin.activationId, values: saved },
+      update: { values: saved },
     });
     await recordAudit({
       action: "plugin.settings.updated",

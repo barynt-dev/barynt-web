@@ -1,0 +1,95 @@
+/* The instance's GitHub App in Admin → Plugins (BARY-238), a card of the
+   plugin's facts column. */
+
+.outcome {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  font-size: var(--text-sm);
+
+  &[data-tone="success"] {
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+  }
+}
+
+.missing {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  font-size: var(--text-sm);
+
+  strong {
+    font-weight: 650;
+  }
+
+  p {
+    margin: 0;
+    color: var(--on-surface-variant);
+  }
+}
+
+.needsLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--primary);
+  font-weight: 550;
+}
+
+.ready {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+  color: var(--primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.appLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+.webhook {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0;
+
+  code {
+    overflow-wrap: anywhere;
+    font-size: var(--text-xs);
+  }
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.625rem;
+
+  & > :first-of-type {
+    align-self: stretch;
+  }
+}
+
+.local {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  margin: 0;
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+
+  & > svg {
+    flex: none;
+    margin-top: 0.1em;
+  }
+}

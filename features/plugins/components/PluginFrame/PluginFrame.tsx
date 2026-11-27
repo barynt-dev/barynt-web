@@ -4,6 +4,11 @@ import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/atoms/Button/Button";
+import { Popover } from "@/components/ui/atoms/Popover/Popover";
+import { SelectMenu } from "@/components/ui/atoms/SelectMenu/SelectMenu";
+import { useRouter } from "@/i18n/navigation";
+import { useOptionalModal } from "@/lib/context/ModalContext/modalContext";
+import { pluginPath } from "@/lib/nav";
 import type { BadgeIssue } from "@/lib/plugins/badges";
 import type { BlockData } from "@/lib/plugins/blocks";
 import {
@@ -12,11 +17,17 @@ import {
   type BridgeResponse,
   FRAME_READY_TIMEOUT_MS,
   type FrameContext,
+  type FrameMenuItem,
+  type FrameModal,
   type HostMessage,
   type InitMessage,
   parseFrameMessage,
   THEME_TOKENS,
 } from "@/lib/plugins/bridge";
+import { actionIcon } from "@/lib/plugins/plugin-actions";
+import { useOptionalUI } from "@/lib/ui-store";
+import { PHONE_QUERY, useMediaQuery } from "@/lib/utils/useMediaQuery";
+import { PluginDialog } from "../shared";
 import styles from "./pluginFrame.module.scss";
 import { useDevReload } from "./useDevReload";
 
@@ -55,6 +66,40 @@ type FrameState =
   | { status: "ready" }
   | { status: "error"; message: string };
 
+/** Saves a file a frame hands over — as the page, which may download. */
+function saveFile(file: {
+  name: string;
+  mime: string;
+  data: string;
+  base64: boolean;
+}) {
+  const blob = file.base64
+    ? new Blob([Uint8Array.from(atob(file.data), (c) => c.charCodeAt(0))], {
+        type: file.mime,
+      })
+    : new Blob([file.data], { type: file.mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = file.name;
+  a.rel = "noopener";
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/** How wide a plugin's window is, by its `size` (px). */
+const MODAL_WIDTH: Record<FrameModal["size"], number> = {
+  sm: 420,
+  md: 560,
+  lg: 760,
+  xl: 1120,
+};
+
+/** How tall a panel is while its frame starts — its skeleton's room (px). */
+const SKELETON_HEIGHT = 96;
+
 export function PluginFrame({
   pluginId,
   name,
@@ -66,7 +111,14 @@ export function PluginFrame({
   onBadges,
   actionRequest,
   onActionDone,
+  onRunAction,
+  saveRequest,
+  onUnsaved,
+  onSaveDone,
   onError,
+  onCloseModal,
+  onModalBack,
+  backRequest,
 }: {
   pluginId: string;
   /** The plugin's name — the frame's title, and in its error. */
@@ -90,20 +142,122 @@ export function PluginFrame({
     seq: number;
     actionId: string;
     issueId: string | null;
+    /** What was picked, when the action asked first. */
+    choice?: string;
+    /** What was filled in, when the action asked for a form. */
+    values?: Record<string, string>;
   } | null;
   /** How it went: its answer (unchecked), or the error. */
   onActionDone?: (seq: number, ok: boolean, result: unknown) => void;
+  /** An issue panel starts one of its plugin's actions (BARY-238). */
+  onRunAction?: (actionId: string, choice?: string) => void;
+  /** Save its settings page — Barynt's Save button was pressed. */
+  saveRequest?: { seq: number } | null;
+  /** Its settings page has changes to save, or none any more — the first
+   *  call says it saves with Barynt's button at all. */
+  onUnsaved?: (unsaved: boolean) => void;
+  /** How saving went: done, or the error it threw. */
+  onSaveDone?: (seq: number, ok: boolean, error?: string) => void;
   /** It threw, or didn't start in time — besides showing so. */
   onError?: (message: string) => void;
+  /** In a window it opened (`openModal`): closes that window. */
+  onCloseModal?: () => void;
+  /** In a window: whether it wants a back arrow in the window's head. */
+  onModalBack?: (on: boolean) => void;
+  /** That arrow was pressed — tell the frame (a new `seq` each time). */
+  backRequest?: number;
 }) {
   const t = useTranslations("plugins");
   const frame = useRef<HTMLIFrameElement>(null);
   const [state, setState] = useState<FrameState>({ status: "loading" });
   const [height, setHeight] = useState<number | null>(null);
+  // Its toasts are Barynt's own; its menus Barynt draws over it — a frame
+  // is too small for one (BARY-238).
+  // Outside the app's provider (a test, say) a frame just has no toasts.
+  const ui = useOptionalUI();
+  // Its settings page, when it asks for it (BARY-238).
+  const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
+  const toastRef = useRef(ui?.toast);
+  toastRef.current = ui?.toast;
+  // A window of Barynt's with another frame of it (BARY-238): for the
+  // same place, told which view to show — a dialog, on a phone a sheet.
+  const modals = useOptionalModal();
+  const isPhone = useMediaQuery(PHONE_QUERY);
+  const openFrameModal = (m: FrameModal) => {
+    if (!modals) return;
+    const { focus: _, ...place } = context;
+    modals.openModal(
+      ({ close }) => (
+        <FrameWindow
+          title={m.title}
+          sheet={isPhone}
+          close={close}
+          width={MODAL_WIDTH[m.size]}
+          frame={(back) => (
+            <PluginFrame
+              pluginId={pluginId}
+              name={name}
+              context={{
+                ...place,
+                modal: {
+                  view: m.view,
+                  ...(m.data !== undefined && { data: m.data }),
+                },
+              }}
+              autoHeight={{ min: 120, max: Number.POSITIVE_INFINITY }}
+              onRunAction={onRunAction}
+              onCloseModal={close}
+              onModalBack={back.set}
+              backRequest={back.request}
+            />
+          )}
+        />
+      ),
+      { ...(isPhone && { placement: "bottom" as const }), label: m.title },
+    );
+  };
+  const openFrameModalRef = useRef(openFrameModal);
+  openFrameModalRef.current = openFrameModal;
+  const [menu, setMenu] = useState<{
+    id: number;
+    items: FrameMenuItem[];
+    anchor: { x: number; y: number; width: number; height: number };
+  } | null>(null);
+  const menuAnchor = useRef<HTMLDivElement>(null);
+  const closeMenu = (itemId: string | null) => {
+    if (!menu) return;
+    send.current?.({ type: "menu:pick", id: menu.id, itemId });
+    setMenu(null);
+  };
+  // The channel's handler is made once: it closes through the latest.
+  const closeMenuRef = useRef(closeMenu);
+  closeMenuRef.current = closeMenu;
   // The latest callbacks: the channel lives as long as the frame, the
   // callbacks change with every render of the caller.
-  const callbacks = useRef({ onBlockData, onBadges, onActionDone, onError });
-  callbacks.current = { onBlockData, onBadges, onActionDone, onError };
+  const callbacks = useRef({
+    onBlockData,
+    onBadges,
+    onActionDone,
+    onRunAction,
+    onUnsaved,
+    onSaveDone,
+    onError,
+    onCloseModal,
+    onModalBack,
+  });
+  callbacks.current = {
+    onBlockData,
+    onBadges,
+    onActionDone,
+    onRunAction,
+    onUnsaved,
+    onSaveDone,
+    onError,
+    onCloseModal,
+    onModalBack,
+  };
   // Sends to the frame's channel — set while one is open.
   const send = useRef<((message: HostMessage) => void) | null>(null);
   // A new frame on "Load again" — and, in development, whenever the
@@ -207,6 +361,83 @@ export function PluginFrame({
           );
         } else if (message.type === "badges") {
           callbacks.current.onBadges?.(message.seq, message.badges);
+        } else if (message.type === "unsaved") {
+          callbacks.current.onUnsaved?.(message.unsaved);
+        } else if (message.type === "saveDone") {
+          callbacks.current.onSaveDone?.(
+            message.seq,
+            message.ok,
+            message.error,
+          );
+        } else if (message.type === "toast") {
+          toastRef.current?.(message.text);
+        } else if (message.type === "menu:close") {
+          closeMenuRef.current(null);
+        } else if (message.type === "menu") {
+          setMenu({
+            id: message.id,
+            items: message.items,
+            anchor: message.anchor,
+          });
+        } else if (message.type === "openSettings") {
+          // Its page in the plugins' area — the project's by its id, which
+          // the page turns into its address.
+          const query = new URLSearchParams({ level: message.level });
+          if (message.level === "project" && projectId)
+            query.set("project", projectId);
+          if (message.focus) query.set("focus", message.focus);
+          routerRef.current.push(
+            `${pluginPath(workspaceId, pluginId)}?${query}`,
+          );
+        } else if (message.type === "reveal") {
+          // Scroll the page to that far down the frame: a marker there,
+          // scrolled into view by whatever scrolls the page.
+          // The frame may still be growing to its content: wait until it
+          // reaches that far (a few seconds at most).
+          const top = message.top;
+          const scroll = (tries: number) => {
+            const node = frame.current;
+            if (!node) return;
+            if (node.offsetHeight <= top && tries > 0) {
+              window.setTimeout(() => scroll(tries - 1), 150);
+              return;
+            }
+            // Parts of the page above may still be loading: keep the
+            // marker on that spot for a moment, re-scrolling as it moves.
+            const mark = document.createElement("span");
+            const place = () => {
+              mark.style.cssText = `position:absolute;left:0;top:${node.offsetTop + top}px;width:1px;height:1px;pointer-events:none;scroll-margin-top:1rem`;
+            };
+            place();
+            const parent = node.offsetParent ?? node.parentElement;
+            parent?.append(mark);
+            mark.scrollIntoView({ block: "start" });
+            let at = node.offsetTop;
+            let left = 10;
+            const follow = window.setInterval(() => {
+              if (node.offsetTop !== at) {
+                at = node.offsetTop;
+                place();
+                mark.scrollIntoView({ block: "start" });
+              }
+              if (--left <= 0) {
+                window.clearInterval(follow);
+                mark.remove();
+              }
+            }, 200);
+          };
+          scroll(30);
+        } else if (message.type === "openModal") {
+          const { type: _, ...m } = message;
+          openFrameModalRef.current(m);
+        } else if (message.type === "download") {
+          saveFile(message);
+        } else if (message.type === "modalBack") {
+          callbacks.current.onModalBack?.(message.on);
+        } else if (message.type === "closeModal") {
+          callbacks.current.onCloseModal?.();
+        } else if (message.type === "runAction") {
+          callbacks.current.onRunAction?.(message.actionId, message.choice);
         } else {
           void forward(message.id, message.method, message.params);
         }
@@ -257,6 +488,17 @@ export function PluginFrame({
       send.current?.({ type: "action:run", ...actionRequest });
   }, [state.status, actionRequest]);
 
+  // Save its settings page, once it listens.
+  // The back arrow in its window's head was pressed (BARY-238).
+  useEffect(() => {
+    if (backRequest) send.current?.({ type: "modal:back" });
+  }, [backRequest]);
+
+  useEffect(() => {
+    if (state.status === "ready" && saveRequest)
+      send.current?.({ type: "settings:save", ...saveRequest });
+  }, [state.status, saveRequest]);
+
   // The issues to put badges on, once it listens — and again when they
   // change (BARY-151).
   useEffect(() => {
@@ -275,7 +517,10 @@ export function PluginFrame({
           ? {
               height: Math.min(
                 autoHeight.max,
-                Math.max(autoHeight.min, height ?? autoHeight.min),
+                // Still starting: room for its skeleton.
+                state.status === "loading"
+                  ? Math.max(autoHeight.min, SKELETON_HEIGHT)
+                  : Math.max(autoHeight.min, height ?? autoHeight.min),
               ),
             }
           : undefined
@@ -293,6 +538,61 @@ export function PluginFrame({
         allow="clipboard-write"
         referrerPolicy="no-referrer"
       />
+      {/* A panel still starting: a skeleton where it'll be. */}
+      {autoHeight && state.status === "loading" && (
+        <div className={styles.skeleton} aria-hidden>
+          <span />
+          <span />
+          <span />
+        </div>
+      )}
+      {/* Its menu: anchored where its button is in the frame. */}
+      {menu && (
+        <>
+          <div
+            ref={menuAnchor}
+            className={styles.menuAnchor}
+            style={{
+              left: menu.anchor.x,
+              top: menu.anchor.y,
+              width: menu.anchor.width,
+              height: menu.anchor.height,
+            }}
+            aria-hidden
+          />
+          <Popover
+            anchorRef={menuAnchor}
+            open
+            align="end"
+            width={220}
+            onClose={() => closeMenu(null)}
+          >
+            <SelectMenu
+              items={menu.items.map((item) => {
+                const icon = actionIcon(item.icon);
+                return {
+                  value: item.id,
+                  label: item.label,
+                  ...(icon && {
+                    icon: (
+                      <Icon
+                        icon={icon}
+                        width={15}
+                        className={item.danger ? styles.danger : undefined}
+                      />
+                    ),
+                  }),
+                };
+              })}
+              value={null}
+              onPick={(value) =>
+                closeMenu(value === null ? null : String(value))
+              }
+              onClose={() => closeMenu(null)}
+            />
+          </Popover>
+        </>
+      )}
       {state.status === "error" && (
         <div className={styles.error} role="alert">
           <Icon icon="lucide:puzzle" width={22} aria-hidden />
@@ -317,5 +617,38 @@ export function PluginFrame({
         </div>
       )}
     </div>
+  );
+}
+
+/** A plugin's window: Barynt's dialog (a sheet on a phone) with its frame
+ *  inside — and a back arrow in its head while the frame wants one. */
+function FrameWindow({
+  title,
+  sheet,
+  close,
+  width,
+  frame,
+}: {
+  title: string;
+  sheet: boolean;
+  close: () => void;
+  width: number;
+  frame: (back: {
+    set: (on: boolean) => void;
+    request: number;
+  }) => React.ReactNode;
+}) {
+  const [back, setBack] = useState(false);
+  const [request, setRequest] = useState(0);
+  return (
+    <PluginDialog
+      title={title}
+      sheet={sheet}
+      close={close}
+      width={width}
+      {...(back && { onBack: () => setRequest((n) => n + 1) })}
+    >
+      {frame({ set: setBack, request })}
+    </PluginDialog>
   );
 }

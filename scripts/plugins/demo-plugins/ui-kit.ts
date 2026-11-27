@@ -3,7 +3,14 @@
 // screenshots show. Nothing here is styled by hand: it's all the kit and
 // `token()`.
 
-import { Plugin, TOKEN_NAMES, type TokenName, token } from "@barynt/plugin-sdk";
+import {
+  currentLocale,
+  Plugin,
+  TOKEN_NAMES,
+  type TokenName,
+  token,
+  translator,
+} from "@barynt/plugin-sdk";
 import {
   accordion,
   avatar,
@@ -27,6 +34,7 @@ import {
   list,
   multiSelect,
   notice,
+  pickMenu,
   progressBar,
   progressRing,
   radioGroup,
@@ -131,6 +139,8 @@ export default class UiKit extends Plugin {
             }).el,
           ],
         }),
+        pickAndList(),
+        translations(),
         card({
           title: "On and off",
           children: [
@@ -248,6 +258,12 @@ export default class UiKit extends Plugin {
               badge({ text: "Draft", tone: "warning" }),
               badge({ text: "Failed", tone: "danger" }),
               badge({ text: "3 open" }),
+            ),
+            row(
+              badge({ text: "private", icon: "lock" }),
+              badge({ text: "public", icon: "globe" }),
+              badge({ text: "archived", icon: "archive", tone: "warning" }),
+              badge({ text: "fork", icon: "git-fork" }),
             ),
             row(
               labelChip({ name: "Bug", color: "red" }),
@@ -454,4 +470,94 @@ export default class UiKit extends Plugin {
       }),
     );
   }
+}
+
+/** `pickMenu` and `list` together: a list to add to, and rows to take off. */
+/** The plugin's own texts in the person's language: English and German,
+ *  English where German has nothing. */
+const t = translator({
+  en: {
+    greeting: "Hello, {name}!",
+    issues_one: "{count} open issue",
+    issues_other: "{count} open issues",
+    onlyEnglish: "This one is English only.",
+  },
+  de: {
+    greeting: "Hallo, {name}!",
+    issues_one: "{count} offenes Issue",
+    issues_other: "{count} offene Issues",
+  },
+});
+
+function translations() {
+  return card({
+    title: "Translations",
+    description:
+      "translator() follows the person's language — the kit's own words too.",
+    children: [
+      keyValue({
+        items: [
+          { label: "currentLocale()", value: currentLocale() },
+          { label: 't("greeting")', value: t("greeting", { name: "Ada" }) },
+          { label: 't("issues", 1)', value: t("issues", { count: 1 }) },
+          { label: 't("issues", 3)', value: t("issues", { count: 3 }) },
+          { label: 't("onlyEnglish")', value: t("onlyEnglish") },
+        ],
+      }),
+    ],
+  });
+}
+
+function pickAndList() {
+  const all = [
+    "acme/web",
+    "acme/api",
+    "acme/docs",
+    "acme/mobile",
+    "acme/infra",
+  ];
+  let chosen = ["acme/web"];
+  const holder = stack();
+  const menu = pickMenu({
+    label: "Add repository",
+    placeholder: "Search repositories",
+    options: [],
+    onPick: (value) => {
+      chosen = [...chosen, value];
+      draw();
+    },
+  });
+  const draw = () => {
+    holder.replaceChildren(
+      list({
+        empty: "Nothing chosen yet.",
+        items: chosen.map((name) => ({
+          title: name,
+          icon: "folder",
+          aside: [
+            badge({
+              text: name === "acme/web" ? "public" : "private",
+              icon: name === "acme/web" ? "globe" : "lock",
+            }),
+          ],
+          onRemove: () => {
+            chosen = chosen.filter((c) => c !== name);
+            draw();
+          },
+        })),
+      }),
+    );
+    menu.setOptions(
+      all
+        .filter((name) => !chosen.includes(name))
+        .map((name) => ({ value: name, label: name, hint: "acme on GitHub" })),
+    );
+  };
+  draw();
+  return card({
+    title: "Pick and list",
+    description:
+      "pickMenu() adds from a searchable menu; list() rows can be taken off.",
+    children: [holder, menu.el],
+  });
 }

@@ -7,13 +7,15 @@ import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { InboundProvider } from "@/lib/plugins/inbound";
 import {
+  type ChecksEntry,
+  type DeploymentEntry,
   findIssueRefs,
   type LinkFinding,
   mergeEntry,
   type PullRequestEntry,
   readLinkFindings,
 } from "@/lib/plugins/link";
-import type { LinkTrigger } from "@/lib/plugins/link-rules";
+import { baseMatches, type LinkTrigger } from "@/lib/plugins/link-rules";
 import { recordPluginDataChange } from "@/lib/realtime/store";
 import { runAsPlugin } from "@/lib/webhooks/source";
 
@@ -51,8 +53,11 @@ export async function fileLink(
   provider: InboundProvider,
   event: string,
   body: unknown,
+  /** What the host found out beyond the call — the keys a deployment of
+   *  `main` shipped (`features/github/deployments.ts`). */
+  extra: LinkFinding[] = [],
 ): Promise<LinkReached[]> {
-  const findings = readLinkFindings(provider, event, body);
+  const findings = [...readLinkFindings(provider, event, body), ...extra];
   if (findings.length === 0) return [];
   const projects = await linkProjects(activation);
   const byPrefix = new Map(projects.map((p) => [p.prefix.toUpperCase(), p.id]));
@@ -98,8 +103,10 @@ export async function fileLink(
         ref,
         projectId,
         findings: [],
+        fresh: [],
       };
       at.findings.push(finding);
+      if (!kept) at.fresh.push(finding.key);
       reached.set(issue.id, at);
     }
   }
@@ -119,19 +126,50 @@ export interface LinkReached {
   status: string;
   ref: { prefix: string; key: number };
   findings: LinkFinding[];
+  /** The keys it filed here for the first time — a pull request newly
+   *  linked, say. */
+  fresh: string[];
 }
 
 /** A link hook's rules a project switched on: rule id → status to set. */
 export type LinkRuleStatuses = Record<string, string>;
 
-/** The rules switched on, as stored — anything else is left out. */
+/** The rules switched on, as stored — anything else is left out. Keys
+ *  with `_` are the hook's options, never a rule (ids have no `_`). */
 export function linkRuleStatuses(raw: unknown): LinkRuleStatuses {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   return Object.fromEntries(
     Object.entries(raw).filter(
-      (e): e is [string, string] => typeof e[1] === "string",
+      (e): e is [string, string] =>
+        typeof e[1] === "string" && !e[0].startsWith("_"),
     ),
   );
+}
+
+/** A hook's options as stored: whether a pull request gets a comment
+ *  linking the issues it works on (`_prComment`, BARY-238). */
+export function linkRuleOptions(raw: unknown): { prComment: boolean } {
+  const o =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
+  return { prComment: o._prComment === true };
+}
+
+/** Most target branches a place lists. */
+export const LINK_BASES_MAX = 20;
+
+/** The target branches a pull request's rules count for, as stored
+ *  (`_bases`) — none: every branch. */
+export function linkRuleBases(raw: unknown): string[] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+  const bases = (raw as Record<string, unknown>)._bases;
+  return Array.isArray(bases)
+    ? bases
+        .filter((b): b is string => typeof b === "string" && !!b.trim())
+        .map((b) => b.trim())
+        .slice(0, LINK_BASES_MAX)
+    : [];
 }
 
 /**
@@ -145,6 +183,8 @@ export function linkRuleChanges(
   reached: LinkReached[],
   rules: { id: string; on: LinkTrigger }[],
   statuses: LinkRuleStatuses,
+  /** A pull request's rules count only for these target branches. */
+  bases: readonly string[] = [],
 ): { issueId: string; status: string; finding: LinkFinding }[] {
   const changes: { issueId: string; status: string; finding: LinkFinding }[] =
     [];
@@ -152,6 +192,11 @@ export function linkRuleChanges(
     let change: (typeof changes)[number] | null = null;
     for (const finding of issue.findings) {
       if (!finding.trigger) continue;
+      if (
+        finding.entry.kind === "pull_request" &&
+        !baseMatches(finding.entry.base, bases)
+      )
+        continue;
       const works = findIssueRefs(finding.closes ?? [], [
         issue.ref.prefix,
       ]).some((r) => r.key === issue.ref.key);
@@ -187,16 +232,18 @@ export async function handleLink(
   stored: unknown,
   event: string,
   body: unknown,
-): Promise<void> {
-  const reached = await fileLink(activation, hook.provider, event, body);
+  extra: LinkFinding[] = [],
+): Promise<LinkReached[]> {
+  const reached = await fileLink(activation, hook.provider, event, body, extra);
   const changes = linkRuleChanges(
     reached,
     hook.rules ?? [],
     linkRuleStatuses(stored),
+    linkRuleBases(stored),
   );
   const bot = activation.botUserId;
-  if (changes.length === 0 || !bot) return;
-  if (!activation.capabilities.includes("issues:write")) return;
+  if (changes.length === 0 || !bot) return reached;
+  if (!activation.capabilities.includes("issues:write")) return reached;
   const comment = activation.capabilities.includes("comments:write");
   const names = new Map(
     (
@@ -212,20 +259,48 @@ export async function handleLink(
         status: change.status,
       });
       if (!updated.ok || !comment) continue;
-      const pr = change.finding.entry as PullRequestEntry;
-      const what =
-        change.finding.trigger === "pull_request.merged" ? "merged" : "opened";
-      const link = pr.url
-        ? `[${pr.repo}#${pr.number}](${pr.url})`
-        : `${pr.repo}#${pr.number}`;
       await createCommentForUser(
         bot,
         change.issueId,
         {
-          body: `Pull request ${link} was ${what} — status set to **${names.get(change.status) ?? change.status}**.`,
+          body: `${linkRuleReason(change.finding)} — status set to **${names.get(change.status) ?? change.status}**.`,
         },
         "APP",
       );
     }
   });
+  return reached;
+}
+
+/** Why a rule moved an issue, for its comment: what happened, linked. */
+export function linkRuleReason(finding: LinkFinding): string {
+  if (finding.entry.kind === "deployment") {
+    const d = finding.entry as DeploymentEntry;
+    const where = d.url ? `[${d.environment}](${d.url})` : d.environment;
+    return `Deployed to ${where} from ${d.repo}`;
+  }
+  if (finding.entry.kind === "checks") {
+    const checks = finding.entry as ChecksEntry;
+    const failed = checks.runs.find((r) => r.state === "failure");
+    const name = failed
+      ? failed.url
+        ? `[${failed.name}](${failed.url})`
+        : failed.name
+      : "A check";
+    return `${name} failed on \`${checks.branch}\``;
+  }
+  const pr = finding.entry as PullRequestEntry;
+  const link = pr.url
+    ? `[${pr.repo}#${pr.number}](${pr.url})`
+    : `${pr.repo}#${pr.number}`;
+  const what: Record<string, string> = {
+    "pull_request.draft": "was opened as a draft",
+    "pull_request.opened": "was opened",
+    "pull_request.review_requested": "asks for a review",
+    "pull_request.approved": "was approved",
+    "pull_request.changes_requested": "needs changes",
+    "pull_request.merged": "was merged",
+    "pull_request.closed": "was closed without merging",
+  };
+  return `Pull request ${link} ${what[finding.trigger ?? ""] ?? "changed"}`;
 }

@@ -37,6 +37,44 @@ describe("an action's answer", () => {
       expect(parseActionResult(input)).toEqual({});
   });
 
+  it("may ask to pick one of a few first (BARY-238)", () => {
+    expect(
+      parseActionResult({
+        pick: {
+          title: "Which repository?",
+          icon: "lucide:made-up",
+          options: [
+            { id: "acme/web", label: "acme/web", hint: "Default" },
+            { id: "", label: "no id" },
+            { id: "acme/api", label: "acme/api", extra: 1 },
+          ],
+        },
+      }),
+    ).toEqual({
+      pick: {
+        title: "Which repository?",
+        options: [
+          { id: "acme/web", label: "acme/web", hint: "Default" },
+          { id: "acme/api", label: "acme/api" },
+        ],
+      },
+    });
+    // Nothing to pick from, or no question: no pick.
+    expect(parseActionResult({ pick: { title: "x", options: [] } })).toEqual(
+      {},
+    );
+    expect(
+      parseActionResult({ pick: { options: [{ id: "a", label: "a" }] } }),
+    ).toEqual({});
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      id: `${i}`,
+      label: `${i}`,
+    }));
+    expect(
+      parseActionResult({ pick: { title: "x", options: many } }).pick?.options,
+    ).toHaveLength(20);
+  });
+
   it("may ask Barynt to copy a text or open an https address (BARY-230)", () => {
     expect(
       parseActionResult({
@@ -128,6 +166,92 @@ describe("actions in the manifest", () => {
     expect(manifest([{ id: "x", title: "X", where: ["toolbar"] }]).ok).toBe(
       false,
     );
-    expect(manifest([{ id: "x", title: "X", where: [] }]).ok).toBe(false);
+    // In no menu: only its issue panel starts it (BARY-238).
+    expect(manifest([{ id: "x", title: "X", where: [] }]).ok).toBe(true);
+  });
+
+  it("may ask to fill in a form first, checked (BARY-238)", () => {
+    const parsed = parseActionResult({
+      form: {
+        title: "Create branch",
+        submitLabel: "Create",
+        fields: [
+          {
+            id: "name",
+            label: "Name",
+            type: "text",
+            value: "x",
+            mono: true,
+            required: true,
+          },
+          {
+            id: "base",
+            label: "From",
+            type: "select",
+            options: [{ id: "main", label: "main" }],
+          },
+          { id: "empty", label: "Nothing", type: "select", options: [] },
+          { id: "1bad", label: "Bad id", type: "text" },
+        ],
+      },
+    });
+    expect(parsed.form?.fields.map((f) => f.id)).toEqual(["name", "base"]);
+    expect(parsed.form?.fields[0]).toMatchObject({
+      mono: true,
+      required: true,
+    });
+    // A confirmation: no fields, in red.
+    expect(
+      parseActionResult({
+        form: { title: "Delete?", fields: [], danger: true },
+      }).form,
+    ).toEqual({ title: "Delete?", fields: [], danger: true });
+    expect(parseActionResult({ form: { fields: [] } })).toEqual({});
+  });
+
+  it("keeps a form's checks and what follows another field (BARY-238)", () => {
+    const [name, base] =
+      parseActionResult({
+        form: {
+          title: "Create branch",
+          fields: [
+            {
+              id: "name",
+              label: "Name",
+              type: "text",
+              invalid: [
+                { pattern: "\\s", message: "No spaces" },
+                // Doesn't compile: dropped, not run.
+                { pattern: "(", message: "Broken" },
+              ],
+              taken: { values: ["main"], message: "Taken" },
+              dependsOn: "repo",
+              per: { "acme/web": { taken: ["main", "dev"] } },
+            },
+            {
+              id: "base",
+              label: "From",
+              type: "select",
+              // Options only per repository.
+              dependsOn: "repo",
+              per: {
+                "acme/web": {
+                  options: [{ id: "main", label: "main", hint: "Default" }],
+                },
+              },
+            },
+          ],
+        },
+      }).form?.fields ?? [];
+    expect(name).toMatchObject({
+      invalid: [{ pattern: "\\s", message: "No spaces" }],
+      taken: { values: ["main"], message: "Taken" },
+      dependsOn: "repo",
+      per: { "acme/web": { taken: ["main", "dev"] } },
+    });
+    expect(name.invalid).toHaveLength(1);
+    expect(base.per?.["acme/web"]?.options).toEqual([
+      { id: "main", label: "main", hint: "Default" },
+    ]);
   });
 });

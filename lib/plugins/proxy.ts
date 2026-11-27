@@ -56,6 +56,12 @@ export interface ProxyRequest {
   method: ProxyMethod;
   headers: Record<string, string>;
   body: string | null;
+  /** Follow one redirect to another `https` address — a download GitHub
+   *  hands to its storage, say. Sent there without any credential. */
+  follow: boolean;
+  /** As the person, not the place's connection — what only a person may
+   *  do (approve a deployment). */
+  asPerson: boolean;
 }
 
 /**
@@ -112,7 +118,33 @@ export function parseProxyRequest(
       headers[lower] = value.slice(0, 1000);
     }
   }
-  return { url, method, headers, body };
+  return {
+    url,
+    method,
+    headers,
+    body,
+    follow: p.follow === true,
+    asPerson: p.as === "person",
+  };
+}
+
+/** Where a redirect leads, when the request follows one: an `https`
+ *  address without a user or a port — any host, it's sent without a
+ *  credential. `null` for anything else. */
+export function redirectTarget(
+  status: number,
+  location: string | undefined,
+  from: URL,
+): URL | null {
+  if (![301, 302, 303, 307, 308].includes(status) || !location) return null;
+  try {
+    const url = new URL(location, from);
+    if (url.protocol !== "https:" || url.username || url.password || url.port)
+      return null;
+    return url;
+  } catch {
+    return null;
+  }
 }
 
 /** The response headers a plugin gets: the ones above, and rate limits. */

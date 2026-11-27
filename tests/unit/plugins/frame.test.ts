@@ -84,4 +84,142 @@ describe("bridge protocol", () => {
       parseFrameMessage({ type: "error", message: "x".repeat(900) }),
     ).toEqual({ type: "error", message: "x".repeat(500) });
   });
+
+  it("opens its own settings on a level it names, no other (BARY-238)", () => {
+    expect(
+      parseFrameMessage({ type: "openSettings", level: "project" }),
+    ).toEqual({ type: "openSettings", level: "project" });
+    expect(
+      parseFrameMessage({ type: "openSettings", level: "/admin" }),
+    ).toBeNull();
+  });
+
+  it("opens settings at a part, and scrolls the page to one (BARY-238)", () => {
+    expect(
+      parseFrameMessage({
+        type: "openSettings",
+        level: "project",
+        focus: "workflows",
+      }),
+    ).toEqual({ type: "openSettings", level: "project", focus: "workflows" });
+    // A focus that isn't a plain name is left out.
+    expect(
+      parseFrameMessage({
+        type: "openSettings",
+        level: "project",
+        focus: "../x?y",
+      }),
+    ).toEqual({ type: "openSettings", level: "project" });
+    expect(parseFrameMessage({ type: "reveal", top: 320 })).toEqual({
+      type: "reveal",
+      top: 320,
+    });
+    expect(parseFrameMessage({ type: "reveal", top: -5 })).toEqual({
+      type: "reveal",
+      top: 0,
+    });
+    expect(parseFrameMessage({ type: "reveal", top: "x" })).toBeNull();
+  });
+
+  it("opens a window with a view of its own, and closes it (BARY-238)", () => {
+    expect(
+      parseFrameMessage({
+        type: "openModal",
+        view: "deployment",
+        title: "  staging ",
+        data: { environment: "staging" },
+      }),
+    ).toEqual({
+      type: "openModal",
+      view: "deployment",
+      title: "staging",
+      data: { environment: "staging" },
+      size: "md",
+    });
+    expect(
+      parseFrameMessage({
+        type: "openModal",
+        view: "x",
+        title: "X",
+        size: "lg",
+      }),
+    ).toEqual({ type: "openModal", view: "x", title: "X", size: "lg" });
+    // A view that isn't a plain name, no title, or too much data: none.
+    for (const bad of [
+      { view: "../x", title: "X" },
+      { view: "x", title: " " },
+      { view: "x", title: "X", data: "y".repeat(9000) },
+    ])
+      expect(parseFrameMessage({ type: "openModal", ...bad })).toBeNull();
+    expect(parseFrameMessage({ type: "closeModal" })).toEqual({
+      type: "closeModal",
+    });
+    // A back arrow in the window's head, or none.
+    expect(parseFrameMessage({ type: "modalBack", on: true })).toEqual({
+      type: "modalBack",
+      on: true,
+    });
+    expect(parseFrameMessage({ type: "modalBack", on: "yes" })).toEqual({
+      type: "modalBack",
+      on: false,
+    });
+  });
+
+  it("hands a file to save to Barynt — named safely, within its size (BARY-238)", () => {
+    expect(
+      parseFrameMessage({
+        type: "download",
+        name: "deploy/migrate:db.log",
+        text: "line 1",
+      }),
+    ).toEqual({
+      type: "download",
+      name: "deploy_migrate_db.log",
+      mime: "text/plain",
+      data: "line 1",
+      base64: false,
+    });
+    expect(
+      parseFrameMessage({
+        type: "download",
+        name: "logs.zip",
+        mime: "application/zip",
+        base64: "UEsDBA==",
+      }),
+    ).toMatchObject({ mime: "application/zip", base64: true });
+    expect(
+      parseFrameMessage({ type: "download", name: "", text: "x" }),
+    ).toBeNull();
+    expect(
+      parseFrameMessage({ type: "download", name: "x", base64: "<script>" }),
+    ).toBeNull();
+    expect(
+      parseFrameMessage({
+        type: "openModal",
+        view: "log",
+        title: "L",
+        size: "xl",
+      }),
+    ).toMatchObject({ size: "xl" });
+  });
+
+  it("takes a settings page's unsaved changes and how saving went", () => {
+    expect(parseFrameMessage({ type: "unsaved", unsaved: true })).toEqual({
+      type: "unsaved",
+      unsaved: true,
+    });
+    expect(parseFrameMessage({ type: "unsaved", unsaved: "yes" })).toEqual({
+      type: "unsaved",
+      unsaved: false,
+    });
+    expect(parseFrameMessage({ type: "saveDone", seq: 2, ok: true })).toEqual({
+      type: "saveDone",
+      seq: 2,
+      ok: true,
+    });
+    expect(
+      parseFrameMessage({ type: "saveDone", seq: 3, ok: false, error: "x" }),
+    ).toEqual({ type: "saveDone", seq: 3, ok: false, error: "x" });
+    expect(parseFrameMessage({ type: "saveDone", seq: "3" })).toBeNull();
+  });
 });

@@ -83,11 +83,14 @@ describe("tabTitle()", () => {
     expect(tabTitle(`${BASE}/teams`, projects, t)).toBe("Teams");
     expect(tabTitle(`${BASE}/settings`, projects, t)).toBe("Einstellungen");
     expect(tabTitle(`${BASE}/projects`, projects, t)).toBe("Projekte");
-    // The workspace's plugin store (BARY-201).
-    expect(tabTitle(`${BASE}/plugins`, projects, t)).toBe(
-      "settings.scopeStore",
+    // The workspace's plugin store (BARY-201), and the plugins' area
+    // beside it (BARY-238).
+    expect(tabTitle(`${BASE}/store`, projects, t)).toBe("settings.scopeStore");
+    expect(tabIcon(`${BASE}/store`)).toBe("lucide:store");
+    expect(tabTitle(`${BASE}/plugins/github/workspace`, projects, t)).toBe(
+      "settings.scopePlugins",
     );
-    expect(tabIcon(`${BASE}/plugins`)).toBe("lucide:store");
+    expect(tabIcon(`${BASE}/plugins`)).toBe("lucide:puzzle");
   });
 });
 

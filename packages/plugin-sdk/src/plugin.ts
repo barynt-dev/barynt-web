@@ -5,8 +5,11 @@ import type {
   BadgeIssue,
   BlockData,
   Context,
+  DownloadFile,
   Host,
   Json,
+  ModalOptions,
+  SettingsLevel,
 } from "./types";
 
 /** Something that undoes what a plugin set up. */
@@ -27,6 +30,22 @@ export interface WidgetBlock {
     el: HTMLElement,
     context: Context,
   ): void | Cleanup | Promise<void | Cleanup>;
+}
+
+/** Its own settings page (`registerSettings`). */
+export interface SettingsPage {
+  /** Draws the page into `el`. May return what undoes it. */
+  render(
+    el: HTMLElement,
+    context: Context,
+  ): void | Cleanup | Promise<void | Cleanup>;
+  /**
+   * Saves what was changed on it — with this, Barynt's Save button at the
+   * top of the page covers it: greyed out until you call
+   * `setUnsaved(true)`, then this runs on a click. Throw to say it failed;
+   * the message is shown. Without it, save the way you like.
+   */
+  save?(): void | Promise<void>;
 }
 
 export interface ProjectView {
@@ -73,10 +92,20 @@ export abstract class Plugin {
   readonly #show: Host["show"];
   readonly #serveBadges: Host["serveBadges"];
   readonly #serveActions: Host["serveActions"];
+  readonly #serveSave: Host["serveSave"];
+  readonly #unsaved: Host["unsaved"];
+  readonly #startAction: Host["startAction"];
+  readonly #openSettings: Host["openSettings"];
+  readonly #openModal: Host["openModal"];
+  readonly #closeModal: Host["closeModal"];
+  readonly #download: Host["download"];
+  readonly #modalBack: Host["modalBack"];
+  readonly #reveal: Host["reveal"];
   readonly #actions = new Map<
     string,
     (context: {
       issueId: string | null;
+      choice?: string;
     }) => ActionResult | undefined | Promise<ActionResult | undefined>
   >();
 
@@ -84,9 +113,31 @@ export abstract class Plugin {
     this.#show = host.show;
     this.#serveBadges = host.serveBadges;
     this.#serveActions = host.serveActions;
+    this.#serveSave = host.serveSave;
+    this.#unsaved = host.unsaved;
+    this.#startAction = host.startAction;
+    this.#openSettings = host.openSettings;
+    this.#openModal = host.openModal;
+    this.#closeModal = host.closeModal;
+    this.#download = host.download;
+    this.#modalBack = host.modalBack;
+    this.#reveal = host.reveal;
+    // The UI kit's toasts and menus are Barynt's own (BARY-238) — kept
+    // where the kit, bundled apart, finds them.
+    const store = globalThis as Record<symbol, unknown>;
+    const key = Symbol.for("barynt.uiHost");
+    store[key] ??= {};
+    const ui = store[key] as Record<string, unknown>;
+    if (host.toast) ui.toast = host.toast;
+    if (host.menu) ui.menu = host.menu;
     this.api = createApi(host);
     this.context = host.context;
     this.root = host.root;
+    // The person's language for the frame: `translator()` and the UI
+    // kit's own texts read it from here.
+    const html =
+      typeof document !== "undefined" ? document.documentElement : null;
+    if (html && host.context.locale) html.lang = host.context.locale;
     // The host calls `onunload()`; a subclass's own one runs first, then
     // everything registered is undone — even when the subclass forgets.
     const own = this.onunload;
@@ -141,16 +192,93 @@ export abstract class Plugin {
   }
 
   /**
+   * From an issue panel: starts one of your actions for its issue, as if
+   * it were picked from the issue's menu — with `choice` already made, if
+   * you pass one. Its answer shows like that too (a toast, a form). An
+   * action with `"where": []` in the manifest is only started like this.
+   */
+  runAction(id: string, context: { choice?: string } = {}): void {
+    if (this.context.slot.kind !== "issuePanel") return;
+    this.#startAction?.(id, context);
+  }
+
+  /**
+   * Opens your settings page in Barynt on a level — `personal` for what's
+   * the person's own (their GitHub account, say), `project` for the
+   * frame's project (its repositories), `workspace`. For a panel with
+   * nothing to show yet because something isn't set: a button there.
+   * `focus` names a part of the page — its settings section gets it as
+   * `context.focus`, to `reveal` that part.
+   */
+  openSettings(level: SettingsLevel, focus?: string): void {
+    this.#openSettings?.(level, focus);
+  }
+
+  /**
+   * Shows a part of the frame: Barynt scrolls its page there — the frame
+   * grows with its content, so scrolling inside it does nothing. For a
+   * settings section opened at a part (`context.focus`), say.
+   */
+  reveal(el: HTMLElement): void {
+    const root = this.root ?? document.body;
+    const top =
+      el.getBoundingClientRect().top - root.getBoundingClientRect().top;
+    this.#reveal?.(Math.max(0, top));
+  }
+
+  /**
+   * Opens a window of Barynt's over the page — a dialog, on a phone a
+   * sheet — with another frame of yours in it, for the same place: the
+   * same `issueId` and project, and `context.modal` saying which `view`
+   * to show with what `data`. For what doesn't fit a panel: details, a
+   * history. Barynt draws its head with `title` and its ✕.
+   */
+  openModal(options: ModalOptions): void {
+    this.#openModal?.(options);
+  }
+
+  /**
+   * Saves a file — a log, an export — through Barynt: the frame is a
+   * sandbox that may not download itself. Text, or `base64` for anything
+   * else; up to 20 MB.
+   */
+  download(file: DownloadFile): void {
+    this.#download?.(file);
+  }
+
+  /**
+   * In a window opened with `openModal`, on a second view inside it (a
+   * run's jobs, say): a back arrow in Barynt's head over the window, left
+   * of its title, that runs `onBack`. `null` takes it away — back on the
+   * first view.
+   */
+  setBack(onBack: (() => void) | null): void {
+    if (!this.context.modal) return;
+    this.#modalBack?.(onBack);
+  }
+
+  /** In a window opened with `openModal`: closes it. */
+  closeModal(): void {
+    if (!this.context.modal) return;
+    this.#closeModal?.();
+  }
+
+  /**
    * An action from the manifest's `contributes.actions` — in an issue's
    * "…" menu, a card's quick actions and the command palette (as the
    * manifest's `where` says). Barynt runs it in a hidden frame when someone
    * picks it, for that issue (`issueId`); what you return shows as a toast.
+   * Return `pick` to ask first — which repository, say: Barynt shows the
+   * options and runs it again with the one picked as `choice`. Return
+   * `form` to have something filled in first — a branch's name, say:
+   * Barynt shows it as a window and runs it again with `values`.
    * Do the work through `this.api` — it's checked like everything else.
    */
   registerAction(action: {
     id: string;
     run(context: {
       issueId: string | null;
+      choice?: string;
     }): ActionResult | undefined | Promise<ActionResult | undefined>;
   }): void {
     if (this.context.slot.kind !== "actions") return;
@@ -193,12 +321,30 @@ export abstract class Plugin {
    * instead of Barynt's form, with `"section"` a part below it — a check, a
    * preview, a picker that asks your service. `context.slot.id` says which
    * (`"settings"` or `"section"`). Read with `loadSettings()`, save with
-   * `api.settings.set(values)`.
+   * `api.settings.set(values)` — in `save`, to save with Barynt's Save
+   * button at the top of the page (`setUnsaved`).
    */
-  registerSettings(page: Omit<ProjectView, "id">): void {
+  registerSettings(page: SettingsPage): void {
     const { id } = this.context.slot;
-    if (id === "settings" || id === "section")
-      this.#renderSlot("settings", { ...page, id });
+    if (id !== "settings" && id !== "section") return;
+    if (page.save) {
+      const save = page.save.bind(page);
+      this.#serveSave?.(async () => {
+        await save();
+        this.setUnsaved(false);
+      });
+    }
+    this.#renderSlot("settings", { id, render: page.render.bind(page) });
+  }
+
+  /**
+   * Tells Barynt whether its settings page has changes to save: `true`
+   * makes the Save button at the top clickable, `false` greys it out
+   * again. Only with a `save` in `registerSettings`; after it ran, it's
+   * `false` on its own.
+   */
+  setUnsaved(unsaved: boolean): void {
+    this.#unsaved?.(unsaved);
   }
 
   /**

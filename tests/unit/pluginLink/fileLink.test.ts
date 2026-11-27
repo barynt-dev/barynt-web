@@ -238,6 +238,109 @@ describe("handleLink(): the rules (BARY-227)", () => {
     expect(updates).toEqual([]);
   });
 
+  it("counts a pull request's rules only for the place's target branches (BARY-238)", async () => {
+    const into = (base: string) => ({
+      ...merged("Fixes WEB-42"),
+      pull_request: {
+        ...merged("Fixes WEB-42").pull_request,
+        base: { ref: base },
+      },
+    });
+    await handleLink(
+      app,
+      plugin,
+      hook,
+      { merged: "done", _bases: ["main"] },
+      "pull_request",
+      into("develop"),
+    );
+    expect(updates).toEqual([]);
+    await handleLink(
+      app,
+      plugin,
+      hook,
+      { merged: "done", _bases: ["main"] },
+      "pull_request",
+      into("main"),
+    );
+    expect(updates).toHaveLength(1);
+  });
+
+  it("moves the issue whose branch's checks fail, and says which", async () => {
+    await handleLink(
+      app,
+      plugin,
+      {
+        provider: "github",
+        rules: [{ id: "failed", on: "checks.failed" as const }],
+      },
+      { failed: "blocked" },
+      "check_run",
+      {
+        repository,
+        check_run: {
+          name: "test",
+          status: "completed",
+          conclusion: "failure",
+          head_sha: "abc",
+          html_url: "https://github.com/acme/web/runs/1",
+          check_suite: { head_branch: "ada/web-42-cookie" },
+          pull_requests: [],
+        },
+      },
+    );
+    expect(updates).toEqual([
+      { userId: "bot-1", issueId: "i-42", status: "blocked" },
+    ]);
+    expect(comments[0].body).toBe(
+      "[test](https://github.com/acme/web/runs/1) failed on `ada/web-42-cookie` — status set to **blocked**.",
+    );
+  });
+
+  it("moves what a deployment shipped, from what the host found", async () => {
+    const { deploymentFinding } = await import("@/lib/plugins/link");
+    const body = {
+      repository,
+      deployment: {
+        ref: "main",
+        sha: "abc",
+        environment: "production",
+        production_environment: true,
+      },
+      deployment_status: {
+        state: "success",
+        environment_url: "https://acme.dev",
+      },
+    };
+    const extra = deploymentFinding(
+      "acme/web",
+      body.deployment,
+      body.deployment_status,
+      new Date().toISOString(),
+      ["WEB-42"],
+    );
+    const reached = await handleLink(
+      app,
+      plugin,
+      {
+        provider: "github",
+        rules: [{ id: "live", on: "deployment.production" as const }],
+      },
+      { live: "done" },
+      "deployment_status",
+      body,
+      extra ? [extra] : [],
+    );
+    expect(updates).toEqual([
+      { userId: "bot-1", issueId: "i-42", status: "done" },
+    ]);
+    expect(comments[0].body).toBe(
+      "Deployed to [production](https://acme.dev) from acme/web — status set to **Done**.",
+    );
+    // Filed for the first time.
+    expect(reached[0].fresh).toEqual([reached[0].findings[0].key]);
+  });
+
   it("changes the status without a comment when it may not comment", async () => {
     await handleLink(
       { ...app, capabilities: ["issues:read", "issues:write"] },

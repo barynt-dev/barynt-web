@@ -82,6 +82,17 @@
   overscroll-behavior: contain;
 }
 
+/* Its reset stays in sight at the bottom while the rows scroll under it —
+   over the panel's own padding, on the popover's background. */
+.scrolling > .footer {
+  position: sticky;
+  bottom: -0.375rem;
+  z-index: 1;
+  margin-bottom: -0.375rem;
+  padding-bottom: 0.375rem;
+  background: var(--surface);
+}
+
 /* One filter: its row, and the chips of what is chosen right below it. */
 .facet {
   display: flex;
@@ -175,6 +186,14 @@
 
 .optionSearch {
   width: 100%;
+}
+
+/* Between a plugin filter's own options and the values found (BARY-238). */
+.optionDivider {
+  height: 1px;
+  margin: 0.25rem 0.5rem;
+  border: 0;
+  background: var(--outline-variant);
 }
 
 .optionRow {

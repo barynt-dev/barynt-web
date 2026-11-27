@@ -21,12 +21,15 @@ export const METHODS = [
   "members.list",
   "fields.list",
   "issueData.list",
+  "issueData.set",
+  "issueData.delete",
   "storage.get",
   "storage.set",
   "storage.delete",
   "storage.list",
   "settings.get",
   "settings.set",
+  "me.get",
   "net.fetch",
 ] as const satisfies readonly Method[];
 
@@ -99,6 +102,12 @@ export function createApi(host: Host) {
       /** What its server keeps on these issues, by issue id — one call
        *  for a whole board. */
       list: (issueIds: string[]) => call("issueData.list", { issueIds }),
+      /** Keeps an entry of yours on an issue (`issues:write`) — what you
+       *  changed yourself and won't hear back about. */
+      set: (issueId: string, key: string, value: Json) =>
+        call("issueData.set", { issueId, key, value }),
+      delete: (issueId: string, key: string) =>
+        call("issueData.delete", { issueId, key }),
     },
     storage: {
       get: <T extends Json = Json>(key: string) =>
@@ -106,6 +115,21 @@ export function createApi(host: Host) {
       set: (key: string, value: Json) => call("storage.set", { key, value }),
       delete: (key: string) => call("storage.delete", { key }),
       list: () => call("storage.list", {}),
+      /** The person's own entries in it — a panel folded away, say:
+       *  everyone keeps theirs, and nobody sees another's. */
+      personal: {
+        get: <T extends Json = Json>(key: string) =>
+          call("storage.get", { key, personal: true }) as Promise<T | null>,
+        set: (key: string, value: Json) =>
+          call("storage.set", { key, value, personal: true }),
+        delete: (key: string) =>
+          call("storage.delete", { key, personal: true }),
+        list: () => call("storage.list", { personal: true }),
+      },
+    },
+    /** Who's using the plugin, and whether they may manage it here. */
+    me: {
+      get: () => call("me.get", {}),
     },
     settings: {
       get: () => call("settings.get", {}),

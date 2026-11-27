@@ -3,6 +3,34 @@
 // is likely to use; the objects carry more.
 
 /** Where a plugin's frame runs. */
+/** Where a plugin's settings are: the person's own, the project's (the
+ *  frame's), or the workspace's. */
+export type SettingsLevel = "personal" | "project" | "workspace";
+
+/** A window of Barynt's over the page, with a frame of the plugin in it
+ *  (`openModal`) — as wide as `size` says, on a phone a sheet. */
+export interface ModalOptions {
+  /** Which of your views it shows — `context.modal.view` there. */
+  view: string;
+  /** Its title, in Barynt's head over it. */
+  title: string;
+  /** What that view needs — JSON, up to 8 KB: `context.modal.data`. */
+  data?: unknown;
+  /** `sm` 420px, `md` 560px (default), `lg` 760px, `xl` 1120px — a
+   *  log, a table. */
+  size?: "sm" | "md" | "lg" | "xl";
+}
+
+/** A file to save (`download`): its name, and what's in it — text, or
+ *  base64 for anything else. Up to 20 MB. */
+export interface DownloadFile {
+  name: string;
+  /** Its media type — `text/plain` by default. */
+  type?: string;
+  text?: string;
+  base64?: string;
+}
+
 export interface Context {
   /** Which of its views or pages this frame is for. */
   slot: {
@@ -19,6 +47,12 @@ export interface Context {
   };
   /** In an issue panel: the issue it's about — `api.issues.get(issueId)`. */
   issueId?: string;
+  /** In an issue panel opened from a board's badge: the part of it the
+   *  badge asked for (its `section`) — unfold that one. */
+  focus?: string;
+  /** In a window a frame of the plugin opened (`openModal`): which of its
+   *  views to show, and what it passed along. */
+  modal?: { view: string; data?: unknown };
   workspaceId: string;
   /** `null` for a workspace's plugin. */
   projectId: string | null;
@@ -85,6 +119,8 @@ export type BadgeIcon =
   | "git-merge"
   | "git-branch"
   | "rocket"
+  | "pencil"
+  | "trash"
   | "package";
 
 export type BadgeTone =
@@ -167,6 +203,8 @@ export type RowPart =
   | { type: "status"; status: "success" | "danger" | "warning" | "pending" }
   /** Pushes what follows to its line's right end. */
   | { type: "spacer" }
+  /** A thin upright line between what's before and after it. */
+  | { type: "divider" }
   /** Starts the row's second line. */
   | { type: "break" };
 
@@ -189,6 +227,8 @@ export interface Badge {
   /** A row's click opens the issue at this one of your `issuePanels` —
    *  where you can draw whatever you like. */
   panel?: string;
+  /** …and asks the panel to show this part of it: its `context.focus`. */
+  section?: string;
 }
 
 /** What an action answers — all of it optional. */
@@ -205,6 +245,57 @@ export interface ActionResult {
   copy?: string;
   /** An `https` address Barynt opens in a new tab. */
   open?: string;
+  /** Ask first: Barynt shows these options (up to 20) and runs the action
+   *  again with the one picked as `context.choice`. */
+  pick?: {
+    title: string;
+    options: { id: string; label: string; hint?: string }[];
+    /** Before each option, as `lucide:<BadgeIcon>`. */
+    icon?: string;
+  };
+  /** Ask to fill in a form first: Barynt shows it as a window and runs the
+   *  action again with what was filled in as `context.values` (`choice`
+   *  kept). Without fields and with `danger`, it's a confirmation. */
+  form?: ActionForm;
+}
+
+/** A form an action asks to fill in (up to 8 fields). */
+export interface ActionForm {
+  title: string;
+  description?: string;
+  fields: {
+    id: string;
+    label: string;
+    type: "text" | "select";
+    value?: string;
+    /** `select`: what to pick from — `hint` a note on the right
+     *  ("Default"); past six, the menu has a search. */
+    options?: { id: string; label: string; hint?: string }[];
+    hint?: string;
+    required?: boolean;
+    /** Shown as code — a branch's name, say (a select's options too). */
+    mono?: boolean;
+    /** Checked as it's typed (a regular expression, `u` flag): a value
+     *  matching one is wrong — its `message` shows under the field and
+     *  the window doesn't go on. Check again when it runs. */
+    invalid?: { pattern: string; message: string }[];
+    /** Values it can't have — a name that's taken — and what to say. */
+    taken?: { values: string[]; message: string };
+    /** Another field — a select — this one follows: `per` that field's
+     *  value, its options, what's taken and the value it starts with. */
+    dependsOn?: string;
+    per?: Record<
+      string,
+      {
+        options?: { id: string; label: string; hint?: string }[];
+        taken?: string[];
+        value?: string;
+      }
+    >;
+  }[];
+  submitLabel?: string;
+  /** It costs something: its button in red. */
+  danger?: boolean;
 }
 
 /** The object Barynt hands a plugin's default export. */
@@ -218,9 +309,41 @@ export interface Host {
   serveActions?(
     handler: (
       actionId: string,
-      context: { issueId: string | null },
+      context: {
+        issueId: string | null;
+        choice?: string;
+        values?: Record<string, string>;
+      },
     ) => ActionResult | undefined | Promise<ActionResult | undefined>,
   ): void;
+  /** A message as Barynt's own toast. */
+  toast?(text: string): void;
+  /** A menu Barynt draws over the frame, at `anchor` (the button, in the
+   *  frame's coordinates) — the picked item's id, `null` for none. */
+  menu?(
+    items: { id: string; label: string; icon?: string; danger?: boolean }[],
+    anchor: { x: number; y: number; width: number; height: number },
+  ): Promise<string | null>;
+  /** An issue panel starts one of its plugin's actions for its issue. */
+  startAction?(actionId: string, context?: { choice?: string }): void;
+  /** Opens its own settings page in Barynt, on a level — at a part of it
+   *  (its settings section's `context.focus`). */
+  openSettings?(level: SettingsLevel, focus?: string): void;
+  /** Scrolls Barynt's page to this far down the frame (px). */
+  reveal?(top: number): void;
+  /** Opens a window of Barynt's with another frame of the plugin in it. */
+  openModal?(options: ModalOptions): void;
+  /** Closes the window this frame is in. */
+  closeModal?(): void;
+  /** A back arrow in the head of the window this frame is in — `null`:
+   *  none. */
+  modalBack?(handler: (() => void) | null): void;
+  /** Saves a file through Barynt — the frame may not download itself. */
+  download?(file: DownloadFile): void;
+  /** What saves its settings page when Barynt's Save button is pressed. */
+  serveSave?(handler: () => void | Promise<void>): void;
+  /** Whether its settings page has changes to save. */
+  unsaved?(on: boolean): void;
   /** What answers a board's batches of issues with badges. */
   serveBadges?(
     handler: (
@@ -363,11 +486,22 @@ export interface Methods {
     { issueId?: string; issueIds?: string[] },
     Record<string, IssueDataEntry[]>,
   ];
-  "storage.get": [{ key: string }, Json];
-  "storage.set": [{ key: string; value: Json }, null];
-  "storage.delete": [{ key: string }, null];
-  "storage.list": [Record<string, never>, string[]];
+  "issueData.set": [{ issueId: string; key: string; value: Json }, null];
+  "issueData.delete": [{ issueId: string; key: string }, null];
+  "storage.get": [{ key: string; personal?: boolean }, Json];
+  "storage.set": [{ key: string; value: Json; personal?: boolean }, null];
+  "storage.delete": [{ key: string; personal?: boolean }, null];
+  "storage.list": [{ personal?: boolean }, string[]];
   "settings.get": [Record<string, never>, Record<string, Json>];
+  "me.get": [
+    Record<string, never>,
+    {
+      id: string;
+      name: string;
+      /** May change the plugin's settings here — manage it. */
+      canManage: boolean;
+    },
+  ];
   "settings.set": [{ values: Record<string, Json> }, null];
   "net.fetch": [
     {
@@ -375,6 +509,12 @@ export interface Methods {
       method?: "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE";
       headers?: Record<string, string>;
       body?: string;
+      /** Follow one redirect to another `https` address, sent there
+       *  without any credential — a download GitHub hands to its storage. */
+      follow?: boolean;
+      /** `person`: with the person's own account, not the place's
+       *  connection — for what only a person may do. */
+      as?: "person";
     },
     {
       status: number;

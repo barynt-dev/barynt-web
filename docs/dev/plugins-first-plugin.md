@@ -150,9 +150,9 @@ that serves the three files.
 
 1. **Admin → Plugins → Sources**: your plugin is listed under *Local
    plugins*, with anything wrong in its manifest. **Install** it.
-2. **Settings → Plugin store**: open it and **Release** it for the workspace.
-3. **Project settings → Plugins → Open Issues**: confirm what it may do and
-   **Switch on**. Under **Views**, open *Open issues*.
+2. **Settings → Store**: open it and **Release** it for the workspace.
+3. **Settings → Plugins → Open Issues**, tab **Project**: confirm what it may
+   do and **Switch on**. Under **Views**, open *Open issues*.
 
 ## Changing it
 

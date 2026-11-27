@@ -8,20 +8,14 @@ import {
   SettingsSearchProvider,
 } from "@/components/ui/layout/SettingsNav/SettingsSearch";
 import { getMyProfile } from "@/features/account/queries";
-import { canUsePluginStore } from "@/features/plugins/queries";
 import {
   accountNav,
   settingsSearchIndex,
 } from "@/features/settings/navigation";
+import { settingsScope } from "@/features/settings/scope";
 import { getWorkspaceProjects } from "@/features/workspaces/queries";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
-import {
-  accountPath,
-  PROJECT_SETTINGS_PERMISSIONS,
-  settingsScopeItems,
-  visibleSettingsScope,
-  WORKSPACE_SETTINGS_PERMISSIONS,
-} from "@/lib/nav";
+import { accountPath } from "@/lib/nav";
 import { getAccess } from "@/lib/permissions";
 import styles from "./account.module.scss";
 
@@ -67,25 +61,12 @@ export default async function AccountLayout({
     ? await getAccess({ projectId: firstProject.id })
     : null;
 
-  const scope = visibleSettingsScope(
-    settingsScopeItems({
-      workspaceId: workspace,
-      projectSlug: firstProject?.slug,
-      labels: {
-        workspace: t("settings.scopeWorkspace"),
-        project: t("settings.scopeProject"),
-        account: t("settings.scopeAccount"),
-        store: t("settings.scopeStore"),
-      },
-    }),
-    {
-      workspace: WORKSPACE_SETTINGS_PERMISSIONS.some(workspaceAccess.has),
-      project: projectAccess
-        ? PROJECT_SETTINGS_PERMISSIONS.some(projectAccess.has)
-        : false,
-      store: await canUsePluginStore(workspace),
-    },
-  );
+  const scope = await settingsScope(t, {
+    workspaceId: workspace,
+    project: firstProject ?? null,
+    workspaceAccess,
+    projectAccess,
+  });
 
   // The search looks through Project and Workspace too, as far as the
   // switcher above leads there (BARY-201).
@@ -122,11 +103,6 @@ export default async function AccountLayout({
             subject={t("nav.account")}
             title={t("nav.settings")}
             items={nav.items}
-            groups={
-              nav.plugins.length > 0
-                ? [{ title: t("nav.plugins"), items: nav.plugins }]
-                : undefined
-            }
           />
           <div className={styles.panel} data-settings-panel>
             {children}

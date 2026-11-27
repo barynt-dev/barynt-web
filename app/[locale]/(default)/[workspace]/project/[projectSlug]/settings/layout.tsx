@@ -10,23 +10,17 @@ import {
   SettingsSearchField,
   SettingsSearchProvider,
 } from "@/components/ui/layout/SettingsNav/SettingsSearch";
-import { canUsePluginStore } from "@/features/plugins/queries";
 import {
   projectNav,
   settingsSearchIndex,
 } from "@/features/settings/navigation";
+import { settingsScope } from "@/features/settings/scope";
 import {
   getMyProjects,
   getWorkspaceProjects,
 } from "@/features/workspaces/queries";
 import { setCurrentWorkspaceId } from "@/lib/current-workspace";
-import {
-  PROJECT_SETTINGS_PERMISSIONS,
-  projectSettingsPath,
-  settingsScopeItems,
-  visibleSettingsScope,
-  WORKSPACE_SETTINGS_PERMISSIONS,
-} from "@/lib/nav";
+import { projectSettingsPath } from "@/lib/nav";
 import { getAccess } from "@/lib/permissions";
 import styles from "./settings.module.scss";
 
@@ -64,23 +58,12 @@ export default async function ProjectSettingsLayout({
 
   // The project is known here — the switcher leads back to exactly the one
   // you're currently in, not to some arbitrary other one.
-  const scope = visibleSettingsScope(
-    settingsScopeItems({
-      workspaceId: workspace,
-      projectSlug,
-      labels: {
-        workspace: t("settings.scopeWorkspace"),
-        project: t("settings.scopeProject"),
-        account: t("settings.scopeAccount"),
-        store: t("settings.scopeStore"),
-      },
-    }),
-    {
-      workspace: WORKSPACE_SETTINGS_PERMISSIONS.some(workspaceAccess.has),
-      project: PROJECT_SETTINGS_PERMISSIONS.some(access.has),
-      store: await canUsePluginStore(workspace),
-    },
-  );
+  const scope = await settingsScope(t, {
+    workspaceId: workspace,
+    project,
+    workspaceAccess,
+    projectAccess: access,
+  });
 
   // The sidebar's header switches the project while staying within
   // settings — across workspace boundaries, because you look up a project by
@@ -99,8 +82,7 @@ export default async function ProjectSettingsLayout({
   // Roles is the only section with its own gate: it holds the rules that
   // decide everything else. General and Labels stay visible even without
   // write access — they then show what's in effect, just read-only. The
-  // plugins the workspace released for projects follow, on here or not:
-  // each page switches it on and holds its settings (BARY-201).
+  // plugins have an area of their own (`/plugins`, BARY-238).
   const [nav, searchIndex] = await Promise.all([
     projectNav(t, workspace, project, access),
     settingsSearchIndex(t, {
@@ -139,11 +121,6 @@ export default async function ProjectSettingsLayout({
             siblingsLabel={t("settings.scopeProject")}
             title={t("nav.settings")}
             items={nav.items}
-            groups={
-              nav.plugins.length > 0
-                ? [{ title: t("nav.plugins"), items: nav.plugins }]
-                : undefined
-            }
           />
           <div className={styles.panel} data-settings-panel>
             {children}

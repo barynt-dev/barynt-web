@@ -1,0 +1,61 @@
+/* A settings group that folds away under its heading (BARY-238). The
+   `<details>` stays a block; the gap lives on the body, which also keeps it
+   working where a `<details>` can't be a flex container. */
+
+.fold {
+  min-width: 0;
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: fit-content;
+  max-width: 100%;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--radius-sm);
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  /* The page's heading keeps its look, just without its own margins. */
+  & > :is(h2, h3) {
+    margin: 0;
+  }
+}
+
+/* Quiet, like the settings nav's own: it turns when the group folds. */
+.chevron {
+  flex: none;
+  color: var(--outline);
+  transition:
+    rotate 0.15s ease,
+    color 0.12s;
+
+  .summary:hover & {
+    color: var(--on-surface-variant);
+  }
+
+  .fold:not([open]) & {
+    rotate: -90deg;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fold-gap, 0.25rem);
+  padding-top: var(--fold-gap, 0.25rem);
+}

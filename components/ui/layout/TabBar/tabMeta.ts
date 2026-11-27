@@ -117,8 +117,10 @@ export function tabTitle(
   // which one it is.
   if (section === "issue") return decodeURIComponent(path.split("/")[3] ?? "");
 
-  // The workspace's plugin store (BARY-201).
-  if (section === "plugins") return t("settings.scopeStore");
+  // The workspace's plugin store (BARY-201), and the plugins' area
+  // (BARY-238).
+  if (section === "store") return t("settings.scopeStore");
+  if (section === "plugins") return t("settings.scopePlugins");
 
   // Across projects (V8): the workspace's board/list, and its views.
   if (section === "issues") return t("nav.issues");
@@ -195,7 +197,8 @@ export function tabIcon(path: string): string {
     );
   }
 
-  if (section === "plugins") return "lucide:store";
+  if (section === "store") return "lucide:store";
+  if (section === "plugins") return "lucide:puzzle";
 
   // Like the project: the settings have a second level, and that carries
   // its own icon. Without this branch, every section would get the gear.

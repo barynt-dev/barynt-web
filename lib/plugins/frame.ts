@@ -21,10 +21,23 @@ const RUNTIME = `(() => {
   const MAX_PENDING = ${BRIDGE_MAX_PENDING};
   const pending = new Map();
   let port = null;
+  let backHandler = null;
   let seq = 0;
   let instance = null;
   let badgeHandler = null;
   let actionHandler = null;
+  // Its menus Barynt draws (BARY-238): by number, the pick they wait for.
+  let menuSeq = 0;
+  const menus = new Map();
+  // A click in the frame closes an open menu, as a click beside it would.
+  document.addEventListener(
+    "pointerdown",
+    () => {
+      if (menus.size > 0) send({ type: "menu:close" });
+    },
+    true,
+  );
+  let saveHandler = null;
 
   const send = (message) => port && port.postMessage(message);
   const fail = (error) =>
@@ -78,7 +91,13 @@ const RUNTIME = `(() => {
         if (!actionHandler)
           return send({ type: "actionDone", seq, ok: false, result: "no actions" });
         Promise.resolve()
-          .then(() => actionHandler(String(m.actionId), { issueId: m.issueId || null }))
+          .then(() =>
+            actionHandler(String(m.actionId), {
+              issueId: m.issueId || null,
+              ...(typeof m.choice === "string" && { choice: m.choice }),
+              ...(m.values && typeof m.values === "object" && { values: m.values }),
+            }),
+          )
           .then((result) => send({ type: "actionDone", seq, ok: true, result: result || {} }))
           .catch((error) =>
             send({
@@ -86,6 +105,28 @@ const RUNTIME = `(() => {
               seq,
               ok: false,
               result: String((error && error.message) || error),
+            }),
+          );
+        return;
+      }
+      // Barynt's Save button, for its settings page: the answer goes back
+      // with the request's number.
+      if (m.type === "modal:back") {
+        if (backHandler) backHandler();
+        return;
+      }
+      if (m.type === "settings:save") {
+        const seq = m.seq;
+        if (!saveHandler) return send({ type: "saveDone", seq, ok: true });
+        Promise.resolve()
+          .then(() => saveHandler())
+          .then(() => send({ type: "saveDone", seq, ok: true }))
+          .catch((error) =>
+            send({
+              type: "saveDone",
+              seq,
+              ok: false,
+              error: String((error && error.message) || error),
             }),
           );
         return;
@@ -100,6 +141,14 @@ const RUNTIME = `(() => {
             send({ type: "badges", seq, badges: {} });
             fail(error);
           });
+        return;
+      }
+      if (m.type === "menu:pick") {
+        const done = menus.get(m.id);
+        if (done) {
+          menus.delete(m.id);
+          done(typeof m.itemId === "string" ? m.itemId : null);
+        }
         return;
       }
       if (m.type !== "result") return;
@@ -131,13 +180,60 @@ const RUNTIME = `(() => {
         serveActions: (handler) => {
           actionHandler = typeof handler === "function" ? handler : null;
         },
+        // What saves its settings page when Barynt's Save button is
+        // pressed — and whether there's anything to save.
+        serveSave: (handler) => {
+          saveHandler = typeof handler === "function" ? handler : null;
+          if (saveHandler) send({ type: "unsaved", unsaved: false });
+        },
+        unsaved: (on) => send({ type: "unsaved", unsaved: on === true }),
+        // A message as Barynt's own toast (BARY-238).
+        toast: (text) => send({ type: "toast", text: String(text) }),
+        // A menu Barynt draws over the frame, at the button (BARY-238).
+        menu: (items, anchor) =>
+          new Promise((resolve) => {
+            const id = ++menuSeq;
+            menus.set(id, resolve);
+            send({ type: "menu", id, items, anchor });
+          }),
+        // Its own settings page in Barynt, on a level (BARY-238).
+        openSettings: (level, focus) =>
+          send({ type: "openSettings", level: String(level), ...(focus ? { focus: String(focus) } : {}) }),
+        // Scroll Barynt's page to a part of the frame (BARY-238).
+        reveal: (top) => send({ type: "reveal", top: Number(top) }),
+        // A window of Barynt's with another frame of it, and closing the
+        // one it's in (BARY-238).
+        openModal: (options) => {
+          const o = options && typeof options === "object" ? options : {};
+          send({ type: "openModal", view: o.view, title: o.title, data: o.data, size: o.size });
+        },
+        closeModal: () => send({ type: "closeModal" }),
+        // A back arrow in its window's head — or none (BARY-238).
+        modalBack: (handler) => {
+          backHandler = typeof handler === "function" ? handler : null;
+          send({ type: "modalBack", on: backHandler !== null });
+        },
+        // A file to save: the sandbox may not download (BARY-238).
+        download: (file) => {
+          const f = file && typeof file === "object" ? file : {};
+          send({ type: "download", name: f.name, mime: f.type, text: f.text, base64: f.base64 });
+        },
+        // An issue panel starts one of its actions (BARY-238).
+        startAction: (actionId, context) =>
+          send({
+            type: "runAction",
+            actionId: String(actionId),
+            ...(context && typeof context.choice === "string" && { choice: context.choice }),
+          }),
       });
       instance = new Plugin(host);
       if (instance && typeof instance.onload === "function") await instance.onload();
       send({ type: "ready" });
-      // A panel in an issue grows to fit its content (BARY-150): how tall
-      // it is, whenever that changes — once per frame, at most.
-      if (data.context && data.context.slot && data.context.slot.kind === "issuePanel") {
+      // A panel in an issue grows to fit its content (BARY-150), and a
+      // settings section below Barynt's form (BARY-238): how tall it is,
+      // whenever that changes — once per frame, at most.
+      const slot = data.context && data.context.slot;
+      if (slot && (slot.kind === "issuePanel" || (slot.kind === "settings" && slot.id === "section"))) {
         const root = document.getElementById("root");
         root.style.minHeight = "0";
         let sent = -1;
@@ -150,6 +246,10 @@ const RUNTIME = `(() => {
         new ResizeObserver(() => {
           if (!queued) { queued = true; requestAnimationFrame(measure); }
         }).observe(root);
+        // A frame out of sight gets neither (Chrome holds back its
+        // rendering): measured now, and every second — sent on a change.
+        measure();
+        setInterval(measure, 1000);
       }
     } catch (error) {
       fail(error);
@@ -172,6 +272,9 @@ const BASE_CSS = `
 ${tokenCss()}
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
+/* Barynt gives a frame its width: it never scrolls sideways — whatever
+   pokes past the edge (a tip, a shadow) is cut off instead. */
+html, body { overflow-x: clip; }
 body {
   background: var(--frame-bg, var(--barynt-color-surface, transparent));
   color: var(--barynt-color-text, CanvasText);

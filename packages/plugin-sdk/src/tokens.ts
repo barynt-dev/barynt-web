@@ -25,6 +25,7 @@ export const TOKEN_NAMES = [
   "color.secondary.text",
   "color.secondary.subtle",
   "color.secondary.subtle.text",
+  "color.tertiary",
   "color.danger",
   "color.danger.text",
   "color.danger.subtle",

@@ -5,9 +5,12 @@ import type {
   BadgeIssue,
   BlockData,
   Context,
+  DownloadFile,
   Host,
   Method,
   Methods,
+  ModalOptions,
+  SettingsLevel,
 } from "./types";
 
 // Testing a plugin without Barynt: a host that answers from your handlers
@@ -24,11 +27,34 @@ export interface TestHost extends Host {
   readonly calls: { method: string; params: unknown }[];
   /** Every building block's data the plugin showed, in order. */
   readonly shown: BlockData[];
+  /** Every action an issue panel started (`runAction`), in order. */
+  readonly started: { actionId: string; choice?: string }[];
+  /** Every settings page it opened (`openSettings`), in order. */
+  readonly openedSettings: SettingsLevel[];
+  /** The parts of them it asked for (`openSettings`'s `focus`), in order. */
+  readonly settingsFocus: (string | undefined)[];
+  /** Every window it opened (`openModal`), in order. */
+  readonly openedModals: ModalOptions[];
+  /** How often it closed its window (`closeModal`). */
+  readonly closedModals: number;
+  /** Every file it saved (`download`), in order. */
+  readonly downloads: DownloadFile[];
+  /** What its window's back arrow runs now (`setBack`) — `null`: none. */
+  readonly back: (() => void) | null;
   /** Runs one of the plugin's actions, as a menu would. */
   runAction(
     id: string,
-    context?: { issueId: string | null },
+    context?: {
+      issueId: string | null;
+      choice?: string;
+      values?: Record<string, string>;
+    },
   ): Promise<ActionResult>;
+  /** Whether its settings page says it has changes to save — `null` while
+   *  it doesn't save with Barynt's button (`registerSettings` `save`). */
+  readonly unsavedState: boolean | null;
+  /** Presses Barynt's Save button for its settings page. */
+  save(): Promise<void>;
   /** Asks the plugin's badges for these issues, as a board would. */
   badges(
     issues: BadgeIssue[],
@@ -49,13 +75,45 @@ export function createTestHost(
 ): TestHost {
   const calls: TestHost["calls"] = [];
   const shown: TestHost["shown"] = [];
+  const started: TestHost["started"] = [];
+  const openedSettings: SettingsLevel[] = [];
+  const settingsFocus: (string | undefined)[] = [];
+  const openedModals: ModalOptions[] = [];
+  let closedModals = 0;
+  const downloads: DownloadFile[] = [];
+  let back: (() => void) | null = null;
   let badgeHandler: Parameters<NonNullable<Host["serveBadges"]>>[0] | null =
     null;
   let actionHandler: Parameters<NonNullable<Host["serveActions"]>>[0] | null =
     null;
+  let saveHandler: Parameters<NonNullable<Host["serveSave"]>>[0] | null = null;
+  let unsavedState: boolean | null = null;
   return {
     calls,
     shown,
+    started,
+    openedSettings,
+    settingsFocus,
+    openedModals,
+    get closedModals() {
+      return closedModals;
+    },
+    openModal: (options) => {
+      openedModals.push(options);
+    },
+    closeModal: () => {
+      closedModals += 1;
+    },
+    downloads,
+    get back() {
+      return back;
+    },
+    modalBack: (handler) => {
+      back = handler;
+    },
+    download: (file) => {
+      downloads.push(file);
+    },
     show: (data) => void shown.push(data),
     serveBadges: (handler) => {
       badgeHandler = handler;
@@ -63,6 +121,30 @@ export function createTestHost(
     badges: (issues) => badgeHandler?.(issues) ?? {},
     serveActions: (handler) => {
       actionHandler = handler;
+    },
+    serveSave: (handler) => {
+      saveHandler = handler;
+      unsavedState = false;
+    },
+    openSettings: (level, focus) => {
+      openedSettings.push(level);
+      settingsFocus.push(focus);
+    },
+    startAction: (actionId, context) => {
+      started.push({
+        actionId,
+        ...(context?.choice !== undefined && { choice: context.choice }),
+      });
+    },
+    unsaved: (on) => {
+      if (saveHandler) unsavedState = on;
+    },
+    get unsavedState() {
+      return unsavedState;
+    },
+    save: async () => {
+      if (!saveHandler) throw new Error("no save registered");
+      await saveHandler();
     },
     runAction: async (id, context = { issueId: null }) => {
       if (!actionHandler) throw new Error("no actions registered");

@@ -47,6 +47,9 @@ export const BADGE_ICONS = {
   "git-branch": "lucide:git-branch",
   rocket: "lucide:rocket",
   package: "lucide:package",
+  // A menu's rename and delete (BARY-238).
+  pencil: "lucide:pencil",
+  trash: "lucide:trash-2",
 } as const;
 export type BadgeIcon = keyof typeof BADGE_ICONS;
 
@@ -131,6 +134,8 @@ export type RowPart =
   | { type: "status"; status: RowStatus }
   /** Pushes what follows to its line's right end. */
   | { type: "spacer" }
+  /** A thin upright line between what's before and after it (BARY-238). */
+  | { type: "divider" }
   /** Starts the row's second line — a row is two lines at most. */
   | { type: "break" };
 
@@ -152,6 +157,8 @@ export interface Badge {
   parts?: RowPart[];
   /** A row's click opens the issue at this issue panel of the plugin's. */
   panel?: string;
+  /** …and asks it to show this part of it — its frame's `context.focus`. */
+  section?: string;
 }
 
 /** An issue as the plugin gets it: always its id and reference; with
@@ -213,6 +220,10 @@ export function parseBadges(
         ...(row &&
           typeof b.panel === "string" &&
           /^[a-z][a-z0-9-]{0,39}$/.test(b.panel) && { panel: b.panel }),
+        ...(row &&
+          typeof b.panel === "string" &&
+          typeof b.section === "string" &&
+          /^[a-z][a-z0-9-]{0,39}$/.test(b.section) && { section: b.section }),
         text: label,
         ...(typeof b.icon === "string" &&
           Object.hasOwn(BADGE_ICONS, b.icon) && { icon: b.icon as BadgeIcon }),
@@ -445,6 +456,8 @@ function parsePart(
         : null;
     case "spacer":
       return { type: "spacer" };
+    case "divider":
+      return { type: "divider" };
     case "break":
       if (depth > 0 || budget.breaks <= 0) return null;
       budget.breaks--;

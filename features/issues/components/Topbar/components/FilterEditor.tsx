@@ -25,6 +25,7 @@ import {
   type IssueFilter,
   isCustomFilterField,
   isGroup,
+  isPluginFilterField,
   ME,
   NONE_VALUE,
   type RuleField,
@@ -39,6 +40,7 @@ import {
   EDITOR_FIELDS,
   editorOps,
   type FilterLabelLookups,
+  pluginFilterOf,
   RELATIVE_OPTIONS,
   useFilterLabels,
 } from "../filterLabels";
@@ -123,10 +125,12 @@ export function FilterEditor({
     onChange(fromRootBox(next, text));
   };
 
-  // Then the custom fields (BARY-196), after the built-in ones.
+  // Then the custom fields (BARY-196), after the built-in ones — and the
+  // plugins' filters (BARY-238) last.
   const fields: RuleField[] = [
     ...EDITOR_FIELDS.filter((f) => f !== "project" || area === "my"),
     ...(lookups.customFields ?? []).map((f) => customFilterField(f.id)),
+    ...(lookups.pluginFilters ?? []).map((f) => f.field),
   ];
 
   /** A custom field's answers to pick from (`customFilterAnswers`). */
@@ -137,6 +141,14 @@ export function FilterEditor({
 
   const options = (field: RuleField): ISelectItem[] => {
     if (isCustomFilterField(field)) return customOptions(field);
+    if (isPluginFilterField(field))
+      return (
+        pluginFilterOf(lookups, field)?.options.map((o, i, all) => ({
+          value: o.id,
+          label: o.label,
+          divider: o.found === true && i > 0 && !all[i - 1].found,
+        })) ?? []
+      );
     switch (field) {
       case "status":
         return lookups.statuses.map((s) => ({

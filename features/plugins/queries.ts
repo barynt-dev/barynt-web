@@ -1,5 +1,12 @@
 import "server-only";
 import { getLocale } from "next-intl/server";
+import { cache } from "react";
+import {
+  type GitHubAppAdminView,
+  getConnectionView,
+  getGitHubAppAdminView,
+  type PluginConnectionView,
+} from "@/features/github/queries";
 import {
   pluginRepo,
   readSourceRecent,
@@ -42,6 +49,7 @@ import {
   type ServiceSummary,
   serviceSummary,
 } from "@/lib/plugins/service";
+import { settingLabelsOf } from "@/lib/plugins/setting-labels";
 import type { SettingType, SettingValue } from "@/lib/plugins/settings";
 import type { PMDoc } from "@/lib/richtext/types";
 import {
@@ -49,8 +57,12 @@ import {
   serviceAddressOf,
 } from "@/lib/webhooks/plugin-targets";
 import { listDevPlugins } from "./dev";
-import { linkRuleStatuses } from "./link";
-import { placeSettings, placeStatuses } from "./settings-options";
+import { linkRuleBases, linkRuleOptions, linkRuleStatuses } from "./link";
+import {
+  placeSettings,
+  placeStatuses,
+  type RepositoryAccount,
+} from "./settings-options";
 
 // What the plugin pages show (BARY-143). Every view checks its own
 // permission and answers `null` without it — the page then 404s; a hidden
@@ -73,6 +85,8 @@ export interface PluginSummary {
   /** Its page text, in the person's language (BARY-237). */
   about: PMDoc | null;
   links: PluginLink[];
+  /** The services it connects to (BARY-238), e.g. `["github"]`. */
+  connections?: string[];
 }
 
 /** Where an installed version's preview image is served. */
@@ -87,7 +101,7 @@ function summaryOf(
    *  (BARY-235). */
   locale = "en",
 ): PluginSummary {
-  const parsed = validateManifest(manifest);
+  const parsed = validateManifest(manifest, locale);
   const m: Partial<PluginManifest> = parsed.ok ? parsed.manifest : {};
   return {
     pluginId,
@@ -105,6 +119,7 @@ function summaryOf(
     service: m.service ? serviceSummary(m.service) : null,
     about: aboutDoc(localizedAbout(m, locale)),
     links: m.links ?? [],
+    connections: (m.contributes?.connections ?? []).map((c) => c.provider),
     previews: rowId
       ? (m.previews ?? []).map(({ file, title }) => ({
           title,
@@ -166,6 +181,9 @@ export interface InstalledPlugin extends PluginSummary {
   /** For a server the operator runs (`platform`, BARY-223): its address,
    *  and whether `PLUGIN_SERVICE_URLS` sets it. `null` for any other. */
   serviceAddress: { url: string | null; fromEnv: boolean } | null;
+  /** For a plugin that connects to GitHub: the instance's GitHub App, and
+   *  how to create it (BARY-238). */
+  githubApp?: GitHubAppAdminView | null;
 }
 
 export interface AdminPluginsView {
@@ -215,7 +233,22 @@ export async function getAdminPluginsView(): Promise<AdminPluginsView | null> {
             counts.find((c) => c.pluginId === shown.pluginId)?._count._all ?? 0,
         };
       }),
-    ).then((list) => list.sort((a, b) => a.name.localeCompare(b.name))),
+    )
+      .then((list) =>
+        Promise.all(
+          list.map(async (p) =>
+            p.connections?.includes("github")
+              ? {
+                  ...p,
+                  githubApp: await getGitHubAppAdminView(
+                    `/admin/plugins?plugin=${encodeURIComponent(p.pluginId)}`,
+                  ),
+                }
+              : p,
+          ),
+        ),
+      )
+      .then((list) => list.sort((a, b) => a.name.localeCompare(b.name))),
   };
 }
 
@@ -664,8 +697,36 @@ export interface PluginSettingField {
   label: string;
   description: string | null;
   default: SettingValue | null;
-  /** A choice's options — for `member` and `label` the place's (BARY-204). */
-  options: { id: string; label: string; color?: string }[];
+  /** A choice's options — for `member` and `label` the place's (BARY-204),
+   *  for `repositories` what the place's connections reach (BARY-238). */
+  options: {
+    id: string;
+    label: string;
+    color?: string;
+    private?: boolean;
+    archived?: boolean;
+    fork?: boolean;
+    /** A repository's page on GitHub. */
+    url?: string;
+  }[];
+  /** `repositories`: whether there's a connection to list them from, and
+   *  the accounts GitHub didn't answer for. */
+  connected?: boolean;
+  failed?: string[];
+  /** `repositories`: the connected accounts, to create one in. */
+  accounts?: RepositoryAccount[];
+  /** The heading it's shown under, with the settings next to it that
+   *  share it. */
+  group?: string;
+  /** The icon beside that heading. */
+  groupIcon?: string;
+  /** `text`: ready-made values to pick from a menu beside the field. */
+  suggestions?: {
+    id: string;
+    value: string;
+    label: string;
+    hint: string | null;
+  }[];
 }
 
 /** The settings nav's "Plugins" group. In a project: every plugin its
@@ -676,7 +737,8 @@ export interface PluginSettingField {
 export async function getPluginSettingsNav(scope: {
   workspaceId: string;
   projectId: string | null;
-}): Promise<{ pluginId: string; name: string }[]> {
+}): Promise<PluginNavRow[]> {
+  const locale = await getLocale();
   const ids = scope.projectId
     ? (
         await db.pluginGrant.findMany({
@@ -684,29 +746,86 @@ export async function getPluginSettingsNav(scope: {
           select: { pluginId: true },
         })
       ).map((g) => g.pluginId)
-    : (
-        await db.pluginActivation.findMany({
-          where: { scopeKey: activationScopeKey(scope), enabled: true },
-          select: { pluginId: true },
-        })
-      ).map((a) => a.pluginId);
+    : await workspaceSettingsIds(scope.workspaceId);
   if (ids.length === 0) return [];
-  const rows = await db.plugin.findMany({
-    where: { pluginId: { in: ids }, status: "active" },
-    select: { pluginId: true, manifest: true },
-  });
+  const [rows, running] = await Promise.all([
+    db.plugin.findMany({
+      where: { pluginId: { in: ids }, status: "active" },
+      select: { pluginId: true, manifest: true },
+    }),
+    db.pluginActivation.findMany({
+      where: {
+        pluginId: { in: ids },
+        scopeKey: activationScopeKey(scope),
+        enabled: true,
+      },
+      select: { pluginId: true },
+    }),
+  ]);
+  const level = scope.projectId ? "project" : "workspace";
   return rows
     .filter((r) =>
       scope.projectId
         ? true
         : hasSettingsForm(r.manifest) ||
-          credentialsOf(r.manifest, "workspace").length > 0,
+          credentialsOf(r.manifest, "workspace").length > 0 ||
+          connectsTo(r.manifest),
     )
     .map((r) => ({
       pluginId: r.pluginId,
       name: summaryOf(r.pluginId, r.manifest).name,
+      settings: running.some((a) => a.pluginId === r.pluginId)
+        ? settingLabelsOf(r.manifest, level, locale)
+        : [],
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** A plugin in a settings nav, with the labels of the settings its page
+ *  shows there — for the settings search. */
+export interface PluginNavRow {
+  pluginId: string;
+  name: string;
+  settings: string[];
+}
+
+/** In the workspace: the plugins on there, and those released for its
+ *  projects that connect to GitHub — connected once for all of them. */
+async function workspaceSettingsIds(workspaceId: string): Promise<string[]> {
+  const [on, released] = await Promise.all([
+    db.pluginActivation.findMany({
+      where: {
+        scopeKey: activationScopeKey({ workspaceId, projectId: null }),
+        enabled: true,
+      },
+      select: { pluginId: true },
+    }),
+    db.pluginGrant.findMany({
+      where: { workspaceId },
+      select: { pluginId: true },
+    }),
+  ]);
+  const onIds = new Set(on.map((a) => a.pluginId));
+  const connecting = (
+    await db.plugin.findMany({
+      where: {
+        pluginId: { in: released.map((g) => g.pluginId) },
+        status: "active",
+      },
+      select: { pluginId: true, manifest: true },
+    })
+  )
+    .filter((r) => connectsTo(r.manifest))
+    .map((r) => r.pluginId);
+  return [...new Set([...onIds, ...connecting])];
+}
+
+/** Does the manifest connect to another service (BARY-238)? */
+function connectsTo(manifest: unknown): boolean {
+  const parsed = validateManifest(manifest);
+  return (
+    parsed.ok && (parsed.manifest.contributes.connections ?? []).length > 0
+  );
 }
 
 export interface PluginSettingsView {
@@ -727,6 +846,8 @@ export interface PluginSettingsView {
   service: PluginServiceView | null;
   /** Webhooks other services send it through Barynt (BARY-215). */
   inbound: PluginInboundView[];
+  /** Its connection to GitHub here (BARY-238). */
+  connection: PluginConnectionView | null;
 }
 
 /** A hook another service calls, as its settings show it (BARY-215). */
@@ -755,8 +876,15 @@ export interface PluginInboundView {
     on: LinkTrigger;
     status: string | null;
   }[];
+  /** The target branches a pull request's rules count for — none: all. */
+  bases: string[];
+  /** A pull request gets a comment linking the issues it works on — only
+   *  through a connection's app (`viaApp`). */
+  prComment: boolean;
   /** What a rule can set: the workspace's statuses. Empty without rules. */
   statuses: { id: string; label: string; color?: string }[];
+  /** Its calls come through a connection's app — no address to give. */
+  viaApp: boolean;
 }
 
 /** A plugin's server, as its settings show it (BARY-212). */
@@ -791,8 +919,12 @@ export interface PluginCredentialField {
 }
 
 /** The credentials a manifest declares at a level. */
-function credentialsOf(manifest: unknown, level: CredentialLevel) {
-  const parsed = validateManifest(manifest);
+function credentialsOf(
+  manifest: unknown,
+  level: CredentialLevel,
+  locale?: string,
+) {
+  const parsed = validateManifest(manifest, locale);
   return parsed.ok
     ? (parsed.manifest.contributes.credentials ?? []).filter(
         (c) => c.level === level,
@@ -806,8 +938,9 @@ async function credentialFields(
   manifest: unknown,
   level: CredentialLevel,
   scopeKey: string,
+  locale?: string,
 ): Promise<PluginCredentialField[]> {
-  const declared = credentialsOf(manifest, level);
+  const declared = credentialsOf(manifest, level, locale);
   if (declared.length === 0) return [];
   const kept = await db.pluginCredential.findMany({
     where: { pluginId, scopeKey, key: { in: declared.map((c) => c.key) } },
@@ -845,17 +978,15 @@ export async function getPluginSettingsView(
       include: { settings: true },
     }),
     db.plugin.findMany({ where: { pluginId } }),
-    scope.projectId
-      ? db.pluginGrant.findUnique({
-          where: {
-            pluginId_workspaceId: { pluginId, workspaceId: scope.workspaceId },
-          },
-        })
-      : null,
+    db.pluginGrant.findUnique({
+      where: {
+        pluginId_workspaceId: { pluginId, workspaceId: scope.workspaceId },
+      },
+    }),
   ]);
   const active = versions.find((v) => v.status === "active");
   if (!active) return null;
-  const parsed = validateManifest(active.manifest);
+  const parsed = validateManifest(active.manifest, locale);
   if (!parsed.ok) return null;
   const settings = parsed.manifest.contributes.settings ?? [];
   const level = scope.projectId ? "project" : "workspace";
@@ -864,19 +995,25 @@ export async function getPluginSettingsView(
     active.manifest,
     level,
     activationScopeKey(scope),
+    locale,
   );
   const service = parsed.manifest.service;
   const hooks = parsed.manifest.contributes.inboundHooks ?? [];
+  // A workspace connects to GitHub for its projects (BARY-238) — released
+  // for them is enough, the plugin needn't be on in the workspace itself.
+  const connects = (parsed.manifest.contributes.connections ?? []).length > 0;
   if (
     scope.projectId
       ? !grant
-      : !activation?.enabled ||
-        (settings.length === 0 &&
-          credentials.length === 0 &&
-          !service &&
-          hooks.length === 0)
+      : !(connects && grant) &&
+        (!activation?.enabled ||
+          (settings.length === 0 &&
+            credentials.length === 0 &&
+            !service &&
+            hooks.length === 0))
   )
     return null;
+  const connection = await getConnectionView(pluginId, parsed.manifest, scope);
   const inboundRows =
     activation?.enabled && hooks.length > 0
       ? await db.pluginInboundHook.findMany({
@@ -899,18 +1036,41 @@ export async function getPluginSettingsView(
       ...summaryOf(pluginId, active.manifest, active.id, locale),
       version: active.version,
     },
-    fields: (await placeSettings(scope, settings)).map((f) => ({
-      key: f.key,
-      type: f.type,
-      label: f.label,
-      description: f.description ?? null,
-      default: f.default ?? null,
-      options: (f.options ?? []).map((o) => ({
-        id: o.id,
-        label: o.label,
-        ...(o.color && { color: o.color }),
+    connection,
+    // A `json` setting is the plugin's own section's, not the form's.
+    fields: (await placeSettings(scope, settings, pluginId))
+      .filter((f) => f.type !== "json")
+      .map((f) => ({
+        key: f.key,
+        type: f.type,
+        label: f.label,
+        description: f.description ?? null,
+        default: f.default ?? null,
+        options: (f.options ?? []).map((o) => ({
+          id: o.id,
+          label: o.label,
+          ...(o.color && { color: o.color }),
+          ...(o.private && { private: true }),
+          ...(o.archived && { archived: true }),
+          ...(o.fork && { fork: true }),
+          ...(o.url && { url: o.url }),
+        })),
+        ...(f.type === "repositories" && {
+          connected: f.connected ?? false,
+          failed: f.failed ?? [],
+          accounts: f.accounts ?? [],
+        }),
+        ...(f.group && { group: f.group }),
+        ...(f.group && f.groupIcon && { groupIcon: f.groupIcon }),
+        ...(f.suggestions?.length && {
+          suggestions: f.suggestions.map((x) => ({
+            id: x.id,
+            value: x.value,
+            label: x.label,
+            hint: x.hint ?? null,
+          })),
+        }),
       })),
-    })),
     inbound: hooks.flatMap((hook) => {
       const row = inboundRows.find((r) => r.hookId === hook.id);
       if (!row) return [];
@@ -936,7 +1096,14 @@ export async function getPluginSettingsView(
             ...r,
             status: stored[r.id] ?? null,
           })),
+          bases: linkRuleBases(row.rules),
+          prComment: linkRuleOptions(row.rules).prComment,
           statuses: hook.rules?.length ? ruleStatuses : [],
+          // GitHub reports through the instance's GitHub App (BARY-238):
+          // nothing to set up at GitHub, only the rules count.
+          viaApp:
+            hook.provider === "github" &&
+            !!connection?.connections.some((c) => !c.broken),
         },
       ];
     }),
@@ -999,8 +1166,9 @@ export async function getPluginSettingsView(
  *  a credential of their own — the personal settings' "Plugins" group. */
 export async function getUserCredentialPluginsNav(
   workspaceId: string,
-): Promise<{ pluginId: string; name: string }[]> {
+): Promise<PluginNavRow[]> {
   if (!(await currentUserCanEnterWorkspace(workspaceId))) return [];
+  const locale = await getLocale();
   const running = await db.pluginActivation.findMany({
     where: { workspaceId, enabled: true },
     select: { pluginId: true },
@@ -1019,6 +1187,7 @@ export async function getUserCredentialPluginsNav(
     .map((r) => ({
       pluginId: r.pluginId,
       name: summaryOf(r.pluginId, r.manifest).name,
+      settings: settingLabelsOf(r.manifest, "user", locale),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -1053,6 +1222,7 @@ export async function getUserCredentialsView(
       active.manifest,
       "user",
       `us:${userId}`,
+      locale,
     ),
   };
 }
@@ -1115,4 +1285,99 @@ export async function getWorkspaceApps(
         ]
       : [],
   );
+}
+
+// ─── The plugins' area (BARY-238) ────────────────────────────────────────────
+
+/** A project a plugin's project level can open. */
+export interface PluginsAreaProject {
+  id: string;
+  slug: string;
+  name: string;
+  color: string;
+  avatarUrl: string | null;
+}
+
+/** A plugin in the plugins' area: where this person can set it, and where
+ *  it's on. */
+export interface PluginsAreaPlugin {
+  pluginId: string;
+  name: string;
+  description: string;
+  /** Asks each person for a credential of their own. */
+  personal: boolean;
+  /** Its workspace page opens (`plugin.enable` there, and something to
+   *  set). */
+  workspace: boolean;
+  /** The projects whose page for it opens — released for projects, and
+   *  `plugin.enable` in each — with whether it's on there. */
+  projects: (PluginsAreaProject & { on: boolean })[];
+}
+
+/**
+ * Every plugin this person can set somewhere in the workspace — for
+ * themselves, in a project, or in the workspace — each with those places,
+ * sorted by name. `projects` are the ones the person can see.
+ */
+export const getPluginsArea = cache(pluginsArea);
+
+async function pluginsArea(
+  workspaceId: string,
+  projects: PluginsAreaProject[],
+): Promise<PluginsAreaPlugin[]> {
+  const locale = await getLocale();
+  const [personal, canWorkspace, manageable] = await Promise.all([
+    getUserCredentialPluginsNav(workspaceId),
+    hasPermission("plugin.enable", { workspaceId }),
+    Promise.all(
+      projects.map(async (p) =>
+        (await hasPermission("plugin.enable", { projectId: p.id })) ? p : null,
+      ),
+    ).then((list) => list.filter((p) => p !== null)),
+  ]);
+  const [workspace, released] = await Promise.all([
+    canWorkspace ? getPluginSettingsNav({ workspaceId, projectId: null }) : [],
+    // What's released for projects is the same for each of them.
+    manageable[0]
+      ? getPluginSettingsNav({ workspaceId, projectId: manageable[0].id })
+      : [],
+  ]);
+  const ids = [
+    ...new Set([...personal, ...workspace, ...released].map((p) => p.pluginId)),
+  ];
+  if (ids.length === 0) return [];
+  const [rows, on] = await Promise.all([
+    db.plugin.findMany({
+      where: { pluginId: { in: ids }, status: "active" },
+      select: { pluginId: true, manifest: true },
+    }),
+    db.pluginActivation.findMany({
+      where: { workspaceId, pluginId: { in: ids }, enabled: true },
+      select: { pluginId: true, scopeKey: true },
+    }),
+  ]);
+  const isOn = (pluginId: string, scopeKey: string) =>
+    on.some((a) => a.pluginId === pluginId && a.scopeKey === scopeKey);
+  return rows
+    .map((r) => {
+      const summary = summaryOf(r.pluginId, r.manifest, undefined, locale);
+      const forProjects = released.some((p) => p.pluginId === r.pluginId);
+      return {
+        pluginId: r.pluginId,
+        name: summary.name,
+        description: summary.description,
+        personal: personal.some((p) => p.pluginId === r.pluginId),
+        workspace: workspace.some((p) => p.pluginId === r.pluginId),
+        projects: forProjects
+          ? manageable.map((p) => ({
+              ...p,
+              on: isOn(
+                r.pluginId,
+                activationScopeKey({ workspaceId, projectId: p.id }),
+              ),
+            }))
+          : [],
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 }

@@ -38,11 +38,18 @@ export const BRIDGE_METHODS = {
   // What its server keeps on issues (BARY-216); `issueIds` for a whole
   // board at once.
   "issueData.list": "issues:read",
+  // Its frames keeping entries too (BARY-238) — what it changed itself
+  // and GitHub, say, doesn't report back to it.
+  "issueData.set": "issues:write",
+  "issueData.delete": "issues:write",
   "storage.get": "storage:own",
   "storage.set": "storage:own",
   "storage.delete": "storage:own",
   "storage.list": "storage:own",
   "settings.get": null,
+  // Who's using it, and whether they may manage it here (BARY-238) — to
+  // offer what only they should (starting a workflow, say).
+  "me.get": null,
   // Its own settings page saving (BARY-149) — needs `plugin.enable` there,
   // checked against the manifest's `settings`.
   "settings.set": null,
@@ -100,7 +107,27 @@ export interface FrameContext {
   /** A building block's own settings, as the widget's builder set them
    *  (BARY-205). */
   config?: BlockSettingValues;
+  /** In an issue panel opened from a board's badge: the part it asked for
+   *  (BARY-238). */
+  focus?: string;
+  /** In a window a frame of the plugin opened (`openModal`, BARY-238):
+   *  which of its views, and what it passed along. */
+  modal?: { view: string; data?: unknown };
 }
+
+/** A window of Barynt's with a frame of the plugin in it (BARY-238). */
+export interface FrameModal {
+  view: string;
+  title: string;
+  data?: unknown;
+  size: "sm" | "md" | "lg" | "xl";
+}
+
+/** Most a file a frame saves may hold (characters of text or base64). */
+export const DOWNLOAD_MAX = 20 * 1024 * 1024;
+
+/** Most a window's `data` may hold, as JSON. */
+export const MODAL_DATA_MAX = 8 * 1024;
 
 /** Frame → host, over the private channel. */
 export type FrameMessage =
@@ -116,7 +143,62 @@ export type FrameMessage =
    *  host (`parseBadges`, BARY-151). */
   | { type: "badges"; seq: number; badges: unknown }
   /** How an action went (BARY-152): its answer, or the error it threw. */
-  | { type: "actionDone"; seq: number; ok: boolean; result: unknown };
+  | { type: "actionDone"; seq: number; ok: boolean; result: unknown }
+  /** Its settings page has changes to save — or none any more. The first
+   *  one says it saves at all: Barynt's Save button then covers it. */
+  | { type: "unsaved"; unsaved: boolean }
+  /** How saving its settings page went: done, or the error it threw. */
+  | { type: "saveDone"; seq: number; ok: boolean; error?: string }
+  /** An issue panel starts one of its plugin's actions for its issue
+   *  (BARY-238) — as if it were picked from the issue's menu. */
+  | { type: "runAction"; actionId: string; choice?: string }
+  /** A message for Barynt's own toast (BARY-238). */
+  | { type: "toast"; text: string }
+  /** Its own settings page, on a level: what's the person's, the frame's
+   *  project's or the workspace's (BARY-238). */
+  | {
+      type: "openSettings";
+      level: "personal" | "project" | "workspace";
+      /** A part of the page to show — its settings section's `focus`. */
+      focus?: string;
+    }
+  /** Scroll Barynt's page to this far down the frame (px) — a part of it
+   *  someone was sent to (BARY-238). */
+  | { type: "reveal"; top: number }
+  /** A window of Barynt's with another frame of the plugin in it — and,
+   *  from that frame, closing it (BARY-238). */
+  | ({ type: "openModal" } & FrameModal)
+  | { type: "closeModal" }
+  /** In a window: a back arrow in Barynt's head over it, or none. */
+  | { type: "modalBack"; on: boolean }
+  /** A file to save — the sandbox may not download (BARY-238). */
+  | {
+      type: "download";
+      name: string;
+      mime: string;
+      data: string;
+      base64: boolean;
+    }
+  /** A click in the frame while its menu is open: close it — Barynt
+   *  doesn't see clicks in there. */
+  | { type: "menu:close" }
+  /** A menu for Barynt to draw at `anchor` (the button, in the frame's
+   *  coordinates) — a frame is too small for one (BARY-238). */
+  | {
+      type: "menu";
+      id: number;
+      items: FrameMenuItem[];
+      anchor: { x: number; y: number; width: number; height: number };
+    };
+
+/** An entry of a frame's menu. */
+export interface FrameMenuItem {
+  id: string;
+  label: string;
+  /** A bundled icon (`lucide:…`). */
+  icon?: string;
+  danger?: boolean;
+}
 
 /** Host → frame. */
 export type HostMessage =
@@ -131,7 +213,17 @@ export type HostMessage =
       seq: number;
       actionId: string;
       issueId: string | null;
-    };
+      /** What was picked, when the action asked (`pick`). */
+      choice?: string;
+      /** What was filled in, when the action asked (`form`). */
+      values?: Record<string, string>;
+    }
+  /** Save its settings page: Barynt's Save button was pressed. */
+  | { type: "settings:save"; seq: number }
+  /** What was picked from its menu — `null`: closed without. */
+  | { type: "menu:pick"; id: number; itemId: string | null }
+  /** The back arrow in its window's head was pressed. */
+  | { type: "modal:back" };
 
 /** The first message, posted to the frame's window with the channel's port. */
 export interface InitMessage {
@@ -179,6 +271,19 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
             m.ok === true ? m.result : String(m.result ?? "").slice(0, 300),
         }
       : null;
+  if (m.type === "unsaved")
+    return { type: "unsaved", unsaved: m.unsaved === true };
+  if (m.type === "saveDone")
+    return Number.isSafeInteger(m.seq)
+      ? {
+          type: "saveDone",
+          seq: m.seq as number,
+          ok: m.ok === true,
+          ...(m.ok !== true && {
+            error: String(m.error ?? "").slice(0, 300),
+          }),
+        }
+      : null;
   if (m.type === "badges")
     return Number.isSafeInteger(m.seq)
       ? { type: "badges", seq: m.seq as number, badges: m.badges }
@@ -193,6 +298,130 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
   }
   if (m.type === "error")
     return { type: "error", message: String(m.message ?? "").slice(0, 500) };
+  if (m.type === "menu:close") return { type: "menu:close" };
+  if (m.type === "closeModal") return { type: "closeModal" };
+  if (m.type === "modalBack") return { type: "modalBack", on: m.on === true };
+  if (m.type === "download") {
+    // What a file's name mustn't hold — paths, wildcards, control
+    // characters — becomes `_`.
+    const name =
+      typeof m.name === "string"
+        ? [...m.name]
+            .map((c) =>
+              c.charCodeAt(0) < 32 || '\\/:*?"<>|'.includes(c) ? "_" : c,
+            )
+            .join("")
+            .trim()
+            .slice(0, 120)
+        : "";
+    const base64 = typeof m.base64 === "string";
+    const data = base64 ? m.base64 : m.text;
+    if (!name || typeof data !== "string" || data.length > DOWNLOAD_MAX)
+      return null;
+    if (base64 && !/^[A-Za-z0-9+/=\s]*$/.test(data)) return null;
+    const mime =
+      typeof m.mime === "string" && /^[\w.+-]+\/[\w.+-]+$/.test(m.mime)
+        ? m.mime
+        : "text/plain";
+    return { type: "download", name, mime, data, base64 };
+  }
+  if (m.type === "openModal") {
+    const view = typeof m.view === "string" ? m.view : "";
+    const title = typeof m.title === "string" ? m.title.trim() : "";
+    if (!/^[a-z0-9-]{1,40}$/.test(view) || !title) return null;
+    let data: unknown;
+    if (m.data !== undefined) {
+      const json = (() => {
+        try {
+          return JSON.stringify(m.data);
+        } catch {
+          return undefined;
+        }
+      })();
+      if (json === undefined || json.length > MODAL_DATA_MAX) return null;
+      data = JSON.parse(json);
+    }
+    return {
+      type: "openModal",
+      view,
+      title: title.slice(0, 120),
+      ...(data !== undefined && { data }),
+      size:
+        m.size === "sm" || m.size === "lg" || m.size === "xl" ? m.size : "md",
+    };
+  }
+  if (m.type === "openSettings")
+    return m.level === "personal" ||
+      m.level === "project" ||
+      m.level === "workspace"
+      ? {
+          type: "openSettings",
+          level: m.level,
+          ...(typeof m.focus === "string" &&
+            /^[a-z0-9-]{1,40}$/.test(m.focus) && { focus: m.focus }),
+        }
+      : null;
+  if (m.type === "reveal")
+    return typeof m.top === "number" && Number.isFinite(m.top)
+      ? { type: "reveal", top: Math.max(0, Math.min(m.top, 100_000)) }
+      : null;
+  if (m.type === "toast")
+    return typeof m.text === "string" && m.text.trim()
+      ? { type: "toast", text: m.text.trim().slice(0, 120) }
+      : null;
+  if (m.type === "menu") {
+    const a = (m.anchor ?? {}) as Record<string, unknown>;
+    const n = (v: unknown) =>
+      typeof v === "number" && Number.isFinite(v) ? v : null;
+    const anchor = {
+      x: n(a.x),
+      y: n(a.y),
+      width: n(a.width),
+      height: n(a.height),
+    };
+    if (!Number.isSafeInteger(m.id) || Object.values(anchor).includes(null))
+      return null;
+    const items = (Array.isArray(m.items) ? m.items : [])
+      .slice(0, 12)
+      .flatMap((i: unknown): FrameMenuItem[] => {
+        if (!i || typeof i !== "object") return [];
+        const x = i as Record<string, unknown>;
+        if (typeof x.id !== "string" || typeof x.label !== "string") return [];
+        const label = x.label.trim().slice(0, 80);
+        if (!x.id || x.id.length > 100 || !label) return [];
+        return [
+          {
+            id: x.id,
+            label,
+            ...(typeof x.icon === "string" && { icon: x.icon }),
+            ...(x.danger === true && { danger: true }),
+          },
+        ];
+      });
+    return items.length > 0
+      ? {
+          type: "menu",
+          id: m.id as number,
+          items,
+          anchor: anchor as {
+            x: number;
+            y: number;
+            width: number;
+            height: number;
+          },
+        }
+      : null;
+  }
+  if (m.type === "runAction")
+    return typeof m.actionId === "string" &&
+      /^[a-z][a-z0-9-]{0,39}$/.test(m.actionId)
+      ? {
+          type: "runAction",
+          actionId: m.actionId,
+          ...(typeof m.choice === "string" &&
+            m.choice.length <= 200 && { choice: m.choice }),
+        }
+      : null;
   if (
     m.type === "call" &&
     Number.isSafeInteger(m.id) &&

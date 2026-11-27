@@ -1,6 +1,9 @@
 import "server-only";
 import { lookup } from "node:dns/promises";
 import https from "node:https";
+import { installationToken } from "@/features/github/app";
+import { connectionFor } from "@/features/github/connections";
+import { userGitHubToken } from "@/features/github/user-link";
 import { db } from "@/lib/db";
 import type { BridgeResponse } from "@/lib/plugins/bridge";
 import { pluginInternalHosts } from "@/lib/plugins/dev";
@@ -13,6 +16,7 @@ import {
   type ProxyRequest,
   parseProxyRequest,
   pickResponseHeaders,
+  redirectTarget,
 } from "@/lib/plugins/proxy";
 import { isPrivateAddress } from "@/lib/public-fetch";
 import { openSecret } from "@/lib/secret-box";
@@ -24,7 +28,8 @@ import type { RunningPlugin } from "./runtime";
 // through, `PLUGIN_INTERNAL_HOSTS`), and connects to exactly the address it
 // checked — a DNS answer that changes in between (rebinding) can't send the
 // request somewhere else. It adds the credentials the manifest declares for
-// that host itself; the plugin never sees them. Redirects aren't followed:
+// that host itself; the plugin never sees them — or, for a repository the
+// place chose, its GitHub connection's token (BARY-238). Redirects aren't followed:
 // the plugin gets the 3xx and may ask again, for a host it's allowed.
 
 const no = (error: string): BridgeResponse =>
@@ -45,6 +50,14 @@ async function checkedAddress(
     return null;
   }
 }
+
+const GITHUB_API_HOST = "api.github.com";
+
+/** Whether a plugin works with GitHub through Barynt's connection. */
+const connectsToGitHub = (plugin: RunningPlugin) =>
+  plugin.manifest.contributes.connections?.some(
+    (c) => c.provider === "github",
+  ) ?? false;
 
 /** The headers of the credentials the manifest declares for this host,
  *  opened — or which one is missing. */
@@ -166,11 +179,27 @@ export async function proxyFetch(
   );
   if (typeof request === "string") return no(request);
 
-  const credentials = await credentialsFor(
+  let credentials = await credentialsFor(
     userId,
     plugin,
     request.url.hostname.toLowerCase(),
   );
+  // Without one of its own (BARY-238): about a repository the place chose,
+  // with the token of the connection that reaches it — it works for
+  // everyone there; anything else to GitHub (who they are, say) as the
+  // person: their linked account, or the one they sign in with.
+  if ("missing" in credentials || Object.keys(credentials).length === 0) {
+    // As the person (BARY-238): what only a person may do, never the app.
+    const installation = request.asPerson
+      ? null
+      : await connectionFor(plugin, plugin, request.url);
+    const token = installation
+      ? await installationToken(installation)
+      : connectsToGitHub(plugin) && request.url.hostname === GITHUB_API_HOST
+        ? await userGitHubToken(userId)
+        : null;
+    if (token) credentials = { authorization: `Bearer ${token}` };
+  }
   if ("missing" in credentials) return no("credential_missing");
 
   const address = await checkedAddress(
@@ -179,11 +208,26 @@ export async function proxyFetch(
   );
   if (!address) return no("host_not_allowed");
 
-  const res = await send(request, address, {
+  let res = await send(request, address, {
     ...request.headers,
     ...credentials,
   });
   if (typeof res === "string") return no(res);
+  // A download GitHub hands to its storage (BARY-238): one hop, a plain
+  // GET, no credential — to a public address only.
+  const target = request.follow
+    ? redirectTarget(res.status, [res.headers.location].flat()[0], request.url)
+    : null;
+  if (target) {
+    const next = await checkedAddress(target.hostname, false);
+    if (!next) return no("host_not_allowed");
+    res = await send(
+      { ...request, url: target, method: "GET", body: null, headers: {} },
+      next,
+      {},
+    );
+    if (typeof res === "string") return no(res);
+  }
   const headers = pickResponseHeaders(res.headers);
   const text = isTextType(headers["content-type"] ?? "");
   return {

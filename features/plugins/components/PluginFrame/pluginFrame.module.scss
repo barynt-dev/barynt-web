@@ -40,6 +40,49 @@
   }
 }
 
+/* A panel's frame still starting (BARY-238): grey lines that breathe,
+   where its content will be. */
+.skeleton {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.5rem 0;
+
+  span {
+    height: 0.875rem;
+    border-radius: var(--radius-sm);
+    background: var(--surface-container-high);
+    animation: skeletonPulse 1.4s ease-in-out infinite;
+
+    &:nth-child(1) {
+      width: 45%;
+    }
+
+    &:nth-child(2) {
+      height: 2.25rem;
+      border-radius: var(--radius);
+    }
+
+    &:nth-child(3) {
+      width: 70%;
+    }
+  }
+}
+
+@keyframes skeletonPulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton span {
+    animation: none;
+  }
+}
+
 .error {
   position: absolute;
   inset: 0;
@@ -62,4 +105,14 @@
   overflow-wrap: anywhere;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+}
+
+/* Where a frame's menu hangs from (BARY-238): over its button, invisible. */
+.menuAnchor {
+  position: absolute;
+  pointer-events: none;
+}
+
+.danger {
+  color: var(--error);
 }

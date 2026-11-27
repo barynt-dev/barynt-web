@@ -58,19 +58,25 @@ Jeder Schritt steht im [Protokoll](audit.md).
 
 Zwei Schritte: Der Workspace schaltet ein Plugin frei, dann schaltet jedes Projekt es in seinen eigenen Einstellungen ein.
 
-### Freischalten im Plugin Store
+### Freischalten im Store
 
-Öffne die **Einstellungen** und wähle im Umschalter oben **Plugin Store**, neben Persönlich, Projekt und Workspace. Ihn sehen nur die Manager des Workspaces – wer im Workspace die Berechtigung _Switch installed plugins on and off and configure them_ hat (Owner, Admins und Manager) – und erst, wenn auf dem Server ein Plugin installiert ist. Plattform-Admins sehen ihn schon vorher, mit einer Startseite, die erklärt, wie Plugins installiert werden.
+Öffne die **Einstellungen** und wähle im Umschalter oben **Store**, nach Persönlich, Projekt, Workspace und Plugins. Ihn sehen nur die Manager des Workspaces – wer im Workspace die Berechtigung _Switch installed plugins on and off and configure them_ hat (Owner, Admins und Manager) – und erst, wenn auf dem Server ein Plugin installiert ist. Plattform-Admins sehen ihn schon vorher, mit einer Startseite, die erklärt, wie Plugins installiert werden.
 
 Der Store ist aufgebaut wie der im Admin-Bereich: links alle Plugins, die deine Plattform-Admins installiert haben, getrennt in **Freigeschaltet** und **Verfügbar**, mit Suche und einem Filter nach Kategorie, Art, Ebene und Quelle. Bist du in mehreren Workspaces, wählst du oben in der Liste einen aus – wie in den Workspace-Einstellungen. Ist kein Plugin geöffnet, zeigt die rechte Seite, wie viele Plugins freigeschaltet sind, welche nach einem Update auf eine Bestätigung warten, was noch verfügbar ist und wie viele Projekte eines an haben – darunter, was **neu hinzugefügt** wurde, und **alle Plugins** nach Kategorie. Öffne ein Plugin; eine Zeile unter dem Namen zeigt, ob es in diesem Workspace freigeschaltet ist und in welchen Projekten es an ist. Die Übersicht zeigt Screenshots und Beschreibung, daneben Links, was es verlangt, und woher es kommt.
 
-**Freischalten** zeigt, was das Plugin darf; bestätigst du es, ist es freigeschaltet. Ein Plugin für Workspaces läuft dann im Workspace, ein Plugin für Projekte erscheint in den Einstellungen jedes Projekts. Nach einem Update, das mehr verlangt, bietet die Zeile unter dem Namen **Erneut bestätigen** an.
+**Freischalten** zeigt, was das Plugin darf; bestätigst du es, ist es freigeschaltet. Ein Plugin für Workspaces läuft dann im Workspace, ein Plugin für Projekte erscheint für jedes Projekt unter **Plugins**. Nach einem Update, das mehr verlangt, bietet die Zeile unter dem Namen **Erneut bestätigen** an.
 
-**Freischaltung aufheben** schaltet das Plugin im Workspace und in allen seinen Projekten aus, und es verschwindet aus den Projekteinstellungen. Einstellungen und Daten bleiben.
+**Freischaltung aufheben** schaltet das Plugin im Workspace und in allen seinen Projekten aus, und es verschwindet aus **Plugins**. Einstellungen und Daten bleiben.
+
+### Die Einstellungen der Plugins
+
+**Plugins** im Umschalter oben in den Einstellungen listet links jedes Plugin, das du in diesem Workspace einstellen kannst, und öffnet das erste; **Mehr im Store** darunter führt zum Store. Gibt es kein Plugin einzustellen, fehlt der Eintrag im Umschalter.
+
+Die Seite eines Plugins hat unter dem Namen Tabs: **Persönlich** (was es von dir selbst braucht, etwa ein eigenes Token), **Projekt** und **Workspace** – nur die, die es hat und die du öffnen darfst. Bei **Projekt** wählst du rechts das Projekt, bei **Workspace** einen anderen deiner Workspaces. Das Plugin öffnet in einem Projekt, in dem es an ist, sonst im Workspace.
 
 ### Einschalten in einem Projekt
 
-Ein freigeschaltetes Plugin für Projekte hat in den Einstellungen jedes Projekts einen Eintrag unter **Plugins**, unterhalb der anderen Bereiche. Projekt-Admins öffnen ihn, prüfen, was es im Projekt darf, und klicken **Einschalten**. Läuft es, enthält die Seite das Formular, das das Plugin mitbringt (ein Kanalname, wem zugewiesen wird, Labels, Wochentage, …), und unten das Ausschalten – Einstellungen und Daten bleiben, bis du **Daten löschen** wählst.
+Ein freigeschaltetes Plugin für Projekte lässt sich in jedem Projekt einschalten: unter **Plugins** öffnen und im Tab **Projekt** das Projekt wählen. Projekt-Admins prüfen, was es im Projekt darf, und klicken **Einschalten**. Läuft es, enthält die Seite das Formular, das das Plugin mitbringt (ein Kanalname, wem zugewiesen wird, Labels, Wochentage, …), und unten das Ausschalten – Einstellungen und Daten bleiben, bis du **Daten löschen** wählst. Die Suche über den Einstellungen findet auch die Einstellungen der Plugins, nach ihrem Namen, und springt direkt zur gewählten.
 
 ### Wo Plugins erscheinen
 
@@ -81,7 +87,7 @@ Ein Plugin mit eigenen Ansichten oder Seiten zeigt sie in der Seitenleiste, jewe
 
 Die Seite eines Plugins nennt unter dem Titel immer den Namen des Plugins.
 
-Ein Plugin kann auch **Dashboard-Widgets** mitbringen: Auf einem Dashboard stehen sie unter **Widget hinzufügen** im Bereich **Plugins**, mit Live-Vorschau. Manche sind Vorlagen aus Barynts eigenen Bausteinen: Einmal hinzugefügt, ist so ein Widget ein eigenes Widget des Dashboards – es bleibt, wenn das Plugin ausgeschaltet wird, und mit **Anpassen** änderst du es vor dem Hinzufügen. Und manche Plugins zeichnen ihre **Einstellungsseite** selbst – die Seite unter **Plugins** in den Einstellungen zeigt dann das Formular des Plugins; was es speichert, prüft Barynt wie jede andere Einstellung. Andere ergänzen unter Barynts Formular einen eigenen Teil – etwa eine Verbindungsprüfung.
+Ein Plugin kann auch **Dashboard-Widgets** mitbringen: Auf einem Dashboard stehen sie unter **Widget hinzufügen** im Bereich **Plugins**, mit Live-Vorschau. Manche sind Vorlagen aus Barynts eigenen Bausteinen: Einmal hinzugefügt, ist so ein Widget ein eigenes Widget des Dashboards – es bleibt, wenn das Plugin ausgeschaltet wird, und mit **Anpassen** änderst du es vor dem Hinzufügen. Und manche Plugins zeichnen ihre **Einstellungsseite** selbst – seine Seite unter **Plugins** zeigt dann das Formular des Plugins; was es speichert, prüft Barynt wie jede andere Einstellung. Andere ergänzen unter Barynts Formular einen eigenen Teil – etwa eine Verbindungsprüfung.
 
 Plugins können auch **Bausteine** für eigene Widgets mitbringen: Im Widget-Builder listet **Baustein hinzufügen** sie neben Barynts eigenen, jeweils mit ihren Einstellungen. Ist das Plugin ausgeschaltet, sagt der Baustein das – der Rest des Widgets bleibt.
 
@@ -91,15 +97,19 @@ Plugins können außerdem **Aktionen** ergänzen – „Pipeline neu starten“,
 
 ### Einstellungen eines Plugins im Workspace
 
-Ein Plugin, das im Workspace läuft und Einstellungen hat, bekommt in den Workspace-Einstellungen einen Eintrag unter **Plugins** mit seinem Formular.
+Ein Plugin, das im Workspace läuft und Einstellungen hat, zeigt sein Formular im Tab **Workspace** seiner Seite unter **Plugins**.
+
+### Mit GitHub verbinden
+
+Ein Plugin, das mit GitHub arbeitet, lässt sich verbinden, statt dass jeder ein Token hinterlegt. Unter **Plugins → GitHub** im Tab **Workspace** (oder dem eines Projekts) führt **Mit GitHub verbinden** zu GitHub. Dort meldest du dich an, installierst die GitHub App dieser Instanz auf einer Organisation und wählst die Repositories, die sie sehen darf. Ist sie schon installiert, wählst du einfach ein Konto aus. Eine Verbindung im Workspace gilt für jedes Projekt darin. Das Projekt hakt dann nur noch an, mit welchen Repositories es arbeitet. GitHub meldet sich über die App bei Barynt, deshalb muss niemand pro Repository einen Webhook anlegen. Ein Plattform-Admin erstellt die App einmal auf der Seite des Plugins unter **Admin → Plugins**. Siehe [GitHub](../integrations/github.md).
 
 ### Zugangsdaten
 
 Ein Plugin, das mit einem anderen Dienst spricht – einem Git-Server, einem Chat –, braucht dafür vielleicht ein Zugangstoken. Je nach Plugin hinterlegst du es an einer von drei Stellen:
 
-- **Für den ganzen Workspace**: in den Workspace-Einstellungen, auf der Seite des Plugins unter **Plugins** (Workspace-Manager).
-- **Je Projekt**: in den Projekt-Einstellungen, auf der Seite des Plugins (Projekt-Admins).
-- **Dein eigenes**: in deinen persönlichen Einstellungen unter **Plugins**, wenn das Plugin mit dem Konto jeder Person arbeitet.
+- **Für den ganzen Workspace**: auf der Seite des Plugins unter **Plugins**, Tab **Workspace** (Workspace-Manager).
+- **Je Projekt**: Tab **Projekt**, mit dem gewählten Projekt (Projekt-Admins).
+- **Dein eigenes**: Tab **Persönlich**, wenn das Plugin mit dem Konto jeder Person arbeitet.
 
 Barynt speichert den Wert verschlüsselt und hängt ihn selbst an die Anfragen des Plugins an diesen Dienst – das Plugin sieht ihn nie, und nach dem Speichern sieht ihn auch sonst niemand mehr: Die Seite zeigt nur, ob einer hinterlegt ist und seit wann. **Entfernen** nimmt ihn zurück; die Anfragen des Plugins an den Dienst schlagen dann fehl, bis jemand einen neuen hinterlegt. Hinterlegen und Entfernen für einen Workspace oder ein Projekt landen im Protokoll (welche Angabe, nie der Wert).
 
@@ -145,7 +155,7 @@ Jeder Schritt steht im [Protokoll](audit.md).
 
 ## Einschalten (Workspace- und Projekt-Admins)
 
-Öffne die **Einstellungen** und wähle im Umschalter oben **Plugin Store**, neben Persönlich, Projekt und Workspace. Du siehst ihn, wenn du im Workspace oder in einem seiner Projekte die Berechtigung _Switch installed plugins on and off and configure them_ hast; Owner, Admins, Manager und Projekt-Admins haben sie.
+Öffne die **Einstellungen** und wähle im Umschalter oben **Store**, nach Persönlich, Projekt, Workspace und Plugins. Du siehst ihn, wenn du im Workspace oder in einem seiner Projekte die Berechtigung _Switch installed plugins on and off and configure them_ hast; Owner, Admins, Manager und Projekt-Admins haben sie.
 
 Der Store ist aufgebaut wie der im Admin-Bereich: links alle Plugins, die deine Plattform-Admins installiert haben, getrennt in **Freigeschaltet** und **Verfügbar**, mit Suche und einem Filter nach Kategorie, Art, Ebene und Quelle. Bist du in mehreren Workspaces, wählst du oben in der Liste einen aus – wie in den Workspace-Einstellungen. Ist kein Plugin geöffnet, zeigt die rechte Seite, wie viele Plugins freigeschaltet sind, welche nach einem Update auf eine Bestätigung warten, was noch verfügbar ist und wie viele Projekte eines an haben – darunter, was **neu hinzugefügt** wurde, und **alle Plugins** nach Kategorie. Öffne ein Plugin; eine Zeile unter dem Namen zeigt, ob es in diesem Workspace freigeschaltet ist und in welchen Projekten es an ist. Die Übersicht zeigt Screenshots und Beschreibung, daneben Links, was es verlangt, und woher es kommt.
 
@@ -159,7 +169,7 @@ Nimmst du die Freischaltung zurück, wird das Plugin im Workspace und in allen s
 
 ### Einstellungen eines Plugins
 
-Ein eingeschaltetes Plugin mit Einstellungen bekommt in den Einstellungen des Workspaces oder Projekts einen Eintrag unter **Plugins**, unterhalb der anderen Bereiche. Seine Seite enthält das Formular, das das Plugin mitbringt (ein Kanalname, was gepostet wird, …), und unten das Ausschalten an dieser Stelle.
+Ein eingeschaltetes Plugin mit Einstellungen steht unter **Plugins** in den Einstellungen, mit einem Tab je Ebene – **Persönlich**, **Projekt** (rechts das Projekt wählen) und **Workspace**. Jeder enthält das Formular, das das Plugin mitbringt (ein Kanalname, was gepostet wird, …), und unten das Ausschalten an dieser Stelle.
 
 ### Der Server eines Plugins
 

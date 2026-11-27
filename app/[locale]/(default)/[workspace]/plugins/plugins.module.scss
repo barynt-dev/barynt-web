@@ -1,0 +1,63 @@
+/* The plugins' area (BARY-238): framed like the settings — the scope tabs on
+   top, the plugins on the left, the open one beside them. */
+@use "breakpoints" as bp;
+.shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Two columns, one height: the sidebar stays fixed, the panel next to it
+   scrolls. Both get `min-height: 0`, otherwise the content stretches the row
+   and the whole page scrolls — exactly what the column split is meant to
+   prevent. */
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+
+  /* Phone: the nav is a strip above the content, not a column beside it. */
+  @include bp.phone {
+    flex-direction: column;
+  }
+}
+
+/* The panel brings its own header (`PageHeader`) and handles its own
+   scrolling — so this is just the column, no padding. */
+.panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* "More in the store" under the plugins: a link out of the nav, so it
+   reads as one — the accent color, an arrow, underlined on hover. */
+.storeLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0.75rem 0.75rem 0;
+  color: var(--primary);
+  font-size: var(--text-sm);
+  font-weight: 550;
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+  }
+
+  svg:last-child {
+    transition: translate 0.12s;
+  }
+
+  &:hover svg:last-child {
+    translate: 2px 0;
+  }
+}

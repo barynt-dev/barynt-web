@@ -161,3 +161,14 @@
     color: var(--error);
   }
 }
+
+/* Its header — "Store" with the way back — only on a phone showing a
+   plugin; elsewhere the settings' tab above names it. Doubled to outrank
+   the header's own `display`. */
+.phoneHeader.phoneHeader {
+  display: none;
+
+  @include bp.phone {
+    display: flex;
+  }
+}

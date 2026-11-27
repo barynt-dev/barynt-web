@@ -6,6 +6,7 @@ import { PluginTile } from "@/features/plugins/components/PluginStore/PluginTile
 import {
   getPluginSettingsNav,
   getUserCredentialPluginsNav,
+  type PluginNavRow,
 } from "@/features/plugins/queries";
 import {
   ACCOUNT_SETTINGS_NAV,
@@ -14,6 +15,7 @@ import {
   navEntryAllowed,
   PROJECT_SETTINGS_NAV,
   PROJECT_SETTINGS_PERMISSIONS,
+  pluginPath,
   pluginSettingsPath,
   projectSettingsPath,
   SEARCHABLE_SETTINGS,
@@ -39,6 +41,8 @@ export interface ScopeNav {
   plugins: SettingsNavItem[];
   /** Single settings on the pages of `items`, for the search only. */
   settings: SettingsNavItem[];
+  /** Single settings on the pages of `plugins`, for the search only. */
+  pluginSettings: SettingsNavItem[];
 }
 
 /** The single settings on the pages of `entries`, each leading to its page
@@ -92,7 +96,7 @@ function rowsOf(
 
 const pluginRows = (
   t: T,
-  rows: { pluginId: string; name: string }[],
+  rows: PluginNavRow[],
   href: (pluginId: string) => string,
 ): SettingsNavItem[] =>
   rows.map((p) => ({
@@ -102,6 +106,36 @@ const pluginRows = (
     keywords: ["Plugin", t("nav.plugins" as never)],
     leading: <PluginTile id={p.pluginId} name={p.name} size="sm" />,
   }));
+
+/** The single settings on the plugins' pages — the labels of their forms
+ *  and credentials — for the search only, each leading to its plugin's
+ *  page with the setting to show there. */
+const pluginSettingRows = (
+  rows: PluginNavRow[],
+  href: (pluginId: string) => string,
+): SettingsNavItem[] =>
+  rows.flatMap((p) =>
+    p.settings.map((label) => ({
+      href: href(p.pluginId),
+      label,
+      icon: "lucide:puzzle",
+      focus: label,
+      context: p.name,
+      keywords: [p.name],
+      leading: <PluginTile id={p.pluginId} name={p.name} size="sm" />,
+    })),
+  );
+
+/** A scope's plugin rows: the nav's group, and their settings for the
+ *  search. */
+const pluginNav = (
+  t: T,
+  rows: PluginNavRow[],
+  href: (pluginId: string) => string,
+) => ({
+  plugins: pluginRows(t, rows, href),
+  pluginSettings: pluginSettingRows(rows, href),
+});
 
 /** Your own settings. "Connections" only with an OAuth provider to list;
  *  the plugins that ask each person for a credential of their own as the
@@ -114,10 +148,8 @@ export async function accountNav(t: T, workspaceId: string): Promise<ScopeNav> {
   const href = (s: string) => accountPath(workspaceId, s);
   return {
     items: rowsOf(t, "account", entries, href),
-    plugins: pluginRows(
-      t,
-      await getUserCredentialPluginsNav(workspaceId),
-      (id) => accountPath(workspaceId, `plugins/${id}`),
+    ...pluginNav(t, await getUserCredentialPluginsNav(workspaceId), (id) =>
+      pluginPath(workspaceId, id, { kind: "personal" }),
     ),
     settings: settingRowsOf(t, "account", entries, href),
   };
@@ -136,13 +168,13 @@ export async function workspaceNav(
   return {
     items: rowsOf(t, "workspace", entries, href),
     settings: settingRowsOf(t, "workspace", entries, href),
-    plugins: access.has("plugin.enable")
-      ? pluginRows(
-          t,
-          await getPluginSettingsNav({ workspaceId, projectId: null }),
-          (id) => pluginSettingsPath(workspaceId, null, id),
-        )
-      : [],
+    ...pluginNav(
+      t,
+      access.has("plugin.enable")
+        ? await getPluginSettingsNav({ workspaceId, projectId: null })
+        : [],
+      (id) => pluginSettingsPath(workspaceId, null, id),
+    ),
   };
 }
 
@@ -160,13 +192,13 @@ export async function projectNav(
   return {
     items: rowsOf(t, "project", entries, href),
     settings: settingRowsOf(t, "project", entries, href),
-    plugins: access.has("plugin.enable")
-      ? pluginRows(
-          t,
-          await getPluginSettingsNav({ workspaceId, projectId: project.id }),
-          (id) => pluginSettingsPath(workspaceId, project.slug, id),
-        )
-      : [],
+    ...pluginNav(
+      t,
+      access.has("plugin.enable")
+        ? await getPluginSettingsNav({ workspaceId, projectId: project.id })
+        : [],
+      (id) => pluginSettingsPath(workspaceId, project.slug, id),
+    ),
   };
 }
 
@@ -191,6 +223,7 @@ export async function settingsSearchIndex(
     ...nav.items,
     ...nav.plugins,
     ...nav.settings,
+    ...nav.pluginSettings,
   ];
   const sections: SettingsNavSection[] = [
     {

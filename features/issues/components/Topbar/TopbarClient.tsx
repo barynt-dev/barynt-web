@@ -28,6 +28,7 @@ import {
   VIEW_DEFAULT_SORT,
 } from "@/features/views/url";
 import type { FieldDefinition } from "@/lib/custom-fields";
+import type { PluginFilterFacet } from "@/lib/plugins/filters";
 import { usePreferences } from "@/lib/preferences/PreferencesContext";
 import type {
   IssueType,
@@ -60,6 +61,8 @@ interface TopbarClientProps {
   customFields: FieldDefinition[];
   /** Every custom field that applies here, to show or hide on cards and rows. */
   displayFields: FieldDefinition[];
+  /** The plugins' filters that apply here (BARY-238). */
+  pluginFilters?: PluginFilterFacet[];
   /** Groups this person hid in this view, as `hidden-groups.ts` entries (BARY-47). */
   hiddenGroups: string[];
   hideEmptyGroups: boolean;
@@ -117,6 +120,7 @@ export function TopbarClient({
   issueTypes,
   customFields,
   displayFields,
+  pluginFilters = [],
   hiddenGroups,
   hideEmptyGroups,
   showSubIssues,
@@ -167,6 +171,7 @@ export function TopbarClient({
     members,
     labels,
     customFields: displayFields,
+    pluginFilters,
     viewMode: activeView !== null,
   });
 
@@ -392,6 +397,7 @@ export function TopbarClient({
               projects={projects}
               issueTypes={issueTypes}
               customFields={displayFields}
+              pluginFilters={pluginFilters}
               onToggle={toggleFilter}
               onClearAll={clearAll}
               tree={tree}
@@ -412,6 +418,7 @@ export function TopbarClient({
               labels,
               projects,
               customFields: displayFields,
+              pluginFilters,
             }}
             onRemove={removeExtra}
           />

@@ -3,15 +3,17 @@
 import { Icon } from "@iconify/react";
 import { useLocale } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import { usePluginAction } from "@/features/plugins/components/PluginActions/usePluginAction";
 import { takePanelFocus } from "@/features/plugins/components/PluginBadges/panelFocus";
 import { usePluginDataChanges } from "@/features/plugins/components/PluginBadges/usePluginDataChanges";
 import { PluginFrame } from "@/features/plugins/components/PluginFrame/PluginFrame";
-import { PluginTile } from "@/features/plugins/components/PluginStore/PluginTile";
 import type { IssueDetail, IssuePluginPanel } from "@/types/issue";
 import styles from "../issueDetail.module.scss";
 
-/** As tall as its content, between these (px); past the top it scrolls. */
-const PANEL_HEIGHT = { min: 48, max: 640 };
+/** As tall as its content, at least this (px) — and only as tall as its
+ *  manifest's `maxHeight` lets it, past which it scrolls inside. Without
+ *  one there's nothing to scroll in it: the issue scrolls (BARY-238). */
+const PANEL_MIN_HEIGHT = 48;
 
 const storageKey = (p: IssuePluginPanel) =>
   `barynt:issue-panel:${p.pluginId}:${p.panelId}`;
@@ -58,6 +60,7 @@ function PluginPanel({
   workspaceId: string;
 }) {
   const locale = useLocale();
+  const runAction = usePluginAction();
   const [open, setOpen] = useState(true);
   const section = useRef<HTMLElement>(null);
   // Its server changed what it keeps on this issue (BARY-225): a fresh
@@ -78,7 +81,22 @@ function PluginPanel({
   // Taking the focus and scrolling are apart: the issue often renders again
   // right after it opens (a refresh, fresh data), and that mustn't cancel
   // the scroll of a focus already taken.
+  // One of its plugin's actions changed something here (BARY-238).
+  useEffect(() => {
+    const onRefresh = (e: Event) => {
+      const d = (e as CustomEvent<{ pluginId: string; issueId: string }>)
+        .detail;
+      if (d?.pluginId === panel.pluginId && d.issueId === issue.id)
+        setLoaded((n) => n + 1);
+    };
+    window.addEventListener("barynt:plugin-refresh", onRefresh);
+    return () => window.removeEventListener("barynt:plugin-refresh", onRefresh);
+  }, [panel.pluginId, issue.id]);
   const [focused, setFocused] = useState(0);
+  // The part of it a badge asked for (`context.focus`): a fresh frame
+  // gets it, so it opens there.
+  const [focus, setFocus] = useState<string | null>(null);
+
   useEffect(() => {
     if (focused === 0) return;
     const timer = window.setTimeout(
@@ -90,17 +108,28 @@ function PluginPanel({
   }, [focused]);
   useEffect(() => {
     const onFocus = () => {
-      if (!takePanelFocus(issue.id, panel.pluginId, panel.panelId)) return;
-      setOpen(true);
-      setFocused((n) => n + 1);
+      const asked = takePanelFocus(issue.id, panel.pluginId, panel.panelId);
+      if (asked) {
+        setOpen(true);
+        setFocused((n) => n + 1);
+        if (asked.section) {
+          setFocus(asked.section);
+          setLoaded((n) => n + 1);
+        }
+      }
     };
     window.addEventListener("barynt:focus-panel", onFocus);
     return () => window.removeEventListener("barynt:focus-panel", onFocus);
   }, [panel, issue.id]);
   useEffect(() => {
-    if (takePanelFocus(issue.id, panel.pluginId, panel.panelId)) {
+    const asked = takePanelFocus(issue.id, panel.pluginId, panel.panelId);
+    if (asked) {
       setOpen(true);
       setFocused((n) => n + 1);
+      if (asked.section) {
+        setFocus(asked.section);
+        setLoaded((n) => n + 1);
+      }
       return;
     }
     // Asked for once: a later render doesn't fold it away again.
@@ -132,10 +161,17 @@ function PluginPanel({
           aria-expanded={open}
           aria-controls={bodyId}
           onClick={toggle}
+          // Where it comes from, on hover — the row itself reads like
+          // Barynt's own sections.
+          title={`${panel.title} · ${panel.pluginName}`}
         >
-          <PluginTile id={panel.pluginId} name={panel.pluginName} size="sm" />
+          <Icon
+            icon={panel.icon}
+            width={15}
+            className={styles.pluginPanelIcon}
+            aria-hidden
+          />
           <h3 className={styles.sectionTitle}>{panel.title}</h3>
-          <span className={styles.pluginPanelFrom}>{panel.pluginName}</span>
           <Icon
             icon="lucide:chevron-down"
             width={15}
@@ -151,13 +187,31 @@ function PluginPanel({
             key={`${issue.id}:${loaded}`}
             pluginId={panel.pluginId}
             name={panel.pluginName}
-            autoHeight={PANEL_HEIGHT}
+            autoHeight={{
+              min: PANEL_MIN_HEIGHT,
+              max: panel.maxHeight ?? Number.POSITIVE_INFINITY,
+            }}
             context={{
               slot: { kind: "issuePanel", id: panel.panelId },
               workspaceId,
               projectId: issue.project,
               issueId: issue.id,
               locale,
+              ...(focus && { focus }),
+            }}
+            // One of its plugin's actions, started from the panel
+            // (BARY-238) — run like from the issue's menu.
+            onRunAction={(actionId, choice) => {
+              const entry = issue.pluginActions.find(
+                (a) => a.pluginId === panel.pluginId && a.actionId === actionId,
+              );
+              if (!entry) return;
+              void runAction(entry, {
+                issueId: issue.id,
+                workspaceId,
+                projectId: issue.project,
+                ...(choice !== undefined && { choice }),
+              });
             }}
           />
         )}

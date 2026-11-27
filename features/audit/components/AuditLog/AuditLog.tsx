@@ -354,6 +354,22 @@ export const AUDIT_ACTION_META = {
     icon: "lucide:workflow",
     message: "pluginInboundRules",
   },
+  "plugin.connection.added": {
+    icon: "lucide:link",
+    message: "pluginConnectionAdded",
+  },
+  "plugin.connection.removed": {
+    icon: "lucide:unlink",
+    message: "pluginConnectionRemoved",
+  },
+  "plugin.repository.created": {
+    icon: "lucide:book-plus",
+    message: "pluginRepositoryCreated",
+  },
+  "github.app.created": {
+    icon: "lucide:github",
+    message: "githubAppCreated",
+  },
   "webhook.disabled": {
     icon: "lucide:webhook-off",
     message: "webhookDisabled",

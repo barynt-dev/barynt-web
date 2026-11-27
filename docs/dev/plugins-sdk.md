@@ -134,7 +134,12 @@ frame is for one of them.
 ### `registerAction()`
 
 ```ts
-registerAction(action: { id: string; run(context: { issueId }): ActionResult | void }): void;
+registerAction(action: { id: string; run(context: { issueId, choice?, values? }): ActionResult | void }): void;
+runAction(id: string, context?: { choice? }): void; // from an issue panel
+openSettings(level: "personal" | "project" | "workspace", focus?: string): void;
+reveal(el: HTMLElement): void; // scroll Barynt's page to a part of the frame
+openModal(options: { view: string; title: string; data?: unknown; size?: "sm" | "md" | "lg" }): void;
+closeModal(): void; // from inside that window
 ```
 
 An action from `contributes.actions`. When someone picks it, Barynt starts
@@ -160,10 +165,78 @@ this.registerAction({
 | `openPanel` | open this one of your `issuePanels` in the issue |
 | `copy` | text Barynt puts on the clipboard, up to 500 characters — the hidden frame can't |
 | `open` | an `https` address Barynt opens in a new tab |
+| `pick` | `{ title, options: [{ id, label, hint? }], icon? }` (up to 20; `icon` as `lucide:<BadgeIcon>`): ask first — Barynt shows the options and runs the action again with the one picked as `context.choice`; dismissed, nothing runs |
+
+```ts
+run: async ({ issueId, choice }) => {
+  if (!choice && repos.length > 1)
+    return { pick: { title: "Which repository?", options: repos.map((r) => ({ id: r, label: r })) } };
+  await createBranch(issueId!, choice ?? repos[0]);
+  return { message: "Branch created", tone: "success" };
+},
+```
+
+Check `choice` against what you offered — it comes back from the frame
+like any other input.
+
+`form` — `{ title, description?, fields, submitLabel?, danger? }`, up to 8
+fields `{ id, label, type: "text" | "select", value?, options?, hint?,
+required?, mono? }` — has something filled in first: Barynt shows it as a
+window and runs the action again with `context.values` (`choice` kept).
+A `select` is Barynt's own dropdown: its `options` (`{ id, label, hint? }`,
+up to 100) with `hint` on the right — "Default", say — and a search past
+six; `mono` shows them as code, like a text field's value.
+
+A field is checked as it's typed: `invalid: [{ pattern, message }]`
+(regular expressions, `u` flag) and `taken: { values, message }` show their
+message under it and hold the window back — check again in `run`. With
+`dependsOn: "<a select's id>"` a field follows that select: `per[value]`
+gives its `options`, what's `taken` and the `value` it starts with — the
+branch to start from per repository, say. A select with one option shows
+as a plain value.
+Without fields and with `danger`, it's a confirmation (`values` is `{}`).
+
+From an issue panel, `this.runAction(id, { choice })` starts one of your
+actions for its issue, as if it were picked from the issue's menu — its
+`pick`, `form` and answer show the same way, and `refresh` draws the panel
+again. An action with `"where": []` in the manifest shows in no menu and is
+only started like this — rename or delete for a row of the panel, say.
+
+`this.openSettings(level)` opens your page in Barynt's plugin settings:
+`personal` for what's the person's own (their account), `project` for the
+frame's project, `workspace`. For a panel that can't show anything until
+something is set — "Connect repository" there. In tests,
+`host.openedSettings` lists the levels it opened.
+
+`focus` (`a-z`, `0-9`, `-`, up to 40) names a part of that page: your
+settings section gets it as `context.focus` and calls `this.reveal(el)`
+for that part — Barynt scrolls its page there, waiting for the frame to
+grow that far. A link "change it in the settings" from a panel lands on
+the setting itself. In tests, `host.settingsFocus` holds the last one.
+
+`this.openModal({ view, title, data?, size? })` opens a window of
+Barynt's over the page — a dialog, a bottom sheet on a phone — with
+another frame of your plugin in it, for the same place (same `issueId`,
+project and slot). Barynt draws its head with `title` and the ✕; your
+frame reads `context.modal` (`{ view, data }`) and draws that view
+instead of its usual one. For what doesn't fit a panel: an environment's
+details and history, say. `view` is a plain name (`a-z`, `0-9`, `-`),
+`data` JSON up to 8 KB; `size` is `sm` 420px, `md` 560px (default), `lg`
+760px or `xl` 1120px wide. From inside, `this.closeModal()` closes it, and `this.setBack(onBack)`
+puts a back arrow in the window's head, left of its title — for a second
+view inside it (a run's jobs, say); `setBack(null)` takes it away again.
+In tests, `host.back` is what the arrow runs.
+
+`this.download({ name, text | base64, type? })` saves a file through
+Barynt — the frame is a sandbox that may not download itself: text, or
+base64 for anything else, up to 20 MB, `text/plain` unless `type` says.
+In tests, `host.downloads` lists them. In tests,
+`host.openedModals` lists what it opened, `host.closedModals` counts the
+closes.
 
 What `run` throws shows as the plugin's error in a toast. In tests,
 `createTestHost({ context: { slot: { kind: "actions", id: "actions" } } })`
-and `host.runAction(id, { issueId })` run it as a menu would.
+and `host.runAction(id, { issueId, choice? })` run it as a menu would.
 
 ### `registerBadges()`
 
@@ -206,7 +279,7 @@ this.registerBadges({
 | --- | --- |
 | `badge` | which of your `issueBadges` — what "Display" hides |
 | `text` | up to 24 characters |
-| `icon` | `BadgeIcon`: `clock`, `timer`, `calendar`, `check`, `circle-check`, `circle-x`, `triangle-alert`, `info`, `flag`, `star`, `bug`, `zap`, `lock`, `eye`, `link`, `user`, `message-square`, `git-pull-request`, `git-merge`, `git-branch`, `rocket`, `package` |
+| `icon` | `BadgeIcon`: `clock`, `timer`, `calendar`, `check`, `circle-check`, `circle-x`, `triangle-alert`, `info`, `flag`, `star`, `bug`, `zap`, `lock`, `eye`, `link`, `user`, `message-square`, `git-pull-request`, `git-merge`, `git-branch`, `rocket`, `package`, `pencil`, `trash` |
 | `tone` | `neutral`, `primary`, `info`, `success`, `warning`, `danger` |
 | `tooltip` | up to 120 characters |
 
@@ -278,6 +351,7 @@ There are two ways to fill a row, and you can mix them:
 | `{ type: "dot", tone? }` | a small dot |
 | `{ type: "image", src, alt, width, height, rounded? }` | a `data:image/png`, `jpeg` or `webp` URL up to 24 kB — draw on a canvas and `toDataURL()`; up to 64 × 32 px; no SVG, no address |
 | `{ type: "spacer" }` | pushes what follows to its line's right end |
+| `{ type: "divider" }` | a thin upright line between what's before and after it |
 | `{ type: "break" }` | starts the second line (once, at the top level) |
 
 | Building blocks | |
@@ -299,6 +373,8 @@ won't take, is dropped; a row with nothing left to read isn't drawn.
 **More than a card can hold?** Give the row a `panel` — one of your
 `issuePanels`. A click on the row opens the issue at that panel, where you
 draw whatever you like ([`registerIssuePanel()`](#registerissuepanel)).
+With a `section` too, the panel's frame gets it as `context.focus` — unfold
+that part of it (the GitHub plugin opens its pull requests).
 
 The demo plugin **Demo Code Review** (`scripts/plugins/demo-plugins/code-review.ts`)
 does all of this.
@@ -414,7 +490,8 @@ you draw the block yourself, like a view — the [UI kit](#the-ui-kit) helps.
 ### `registerSettings()`
 
 ```ts
-registerSettings(page: { render(el, context) }): void;
+registerSettings(page: { render(el, context); save?(): void | Promise<void> }): void;
+setUnsaved(unsaved: boolean): void;
 ```
 
 Its own settings (`contributes.settingsPage`): with `true` a page shown
@@ -422,6 +499,41 @@ instead of Barynt's form, with `"section"` a part below it — see
 [Manifest → Its own settings page](plugins-manifest.md#its-own-settings-page).
 `context.slot.id` says which: `"settings"` or `"section"`. Read the values
 with `loadSettings()`, save them with `api.settings.set(values)`.
+
+**Barynt's Save button.** The page's header has the Save button, greyed out
+until something changes. Give `registerSettings` a `save` and your page
+uses it too: call `setUnsaved(true)` when something changed (`false` when
+it's back as it was), and a click runs `save` — together with Barynt's
+form, if the page has one. Throw to say it failed: the message is shown.
+After it ran, there's nothing unsaved any more on its own. Without `save`,
+the button stays Barynt's and you save the way you like.
+
+```ts
+let saved = "";
+let draft = "";
+this.registerSettings({
+  render: async (el) => {
+    const { channel } = await this.loadSettings<{ channel: string | null }>();
+    saved = draft = channel ?? "";
+    const field = textField({
+      label: "Channel",
+      value: draft,
+      onInput: (value) => {
+        draft = value;
+        this.setUnsaved(draft !== saved);
+      },
+    });
+    el.replaceChildren(field.el);
+  },
+  save: async () => {
+    await this.api.settings.set({ channel: draft });
+    saved = draft;
+  },
+});
+```
+
+In a test, `host.unsavedState` says what the page last reported (`null`
+without `save`) and `host.save()` presses the button.
 
 ```ts
 import { button, status, stack } from "@barynt/plugin-sdk/ui";
@@ -502,13 +614,15 @@ method returns a `Promise` and rejects with a [`BaryntError`](#errors).
 | `api.members.list(params?)` | `members.list` |
 | `api.fields.list(params?)` | `fields.list` |
 | `api.issueData.list(issueIds)` | `issueData.list` |
+| `api.issueData.set(issueId, key, value)`, `api.issueData.delete(issueId, key)` | `issueData.set`, `issueData.delete` |
 | `api.storage.get<T>(key)` | `storage.get` |
 | `api.storage.set(key, value)` | `storage.set` |
 | `api.storage.delete(key)` | `storage.delete` |
 | `api.storage.list()` | `storage.list` |
 | `api.settings.get()` | `settings.get` (what `loadSettings()` uses) |
+| `api.me.get()` | `me.get`: who's using it, and `canManage` — whether they may manage it here |
 | `api.settings.set(values)` | `settings.set`: saves its settings, for someone with `plugin.enable` there |
-| `api.net.fetch(url, init?)` | `net.fetch`: a request to one of the manifest's hosts; returns a `NetResponse` with `status`, `ok`, `headers`, `text`, `base64` and `json()` |
+| `api.net.fetch(url, init?)` | `net.fetch`: a request to one of the manifest's hosts; returns a `NetResponse` with `status`, `ok`, `headers`, `text`, `base64` and `json()`. `follow: true` follows one redirect to another `https` address, sent there without any credential (a download GitHub hands to its storage); `as: "person"` sends it with the person's own account rather than the place's connection — for what only a person may do, approving a deployment |
 
 ```ts
 const issue = await this.api.issues.create({ title: "Follow up", priority: 2 });
@@ -535,6 +649,54 @@ try {
 `error.code` is one of the codes in
 [Host API → Errors](plugins-host-api.md#errors). An error you don't catch ends up as
 the plugin's error in Barynt.
+
+## Translations
+
+What a plugin draws in its frame — a panel's headings, a toast, an action's
+message — follows the person's language with `translator()`. English is the
+base and the fallback; another language lists only what it translates:
+
+```ts
+// src/i18n.ts
+import { translator } from "@barynt/plugin-sdk";
+
+export const t = translator({
+  en: {
+    createBranch: "Create branch",
+    created: "Branch {name} created in {repo}.",
+    repos_one: "{count} repository",
+    repos_other: "{count} repositories",
+  },
+  de: {
+    createBranch: "Branch erstellen",
+    created: "Branch {name} in {repo} erstellt.",
+    repos_one: "{count} Repository",
+    repos_other: "{count} Repositories",
+  },
+});
+
+// anywhere
+button({ label: t("createBranch") });
+toast(t("created", { name, repo }));
+t("repos", { count: 3 }); // "3 Repositories"
+```
+
+- `{name}` takes the value of that name.
+- With `count`, the key's plural form comes first: `key_one`, `key_other`
+  (`zero`, `two`, `few`, `many` too), picked by `Intl.PluralRules` for the
+  language.
+- A key the language doesn't have comes from English; one neither has shows
+  as the key. TypeScript checks that the other languages only use English's
+  keys.
+- The language is read when a text is asked for: the plugin sets the frame's
+  `<html lang>` from [`context.locale`](#context) as it starts, and
+  `currentLocale()` reads it — so `t` can live at a module's top. Pass a
+  language as the second argument to fix one.
+- The [UI kit](#the-ui-kit)'s own words ("Search", "Close", "Copy", "Nothing
+  here." …) follow the same language.
+
+Titles, labels and settings in the manifest are translated there, under
+[`locales`](plugins-manifest.md#translations) — Barynt shows those itself.
 
 ## The UI kit
 
@@ -591,6 +753,7 @@ Each returns a field: `el`, `value`, `disabled`, `focus()`. All take
 | `radioGroup()` | one of a few, all in view | `options: { value, label, hint? }[]`, `value`, `onChange` |
 | `segmentedControl()` | one of a few, side by side (arrow keys) | `options`, `value`, `onChange` |
 | `multiSelect()` | any number, as chips | `options`, `value: string[]`, `onChange` |
+| `pickMenu()` | a button that opens a searchable menu to pick one from — to add to a list | `label`, `icon`, `options: { value, label, hint?, aside? }[]`, `placeholder`, `empty`, `onPick`; returns `{ el, setOptions(), disabled, open(), close() }` — arrow keys, Enter, Escape |
 | `toggle()` | on or off — a switch | `checked`, `onChange` |
 | `checkbox()` | on or off — a box | `checked`, `onChange` |
 | `swatchPicker()` | a colour of the palette | `value`, `colors`, `onChange` |
@@ -605,10 +768,10 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | --- | --- |
 | `heading({ text, level? })` | `h1`–`h4`, sized like Barynt's |
 | `text({ text, tone?, size?, weight?, mono?, inline? })` | a paragraph; `tone` `subtle`, `primary`, `success`, `warning`, `danger` |
-| `link({ text, href })` | a link out, in a new tab |
+| `link({ text, href })` | a link out, in a new tab — or `link({ text, onClick })`, a link that acts in Barynt (opens settings, a window) |
 | `stack(...children)`, `row(...children)` | under each other / next to each other, with room between |
 | `grid({ children, minWidth? })` | as many columns as fit, each at least `minWidth` (`12rem`) |
-| `card({ title?, description?, children?, actions?, tone?, compact? })` | a framed section; `tone` colours its edge, `compact` takes less room (a sidebar) |
+| `card({ title?, description?, children?, actions?, tone?, compact?, more?, onClick? })` | a framed section; `onClick` makes the whole card open something (its buttons and links still do theirs); `tone` colours its edge, `compact` takes less room (a sidebar); `more: { label, content, aside?, open?, onToggle? }` adds a foot that folds — details only needed now and then, `aside` before its label (a size), `onToggle(open)` to load them when they open; with `onOpen` instead of `content` the foot is a button that opens them elsewhere (a window, `openModal`) |
 | `divider()` | a line |
 | `icon(name, { size?, label? })` | one of the built-in icons (`IconName`: `check`, `x`, `plus`, `search`, `calendar`, `git-pull-request` … — `ICONS` lists them); no network needed |
 
@@ -616,19 +779,26 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 
 | Function | What |
 | --- | --- |
-| `badge({ text, tone? })` | a short state: `neutral`, `primary`, `info`, `success`, `warning`, `danger` |
+| `badge({ text, tone?, icon? })` | a short state: `neutral`, `primary`, `info`, `success`, `warning`, `danger`; `icon` before the text (`lock`, `globe` …) |
 | `tag({ text, color?, onRemove? })` | a coloured tag, removable |
 | `labelChip({ name, color? })` | a label as Barynt shows one |
 | `avatar({ name, color?, size? })`, `user({ name, color?, meta? })` | initials; a person with a line about them |
+| `userNote({ name, color?, tag?, status?, text? })` | what someone said — a review, a remark: avatar and name (cut off when long, whole on hover), a small `tag` ("Bot"), `status: { text, tone }` as a badge that moves under the name when room is short, and `text` on one line under it that a click opens in full |
 | `statusDot({ label, category })` | a status by its category: `backlog`, `unstarted`, `started`, `completed`, `canceled` |
 | `tooltip(element, text)` | shows on hover and focus, read out by screen readers |
-| `notice({ text, title?, tone?, action? })` | a message in the page — `danger` is announced at once |
-| `toast(text, { tone?, duration? })` | a short message in the corner |
+| `notice({ text, title?, tone?, action?, compact? })` | a message in the page — `danger` is announced at once; `compact` makes it one quiet line with the `action` (a `link`) at its end, for inside a card |
+| `toast(text, { tone?, duration? })` | a short message — in Barynt its own toast, elsewhere in the corner of the frame |
 | `status()` | a line that says how it went: `set(text, tone?)`, `clear()` |
 | `spinner({ label? })`, `skeleton({ lines? })` | while something loads |
 | `emptyState({ title, text?, icon?, action? })` | where there's nothing yet |
-| `sectionHeader({ title, icon?, meta?, status? })` | a head over a card or section: icon, title, on the right a note or a state in its tone |
-| `copyField({ value, icon?, href?, label? })` | a value to copy — a branch, a hash — with a copy button and, with `href`, one to open it |
+| `sectionHeader({ title, icon?, count?, meta?, status?, size?, actions?, fold? })` | a head over a card or section: icon, title — with `count` a badge right by it, none for 0 — on the right a note or a state in its tone, then `actions` (a "+" button, say); `size: "sm"` is a quiet one, like the field names in an issue's sidebar. With `fold: { content, open?, onToggle? }` it holds its content too, and a click on the head folds it away — `onToggle(open)` to keep that, e.g. in `storage` |
+| `copyField({ value, icon?, href?, label?, menu?, actions? })` | a value to copy — a branch, a hash: a click on it copies it and says so, with `href` a button to open it, `menu` (`MenuItem`s) a "…" after that, and `actions` — `{ icon, label, danger?, onClick }` — more icon buttons |
+| `showMore({ label, content, open?, onToggle? })` | "Show 2 more": a small centred toggle in the tertiary colour that folds content away below it, closed to start with |
+| `menuButton({ items, label?, icon? })` | a "…" button with a menu: `{ label, icon?, danger?, onClick }` each. In Barynt it's Barynt's own menu, drawn over the frame so a small frame doesn't cut it off |
+| (fields) | every field takes `hideLabel: true` — its label for screen readers only, for a field in a table's cell whose column says what it is |
+| `pipeline({ stations, label? })` | stops from left to right — environments a change went through, a rollout's regions: `{ label, icon?, state, status?, meta?, onClick?, link?, selected?, segments?, count? }` with `stepList`'s states (`pending` is drawn dashed: not reached). `onClick` makes the stop a button, `link` puts a link out in its corner, `segments` splits its bar (regions, services), `count` sits beside its label; more than fit scroll sideways |
+| `logView({ lines \| sections, maxHeight?, start?, label?, fold?, tools?, actions? })` | a build's or a job's output: numbered lines `{ text, parts?, tone?, heading?, time? }` in a box that scrolls (`maxHeight: "none"`: as tall as it is, in a window), errors (`tone: "danger"`) and warnings marked. `sections` (`{ title, state?, meta?, lines, open? }`) splits it by a job's steps, as GitHub and GitLab do: each step a head with its state, name and duration, its own lines numbered from 1, the failed ones open, a step drawn when first opened. `parts` are styled runs (`{ text, color?, bold?, dim?, italic?, underline? }`, a terminal's eight colours); `parseAnsi(text)` makes them from ANSI escapes. `fold` folds the lines after each `heading`; `tools` adds a bar to search all of it (Enter / Shift+Enter, opening the step a hit is in), show the `time`s and fold or unfold all — `actions` at its end. Up to 50,000 lines a box |
+| `stageBar({ stages })` | the way through a few stations as a bar of segments — `{ label, state }` with `stepList`'s states — where something stands and what holds it up |
 | `stepList({ steps })` | steps with their state (`success`, `running`, `warning`, `danger`, `pending`) and, on the right, a note — a pipeline |
 | `navList({ items })` | rows that lead somewhere: `{ label, icon?, count?, href? \| onClick? }` with a › at the end |
 | `diffStat({ added, removed })` | "+9 −4" |
@@ -642,7 +812,7 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `tabs({ tabs, value?, label?, onChange? })` | tabs (arrow keys); a tab's `content` can be a function, drawn when first opened |
 | `accordion({ items })` | sections that open and close |
 | `kpi({ value, label, trend? })` | a big number; `trend: { text, good? }` |
-| `list({ items, empty? })` | rows of `{ title, meta?, href? }` |
+| `list({ items, empty?, variant? })` | rows of `{ title, note?, meta?, href?, onClick?, icon?, tone?, lead?, aside?, onRemove?, removeLabel? }` — one line each, or two with `note` under the title; `lead` puts elements (an id, a hash) before the title, `aside` (badges) on the right, `onRemove` a ✕ at the end; with `href` the whole row opens it, with `onClick` it's a button; `tone` colours the icon. `variant: "cards"` draws each row as an outlined card |
 | `barChart({ bars, max? })` | horizontal bars of `{ label, value, color? }` |
 | `progressBar({ value, max?, label?, tone? })`, `progressRing({ value, max?, label?, size? })` | how far along |
 

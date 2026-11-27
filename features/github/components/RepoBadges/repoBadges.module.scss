@@ -1,0 +1,45 @@
+/* A repository's tags and name (BARY-238). */
+
+.tags {
+  display: inline-flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.0625rem 0.4375rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-pill);
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  white-space: nowrap;
+
+  &[data-tone="warning"] {
+    border-color: color-mix(in srgb, var(--warning) 45%, transparent);
+    background: color-mix(in srgb, var(--warning) 12%, transparent);
+    color: var(--warning);
+  }
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.owner {
+  color: var(--on-surface-variant);
+}
+
+.repo {
+  color: var(--on-surface);
+  font-weight: 600;
+}

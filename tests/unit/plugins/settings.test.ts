@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { checkSettings, SETTING_TEXT_MAX } from "@/lib/plugins/settings";
+import {
+  checkSettings,
+  keepUnshown,
+  SETTING_JSON_MAX,
+  SETTING_TEXT_MAX,
+} from "@/lib/plugins/settings";
 
 // A plugin's settings form (BARY-201): only what the manifest declares is
 // kept, each value checked by its type.
@@ -134,5 +139,40 @@ describe("checkSettings, the other types (BARY-204)", () => {
     expect(
       checkSettings([{ key: "assignee", type: "member" }], { assignee: "u1" }),
     ).toEqual({ ok: false, key: "assignee" });
+  });
+});
+
+describe("a json setting, the plugin's own (BARY-238)", () => {
+  const own = [
+    { key: "channel", type: "text" as const },
+    { key: "deployments", type: "json" as const },
+  ];
+
+  it("keeps an object, refuses anything else or too much", () => {
+    expect(
+      checkSettings(own, { deployments: { auto: false, stages: [] } }),
+    ).toEqual({
+      ok: true,
+      values: { deployments: { auto: false, stages: [] } },
+    });
+    expect(checkSettings(own, { deployments: [1] }).ok).toBe(false);
+    expect(checkSettings(own, { deployments: "x" }).ok).toBe(false);
+    expect(
+      checkSettings(own, { deployments: { x: "y".repeat(SETTING_JSON_MAX) } })
+        .ok,
+    ).toBe(false);
+  });
+
+  it("stays when Barynt's form saves without it", () => {
+    expect(
+      keepUnshown(
+        own,
+        { channel: "old", deployments: { auto: false } },
+        { channel: "new" },
+      ),
+    ).toEqual({ channel: "new", deployments: { auto: false } });
+    expect(keepUnshown(own, null, { channel: "new" })).toEqual({
+      channel: "new",
+    });
   });
 });

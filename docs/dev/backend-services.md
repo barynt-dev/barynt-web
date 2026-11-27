@@ -300,19 +300,26 @@ A **project** may only switch on what its workspace released for projects (`Plug
 `setPluginGrant`, `plugin.enable` in the workspace); taking the release back switches the
 projects' activations off and keeps their data. The pages are **Admin → Plugins**, the
 store (`features/plugins/components/PluginStore`, `plugin.manage`, BARY-200) and the
-workspace's **Plugin store** (`/<workspace>/plugins`, `ScopeStore`, BARY-201) — a fourth
+workspace's **Store** (`/<workspace>/store`, `ScopeStore`, BARY-201) — the last
 entry in the settings switcher, only for `plugin.enable` in the workspace, and while
 nothing is installed only for a platform admin, who gets a start page (`canUsePluginStore`); each loads its view through `features/plugins/queries.ts`,
 which checks the permission again. `getScopeStoreView` lists the installed plugins with
 their activations in the workspace and its projects. The store's one switch is the
 **release**: activating in the workspace where the plugin has that level, plus the
 `PluginGrant` where it has the project level. A project switches a released plugin on
-from its own settings: `getPluginSettingsNav` lists every granted plugin under the
-project's **Plugins** group, and `settings/plugins/<pluginId>` (`PluginSettings`) switches
-it on (`activatePlugin`, confirming the capabilities), holds its settings form
-(`contributes.settings`) and switches it off. In the workspace, the group lists only the
-plugins running there with a settings form (the nav
-group); `savePluginSettings` keeps only the declared keys, checked by type
+in the **Plugins** area (`/<workspace>/plugins`, BARY-238), the switcher's entry before
+the store: `getPluginsArea` lists every plugin the person can set somewhere — their own
+credentials (`getUserCredentialPluginsNav`), the workspace's (`getPluginSettingsNav`
+without a project: running there with a form, a credential or a connection) and the
+projects' (every granted plugin, in each project with `plugin.enable`); without any, the switcher leaves the area out (`settingsScope`). A plugin's pages
+are its levels, `plugins/<pluginId>/personal`, `…/project/<slug>` and `…/workspace`
+(`pluginPath`), with `PluginLevels` as tabs under the header and the project or
+workspace to pick; `plugins/<pluginId>` opens the one `lib/plugins/levels#defaultLevel`
+picks. The project and workspace levels are `PluginSettings`: it switches the plugin on
+(`activatePlugin`, confirming the capabilities), holds its settings form
+(`contributes.settings`) and switches it off. The old addresses
+(`settings/plugins/<id>`, `project/<slug>/settings/plugins/<id>`, `account/plugins/<id>`)
+redirect there, keeping their query; `savePluginSettings` keeps only the declared keys, checked by type
 (`lib/plugins/settings.ts#checkSettings`), into `PluginSettings.values`, and audits which
 keys changed (`plugin.settings.updated`), never their values.
 The store's view (`getPluginStoreView`) merges what's installed with every enabled
@@ -399,7 +406,7 @@ frame itself. `widgetData` resolves whether it runs (`getPluginSlotView`, now wi
 (`getPluginIssuePanels`, the project's activations, cached per request). `IssuePluginPanels`
 draws each in the stacked body, the dialog and the page; an open one is a `PluginFrame` with
 `issueId` in its context and `autoHeight` — the frame runtime measures `#root` and sends
-`resize`, which the host clamps (48–640 px).
+`resize`, which the host clamps (at least 48 px; at most the panel's `maxHeight`, without one no limit).
 
 **Actions (BARY-152).** `contributes.actions` (`ui:action`) come with the issue
 (`pluginActions`, `getPluginIssueActions`) for its "…" menu; a card's quick actions and the
@@ -408,6 +415,13 @@ palette (with an issue open) ask `listIssuePluginActions`. Picking one goes thro
 in the app shell runs it in a hidden `PluginFrame` (slot `actions`): `action:run` → `actionDone`
 over the frame's channel, checked by `parseActionResult` (`lib/plugins/plugin-actions.ts`),
 then a toast, `router.refresh()` or the panel (`barynt:focus-panel`). 20 s at most.
+
+**Saving a settings page.** `PluginSettings` has the Save button in its `PageHeader`,
+disabled until the form's `values` differ from what's saved — or until the plugin's own page
+(`settingsPage`) reports changes: the SDK's `registerSettings({ save })` makes the frame send
+`unsaved` (first `false`, which says it saves with the button), `setUnsaved()` sends it again.
+A click saves the form (`savePluginSettings`) and, if the frame has changes, sends it
+`settings:save`, answered by `saveDone` (`ok`, or the error it threw).
 
 **Sidebar panels (BARY-209).** `issuePanels[].placement` (`main` default, `sidebar`) comes
 along in `pluginPanels`; `IssuePluginPanels placement=…` draws the main ones after the
@@ -453,6 +467,19 @@ request and response headers are allow-listed, 10 s and 2 MB. Credentials
 `removePluginCredential` (a person's own without a permission, a workspace's or project's
 with `plugin.enable` there and an audit entry), and deleting a plugin's data in a place
 deletes its credentials there too.
+
+Without one of its own, a request of a plugin that connects to GitHub (BARY-238) goes —
+about a repository the place chose — with the token of the connection that reaches it
+(`connectionFor`), and anything else to `api.github.com` as the person
+(`features/github/user-link.ts#userGitHubToken`): their account linked on the plugin's
+Personal tab (`GitHubUserLink`, through the instance's app — `/api/github/link`, back
+through `/api/github/callback` with a `link` state; tokens sealed with purpose
+`github-user` and renewed with the refresh token shortly before they run out), else the
+GitHub account they sign in with (`Account`, provider `github`) where its token reaches
+repositories (`lib/github/app#loginTokenReaches`: signing in through the app itself, or
+the `repo` scope).
+
+`features/github/create-repo.ts#createRepository` makes a new repository from the settings (`createGitHubRepository`, `plugin.enable` in the place): in an organization the place is connected to with the installation's token (`POST /orgs/{org}/repos`, the app's `administration: write`), else — and in a personal account always — as the person (`POST /user/repos`, only their own account). Where the installation doesn't see it then, it's added with the person's token (`PUT /user/installations/{id}/repositories/{repo}`); audited as `plugin.repository.created`.
 
 ## Smaller pieces
 

@@ -357,6 +357,7 @@ export function PluginBadgeRows({
                       issueId,
                       pluginId: b.pluginId,
                       panelId: panel,
+                      ...(b.section && { section: b.section }),
                     })
                 : undefined
             }
@@ -572,6 +573,8 @@ function RowPartView({ part }: { part: RowPart }) {
       );
     case "spacer":
       return <span className={styles.spacer} />;
+    case "divider":
+      return <span className={styles.divider} aria-hidden />;
     case "break":
       return null;
   }

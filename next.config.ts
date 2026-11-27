@@ -4,6 +4,10 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
+/** Public tunnels to a local `next dev` — Cloudflare's quick tunnels and
+ *  ngrok (see docs/dev/getting-started.md). Dev only, like the rest below. */
+const DEV_TUNNELS = ["*.trycloudflare.com", "*.ngrok-free.app"];
+
 const nextConfig: NextConfig = {
   output: "standalone",
   // Lets modules `@use "breakpoints"` (styles/breakpoints.scss) without
@@ -15,7 +19,15 @@ const nextConfig: NextConfig = {
   // is `disabled` until an email is typed stays disabled forever. Every
   // private range a home or office LAN hands out (a Fritz!Box is
   // 192.168.178.x, not 192.168.0.x), plus mDNS names.
-  allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*", "*.local"],
+  // Plus the public tunnels used to let GitHub reach a local Barynt
+  // (BARY-238: the GitHub App's webhook and sign-in need a public address).
+  allowedDevOrigins: [
+    "192.168.*.*",
+    "10.*.*.*",
+    "172.*.*.*",
+    "*.local",
+    ...DEV_TUNNELS,
+  ],
   // GitHub Codespaces' port forwarding — and VS Code's own (dev tunnels,
   // `*.devtunnels.ms`) — rewrites the `Origin` header to `localhost:<port>`
   // but sets `X-Forwarded-Host` to the public host, so Next's Server Actions
@@ -26,7 +38,7 @@ const nextConfig: NextConfig = {
   ...((process.env.CODESPACES === "true" ||
     process.env.NODE_ENV === "development") && {
     experimental: {
-      serverActions: { allowedOrigins: ["localhost:3000"] },
+      serverActions: { allowedOrigins: ["localhost:3000", ...DEV_TUNNELS] },
     },
   }),
   images: {

@@ -58,19 +58,25 @@ Every step is recorded in the [audit log](audit.md).
 
 Two steps: the workspace releases a plugin, then each project switches it on in its own settings.
 
-### Releasing in the plugin store
+### Releasing in the store
 
-Open **Settings** and pick **Plugin store** in the switcher at the top, next to Personal, Project and Workspace. Only the workspace's managers see it — whoever has the permission _Switch installed plugins on and off and configure them_ in the workspace (owners, admins and managers) — and only once a plugin is installed on the server. A platform admin sees it before that too, with a start page on how plugins are installed.
+Open **Settings** and pick **Store** in the switcher at the top, after Personal, Project, Workspace and Plugins. Only the workspace's managers see it — whoever has the permission _Switch installed plugins on and off and configure them_ in the workspace (owners, admins and managers) — and only once a plugin is installed on the server. A platform admin sees it before that too, with a start page on how plugins are installed.
 
 The store is laid out like the admin's: on the left every plugin your platform admin installed, split into **Released** and **Available**, with a search and a filter for category, kind, level and source. If you belong to several workspaces, pick one at the top of the list, the same way as in the workspace settings. With no plugin open, the right side shows how many plugins are released, which ones wait for a confirmation after an update, what's still available and how many projects have one on — below that what was **recently added** and **all plugins** by category. Open a plugin; a line under its name says whether it's released in this workspace and in which projects it's on. Its overview shows the screenshots and its page, and beside them its links, what it asks for and where it comes from.
 
-**Release** shows what the plugin may do; confirm it and it's released. A plugin for workspaces then runs in the workspace; a plugin for projects shows up in every project's settings. After an update that asks for more, the line under the name offers **Confirm again**.
+**Release** shows what the plugin may do; confirm it and it's released. A plugin for workspaces then runs in the workspace; a plugin for projects shows up for every project under **Plugins**. After an update that asks for more, the line under the name offers **Confirm again**.
 
-**Take back release** switches the plugin off in the workspace and every one of its projects, and it leaves the project settings. Settings and data stay.
+**Take back release** switches the plugin off in the workspace and every one of its projects, and it leaves **Plugins**. Settings and data stay.
+
+### The plugins' settings
+
+**Plugins**, in the switcher at the top of the settings, lists every plugin you can set up in this workspace on the left, and opens the first; **More in the store** below them leads to the store. Without any plugin to set up, the switcher leaves it out.
+
+A plugin's page has tabs under its name: **Personal** (what it asks you yourself for, like a token of your own), **Project** and **Workspace** — only the ones it has, and that you may open. On **Project**, pick the project at the right; on **Workspace**, another workspace of yours. The plugin opens on a project it's on in, else on the workspace.
 
 ### Switching on in a project
 
-A released plugin for projects has an entry under **Plugins** in every project's settings, below the other sections. Project admins open it, check what it may do in the project and **Switch on**. Once it runs, the page holds the form the plugin brings (a channel name, a person to assign, labels, days of the week, …) and, at the bottom, switching it off again — its settings and data stay until **Delete data**.
+A released plugin for projects can be switched on in every project: under **Plugins**, open it and pick the project on the **Project** tab. Project admins check what it may do in the project and **Switch on**. Once it runs, the page holds the form the plugin brings (a channel name, a person to assign, labels, days of the week, …) and, at the bottom, switching it off again — its settings and data stay until **Delete data**. The search above the settings finds the plugin's settings too, by their names, and jumps right to the one you pick.
 
 ### Where plugins show
 
@@ -81,7 +87,7 @@ A plugin that brings its own views or pages shows them in the sidebar, each with
 
 A plugin's page always names the plugin under its title.
 
-A plugin can also bring **dashboard widgets**: on a dashboard, **Add widget** lists them under **Plugins**, with a live preview. Some are templates made of Barynt's own building blocks: once added, such a widget is the dashboard's own custom widget — it stays when the plugin is switched off, and **Customize** lets you change it before adding. And some plugins draw their **settings page** themselves — the page under **Plugins** in the settings then shows the plugin's own form; what it saves is checked by Barynt like any other setting. Others add a part below Barynt's form — a connection check, say.
+A plugin can also bring **dashboard widgets**: on a dashboard, **Add widget** lists them under **Plugins**, with a live preview. Some are templates made of Barynt's own building blocks: once added, such a widget is the dashboard's own custom widget — it stays when the plugin is switched off, and **Customize** lets you change it before adding. And some plugins draw their **settings page** themselves — its page under **Plugins** then shows the plugin's own form; what it saves is checked by Barynt like any other setting. Others add a part below Barynt's form — a connection check, say.
 
 Plugins can also bring **building blocks** for custom widgets: in the widget builder, **Add block** lists them next to Barynt's own, each with the settings it brings. If the plugin is switched off, the block says so and the rest of the widget stays.
 
@@ -91,15 +97,19 @@ Plugins can also add **actions** — "Re-run pipeline", "Close merge request" �
 
 ### A plugin's settings in the workspace
 
-A plugin running in the workspace that has settings gets an entry under **Plugins** in the workspace settings, with its form.
+A plugin running in the workspace that has settings has its form on the **Workspace** tab of its page under **Plugins**.
+
+### Connecting to GitHub
+
+A plugin that works with GitHub can be connected instead of everyone keeping a token. Under **Plugins → GitHub**, on the **Workspace** tab (or a project's), **Connect GitHub** goes to GitHub: sign in, install the instance's GitHub App on an organization and pick the repositories it may see there — or pick an account where it's installed already. A connection in the workspace counts for every project in it; the project then only ticks which repositories it works with. GitHub reports to Barynt through the app, so no webhook has to be added per repository. A platform admin creates the app once, on the plugin's page under **Admin → Plugins**. See [GitHub](../integrations/github.md).
 
 ### Credentials
 
 A plugin that talks to another service — a Git host, a chat — may need an access token for it. Depending on the plugin you keep it in one of three places:
 
-- **For the whole workspace**: in the workspace settings, on the plugin's page under **Plugins** (workspace managers).
-- **Per project**: in the project's settings, on the plugin's page (project admins).
-- **Your own**: in your personal settings under **Plugins**, when the plugin acts with each person's own account.
+- **For the whole workspace**: on the plugin's page under **Plugins**, tab **Workspace** (workspace managers).
+- **Per project**: tab **Project**, with the project picked (project admins).
+- **Your own**: tab **Personal**, when the plugin acts with each person's own account.
 
 Barynt keeps the value encrypted and adds it to the plugin's requests to that service itself — the plugin never sees it, and nobody sees it again once it's saved: the page only says whether one is kept, and since when. **Remove** takes it back; the plugin's requests to that service fail until someone keeps a new one. Keeping or removing a workspace's or project's credential lands in the audit log (which one, never the value).
 
@@ -145,7 +155,7 @@ Every step is recorded in the [audit log](audit.md).
 
 ## Switching on (workspace and project admins)
 
-Open **Settings** and pick **Plugin store** in the switcher at the top, next to Personal, Project and Workspace. You see it if you have the permission _Switch installed plugins on and off and configure them_ in the workspace or in one of its projects; owners, admins, managers and project admins have it.
+Open **Settings** and pick **Store** in the switcher at the top, after Personal, Project, Workspace and Plugins. You see it if you have the permission _Switch installed plugins on and off and configure them_ in the workspace or in one of its projects; owners, admins, managers and project admins have it.
 
 The store is laid out like the admin's: on the left every plugin your platform admin installed, split into **Released** and **Available**, with a search and a filter for category, kind, level and source. If you belong to several workspaces, pick one at the top of the list, the same way as in the workspace settings. With no plugin open, the right side shows how many plugins are released, which ones wait for a confirmation after an update, what's still available and how many projects have one on — below that what was **recently added** and **all plugins** by category. Open a plugin; a line under its name says whether it's released in this workspace and in which projects it's on. Its overview shows the screenshots and its page, and beside them its links, what it asks for and where it comes from.
 
@@ -160,7 +170,7 @@ Taking the release back switches the plugin off in the workspace and every one o
 
 ### A plugin's settings
 
-A switched-on plugin that has settings gets an entry under **Plugins** in the workspace's or project's settings, below the other sections. Its page holds the form the plugin brings (a channel name, what to post, …) and, at the bottom, switching it off there.
+A switched-on plugin that has settings is under **Plugins** in the settings, with a tab for each level — **Personal**, **Project** (pick the project at the right) and **Workspace**. Each holds the form the plugin brings (a channel name, what to post, …) and, at the bottom, switching it off there.
 
 ### A plugin's server
 

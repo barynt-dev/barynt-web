@@ -21,6 +21,7 @@ import {
   type ServiceAddressMode,
 } from "./service";
 import { SETTING_TYPES } from "./settings";
+import { translateManifest, translationIssues } from "./translate";
 
 /** How a plugin runs. In-process code is Barynt's own and not a plugin kind. */
 export const PLUGIN_KINDS = ["declarative", "sandbox", "service"] as const;
@@ -127,11 +128,26 @@ const localeDescriptionSchema = z
   )
   .refine((d) => d.short || d.about, "expected short, about or both");
 
-/** A manifest's texts in other languages: `{ de: { description } }`. */
+/** A contribution's text in another language: its main text, or its texts
+ *  by name — `lib/plugins/translate.ts` checks them against the item. */
+const itemTextSchema = z.union([
+  z.string().trim().min(1).max(300),
+  z.record(z.string(), z.unknown()),
+]);
+
+/** A manifest's texts in other languages (BARY-235, BARY-237): its
+ *  description, and the titles, labels and descriptions of what it
+ *  contributes and of its previews, by id — `lib/plugins/translate.ts`. */
 const manifestLocalesSchema = z
   .partialRecord(
     z.enum(PLUGIN_LOCALES),
-    z.strictObject({ description: localeDescriptionSchema }),
+    z.strictObject({
+      description: localeDescriptionSchema.optional(),
+      contributes: z
+        .record(z.string(), z.record(z.string(), itemTextSchema))
+        .optional(),
+      previews: z.record(z.string(), z.string().trim().min(1)).optional(),
+    }),
   )
   .optional();
 
@@ -289,7 +305,7 @@ const entry = z.strictObject({ id: localId, title, icon: icon.optional() });
 const actionEntry = entry.extend({
   where: z
     .array(z.enum(["issueMenu", "cardMenu", "commandPalette"]))
-    .min(1)
+    // None: only its issue panel starts it (`runAction`, BARY-238).
     .max(3)
     .optional(),
   confirm: z.string().trim().min(1).max(120).optional(),
@@ -300,6 +316,9 @@ const actionEntry = entry.extend({
  *  the sidebar next to its fields (BARY-209). */
 const panelEntry = entry.extend({
   placement: z.enum(["main", "sidebar"]).optional(),
+  /** How tall it may grow (px) before it scrolls inside — without, it's
+   *  as tall as its content and only the issue scrolls (BARY-238). */
+  maxHeight: z.number().int().min(120).max(4000).optional(),
 });
 
 /** A dashboard widget made of Barynt's own blocks (BARY-203): no code, no
@@ -335,11 +354,25 @@ const fieldSchema = z.strictObject({
   options: z.array(optionSchema).max(50).optional(),
 });
 
+/** A value a `text` setting offers: `label` names it, `hint` shows what
+ *  it gives (an example). */
+const suggestionSchema = z.strictObject({
+  id: localId,
+  value: z.string().trim().min(1).max(500),
+  label: title,
+  hint: z.string().trim().max(120).optional(),
+});
+
 const settingSchema = z.strictObject({
   key: z.string().regex(/^[a-z][a-zA-Z0-9_]{0,39}$/),
   type: z.enum(SETTING_TYPES),
   label: title,
   description: z.string().max(300).optional(),
+  /** The heading it's shown under: settings in a row with the same group
+   *  share one. */
+  group: title.optional(),
+  /** The icon beside its group's heading — the first in the group wins. */
+  groupIcon: icon.optional(),
   default: z
     .union([
       z.string().max(500),
@@ -349,6 +382,9 @@ const settingSchema = z.strictObject({
     ])
     .optional(),
   options: z.array(optionSchema).max(50).optional(),
+  /** A `text` setting's ready-made values, offered in a menu beside the
+   *  field — still free to type over. */
+  suggestions: z.array(suggestionSchema).max(10).optional(),
 });
 
 /** A building block for custom widgets (BARY-205): Barynt draws the data
@@ -413,7 +449,95 @@ const inboundHookSchema = z.strictObject({
     .array(z.strictObject({ id: localId, title, on: z.enum(LINK_TRIGGERS) }))
     .max(10)
     .optional(),
+  /** A `link` hook's deployments without an environment (BARY-238): the
+   *  key of a `json` setting whose `workflows` list names the workflows a
+   *  run of counts as a deployment — `{ workflow, environment, branch?,
+   *  production? }`. */
+  workflowDeployments: z
+    .string()
+    .regex(/^[a-z][a-zA-Z0-9_]{0,39}$/)
+    .optional(),
 });
+
+/** An account at another service the plugin works with (BARY-238): Barynt
+ *  connects a workspace or project to it — for GitHub through the
+ *  instance's GitHub App — keeps the token and adds it itself. */
+export const CONNECTION_PROVIDERS = ["github"] as const;
+export type ConnectionProvider = (typeof CONNECTION_PROVIDERS)[number];
+/** The host a provider's API answers on — it must be in `network`. */
+export const CONNECTION_HOSTS: Record<ConnectionProvider, string> = {
+  github: "api.github.com",
+};
+
+const connectionSchema = z.strictObject({
+  id: localId,
+  title,
+  provider: z.enum(CONNECTION_PROVIDERS),
+});
+
+/** A plugin's filters in the filter menu's rows, at most — the rest are
+ *  the advanced editor's (BARY-238). */
+export const MAIN_FILTERS_MAX = 3;
+
+/** A dotted path into an entry — `state`, `runs.name`. */
+const entryPath = z
+  .string()
+  .regex(
+    /^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*){0,4}$/,
+    "a dotted path, e.g. runs.name",
+  );
+const whenValue = z.union([
+  z.string().max(100),
+  z.number(),
+  z.boolean(),
+  z.null(),
+]);
+
+/** One of a filter's options: its conditions on an entry (BARY-238). */
+const filterOptionSchema = z.strictObject({
+  id: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9_-]{0,39}$/, "lower-case letters, digits, _ and -"),
+  label: title,
+  when: z
+    .record(entryPath, z.union([whenValue, z.array(whenValue).max(10)]))
+    .refine((w) => Object.keys(w).length <= 5, "at most 5 conditions")
+    .optional(),
+  absent: z.boolean().optional(),
+});
+
+/**
+ * A filter for the issues' filter menu (BARY-238): which of the plugin's
+ * entries it looks at (`kind`), and its options — each with conditions —
+ * or the values of one field as options. Data only: Barynt matches it.
+ */
+const filterSchema = z
+  .strictObject({
+    id: localId,
+    title,
+    icon: icon.optional(),
+    kind: z
+      .string()
+      .regex(/^[a-z][a-z0-9_]{0,39}$/, "lower-case letters, digits and _"),
+    // In the filter menu's rows, or only in the advanced editor (default).
+    menu: z.enum(["main", "advanced"]).optional(),
+    options: z.array(filterOptionSchema).min(1).max(20).optional(),
+    values: z
+      .strictObject({
+        field: entryPath,
+        // "#{number} {title}" — `{path}` from the entry.
+        label: z.string().trim().min(1).max(80).optional(),
+        when: z
+          .record(entryPath, z.union([whenValue, z.array(whenValue).max(10)]))
+          .refine((w) => Object.keys(w).length <= 5, "at most 5 conditions")
+          .optional(),
+      })
+      .optional(),
+  })
+  .refine(
+    (f) => f.options !== undefined || f.values !== undefined,
+    "expected options, values or both",
+  );
 
 const contributesSchema = z.strictObject({
   navItems: z.array(entry).max(5).optional(),
@@ -428,6 +552,16 @@ const contributesSchema = z.strictObject({
   settings: z.array(settingSchema).max(30).optional(),
   credentials: z.array(credentialSchema).max(10).optional(),
   inboundHooks: z.array(inboundHookSchema).max(5).optional(),
+  connections: z.array(connectionSchema).max(3).optional(),
+  filters: z
+    .array(filterSchema)
+    .max(10)
+    .refine(
+      (list) =>
+        list.filter((f) => f.menu === "main").length <= MAIN_FILTERS_MAX,
+      `at most ${MAIN_FILTERS_MAX} filters in the main menu`,
+    )
+    .optional(),
   /** Draws its settings itself, in its own frame, instead of Barynt's form
    *  of `settings` (BARY-149) — or, `"section"`, below that form (BARY-204).
    *  Saving still goes through Barynt, checked against `settings`. */
@@ -438,7 +572,10 @@ type Contributes = z.infer<typeof contributesSchema>;
 
 /** Which capability each contribution needs. */
 const CONTRIBUTION_CAPABILITY: Record<
-  Exclude<keyof Contributes, "settings" | "credentials" | "settingsPage">,
+  Exclude<
+    keyof Contributes,
+    "settings" | "credentials" | "settingsPage" | "connections" | "filters"
+  >,
   Capability
 > = {
   navItems: "ui:nav-item",
@@ -456,12 +593,20 @@ const CONTRIBUTION_CAPABILITY: Record<
 /** What each kind may contribute: no code, no browser surface for services.
  *  Widget templates are data Barynt draws, so every kind may bring them. */
 const KIND_CONTRIBUTIONS: Record<PluginKind, readonly (keyof Contributes)[]> = {
-  declarative: ["fields", "settings", "issueBadges", "widgetTemplates"],
-  service: ["fields", "settings", "widgetTemplates", "inboundHooks"],
+  // Filters are data Barynt matches, like templates: every kind.
+  declarative: [
+    "fields",
+    "settings",
+    "issueBadges",
+    "widgetTemplates",
+    "filters",
+  ],
+  service: ["fields", "settings", "widgetTemplates", "inboundHooks", "filters"],
   sandbox: [
     "widgetTemplates",
     "inboundHooks",
     "credentials",
+    "connections",
     "settingsPage",
     "navItems",
     "projectViews",
@@ -472,6 +617,7 @@ const KIND_CONTRIBUTIONS: Record<PluginKind, readonly (keyof Contributes)[]> = {
     "actions",
     "fields",
     "settings",
+    "filters",
   ],
 };
 
@@ -558,6 +704,11 @@ export const manifestSchema = z
     if (RESERVED_PLUGIN_IDS.includes(m.id))
       add(["id"], `"${m.id}" is reserved for Barynt`);
 
+    for (const [lang, texts] of Object.entries(m.locales ?? {}))
+      if (texts)
+        for (const issue of translationIssues(m, texts))
+          add(["locales", lang, ...issue.path], issue.message);
+
     if (
       m.maxBaryntVersion &&
       compareSemver(m.maxBaryntVersion, m.minBaryntVersion) < 0
@@ -628,6 +779,16 @@ export const manifestSchema = z
             "needs the capability issues:write",
           );
       }
+      if (hook.workflowDeployments !== undefined) {
+        const setting = m.contributes.settings?.find(
+          (x) => x.key === hook.workflowDeployments,
+        );
+        if (hook.handle !== "link" || setting?.type !== "json")
+          add(
+            ["contributes", "inboundHooks", i, "workflowDeployments"],
+            "names a json setting of a link hook",
+          );
+      }
       // Barynt reads GitHub's calls; GitLab's come next.
       if (hook.handle === "link" && hook.provider !== "github")
         add(
@@ -661,7 +822,11 @@ export const manifestSchema = z
       if (
         key !== "settings" &&
         key !== "credentials" &&
-        key !== "settingsPage"
+        key !== "settingsPage" &&
+        key !== "connections" &&
+        // Data Barynt matches against what the plugin keeps already — no
+        // capability of its own.
+        key !== "filters"
       ) {
         const needed = CONTRIBUTION_CAPABILITY[key];
         if (!m.capabilities.includes(needed))
@@ -692,6 +857,17 @@ export const manifestSchema = z
           "Barynt sets this header itself",
         );
     });
+
+    const connections = m.contributes.connections ?? [];
+    connections.forEach((c, i) => {
+      if (!m.network.includes(CONNECTION_HOSTS[c.provider]))
+        add(
+          ["contributes", "connections", i, "provider"],
+          `${CONNECTION_HOSTS[c.provider]} must be in network`,
+        );
+    });
+    if (new Set(connections.map((c) => c.provider)).size !== connections.length)
+      add(["contributes", "connections"], "one connection per provider");
 
     (m.contributes.widgetBlocks ?? []).forEach((b, i) => {
       (b.settings ?? []).forEach((setting, j) => {
@@ -759,7 +935,36 @@ export const manifestSchema = z
           ["contributes", "settings", i, "options"],
           "only select and multiselect settings have options",
         );
+      if (s.groupIcon && !s.group)
+        add(
+          ["contributes", "settings", i, "groupIcon"],
+          "a group icon needs a group",
+        );
+      if (s.suggestions && s.type !== "text")
+        add(
+          ["contributes", "settings", i, "suggestions"],
+          "only text settings have suggestions",
+        );
       if (
+        s.suggestions &&
+        new Set(s.suggestions.map((x) => x.id)).size !== s.suggestions.length
+      )
+        add(
+          ["contributes", "settings", i, "suggestions"],
+          "suggestion ids must be unique",
+        );
+      if (s.type === "repositories" && connections.length === 0)
+        add(
+          ["contributes", "settings", i, "type"],
+          "a repositories setting needs a connection to list them from",
+        );
+      if (s.type === "repositories" && s.default !== undefined)
+        add(
+          ["contributes", "settings", i, "default"],
+          "a repositories setting has no default",
+        );
+      if (
+        s.type !== "repositories" &&
         Array.isArray(s.default) !== (s.type === "multiselect") &&
         s.default !== undefined
       )
@@ -783,10 +988,19 @@ export type ManifestResult =
   | { ok: true; manifest: PluginManifest }
   | { ok: false; errors: ManifestIssue[] };
 
-/** Validate a parsed `manifest.json`. Never throws. */
-export function validateManifest(input: unknown): ManifestResult {
+/** Validate a parsed `manifest.json`. Never throws. With a `locale`, the
+ *  manifest comes back with its texts in that language, as far as it has
+ *  them (`translateManifest`) — for showing it, never for storing it. */
+export function validateManifest(
+  input: unknown,
+  locale?: string,
+): ManifestResult {
   const parsed = manifestSchema.safeParse(input);
-  if (parsed.success) return { ok: true, manifest: parsed.data };
+  if (parsed.success)
+    return {
+      ok: true,
+      manifest: locale ? translateManifest(parsed.data, locale) : parsed.data,
+    };
   return {
     ok: false,
     errors: parsed.error.issues.map((i) => ({

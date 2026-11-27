@@ -81,6 +81,7 @@ proof the address is theirs).
 | Mail | Mailpit as above, or any SMTP server (`SMTP_*` in `.env`). |
 | Attachments and avatars | S3-compatible storage. The bundled RustFS comes with the `app` profile: `docker compose --profile app up -d rustfs rustfs-init`, then in `.env` set `S3_ENDPOINT="http://localhost:9000"`, `S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY` to `rustfsadmin` and the buckets `S3_BUCKET_AVATARS="avatars"`, `S3_BUCKET_ISSUES="issues"` (see `example.env`). Without `S3_ENDPOINT` uploads are simply off. |
 | Redis | Started by `db:dev`. Used for the API rate limit only, see [Backend services](backend-services.md). |
+| GitHub (App, webhooks) | GitHub must reach Barynt, so open a public tunnel: `cloudflared tunnel --url http://localhost:3000` (or `ngrok http 3000`), set `AUTH_URL` in `.env` to the address it prints, and use Barynt through that address. `next.config.ts` lets `*.trycloudflare.com` and `*.ngrok-free.app` through in development. Then create the GitHub App under **Admin → Plugins → GitHub**. Without a tunnel the app is created without a webhook. |
 
 Every variable is described in `example.env`, and for operators in the user
 guide's [Configuration](../guide/en/getting-started/config.md).

@@ -1,4 +1,4 @@
-import { append, type Child, el, nextId, styled } from "./core";
+import { append, type Child, el, kitText, nextId, styled } from "./core";
 import { icon } from "./display";
 
 // The UI kit's ways to show data (BARY-206): a table, label–value pairs,
@@ -23,7 +23,7 @@ export function table(options: {
 }): HTMLElement {
   styled();
   if (options.rows.length === 0)
-    return el("p", "bui-empty", options.empty ?? "Nothing here.");
+    return el("p", "bui-empty", options.empty ?? kitText("nothingHere"));
   const t = el("table", "bui-table");
   if (options.caption) t.append(el("caption", undefined, options.caption));
   const head = el("tr");

@@ -22,28 +22,15 @@ export function SettingsNavSections({
       <div className={styles.search}>
         <SettingsSearchField />
       </div>
-      {sections.map((section, i) => (
-        <details
-          key={section.title}
-          className={`${styles.section}${i > 0 ? ` ${styles.group}` : ""}`}
-          open
-        >
-          <summary className={styles.title}>
-            {section.title}
-            <Icon
-              icon="lucide:chevron-down"
-              width={14}
-              className={styles.fold}
-              aria-hidden
-            />
-          </summary>
+      {sections.map((section, i) => {
+        const list = (
           <ul className={styles.list}>
             {section.items.map((item) => {
               const row = (
                 <li key={item.href}>
                   <NavLink
                     href={settingsHref(item)}
-                    activeHref={item.href}
+                    activeHref={item.activeHref ?? item.href}
                     icon={item.icon}
                     leading={item.leading}
                     label={item.label}
@@ -57,8 +44,37 @@ export function SettingsNavSections({
               );
             })}
           </ul>
-        </details>
-      ))}
+        );
+        // A section without a heading is just its rows — a nav of one
+        // kind of thing, the plugins say.
+        if (!section.title)
+          return (
+            <div
+              key="untitled"
+              className={`${styles.untitled}${i > 0 ? ` ${styles.group}` : ""}`}
+            >
+              {list}
+            </div>
+          );
+        return (
+          <details
+            key={section.title}
+            className={`${styles.section}${i > 0 ? ` ${styles.group}` : ""}`}
+            open
+          >
+            <summary className={styles.title}>
+              {section.title}
+              <Icon
+                icon="lucide:chevron-down"
+                width={14}
+                className={styles.fold}
+                aria-hidden
+              />
+            </summary>
+            {list}
+          </details>
+        );
+      })}
     </>
   );
 }

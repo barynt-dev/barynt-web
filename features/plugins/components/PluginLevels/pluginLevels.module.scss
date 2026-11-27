@@ -1,0 +1,48 @@
+@use "breakpoints" as bp;
+
+/* Personal | Project | Workspace under a plugin's header, as tall as the
+   members' tabs, with the project or workspace to pick on the right — one
+   divider under both, edge to edge like the header's above. On a phone the
+   pick goes on top, the tabs on their divider below it. */
+.bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 1rem;
+  min-height: 2.875rem;
+  margin-top: 0.25rem;
+  padding: 0 1.5rem;
+  border-bottom: 1px solid var(--outline-variant);
+
+  @include bp.phone {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0;
+  }
+}
+
+.tabs {
+  flex: 1;
+  align-self: stretch;
+  min-width: 0;
+
+  @include bp.phone {
+    flex: none;
+    order: 2;
+    min-height: 2.875rem;
+    padding: 0 1rem;
+  }
+}
+
+.picker {
+  flex: none;
+  width: 15rem;
+  padding-bottom: 0.125rem;
+
+  @include bp.phone {
+    order: 1;
+    width: auto;
+    padding: 0 1rem;
+  }
+}

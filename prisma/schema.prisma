@@ -70,6 +70,7 @@ model Workspace {
   webhooks                 Webhook[]
   pluginActivations        PluginActivation[]
   pluginGrants             PluginGrant[]
+  pluginConnections        PluginConnection[]
   // Zeigt hierher, wenn dieser Workspace als globaler Default eingetragen ist
   // (SystemSettings.defaultWorkspaceId) — siehe dort.
   defaultForSystemSettings SystemSettings[]
@@ -179,6 +180,7 @@ model User {
   projectMemberships      ProjectMember[]
   createdProjects         Project[]                      @relation("ProjectCreator")
   accounts                Account[]
+  githubLink              GitHubUserLink?
   sessions                Session[]
   authenticators          Authenticator[]
   invitations             Invitation[]
@@ -2271,6 +2273,70 @@ model PluginCredential {
 
   @@unique([pluginId, scopeKey, key])
   @@index([scopeKey])
+}
+
+/// Die GitHub App dieser Barynt-Instanz (BARY-238): über GitHubs
+/// Manifest-Flow angelegt, nur eine je Instanz (`id = "github"`). Ist
+/// `GITHUB_APP_ID` gesetzt, gilt stattdessen die Umgebung. Schlüssel und
+/// Geheimnisse sind versiegelt (`lib/secret-box.ts`, Zweck `github-app`).
+model GitHubApp {
+  id                  String   @id @default("github")
+  appId               String
+  slug                String
+  name                String
+  htmlUrl             String
+  /// Konto, unter dem sie angelegt wurde (eine Organisation oder eine Person).
+  owner               String?
+  clientId            String
+  clientSecretCipher  String
+  privateKeyCipher    String
+  webhookSecretCipher String
+  createdById         String?
+  createdAt           DateTime @default(now())
+}
+
+/// Eine Installation der GitHub App, mit einem Workspace oder einem Projekt
+/// für ein Plugin verbunden (BARY-238). Eine Verbindung im Workspace gilt
+/// für jedes seiner Projekte. `scopeKey` ist `ws:<workspaceId>` oder
+/// `pr:<projectId>`, wie bei `PluginActivation`.
+model PluginConnection {
+  id             String   @id @default(cuid())
+  pluginId       String
+  provider       String   @default("github")
+  workspaceId    String
+  projectId      String?
+  scopeKey       String
+  /// Die Installation auf GitHub.
+  installationId String
+  /// Wo sie installiert ist: Login, `Organization` oder `User`, Bild.
+  account        String
+  accountType    String
+  accountAvatar  String?
+  connectedById  String?
+  connectedAt    DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([pluginId, scopeKey, installationId])
+  @@index([installationId])
+  @@index([workspaceId])
+}
+
+/// Das GitHub-Konto einer Person, verknüpft über die GitHub App der Instanz
+/// (BARY-238): Plugins, die mit GitHub arbeiten, handeln damit in ihrem Namen.
+/// Der Token läuft nach Stunden ab; der Refresh-Token holt einen neuen.
+model GitHubUserLink {
+  userId           String    @id
+  githubId         String
+  login            String
+  avatar           String?
+  accessCipher     String
+  refreshCipher    String?
+  expiresAt        DateTime?
+  refreshExpiresAt DateTime?
+  connectedAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 /// Schlüssel-Wert-Speicher eines Plugins (`storage:own`), je Aktivierung
