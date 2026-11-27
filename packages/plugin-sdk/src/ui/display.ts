@@ -588,11 +588,14 @@ export interface ListItem {
 export function list(options: {
   items: ListItem[];
   empty?: string;
+  /** `cards`: each row a card of its own, outlined, a little apart. */
+  variant?: "rows" | "cards";
 }): HTMLElement {
   styled();
   if (options.items.length === 0)
     return el("p", "bui-empty", options.empty ?? kitText("nothingHere"));
   const node = el("ul", "bui-list");
+  if (options.variant === "cards") node.dataset.variant = "cards";
   for (const item of options.items) {
     const line = el("li", "bui-list-item");
     if (item.icon)
