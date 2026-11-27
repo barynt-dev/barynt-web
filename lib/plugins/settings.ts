@@ -5,7 +5,8 @@
 /** The kinds of setting a manifest may declare. `member`, `label` and
  *  `status` pick from the place's people, labels (BARY-204) and statuses
  *  (BARY-224); `repositories` from what the place's connections reach
- *  (BARY-238). */
+ *  (BARY-238). `json` is the plugin's own: an object its settings section
+ *  draws and saves — Barynt's form doesn't show it (BARY-238). */
 export const SETTING_TYPES = [
   "text",
   "textarea",
@@ -18,6 +19,7 @@ export const SETTING_TYPES = [
   "label",
   "status",
   "repositories",
+  "json",
 ] as const;
 export type SettingType = (typeof SETTING_TYPES)[number];
 
@@ -28,7 +30,15 @@ export interface SettingSpec {
   options?: { id: string }[];
 }
 
-export type SettingValue = string | number | boolean | string[];
+export type SettingValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | { [key: string]: unknown };
+
+/** A `json` setting, as JSON, may be this long. */
+export const SETTING_JSON_MAX = 32 * 1024;
 
 /** `owner/name` — a repository's full name on GitHub. */
 export const REPOSITORY_RE =
@@ -157,6 +167,18 @@ export function checkSettings(
         if (list.length > 0) values[spec.key] = list;
         break;
       }
+      case "json": {
+        if (typeof raw !== "object" || Array.isArray(raw)) return fail;
+        let json: string;
+        try {
+          json = JSON.stringify(raw);
+        } catch {
+          return fail;
+        }
+        if (json.length > SETTING_JSON_MAX) return fail;
+        values[spec.key] = JSON.parse(json);
+        break;
+      }
       case "multiselect": {
         if (!Array.isArray(raw)) return fail;
         if (!raw.every((id) => isOption(spec, id))) return fail;
@@ -167,4 +189,22 @@ export function checkSettings(
     }
   }
   return { ok: true, values };
+}
+
+/** The values a form saves, with what it doesn't show kept: a `json`
+ *  setting the plugin's own section keeps (BARY-238). */
+export function keepUnshown(
+  specs: readonly SettingSpec[],
+  saved: unknown,
+  values: Record<string, SettingValue>,
+): Record<string, SettingValue> {
+  const before =
+    saved && typeof saved === "object" && !Array.isArray(saved)
+      ? (saved as Record<string, SettingValue>)
+      : {};
+  const kept = { ...values };
+  for (const spec of specs)
+    if (spec.type === "json" && !(spec.key in kept) && spec.key in before)
+      kept[spec.key] = before[spec.key];
+  return kept;
 }

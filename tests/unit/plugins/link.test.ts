@@ -1,13 +1,17 @@
 import { describe, expect, it } from "bun:test";
 import {
+  type DeploymentEntry,
   deploymentFinding,
   findIssueRefs,
   type LinkEntry,
   linkKey,
   MAX_DEPLOYMENTS,
+  matchWorkflow,
   mergeEntry,
   type PullRequestEntry,
   readLinkFindings,
+  workflowDeployments,
+  workflowRunFinding,
 } from "@/lib/plugins/link";
 import { baseMatches, closingMentions } from "@/lib/plugins/link-rules";
 
@@ -364,6 +368,77 @@ describe("what a pull request works on (BARY-227)", () => {
     expect((kept as { history: unknown[] }).history).toHaveLength(
       MAX_DEPLOYMENTS,
     );
+  });
+
+  it("keeps a deployment's state apart: queued, running, waiting", () => {
+    const state = (raw: string) =>
+      deploymentFinding(
+        "acme/web",
+        { id: 1, environment: "production", ref: "main" },
+        { state: raw },
+        at.toISOString(),
+      )?.entry as DeploymentEntry | undefined;
+    expect(
+      ["queued", "pending", "in_progress", "waiting", "error"].map(
+        (raw) => state(raw)?.state,
+      ),
+    ).toEqual(["pending", "pending", "running", "waiting", "failure"]);
+  });
+
+  it("counts a workflow's run as a deployment where the place says so", () => {
+    const list = workflowDeployments({
+      workflows: [
+        { workflow: "beta.yml", environment: "beta", branch: "main" },
+        { workflow: "release.yml", environment: "release", production: true },
+        { workflow: "", environment: "x" },
+      ],
+    });
+    expect(list).toHaveLength(2);
+    const run = (over: Record<string, unknown>) => ({
+      id: 9,
+      name: "Beta image",
+      path: ".github/workflows/beta.yml",
+      head_branch: "main",
+      head_sha: "abc",
+      status: "completed",
+      conclusion: "success",
+      html_url: "https://github.com/acme/web/actions/runs/9",
+      actor: { login: "ada" },
+      ...over,
+    });
+    expect(matchWorkflow(run({}), list)?.environment).toBe("beta");
+    // Not on its branch, or another workflow: none.
+    expect(matchWorkflow(run({ head_branch: "dev" }), list)).toBeNull();
+    expect(
+      matchWorkflow(run({ path: ".github/workflows/tests.yml" }), list),
+    ).toBeNull();
+
+    const found = workflowRunFinding(
+      "acme/web",
+      run({}),
+      list[0],
+      at.toISOString(),
+      ["WEB-7"],
+    );
+    expect(found.entry).toMatchObject({
+      kind: "deployment",
+      environment: "beta",
+      workflowFile: "beta.yml",
+      state: "success",
+      runId: 9,
+      creator: "ada",
+      production: false,
+    });
+    expect(found.trigger).toBe("deployment.test");
+    const state = (over: Record<string, unknown>) =>
+      (
+        workflowRunFinding("acme/web", run(over), list[0], "x")
+          .entry as DeploymentEntry
+      ).state;
+    expect(state({ status: "in_progress", conclusion: null })).toBe("running");
+    expect(state({ status: "waiting", conclusion: null })).toBe("waiting");
+    expect(state({ conclusion: "cancelled" })).toBe("cancelled");
+    expect(state({ conclusion: "failure" })).toBe("failure");
   });
 
   it("takes the keys a deployment of main shipped from the host", () => {

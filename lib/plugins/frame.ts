@@ -211,9 +211,11 @@ const RUNTIME = `(() => {
       instance = new Plugin(host);
       if (instance && typeof instance.onload === "function") await instance.onload();
       send({ type: "ready" });
-      // A panel in an issue grows to fit its content (BARY-150): how tall
-      // it is, whenever that changes — once per frame, at most.
-      if (data.context && data.context.slot && data.context.slot.kind === "issuePanel") {
+      // A panel in an issue grows to fit its content (BARY-150), and a
+      // settings section below Barynt's form (BARY-238): how tall it is,
+      // whenever that changes — once per frame, at most.
+      const slot = data.context && data.context.slot;
+      if (slot && (slot.kind === "issuePanel" || (slot.kind === "settings" && slot.id === "section"))) {
         const root = document.getElementById("root");
         root.style.minHeight = "0";
         let sent = -1;
@@ -226,6 +228,10 @@ const RUNTIME = `(() => {
         new ResizeObserver(() => {
           if (!queued) { queued = true; requestAnimationFrame(measure); }
         }).observe(root);
+        // A frame out of sight gets neither (Chrome holds back its
+        // rendering): measured now, and every second — sent on a change.
+        measure();
+        setInterval(measure, 1000);
       }
     } catch (error) {
       fail(error);

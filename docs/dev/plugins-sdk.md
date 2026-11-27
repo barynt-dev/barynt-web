@@ -606,7 +606,7 @@ method returns a `Promise` and rejects with a [`BaryntError`](#errors).
 | `api.storage.list()` | `storage.list` |
 | `api.settings.get()` | `settings.get` (what `loadSettings()` uses) |
 | `api.settings.set(values)` | `settings.set`: saves its settings, for someone with `plugin.enable` there |
-| `api.net.fetch(url, init?)` | `net.fetch`: a request to one of the manifest's hosts; returns a `NetResponse` with `status`, `ok`, `headers`, `text`, `base64` and `json()` |
+| `api.net.fetch(url, init?)` | `net.fetch`: a request to one of the manifest's hosts; returns a `NetResponse` with `status`, `ok`, `headers`, `text`, `base64` and `json()`. `follow: true` follows one redirect to another `https` address, sent there without any credential (a download GitHub hands to its storage); `as: "person"` sends it with the person's own account rather than the place's connection — for what only a person may do, approving a deployment |
 
 ```ts
 const issue = await this.api.issues.create({ title: "Follow up", priority: 2 });
@@ -779,7 +779,8 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `copyField({ value, icon?, href?, label?, menu?, actions? })` | a value to copy — a branch, a hash: a click on it copies it and says so, with `href` a button to open it, `menu` (`MenuItem`s) a "…" after that, and `actions` — `{ icon, label, danger?, onClick }` — more icon buttons |
 | `showMore({ label, content, open?, onToggle? })` | "Show 2 more": a small centred toggle in the tertiary colour that folds content away below it, closed to start with |
 | `menuButton({ items, label?, icon? })` | a "…" button with a menu: `{ label, icon?, danger?, onClick }` each. In Barynt it's Barynt's own menu, drawn over the frame so a small frame doesn't cut it off |
-| `pipeline({ stations, label? })` | stops from left to right — environments a change went through, a rollout's regions: `{ label, icon?, state, status?, meta?, onClick?, link?, selected? }` with `stepList`'s states (`pending` is drawn dashed: not reached). `onClick` makes the stop a button, `link` puts a link out in its corner; more than fit scroll sideways |
+| `pipeline({ stations, label? })` | stops from left to right — environments a change went through, a rollout's regions: `{ label, icon?, state, status?, meta?, onClick?, link?, selected?, segments?, count? }` with `stepList`'s states (`pending` is drawn dashed: not reached). `onClick` makes the stop a button, `link` puts a link out in its corner, `segments` splits its bar (regions, services), `count` sits beside its label; more than fit scroll sideways |
+| `logView({ lines, maxHeight?, start?, label? })` | a build's or a job's output: numbered lines `{ text, tone?, heading? }` in a box that scrolls, errors (`tone: "danger"`) marked — opened at the first error, or at the `end` |
 | `stageBar({ stages })` | the way through a few stations as a bar of segments — `{ label, state }` with `stepList`'s states — where something stands and what holds it up |
 | `stepList({ steps })` | steps with their state (`success`, `running`, `warning`, `danger`, `pending`) and, on the right, a note — a pipeline |
 | `navList({ items })` | rows that lead somewhere: `{ label, icon?, count?, href? \| onClick? }` with a › at the end |

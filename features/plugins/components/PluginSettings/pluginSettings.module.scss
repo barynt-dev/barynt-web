@@ -115,7 +115,15 @@
   overflow: hidden;
 
   &[data-part="section"] {
-    min-height: 12rem;
+    // As tall as what the plugin draws, with room around it — and as wide
+    // as the section.
+    min-height: 0;
+    padding: 1rem 1.125rem;
+
+    & > * {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
   }
 }
 

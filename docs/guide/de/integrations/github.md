@@ -36,13 +36,29 @@ Ein Projekt kann mit mehreren Repositories arbeiten; **Branch erstellen** fragt 
 
 ## Deployments
 
-Wo die Arbeit eines Issues läuft, zeigt das Panel **Development** als Strecke der Umgebungen, in der Reihenfolge, die eine Änderung nimmt: Preview zuerst, dann Test und Staging, Produktion zuletzt (nach dem Namen der Umgebung; Produktion ist, was GitHub so kennzeichnet). Jede sagt, wie ihr letztes Deployment lief — _Bereit_, _Läuft_, _Fehlgeschlagen_ — und wann. Eine Umgebung, in die das Repository deployt, die das Issue aber noch nicht erreicht hat (Staging, Produktion), steht gestrichelt als _Noch nicht_ da. Der Pfeil in der Ecke einer Umgebung öffnet die App dort.
+Wo die Arbeit eines Issues läuft, zeigt das Panel **Development** als Strecke von **Stufen**, in der Reihenfolge, in der eine Änderung ausgeliefert wird — standardmäßig Preview, Test, Staging und Produktion. Es erscheinen nur Stufen, in die etwas deployt wurde, und die, in die das Repository deployt, die das Issue aber noch nicht erreicht hat (gestrichelt, _Noch nicht_). Jede sagt, wie es lief — _Bereit_, _Läuft_, _Wartet auf Freigabe_, _Fehlgeschlagen_ — und wann; der Pfeil in der Ecke öffnet die App dort.
 
-Läuft eine Umgebung weiter hinten eine ältere Version als eine davor — Produktion hinter Staging —, sagt das eine Zeile darunter, mit der Zahl der Commits, wenn Barynt sie kennt.
+Eine Stufe fasst zusammen, was zu ihr gehört: mehrere Previews (eine Station mit ihrer Zahl), Regionen (`prod-eu`, `prod-us` — _2/3 Regionen_, ein Balken je Region), Dienste (`api-staging`, `web-staging`). Ab zwei Diensten zeigt **Nach Diensten anzeigen** eine Tabelle: Dienste untereinander, Stufen nebeneinander.
 
-Ein Klick auf eine Umgebung öffnet ein Fenster mit ihren Details: Status, Adresse, Version (Commit und Branch), Repository und der Workflow, der deployt hat, wann und von wem. Darunter ihr **Verlauf**: die Deployments davor, das neueste zuerst, jedes mit Link zum Log. **Erneut deployen** startet den Workflow-Lauf des Deployments noch einmal (braucht _Actions_ schreiben; GitHub erlaubt das 30 Tage lang), **Log** und **App öffnen** führen zu GitHub und zur App.
+Was jemanden braucht, bekommt eine Zeile unter den Stufen: ein Deployment, das **auf Freigabe wartet** (**Freigeben…**), oder eines, das **fehlgeschlagen** ist (**Log ansehen**). Sonst sagt diese Zeile, wenn eine Stufe weiter hinten eine ältere Version hat als eine davor.
 
-Auf einer Board-Karte stehen rechts in der Zeile des Pull Requests eine Rakete und ein Balken je Umgebung, Produktion zuletzt; ist der Pull Request gemergt, öffnet ein Klick das Panel bei den Deployments.
+Ein Klick auf eine Stufe öffnet ein Fenster: Status, Umgebung, Adresse, Version, Repository und der Workflow-Lauf, der deployt hat. Darunter die **Jobs**, live von GitHub — gruppiert (die eines wiederverwendeten Workflows, einer Matrix), fertige Gruppen eingeklappt; ein Klick auf einen Job zeigt seine Schritte und sein **Log**, die Fehler des fehlgeschlagenen Schritts markiert. Läuft ein Job noch, aktualisieren sich seine Schritte; das Log kommt, wenn er fertig ist. **Fehlgeschlagene erneut**, **Diesen Job erneut** und **Erneut deployen** starten sie neu (braucht _Actions_ schreiben). Danach der **Verlauf**: die Deployments davor, das neueste zuerst.
+
+**Freigeben aus Barynt:** Wartet ein Deployment auf eine Prüfung, gibt es **Freigeben** und **Ablehnen**, mit Kommentar und — warten mehrere Umgebungen — der Auswahl, welche. Es wird in deinem Namen gesendet; dafür muss dein eigenes GitHub-Konto verbunden sein (**Einstellungen → Plugins → GitHub → Persönlich**) und GitHub dich freigeben lassen. Sonst sagt das Fenster, wer darf.
+
+Auf einer Board-Karte stehen rechts in der Zeile des Pull Requests eine Rakete und ein Balken je Stufe; wartet eine Freigabe, steht dort _Freigabe_.
+
+### Stufen, Umgebungen und Workflows
+
+Die Plugin-Einstellungen des Projekts haben unter dem Formular einen Abschnitt **Deployments**, gespeichert mit **Speichern** oben:
+
+- **Stufen** — umbenennen, umsortieren, entfernen oder hinzufügen; eine ist **Live**, die zählt als ausgeliefert.
+- **Stufe und Dienst am Namen erkennen** (standardmäßig an) — `staging`, `qa`, `prod` und der Dienst davor oder dahinter (`api-staging`, `web/production`); aus zählt nur, was von Hand gesetzt ist, der Rest ist _Sonstige_.
+- **Umgebungen** — jede Umgebung, in die die Repositories des Projekts zuletzt deployt haben, mit Stufe, Dienst oder Region und ob sie erscheint. Eine neue ist mit _Neu_ markiert; eine, in die 30 Tage nicht deployt wurde, zeigt ihr Datum in Orange.
+- **Workflows als Deployment** — für Auslieferungen ohne GitHub-Environment (ein Image, ein Release): jeder Lauf des Workflows, auf dem angegebenen Branch oder jedem, zählt als Deployment in die gewählte Stufe. Braucht das Ereignis _Workflow run_ der App.
+- **Muster** — für Umgebungen, die mit jedem Pull Request entstehen oder umbenannt werden: `pr-*` → Preview, `*-staging` → Staging mit `-` als Dienst (der Teil, den `*` trifft). Ein Muster gilt vor der Erkennung.
+
+Ändert sich die CI, geht nichts kaputt: Jobs werden pro Lauf gelesen, ein alter Lauf zeigt seine alten Jobs; eine neue Umgebung oder ein neuer Workflow erscheint als _Neu_; eine umbenannte ist für Barynt neu, außer ein Muster fängt sie.
 
 ## Wie Issues gefunden werden
 
@@ -69,4 +85,4 @@ Sobald das Plugin im Projekt an ist, filtern Boards und Listen auch nach GitHub.
 
 ## Neue Rechte
 
-Kommentare im Pull Request, Workflows und Deployments brauchen Rechte, die eine früher erstellte App nicht hat: _Pull requests_, _Actions_ und _Administration_ schreiben (Letzteres für neue Repositories), _Deployments_ lesen, und das Ereignis _Deployment status_. **Admin → Plugins → GitHub** zeigt das auf der Karte **GitHub App**, mit Link zu den Rechten der App auf GitHub — dort setzen und speichern. Danach bestätigt jeder Besitzer einer Installation sie einmal; bis dahin steht das in den Plugin-Einstellungen beim Konto, mit Link.
+Kommentare im Pull Request, Workflows und Deployments brauchen Rechte, die eine früher erstellte App nicht hat: _Pull requests_, _Actions_ und _Administration_ schreiben (Letzteres für neue Repositories), _Deployments_ lesen, und die Ereignisse _Deployment status_ und _Workflow run_. **Admin → Plugins → GitHub** zeigt das auf der Karte **GitHub App**, mit Link zu den Rechten der App auf GitHub — dort setzen und speichern. Danach bestätigt jeder Besitzer einer Installation sie einmal; bis dahin steht das in den Plugin-Einstellungen beim Konto, mit Link.

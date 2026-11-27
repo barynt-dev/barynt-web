@@ -1037,37 +1037,40 @@ export async function getPluginSettingsView(
       version: active.version,
     },
     connection,
-    fields: (await placeSettings(scope, settings, pluginId)).map((f) => ({
-      key: f.key,
-      type: f.type,
-      label: f.label,
-      description: f.description ?? null,
-      default: f.default ?? null,
-      options: (f.options ?? []).map((o) => ({
-        id: o.id,
-        label: o.label,
-        ...(o.color && { color: o.color }),
-        ...(o.private && { private: true }),
-        ...(o.archived && { archived: true }),
-        ...(o.fork && { fork: true }),
-        ...(o.url && { url: o.url }),
-      })),
-      ...(f.type === "repositories" && {
-        connected: f.connected ?? false,
-        failed: f.failed ?? [],
-        accounts: f.accounts ?? [],
-      }),
-      ...(f.group && { group: f.group }),
-      ...(f.group && f.groupIcon && { groupIcon: f.groupIcon }),
-      ...(f.suggestions?.length && {
-        suggestions: f.suggestions.map((x) => ({
-          id: x.id,
-          value: x.value,
-          label: x.label,
-          hint: x.hint ?? null,
+    // A `json` setting is the plugin's own section's, not the form's.
+    fields: (await placeSettings(scope, settings, pluginId))
+      .filter((f) => f.type !== "json")
+      .map((f) => ({
+        key: f.key,
+        type: f.type,
+        label: f.label,
+        description: f.description ?? null,
+        default: f.default ?? null,
+        options: (f.options ?? []).map((o) => ({
+          id: o.id,
+          label: o.label,
+          ...(o.color && { color: o.color }),
+          ...(o.private && { private: true }),
+          ...(o.archived && { archived: true }),
+          ...(o.fork && { fork: true }),
+          ...(o.url && { url: o.url }),
         })),
-      }),
-    })),
+        ...(f.type === "repositories" && {
+          connected: f.connected ?? false,
+          failed: f.failed ?? [],
+          accounts: f.accounts ?? [],
+        }),
+        ...(f.group && { group: f.group }),
+        ...(f.group && f.groupIcon && { groupIcon: f.groupIcon }),
+        ...(f.suggestions?.length && {
+          suggestions: f.suggestions.map((x) => ({
+            id: x.id,
+            value: x.value,
+            label: x.label,
+            hint: x.hint ?? null,
+          })),
+        }),
+      })),
     inbound: hooks.flatMap((hook) => {
       const row = inboundRows.find((r) => r.hookId === hook.id);
       if (!row) return [];

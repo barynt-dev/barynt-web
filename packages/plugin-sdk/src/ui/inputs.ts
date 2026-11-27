@@ -183,6 +183,7 @@ export function toggle(
   const wrap = el("div", "bui-switch");
   const text = el("span", "bui-switch-text");
   const label = el("label", "bui-label", options.label);
+  if (options.hideLabel) label.dataset.hidden = "";
   label.htmlFor = id;
   text.append(label);
   const button = el("button", "bui-toggle");

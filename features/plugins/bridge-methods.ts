@@ -443,10 +443,11 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
       values,
     );
     if (!checked.ok) return no("invalid_params");
+    const saved = checked.values as Prisma.InputJsonObject;
     await db.pluginSettings.upsert({
       where: { activationId: plugin.activationId },
-      create: { activationId: plugin.activationId, values: checked.values },
-      update: { values: checked.values },
+      create: { activationId: plugin.activationId, values: saved },
+      update: { values: saved },
     });
     await recordAudit({
       action: "plugin.settings.updated",

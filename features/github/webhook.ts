@@ -7,12 +7,18 @@ import {
   INBOUND_MAX_BYTES,
   verifyInbound,
 } from "@/lib/plugins/inbound";
+import { matchWorkflow, workflowDeployments } from "@/lib/plugins/link";
 import { validateManifest } from "@/lib/plugins/manifest";
 import { redisClient } from "@/lib/redis";
 import { handleLink, linkRuleOptions } from "../plugins/link";
 import { forgetInstallation, getGitHubApp } from "./app";
 import { chosenRepositories } from "./connections";
-import { deploymentFor, shippedCommits } from "./deployments";
+import {
+  deploymentFor,
+  shippedCommits,
+  workflowDeploymentFor,
+  workflowShipped,
+} from "./deployments";
 import { commentLinks } from "./pull-request-comment";
 
 // The GitHub App's webhook (BARY-238): one address for the whole instance,
@@ -174,7 +180,9 @@ async function fileCall(
           .catch(() => {});
       const extra = shipped
         ? await deploymentFor(activation.id, repo, data, shipped)
-        : null;
+        : event === "workflow_run"
+          ? await workflowExtra(installationId, activation, hook, repo, data)
+          : null;
       await handleLink(
         activation,
         { id: pluginId, name: parsed.manifest.name },
@@ -203,4 +211,30 @@ async function fileCall(
       );
     }
   }
+}
+
+/**
+ * A workflow's run, when the place counts its workflow as a deployment
+ * (the hook's `workflowDeployments` setting, BARY-238) — with what it
+ * ships, asked of GitHub once per run and state.
+ */
+async function workflowExtra(
+  installationId: string,
+  activation: { id: string; settings: { values: unknown } | null },
+  hook: { workflowDeployments?: string },
+  repo: string,
+  data: unknown,
+) {
+  if (!hook.workflowDeployments) return null;
+  const values = (activation.settings?.values ?? {}) as Record<string, unknown>;
+  const as = matchWorkflow(
+    (data as { workflow_run?: Record<string, unknown> }).workflow_run ?? {},
+    workflowDeployments(values[hook.workflowDeployments]),
+  );
+  if (!as) return null;
+  const run = (data as { workflow_run: Record<string, unknown> }).workflow_run;
+  const shipped = await workflowShipped(installationId, repo, run).catch(
+    () => null,
+  );
+  return workflowDeploymentFor(activation.id, repo, data, as, shipped);
 }

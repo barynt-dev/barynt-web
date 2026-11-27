@@ -5,6 +5,7 @@ import {
   isTextType,
   parseProxyRequest,
   pickResponseHeaders,
+  redirectTarget,
 } from "@/lib/plugins/proxy";
 
 // The host proxy's rules (BARY-147): which requests go out, with which
@@ -13,6 +14,40 @@ import {
 const network = ["api.acme.example"];
 const parse = (input: unknown, internal: string[] = []) =>
   parseProxyRequest(input, network, internal);
+
+describe("following a redirect, as the person (BARY-238)", () => {
+  it("takes follow and as: person, off by default", () => {
+    const req = parse({
+      url: "https://api.acme.example/logs",
+      follow: true,
+      as: "person",
+    });
+    expect(typeof req === "object" && [req.follow, req.asPerson]).toEqual([
+      true,
+      true,
+    ]);
+    const plain = parse({ url: "https://api.acme.example/logs" });
+    expect(typeof plain === "object" && [plain.follow, plain.asPerson]).toEqual(
+      [false, false],
+    );
+  });
+
+  it("follows only a redirect to a plain https address", () => {
+    const from = new URL("https://api.acme.example/logs");
+    expect(
+      redirectTarget(302, "https://store.blob.example/x?sig=1", from)?.href,
+    ).toBe("https://store.blob.example/x?sig=1");
+    expect(
+      redirectTarget(200, "https://store.blob.example/x", from),
+    ).toBeNull();
+    expect(redirectTarget(302, "http://store.blob.example/x", from)).toBeNull();
+    expect(
+      redirectTarget(302, "https://store.blob.example:8443/x", from),
+    ).toBeNull();
+    expect(redirectTarget(302, "https://u:p@store.example/x", from)).toBeNull();
+    expect(redirectTarget(302, undefined, from)).toBeNull();
+  });
+});
 
 describe("parseProxyRequest", () => {
   it("takes an https request to a host from network", () => {

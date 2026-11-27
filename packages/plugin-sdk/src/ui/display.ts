@@ -1019,6 +1019,11 @@ export interface PipelineStation {
   link?: { href: string; label: string };
   /** Marks it as the one shown elsewhere. */
   selected?: boolean;
+  /** Its bar in parts, each in its state — regions, services that make up
+   *  the stop. Without, one bar in `state`. */
+  segments?: StepState[];
+  /** A count beside its label — "3" previews. */
+  count?: number;
 }
 
 /** Stops from left to right — environments a change went through, a
@@ -1036,13 +1041,24 @@ export function pipeline(options: {
     const item = el("li", "bui-station");
     item.dataset.state = station.state;
     if (station.selected) item.dataset.selected = "";
+    const bar = el("span", "bui-station-bar");
+    if (station.segments?.length) {
+      bar.dataset.segments = "";
+      for (const part of station.segments.slice(0, 12)) {
+        const seg = el("i");
+        seg.dataset.state = part;
+        bar.append(seg);
+      }
+    }
     const body = [
-      el("span", "bui-station-bar"),
+      bar,
       el(
         "span",
         "bui-station-label",
         station.icon && icon(station.icon, { size: 13 }),
         el("span", undefined, station.label),
+        station.count !== undefined &&
+          el("span", "bui-station-count", String(station.count)),
       ),
       station.status &&
         el(
@@ -1076,6 +1092,55 @@ export function pipeline(options: {
     }
     node.append(item);
   }
+  return node;
+}
+
+/** A line of a `logView`. */
+export interface LogLine {
+  text: string;
+  /** `danger` an error, `warning`, `muted` noise — or a `heading` that
+   *  starts a part ("Run npm test"). */
+  tone?: "danger" | "warning" | "muted";
+  heading?: boolean;
+}
+
+/** A build's or a job's output: numbered lines in a monospace box that
+ *  scrolls, errors marked — opened at the first error, or at the end. */
+export function logView(options: {
+  lines: LogLine[];
+  /** Its most height before it scrolls (px). Default: 320. */
+  maxHeight?: number;
+  /** Where it opens: the first error (default), or the end. */
+  start?: "error" | "end";
+  /** What screen readers call it. */
+  label?: string;
+}): HTMLElement {
+  styled();
+  const node = el("div", "bui-log");
+  node.tabIndex = 0;
+  node.setAttribute("role", "log");
+  if (options.label) node.setAttribute("aria-label", options.label);
+  node.style.maxHeight = `${options.maxHeight ?? 320}px`;
+  let first: HTMLElement | null = null;
+  options.lines.slice(0, 5000).forEach((line, i) => {
+    const row = el(
+      "div",
+      "bui-log-line",
+      el("span", "bui-log-no", String(i + 1)),
+      el("span", "bui-log-text", line.text.slice(0, 2000)),
+    );
+    if (line.tone) row.dataset.tone = line.tone;
+    if (line.heading) row.dataset.heading = "";
+    if (line.tone === "danger" && !first) first = row;
+    node.append(row);
+  });
+  // Once it's in the page: at the first error, or at the end.
+  requestAnimationFrame(() => {
+    const at = first as HTMLElement | null;
+    if (options.start !== "end" && at)
+      node.scrollTop = Math.max(0, at.offsetTop - node.clientHeight / 3);
+    else if (options.start === "end") node.scrollTop = node.scrollHeight;
+  });
   return node;
 }
 

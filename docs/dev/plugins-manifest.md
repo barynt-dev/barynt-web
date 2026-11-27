@@ -415,6 +415,7 @@ under **Plugins** — and the plugin reads them with
 | `label` | a choice of the place's labels — the ones the project shows, or the workspace's own | a label id |
 | `status` | a choice of the workspace's statuses, in board order — in a project too | a status id |
 | `repositories` | the repositories the place's [connections](#connections) reach, to tick — or, without one, a field for `owner/name` per line | a list of `owner/name` (up to 50) |
+| `json` | nothing — the plugin's own [settings section](#its-own-settings-page) draws it and saves it with `api.settings.set` | an object, up to 32 KB as JSON; saving Barynt's form keeps it |
 
 Barynt checks what's saved against these types — a `member`, `label` or
 `status` against the people, labels and statuses of that place, when it's
@@ -740,7 +741,7 @@ issues showing the plugin ask it again on their own.
 | `create`, `delete` (branches), `push` deleting one | `branch`: `repo`, `name`, `url`, `deleted` | `branch:<owner>:<repo>:<hash>` |
 | `push` | `commit`: `repo`, `sha`, `message` (first line), `url`, `author`, `branch` — the last 20 | `commit:<owner>:<repo>:<sha12>` |
 | `check_run`, `check_suite` | `checks`: `repo`, `branch`, `sha`, `state` (`pending`/`success`/`failure`/`neutral`), `runs` (`name`, `state`, `url`) | `checks:<owner>:<repo>:<hash>` |
-| `deployment_status` | `deployment`: `repo`, `environment`, `production`, and of the latest deployment `id`, `state` (`pending`/`success`/`failure`/`inactive`), `ref`, `sha`, `url` (the environment's, else the log), `logUrl`, `workflow`, `runId`, `creator`, plus `history` — the 10 before it, newest first, with the same fields | `deploy:<owner>:<repo>:<hash>` |
+| `deployment_status` | `deployment`: `repo`, `environment`, `production`, and of the latest deployment `id`, `state` (`pending`/`running`/`waiting`/`success`/`failure`/`cancelled`/`inactive`), `ref`, `sha`, `url` (the environment's, else the log), `logUrl`, `workflow`, `runId`, `creator`, plus `history` — the 10 before it, newest first, with the same fields | `deploy:<owner>:<repo>:<hash>` |
 
 Every entry has `at`, the time of the call. A review is kept on its pull
 request until another one decides; a newer deployment to an environment
@@ -775,6 +776,21 @@ plugin's app and, with `comments:write`, comments why. Rules need
     { "id": "merged", "title": "When a pull request is merged", "on": "pull_request.merged" }
   ]
 }]
+```
+
+**Workflows as deployments.** Not every project deploys to a GitHub
+environment — some ship an image or a release from a workflow. A `link`
+hook's `workflowDeployments` names one of the plugin's `json` settings; its
+`workflows` list (`{ workflow, environment, branch?, production? }`, set
+per place) says which workflows' runs (`workflow_run`) count as a deployment
+to `environment`: the entry then has `workflowFile`, the run's state, and
+the issues it ships — its branch's, and what the commits since the
+workflow's last successful run on that branch close.
+
+```json
+"settings": [{ "key": "deployments", "type": "json", "label": "Deployments" }],
+"inboundHooks": [{ "id": "github", "title": "GitHub", "provider": "github",
+                   "handle": "link", "workflowDeployments": "deployments" }]
 ```
 
 | `on` | When |

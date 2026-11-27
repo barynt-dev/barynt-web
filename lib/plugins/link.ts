@@ -33,8 +33,17 @@ export interface PullRequestEntry {
 export interface DeploymentRun {
   /** GitHub's id of it: its statuses update it, a newer one replaces it. */
   id: number | null;
-  /** `inactive`: replaced by a newer one, no longer what runs there. */
-  state: "success" | "failure" | "pending" | "inactive";
+  /** `pending` queued, `running` under way, `waiting` for someone to
+   *  approve it, `cancelled` stopped (a newer one took over), `inactive`
+   *  replaced by a newer one — no longer what runs there. */
+  state:
+    | "success"
+    | "failure"
+    | "pending"
+    | "running"
+    | "waiting"
+    | "cancelled"
+    | "inactive";
   /** The branch or tag deployed, and its commit. */
   ref: string | null;
   sha: string | null;
@@ -56,6 +65,9 @@ export interface DeploymentEntry extends DeploymentRun {
   environment: string;
   /** GitHub's mark for what people use — `production` by default. */
   production: boolean;
+  /** A workflow's run counted as a deployment (no GitHub environment):
+   *  its file, `beta.yml`. */
+  workflowFile?: string;
   /** The deployments before it, newest first — at most `MAX_DEPLOYMENTS`. */
   history: DeploymentRun[];
 }
@@ -414,7 +426,11 @@ export function deploymentFinding(
         ? "failure"
         : raw === "inactive"
           ? "inactive"
-          : "pending";
+          : raw === "in_progress"
+            ? "running"
+            : raw === "waiting"
+              ? "waiting"
+              : "pending";
   const production =
     typeof deployment.production_environment === "boolean"
       ? deployment.production_environment
@@ -441,6 +457,108 @@ export function deploymentFinding(
       workflow: str(run.name, 120),
       runId: num(run.id),
       creator: str(obj(deployment.creator).login, 80),
+      at,
+      history: [],
+    },
+    texts: look,
+    ...(state === "success" && {
+      trigger: production ? "deployment.production" : "deployment.test",
+      closes: look,
+    }),
+  };
+}
+
+/** Where a workflow's run counts as a deployment (`workflowDeployments`). */
+export interface WorkflowDeployment {
+  /** Its file in `.github/workflows`, `beta.yml`. */
+  workflow: string;
+  /** The environment it counts as — named as the plugin shows it. */
+  environment: string;
+  /** Only runs on this branch — none: any. */
+  branch?: string;
+  production?: boolean;
+}
+
+/** The workflows a place counts as deployments, as its setting has them. */
+export function workflowDeployments(raw: unknown): WorkflowDeployment[] {
+  const list = obj(raw).workflows;
+  if (!Array.isArray(list)) return [];
+  return list.slice(0, 20).flatMap((w) => {
+    const o = obj(w);
+    const workflow = str(o.workflow, 200);
+    const environment = str(o.environment, 100);
+    if (!workflow || !environment) return [];
+    const branch = str(o.branch, 300);
+    return [
+      {
+        workflow,
+        environment,
+        ...(branch && { branch }),
+        production: o.production === true,
+      },
+    ];
+  });
+}
+
+/** Which of them a run is: by its file, and its branch if one is set. */
+export function matchWorkflow(
+  run: Json,
+  list: WorkflowDeployment[],
+): WorkflowDeployment | null {
+  const file = (str(run.path, 300) ?? "").split("/").pop() ?? "";
+  const branch = str(run.head_branch, 300);
+  return (
+    list.find(
+      (w) => w.workflow === file && (!w.branch || w.branch === branch),
+    ) ?? null
+  );
+}
+
+/** A workflow's run as a deployment to the environment it counts as. */
+export function workflowRunFinding(
+  repo: string,
+  run: Json,
+  as: WorkflowDeployment,
+  at: string,
+  texts?: string[],
+): LinkFinding {
+  const status = str(run.status);
+  const conclusion = str(run.conclusion);
+  const state: DeploymentEntry["state"] =
+    status !== "completed"
+      ? status === "in_progress"
+        ? "running"
+        : status === "waiting"
+          ? "waiting"
+          : "pending"
+      : conclusion === "success"
+        ? "success"
+        : conclusion === "cancelled" || conclusion === "skipped"
+          ? "cancelled"
+          : conclusion === "action_required"
+            ? "waiting"
+            : "failure";
+  const production = as.production === true;
+  const branch = str(run.head_branch, 300);
+  const look = texts ?? [branch ?? ""];
+  const logUrl = str(run.html_url, 500);
+  return {
+    key: linkKey.deployment(repo, as.environment),
+    entry: {
+      kind: "deployment",
+      repo,
+      environment: as.environment,
+      production,
+      workflowFile: as.workflow,
+      id: num(run.id),
+      state,
+      ref: branch,
+      sha: str(run.head_sha, 64),
+      url: logUrl,
+      logUrl,
+      workflow: str(run.name, 120),
+      runId: num(run.id),
+      creator: str(obj(run.actor).login, 80),
       at,
       history: [],
     },

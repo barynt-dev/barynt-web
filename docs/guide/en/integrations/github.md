@@ -34,13 +34,29 @@ That's it: pull requests, branches, commits and checks of those repositories com
 
 ## Deployments
 
-Where an issue's work runs shows in its **Development** panel as a line of environments, in the order a change goes through: a preview first, then tests and staging, production last (by the environment's name; production is what GitHub marks as such). Each says how its latest deployment went — _Ready_, _Deploying_, _Failed_ — and when. An environment the repository deploys to that the issue hasn't reached yet (staging, production) shows dashed as _Not yet_. The arrow in an environment's corner opens the app there.
+Where an issue's work runs shows in its **Development** panel as a line of **stages**, in the order a change goes out — by default Preview, Test, Staging and Production. Only stages something was deployed to show, plus the ones the repository deploys to that the issue hasn't reached yet (dashed, _Not yet_). Each says how it went — _Ready_, _Deploying_, _Waiting for approval_, _Failed_ — and when; the arrow in its corner opens the app there.
 
-When an environment further along runs an older version than one before it — production behind staging — a line under them says so, with the number of commits when Barynt knows them.
+A stage gathers what belongs to it: several previews (one stop, with their number), regions (`prod-eu`, `prod-us` — _2/3 regions_, a bar split per region), services (`api-staging`, `web-staging`). With two services or more, **By service** shows a table instead: services down, stages across.
 
-A click on an environment opens a window with its details: state, address, version (commit and branch), repository, and the workflow that deployed it, when and by whom. Below, its **History**: the deployments before, newest first, each linking to its log. **Deploy again** runs the deployment's workflow run again (it needs _Actions_ write; GitHub does so within 30 days), **Log** and **Open app** lead to GitHub and the app.
+What needs someone gets a line under the stages: a deployment **waiting for approval** (**Approve…**) or one that **failed** (**Show log**). Otherwise, when a stage further along runs an older version than one before it, that line says so.
 
-On a board card, a rocket and a bar per environment sit at the right of the pull request's row, production last; once the pull request is merged, a click opens the panel at the deployments.
+A click on a stage opens a window: state, environment, address, version, repository, and the workflow run that deployed it. Below come its **Jobs**, live from GitHub — grouped (a reusable workflow's, a matrix's), the done groups folded; a click on a job shows its steps and its **log**, the failed step's errors marked. While a job runs, its steps update; the log comes once it's done. **Re-run failed jobs**, **Re-run this job** and **Deploy again** start them again (they need _Actions_ write). Then the **History**: the deployments before, newest first.
+
+**Approving from Barynt:** a deployment waiting for a reviewer shows **Approve** and **Reject**, with a comment and — when several environments wait — which ones. It's sent as you, so it needs your own GitHub account connected (**Settings → Plugins → GitHub → Personal**) and GitHub has to let you approve; otherwise the window says who may.
+
+On a board card, a rocket and a bar per stage sit at the right of the pull request's row; _Approval_ shows when one waits.
+
+### Stages, environments and workflows
+
+The project's plugin settings have a **Deployments** section below the form, saved with **Save** at the top:
+
+- **Stages** — rename, reorder, remove or add them; one is **Live**, the one that counts as shipped.
+- **Recognize stage and service by name** (on by default) — `staging`, `qa`, `prod` and the service before or after (`api-staging`, `web/production`); off, only what's set by hand counts and the rest is _Other_.
+- **Environments** — every environment the project's repositories deployed to lately, with its stage, service or region, and whether it shows. A new one is marked _New_; one not deployed to in 30 days shows its date in orange.
+- **Workflows as deployments** — for shipping without a GitHub environment (an image, a release): each run of the workflow, on the branch given or any, counts as a deployment to the stage picked. It needs the app's _Workflow run_ event.
+- **Patterns** — for environments that come with each pull request or get renamed: `pr-*` → Preview, `*-staging` → Staging with `-` as the service (the part `*` matched). A pattern goes before recognizing.
+
+Changing the CI breaks nothing: jobs are read per run, so an old run shows its old jobs; a new environment or workflow appears as _New_; a renamed one is new to Barynt unless a pattern catches it.
 
 ## How issues are found
 
@@ -67,4 +83,4 @@ Once the plugin is on in the project, boards and lists filter by GitHub too. In 
 
 ## New permissions
 
-Commenting on pull requests, running workflows and deployments need permissions an app created before doesn't have: _Pull requests_, _Actions_ and _Administration_ to write (the last for new repositories), _Deployments_ to read, and the event _Deployment status_. **Admin → Plugins → GitHub** says so on the **GitHub App** card, with a link to the app's permissions on GitHub — set them there and save. Each installation's owner then accepts them once; the account's row in the plugin settings says so until they did, with a link.
+Commenting on pull requests, running workflows and deployments need permissions an app created before doesn't have: _Pull requests_, _Actions_ and _Administration_ to write (the last for new repositories), _Deployments_ to read, and the events _Deployment status_ and _Workflow run_. **Admin → Plugins → GitHub** says so on the **GitHub App** card, with a link to the app's permissions on GitHub — set them there and save. Each installation's owner then accepts them once; the account's row in the plugin settings says so until they did, with a link.

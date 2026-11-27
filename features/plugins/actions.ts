@@ -65,7 +65,7 @@ import {
   type ServiceSummary,
   serviceSummary,
 } from "@/lib/plugins/service";
-import { checkSettings } from "@/lib/plugins/settings";
+import { checkSettings, keepUnshown } from "@/lib/plugins/settings";
 import type { PMDoc } from "@/lib/richtext/types";
 import { sealSecret } from "@/lib/secret-box";
 import { sendLifecycle } from "@/lib/webhooks/deliver";
@@ -737,15 +737,34 @@ export async function savePluginSettings(
   if (!activation) return { error: "not_activated" };
   const parsed = active ? validateManifest(active.manifest) : null;
   if (!parsed?.ok) return { error: "not_installed" };
-  const checked = checkSettings(
-    await placeSettings(scope, parsed.manifest.contributes.settings ?? []),
-    input.values,
+  const specs = await placeSettings(
+    scope,
+    parsed.manifest.contributes.settings ?? [],
   );
+  // What the form doesn't show — a plugin's own section's — stays.
+  const shown = Object.fromEntries(
+    Object.entries(input.values).filter(([key]) =>
+      specs.some((s) => s.key === key && s.type !== "json"),
+    ),
+  );
+  const checked = checkSettings(specs, shown);
   if (!checked.ok) return { error: "invalid_setting" };
+  // Only a plugin with a section of its own has values the form keeps.
+  const saved = specs.some((s) => s.type === "json")
+    ? await db.pluginSettings.findUnique({
+        where: { activationId: activation.id },
+        select: { values: true },
+      })
+    : null;
+  const values = keepUnshown(
+    specs,
+    saved?.values,
+    checked.values,
+  ) as Prisma.InputJsonObject;
   await db.pluginSettings.upsert({
     where: { activationId: activation.id },
-    create: { activationId: activation.id, values: checked.values },
-    update: { values: checked.values },
+    create: { activationId: activation.id, values },
+    update: { values },
   });
   await recordAudit({
     action: "plugin.settings.updated",

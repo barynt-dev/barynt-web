@@ -481,6 +481,12 @@ export interface Methods {
       method?: "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE";
       headers?: Record<string, string>;
       body?: string;
+      /** Follow one redirect to another `https` address, sent there
+       *  without any credential — a download GitHub hands to its storage. */
+      follow?: boolean;
+      /** `person`: with the person's own account, not the place's
+       *  connection — for what only a person may do. */
+      as?: "person";
     },
     {
       status: number;

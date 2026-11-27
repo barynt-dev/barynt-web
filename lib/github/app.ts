@@ -42,6 +42,7 @@ export const APP_EVENTS = [
   "check_run",
   "check_suite",
   "deployment_status",
+  "workflow_run",
 ] as const;
 
 const LEVEL = { read: 1, write: 2, admin: 3 } as const;

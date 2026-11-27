@@ -181,6 +181,10 @@ export function PluginSettings({
           projectId: scope.projectId,
           locale,
         }}
+        // A section below the form is as tall as its content (BARY-238).
+        {...(view.settingsPage === "section" && {
+          autoHeight: { min: 48, max: Number.POSITIVE_INFINITY },
+        })}
         saveRequest={saveRequest}
         onUnsaved={(unsaved) => {
           setFrameSaves(true);

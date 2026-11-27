@@ -725,6 +725,29 @@ describe("webhooks from other services (BARY-215)", () => {
     );
   });
 
+  it("counts workflows as deployments from a json setting (BARY-238)", () => {
+    const withSetting = (type: string, handle = "link") => ({
+      ...base,
+      kind: "sandbox",
+      capabilities: [...base.capabilities, "webhooks:receive"],
+      contributes: {
+        ...base.contributes,
+        settings: [{ key: "deployments", type, label: "Deployments" }],
+        inboundHooks: [
+          {
+            ...hook(handle),
+            provider: "github",
+            workflowDeployments: "deployments",
+          },
+        ],
+      },
+    });
+    expect(errors(withSetting("json"))).toEqual([]);
+    expect(errors(withSetting("text"))).toContain(
+      "contributes.inboundHooks.0.workflowDeployments: names a json setting of a link hook",
+    );
+  });
+
   it("reads GitHub's calls itself with link, no server needed (BARY-226)", () => {
     const linking = (provider: string) => ({
       ...base,

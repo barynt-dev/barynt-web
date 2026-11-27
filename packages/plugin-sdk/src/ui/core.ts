@@ -150,6 +150,9 @@ export interface FieldOptions {
   label: string;
   /** Smaller text below the field. */
   hint?: string;
+  /** The label for screen readers only — a field in a table's cell, whose
+   *  column says what it is. */
+  hideLabel?: boolean;
 }
 
 /** Label, control and hint, stacked — the label tied to the control. */
@@ -160,6 +163,7 @@ export function fieldShell(
 ): HTMLElement {
   const wrap = el("div", "bui-field");
   const label = el("label", "bui-label", options.label);
+  if (options.hideLabel) label.dataset.hidden = "";
   label.htmlFor = id;
   control.id = id;
   wrap.append(label, control);

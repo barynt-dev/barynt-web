@@ -16,6 +16,7 @@ import {
   type ProxyRequest,
   parseProxyRequest,
   pickResponseHeaders,
+  redirectTarget,
 } from "@/lib/plugins/proxy";
 import { isPrivateAddress } from "@/lib/public-fetch";
 import { openSecret } from "@/lib/secret-box";
@@ -188,7 +189,10 @@ export async function proxyFetch(
   // everyone there; anything else to GitHub (who they are, say) as the
   // person: their linked account, or the one they sign in with.
   if ("missing" in credentials || Object.keys(credentials).length === 0) {
-    const installation = await connectionFor(plugin, plugin, request.url);
+    // As the person (BARY-238): what only a person may do, never the app.
+    const installation = request.asPerson
+      ? null
+      : await connectionFor(plugin, plugin, request.url);
     const token = installation
       ? await installationToken(installation)
       : connectsToGitHub(plugin) && request.url.hostname === GITHUB_API_HOST
@@ -204,11 +208,26 @@ export async function proxyFetch(
   );
   if (!address) return no("host_not_allowed");
 
-  const res = await send(request, address, {
+  let res = await send(request, address, {
     ...request.headers,
     ...credentials,
   });
   if (typeof res === "string") return no(res);
+  // A download GitHub hands to its storage (BARY-238): one hop, a plain
+  // GET, no credential — to a public address only.
+  const target = request.follow
+    ? redirectTarget(res.status, [res.headers.location].flat()[0], request.url)
+    : null;
+  if (target) {
+    const next = await checkedAddress(target.hostname, false);
+    if (!next) return no("host_not_allowed");
+    res = await send(
+      { ...request, url: target, method: "GET", body: null, headers: {} },
+      next,
+      {},
+    );
+    if (typeof res === "string") return no(res);
+  }
   const headers = pickResponseHeaders(res.headers);
   const text = isTextType(headers["content-type"] ?? "");
   return {

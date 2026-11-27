@@ -449,6 +449,14 @@ const inboundHookSchema = z.strictObject({
     .array(z.strictObject({ id: localId, title, on: z.enum(LINK_TRIGGERS) }))
     .max(10)
     .optional(),
+  /** A `link` hook's deployments without an environment (BARY-238): the
+   *  key of a `json` setting whose `workflows` list names the workflows a
+   *  run of counts as a deployment — `{ workflow, environment, branch?,
+   *  production? }`. */
+  workflowDeployments: z
+    .string()
+    .regex(/^[a-z][a-zA-Z0-9_]{0,39}$/)
+    .optional(),
 });
 
 /** An account at another service the plugin works with (BARY-238): Barynt
@@ -769,6 +777,16 @@ export const manifestSchema = z
           add(
             ["contributes", "inboundHooks", i, "rules"],
             "needs the capability issues:write",
+          );
+      }
+      if (hook.workflowDeployments !== undefined) {
+        const setting = m.contributes.settings?.find(
+          (x) => x.key === hook.workflowDeployments,
+        );
+        if (hook.handle !== "link" || setting?.type !== "json")
+          add(
+            ["contributes", "inboundHooks", i, "workflowDeployments"],
+            "names a json setting of a link hook",
           );
       }
       // Barynt reads GitHub's calls; GitLab's come next.
