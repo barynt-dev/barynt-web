@@ -1191,7 +1191,7 @@ export function parseAnsi(text: string): LogPart[] {
   );
 }
 
-/** Most lines a `logView` draws. */
+/** Most lines a `logView` draws, per box. */
 export const LOG_LINES_MAX = 50_000;
 
 /** A line's text, styled. */
@@ -1213,38 +1213,30 @@ function logText(line: LogLine): HTMLElement {
   return node;
 }
 
-/**
- * A build's or a job's output: numbered lines in a monospace box, a
- * terminal's colours kept, errors and warnings marked — opened at the
- * first error, or at the end. With `fold`, a heading folds the lines after
- * it (the ones with an error open); with `tools`, a bar on top to search
- * it, show the times and fold or unfold all.
- */
-export function logView(options: {
+/** A part of a `logView` — a job's step: its own lines under a head with
+ *  its state, name and how long it took. */
+export interface LogSection {
+  title: string;
+  state?: StepState;
+  /** On the right of its head — how long it took. */
+  meta?: string;
   lines: LogLine[];
-  /** Its most height before it scrolls (px), or `none`: as tall as it is
-   *  — in a window that scrolls. Default: 320. */
-  maxHeight?: number | "none";
-  /** Where it opens: the first error (default), or the end. */
-  start?: "error" | "end";
-  /** What screen readers call it. */
-  label?: string;
-  fold?: boolean;
-  tools?: boolean;
-}): HTMLElement {
-  styled();
-  const wrap = el("div", "bui-logview");
-  const box = el("div", "bui-log");
-  box.tabIndex = 0;
-  box.setAttribute("role", "log");
-  if (options.label) box.setAttribute("aria-label", options.label);
-  if (options.maxHeight !== "none")
-    box.style.maxHeight = `${options.maxHeight ?? 320}px`;
+  /** Open from the start — by default the ones that failed. */
+  open?: boolean;
+}
+
+/** The lines of one box: numbered from 1, a heading folding the lines
+ *  after it (the part with an error open). */
+function drawLines(
+  lines: LogLine[],
+  box: HTMLElement,
+  fold: boolean,
+): { rows: HTMLElement[]; groups: HTMLDetailsElement[] } {
   const rows: HTMLElement[] = [];
   const groups: HTMLDetailsElement[] = [];
-  let first: HTMLElement | null = null;
   let into: HTMLElement = box;
-  options.lines.slice(0, LOG_LINES_MAX).forEach((line, i) => {
+  let failed = false;
+  lines.slice(0, LOG_LINES_MAX).forEach((line, i) => {
     const row = el(
       "div",
       "bui-log-line",
@@ -1255,70 +1247,208 @@ export function logView(options: {
     if (line.tone) row.dataset.tone = line.tone;
     if (line.heading) row.dataset.heading = "";
     rows.push(row);
-    if (options.fold && line.heading) {
+    if (fold && line.heading) {
       const group = el("details", "bui-log-group") as HTMLDetailsElement;
-      const summary = el("summary", undefined, row);
-      group.append(summary);
+      group.append(el("summary", undefined, row));
       box.append(group);
       groups.push(group);
       into = group;
     } else into.append(row);
     if (line.tone === "danger") {
-      first ??= row;
+      failed = true;
       if (into !== box) (into as HTMLDetailsElement).open = true;
     }
   });
   // Nothing failed: the last part open, where it ended.
-  if (!first && groups.length) groups[groups.length - 1].open = true;
+  if (!failed && groups.length) groups[groups.length - 1].open = true;
+  return { rows, groups };
+}
 
+/**
+ * A build's or a job's output: numbered lines in a monospace box, a
+ * terminal's colours kept, errors and warnings marked. With `sections`,
+ * one box per step under a head of its own — state, name, how long — the
+ * failed ones open, each numbered from 1, drawn when first opened. With
+ * `fold`, a heading folds the lines after it; with `tools`, a bar on top
+ * to search all of it, show the times and fold or unfold all — `actions`
+ * go at its end (a menu, a button).
+ */
+export function logView(options: {
+  lines?: LogLine[];
+  sections?: LogSection[];
+  /** A box's most height before it scrolls (px), or `none`: as tall as it
+   *  is — in a window that scrolls. Default: 320 (`none` with sections). */
+  maxHeight?: number | "none";
+  /** Where a box opens: the first error (default), or the end. */
+  start?: "error" | "end";
+  /** What screen readers call it. */
+  label?: string;
+  fold?: boolean;
+  tools?: boolean;
+  actions?: Child[];
+}): HTMLElement {
+  styled();
+  const wrap = el("div", "bui-logview");
+  const fold = options.fold === true;
+  const height =
+    options.maxHeight ?? (options.sections ? "none" : (320 as number | "none"));
+  type Block = {
+    lines: LogLine[];
+    box: HTMLElement;
+    details: HTMLDetailsElement | null;
+    rows: HTMLElement[] | null;
+    groups: HTMLDetailsElement[];
+  };
+  const newBox = () => {
+    const box = el("div", "bui-log");
+    box.tabIndex = 0;
+    box.setAttribute("role", "log");
+    if (options.label) box.setAttribute("aria-label", options.label);
+    if (height !== "none") box.style.maxHeight = `${height}px`;
+    return box;
+  };
+  const draw = (b: Block) => {
+    if (b.rows) return;
+    const drawn = drawLines(b.lines, b.box, fold);
+    b.rows = drawn.rows;
+    b.groups = drawn.groups;
+    if (search) mark(b);
+    // At the first error, or at the end.
+    const at =
+      options.start === "end"
+        ? null
+        : b.rows.find((r) => r.dataset.tone === "danger");
+    later(() => {
+      if (height === "none") return;
+      if (at)
+        b.box.scrollTop = Math.max(0, at.offsetTop - b.box.clientHeight / 3);
+      else if (options.start === "end") b.box.scrollTop = b.box.scrollHeight;
+    });
+  };
+  const later =
+    typeof requestAnimationFrame === "function"
+      ? requestAnimationFrame
+      : (fn: () => void) => setTimeout(fn, 0);
+
+  let search = "";
+  let hits: HTMLElement[] = [];
+  let at = -1;
+  const count = el("span", "bui-logview-count", "");
+  const blocks: Block[] = [];
+  let body: HTMLElement;
+  if (options.sections) {
+    body = el("div", "bui-logsteps");
+    for (const section of options.sections) {
+      const details = el("details", "bui-logstep") as HTMLDetailsElement;
+      const state = section.state ?? "pending";
+      details.dataset.state = state;
+      const mark = el(
+        "span",
+        "bui-step-mark",
+        icon(STEP_ICON[state], { size: 15 }),
+      );
+      mark.dataset.state = state;
+      const summary = el(
+        "summary",
+        undefined,
+        mark,
+        el("span", "bui-logstep-title", section.title),
+        section.meta && el("span", "bui-logstep-meta", section.meta),
+      );
+      details.append(summary);
+      const block: Block = {
+        lines: section.lines,
+        box: newBox(),
+        details,
+        rows: null,
+        groups: [],
+      };
+      if (section.lines.length === 0) {
+        details.dataset.empty = "";
+        summary.addEventListener("click", (event) => event.preventDefault());
+      } else details.append(block.box);
+      details.addEventListener("toggle", () => {
+        if (details.open) draw(block);
+      });
+      blocks.push(block);
+      body.append(details);
+      if ((section.open ?? state === "danger") && section.lines.length) {
+        details.open = true;
+        draw(block);
+      }
+    }
+  } else {
+    const box = newBox();
+    const block: Block = {
+      lines: options.lines ?? [],
+      box,
+      details: null,
+      rows: null,
+      groups: [],
+    };
+    blocks.push(block);
+    body = box;
+    draw(block);
+  }
+
+  // Searching all of it: the blocks with a hit drawn and opened.
+  function mark(b: Block) {
+    for (const r of b.rows ?? []) {
+      const hit =
+        search !== "" &&
+        (r.querySelector(".bui-log-text")?.textContent ?? "")
+          .toLowerCase()
+          .includes(search);
+      r.toggleAttribute("data-hit", hit);
+      r.removeAttribute("data-current");
+    }
+  }
   const reveal = (row: HTMLElement) => {
-    const group = row.closest("details");
+    const block = blocks.find((b) => b.rows?.includes(row));
+    if (block?.details) block.details.open = true;
+    const group = row.closest(
+      "details.bui-log-group",
+    ) as HTMLDetailsElement | null;
     if (group) group.open = true;
-    box.scrollTop = Math.max(0, row.offsetTop - box.clientHeight / 3);
-    if (options.maxHeight === "none") row.scrollIntoView({ block: "center" });
+    row.scrollIntoView({ block: "center" });
+  };
+  const go = (by: number) => {
+    if (!hits.length) return;
+    hits[at]?.removeAttribute("data-current");
+    at = (at + by + hits.length) % hits.length;
+    hits[at].dataset.current = "";
+    count.textContent = `${at + 1}/${hits.length}`;
+    reveal(hits[at]);
+  };
+  const find = (q: string) => {
+    search = q.trim().toLowerCase();
+    hits = [];
+    at = -1;
+    for (const b of blocks) {
+      const any =
+        search !== "" &&
+        b.lines.some((l) => l.text.toLowerCase().includes(search));
+      if (any) draw(b);
+      mark(b);
+      hits.push(...(b.rows ?? []).filter((r) => r.hasAttribute("data-hit")));
+    }
+    count.textContent = search ? (hits.length ? `0/${hits.length}` : "0") : "";
+    if (hits.length) go(1);
   };
 
   if (options.tools) {
-    let hits: HTMLElement[] = [];
-    let at = -1;
-    const count = el("span", "bui-logview-count", "");
-    const search = el("input", "bui-input") as HTMLInputElement;
-    search.type = "search";
-    search.placeholder = kitText("searchLog");
-    search.setAttribute("aria-label", kitText("searchLog"));
-    const go = (by: number) => {
-      if (!hits.length) return;
-      hits[at]?.removeAttribute("data-current");
-      at = (at + by + hits.length) % hits.length;
-      hits[at].dataset.current = "";
-      count.textContent = `${at + 1}/${hits.length}`;
-      reveal(hits[at]);
-    };
-    search.addEventListener("input", () => {
-      const q = search.value.trim().toLowerCase();
-      for (const r of hits) {
-        r.removeAttribute("data-hit");
-        r.removeAttribute("data-current");
-      }
-      hits = q
-        ? rows.filter((r) =>
-            (r.querySelector(".bui-log-text")?.textContent ?? "")
-              .toLowerCase()
-              .includes(q),
-          )
-        : [];
-      for (const r of hits) r.dataset.hit = "";
-      at = -1;
-      count.textContent = q ? (hits.length ? `0/${hits.length}` : "0") : "";
-      if (hits.length) go(1);
-    });
-    search.addEventListener("keydown", (event) => {
+    const input = el("input", "bui-input") as HTMLInputElement;
+    input.type = "search";
+    input.placeholder = kitText("searchLog");
+    input.setAttribute("aria-label", kitText("searchLog"));
+    input.addEventListener("input", () => find(input.value));
+    input.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
         go(event.shiftKey ? -1 : 1);
       }
     });
-    const iconButton = (name: IconName, label: string, onClick: () => void) => {
+    const tool = (name: IconName, label: string, onClick: () => void) => {
       const b = el("button", "bui-logview-tool", icon(name, { size: 14 }));
       b.type = "button";
       b.setAttribute("aria-label", label);
@@ -1326,48 +1456,42 @@ export function logView(options: {
       b.addEventListener("click", onClick);
       return b;
     };
-    const hasTimes = options.lines.some((l) => l.time);
-    const times = iconButton("clock", kitText("logTimes"), () => {
+    const all = [...blocks.flatMap((b) => b.lines)];
+    const times = tool("clock", kitText("logTimes"), () => {
       const on = wrap.toggleAttribute("data-times");
       times.setAttribute("aria-pressed", String(on));
     });
     times.setAttribute("aria-pressed", "false");
-    const bar = el(
-      "div",
-      "bui-logview-bar",
-      search,
-      count,
-      iconButton("chevron-up", kitText("previous"), () => go(-1)),
-      iconButton("chevron-down", kitText("next"), () => go(1)),
-      hasTimes && times,
-      groups.length > 0 &&
-        iconButton("plus", kitText("unfoldAll"), () => {
-          for (const g of groups) g.open = true;
-        }),
-      groups.length > 0 &&
-        iconButton("minus", kitText("foldAll"), () => {
-          for (const g of groups) g.open = false;
-        }),
+    const folds = options.sections || all.some((l) => l.heading);
+    const setAll = (open: boolean) => {
+      for (const b of blocks) {
+        if (b.details && b.lines.length) {
+          if (open) draw(b);
+          b.details.open = open;
+        }
+        for (const g of b.groups) g.open = open;
+      }
+    };
+    wrap.append(
+      el(
+        "div",
+        "bui-logview-bar",
+        input,
+        count,
+        tool("chevron-up", kitText("previous"), () => go(-1)),
+        tool("chevron-down", kitText("next"), () => go(1)),
+        all.some((l) => l.time) && times,
+        folds && tool("plus", kitText("unfoldAll"), () => setAll(true)),
+        folds && tool("minus", kitText("foldAll"), () => setAll(false)),
+        ...(options.actions ?? []),
+      ),
     );
-    wrap.append(bar);
   }
-  wrap.append(box);
-  if (options.lines.length > LOG_LINES_MAX)
+  wrap.append(body);
+  if (blocks.some((b) => b.lines.length > LOG_LINES_MAX))
     wrap.append(
       el("p", "bui-hint", kitText("logCut", { count: LOG_LINES_MAX })),
     );
-  // Once it's in the page: at the first error, or at the end.
-  const later =
-    typeof requestAnimationFrame === "function"
-      ? requestAnimationFrame
-      : (fn: () => void) => setTimeout(fn, 0);
-  later(() => {
-    const row = first as HTMLElement | null;
-    if (options.start !== "end" && row) {
-      if (options.maxHeight !== "none")
-        box.scrollTop = Math.max(0, row.offsetTop - box.clientHeight / 3);
-    } else if (options.start === "end") box.scrollTop = box.scrollHeight;
-  });
   return wrap;
 }
 

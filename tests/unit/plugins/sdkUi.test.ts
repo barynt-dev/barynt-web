@@ -183,6 +183,42 @@ describe("the UI kit", () => {
     expect(groups[0].open).toBe(true);
   });
 
+  it("draws a log by its steps — the failed one open, each from line 1 (BARY-238)", () => {
+    const node = logView({
+      tools: true,
+      sections: [
+        { title: "Set up job", state: "success", lines: [{ text: "runner" }] },
+        {
+          title: "Run tests",
+          state: "danger",
+          meta: "4s",
+          lines: [{ text: "start" }, { text: "boom", tone: "danger" }],
+        },
+        { title: "Deploy", state: "pending", lines: [] },
+      ],
+    });
+    const steps = [
+      ...node.querySelectorAll("details.bui-logstep"),
+    ] as unknown as {
+      open: boolean;
+      dataset: DOMStringMap;
+      querySelectorAll(s: string): NodeListOf<Element>;
+    }[];
+    expect(steps.map((x) => x.open)).toEqual([false, true, false]);
+    // A step that didn't run has nothing to open.
+    expect(steps[2].dataset.empty).toBe("");
+    expect(
+      [...steps[1].querySelectorAll(".bui-log-no")].map((n) => n.textContent),
+    ).toEqual(["1", "2"]);
+    // A closed step isn't drawn until it's opened — or a search finds it.
+    expect(steps[0].querySelectorAll(".bui-log-line")).toHaveLength(0);
+    const search = node.querySelector("input") as HTMLInputElement;
+    search.value = "runner";
+    search.dispatchEvent(new window.Event("input") as unknown as Event);
+    expect(steps[0].open).toBe(true);
+    expect(node.querySelectorAll("[data-hit]")).toHaveLength(1);
+  });
+
   it("draws a pipeline's stops — a button, a link, one not reached (BARY-238)", () => {
     const opened: string[] = [];
     const node = pipeline({

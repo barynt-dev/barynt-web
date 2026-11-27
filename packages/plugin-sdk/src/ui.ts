@@ -48,6 +48,7 @@ export {
   type LogColor,
   type LogLine,
   type LogPart,
+  type LogSection,
   labelChip,
   link,
   list,
