@@ -404,10 +404,10 @@ button.bui-list-title:focus-visible { outline: none; }
 .bui-list-item:has(button.bui-list-title:focus-visible) { outline: 2px solid var(--barynt-color-focus); outline-offset: -2px; border-radius: var(--barynt-radius-sm); }
 .bui-list-item:has(button.bui-list-title) { border-radius: var(--barynt-radius-md); }
 .bui-list[data-variant="cards"] { gap: var(--barynt-space-2); }
-.bui-list[data-variant="cards"] > .bui-list-item { padding: var(--barynt-space-2) var(--barynt-space-3); border: 1px solid var(--barynt-color-border); border-radius: var(--barynt-radius-md); }
+.bui-list[data-variant="cards"] > .bui-list-item { gap: var(--barynt-space-3); padding: 0.625rem var(--barynt-space-3); border: 1px solid var(--barynt-color-border); border-radius: var(--barynt-radius-md); }
 .bui-list[data-variant="cards"] > .bui-list-item:last-child { border-bottom: 1px solid var(--barynt-color-border); }
-.bui-list[data-variant="cards"] > .bui-list-item[data-tone="danger"] { border-color: color-mix(in srgb, var(--barynt-color-danger) 45%, var(--barynt-color-border)); }
-.bui-list[data-variant="cards"] > .bui-list-item[data-tone="warning"] { border-color: color-mix(in srgb, var(--barynt-color-warning) 45%, var(--barynt-color-border)); }
+/* A card's state is its icon and badge: no line inside its outline. */
+.bui-list[data-variant="cards"] > .bui-list-item[data-tone] { box-shadow: none; }
 .bui-list-item:has(button.bui-list-title):hover { background: var(--barynt-color-surface-hovered); }
 .bui-list-body { flex: 1; display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
 .bui-list-body > .bui-list-title { flex: none; font-weight: var(--barynt-font-weight-semibold); }
