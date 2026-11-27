@@ -402,6 +402,7 @@ a.bui-list-title:hover { text-decoration: underline; }
 button.bui-list-title { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
 button.bui-list-title:focus-visible { outline: none; }
 .bui-list-item:has(button.bui-list-title:focus-visible) { outline: 2px solid var(--barynt-color-focus); outline-offset: -2px; border-radius: var(--barynt-radius-sm); }
+.bui-list-item:has(button.bui-list-title) { border-radius: var(--barynt-radius-md); }
 .bui-list-item:has(button.bui-list-title):hover { background: var(--barynt-color-surface-hovered); }
 .bui-list-body { flex: 1; display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
 .bui-list-body > .bui-list-title { flex: none; font-weight: var(--barynt-font-weight-semibold); }
