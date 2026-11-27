@@ -385,9 +385,48 @@ export function PluginFrame({
           const query = new URLSearchParams({ level: message.level });
           if (message.level === "project" && projectId)
             query.set("project", projectId);
+          if (message.focus) query.set("focus", message.focus);
           routerRef.current.push(
             `${pluginPath(workspaceId, pluginId)}?${query}`,
           );
+        } else if (message.type === "reveal") {
+          // Scroll the page to that far down the frame: a marker there,
+          // scrolled into view by whatever scrolls the page.
+          // The frame may still be growing to its content: wait until it
+          // reaches that far (a few seconds at most).
+          const top = message.top;
+          const scroll = (tries: number) => {
+            const node = frame.current;
+            if (!node) return;
+            if (node.offsetHeight <= top && tries > 0) {
+              window.setTimeout(() => scroll(tries - 1), 150);
+              return;
+            }
+            // Parts of the page above may still be loading: keep the
+            // marker on that spot for a moment, re-scrolling as it moves.
+            const mark = document.createElement("span");
+            const place = () => {
+              mark.style.cssText = `position:absolute;left:0;top:${node.offsetTop + top}px;width:1px;height:1px;pointer-events:none;scroll-margin-top:1rem`;
+            };
+            place();
+            const parent = node.offsetParent ?? node.parentElement;
+            parent?.append(mark);
+            mark.scrollIntoView({ block: "start" });
+            let at = node.offsetTop;
+            let left = 10;
+            const follow = window.setInterval(() => {
+              if (node.offsetTop !== at) {
+                at = node.offsetTop;
+                place();
+                mark.scrollIntoView({ block: "start" });
+              }
+              if (--left <= 0) {
+                window.clearInterval(follow);
+                mark.remove();
+              }
+            }, 200);
+          };
+          scroll(30);
         } else if (message.type === "openModal") {
           const { type: _, ...m } = message;
           openFrameModalRef.current(m);

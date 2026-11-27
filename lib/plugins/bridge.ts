@@ -156,7 +156,15 @@ export type FrameMessage =
   | { type: "toast"; text: string }
   /** Its own settings page, on a level: what's the person's, the frame's
    *  project's or the workspace's (BARY-238). */
-  | { type: "openSettings"; level: "personal" | "project" | "workspace" }
+  | {
+      type: "openSettings";
+      level: "personal" | "project" | "workspace";
+      /** A part of the page to show — its settings section's `focus`. */
+      focus?: string;
+    }
+  /** Scroll Barynt's page to this far down the frame (px) — a part of it
+   *  someone was sent to (BARY-238). */
+  | { type: "reveal"; top: number }
   /** A window of Barynt's with another frame of the plugin in it — and,
    *  from that frame, closing it (BARY-238). */
   | ({ type: "openModal" } & FrameModal)
@@ -346,7 +354,16 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
     return m.level === "personal" ||
       m.level === "project" ||
       m.level === "workspace"
-      ? { type: "openSettings", level: m.level }
+      ? {
+          type: "openSettings",
+          level: m.level,
+          ...(typeof m.focus === "string" &&
+            /^[a-z0-9-]{1,40}$/.test(m.focus) && { focus: m.focus }),
+        }
+      : null;
+  if (m.type === "reveal")
+    return typeof m.top === "number" && Number.isFinite(m.top)
+      ? { type: "reveal", top: Math.max(0, Math.min(m.top, 100_000)) }
       : null;
   if (m.type === "toast")
     return typeof m.text === "string" && m.text.trim()

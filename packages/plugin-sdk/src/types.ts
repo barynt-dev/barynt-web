@@ -326,8 +326,11 @@ export interface Host {
   ): Promise<string | null>;
   /** An issue panel starts one of its plugin's actions for its issue. */
   startAction?(actionId: string, context?: { choice?: string }): void;
-  /** Opens its own settings page in Barynt, on a level. */
-  openSettings?(level: SettingsLevel): void;
+  /** Opens its own settings page in Barynt, on a level — at a part of it
+   *  (its settings section's `context.focus`). */
+  openSettings?(level: SettingsLevel, focus?: string): void;
+  /** Scrolls Barynt's page to this far down the frame (px). */
+  reveal?(top: number): void;
   /** Opens a window of Barynt's with another frame of the plugin in it. */
   openModal?(options: ModalOptions): void;
   /** Closes the window this frame is in. */

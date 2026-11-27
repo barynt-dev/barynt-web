@@ -65,7 +65,9 @@ export function heading(options: {
 
 /** A paragraph (or, `inline`, a span) of text in Barynt's type. */
 export function text(options: {
-  text: string;
+  /** The words — or parts, strings and elements (an inline `link`) in a
+   *  sentence. */
+  text: string | (string | HTMLElement)[];
   tone?: "default" | "subtle" | "primary" | "success" | "warning" | "danger";
   size?: "xs" | "sm" | "base" | "lg";
   weight?: "regular" | "medium" | "semibold" | "bold";
@@ -73,7 +75,9 @@ export function text(options: {
   inline?: boolean;
 }): HTMLElement {
   styled();
-  const node = el(options.inline ? "span" : "p", "bui-text", options.text);
+  const parts =
+    typeof options.text === "string" ? [options.text] : options.text;
+  const node = el(options.inline ? "span" : "p", "bui-text", ...parts);
   if (options.tone && options.tone !== "default")
     node.dataset.tone = options.tone;
   if (options.size && options.size !== "sm") node.dataset.size = options.size;
@@ -84,9 +88,20 @@ export function text(options: {
 }
 
 /** A link out of Barynt, in a new tab. Only `http(s)` and `mailto` — any
- *  other address leaves plain text. */
-export function link(options: { text: string; href: string }): HTMLElement {
+ *  other address leaves plain text. With `onClick` instead of `href`, a
+ *  link that acts inside Barynt (opens settings, a window). */
+export function link(
+  options:
+    | { text: string; href: string }
+    | { text: string; onClick: () => void },
+): HTMLElement {
   styled();
+  if ("onClick" in options) {
+    const b = el("button", "bui-link", options.text);
+    b.type = "button";
+    b.addEventListener("click", () => options.onClick());
+    return b;
+  }
   const href = safeHref(options.href);
   if (!href) return el("span", "bui-text", options.text);
   const a = el("a", "bui-link", options.text);

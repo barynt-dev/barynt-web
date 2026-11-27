@@ -80,6 +80,7 @@ export function PluginSettings({
   scope,
   viewsHref,
   subnav,
+  focus,
 }: {
   view: PluginSettingsView;
   scope: { workspaceId: string; projectId: string | null };
@@ -87,6 +88,9 @@ export function PluginSettings({
   viewsHref?: string;
   /** Under the header: its levels, in the plugins' area (BARY-238). */
   subnav?: ReactNode;
+  /** A part of its own page it was sent to (`openSettings`) — its frame's
+   *  `context.focus`. */
+  focus?: string;
 }) {
   const t = useTranslations();
   const text = usePluginText();
@@ -180,6 +184,7 @@ export function PluginSettings({
           workspaceId: scope.workspaceId,
           projectId: scope.projectId,
           locale,
+          ...(focus && { focus }),
         }}
         // A section below the form is as tall as its content (BARY-238).
         {...(view.settingsPage === "section" && {

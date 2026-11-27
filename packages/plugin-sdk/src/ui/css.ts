@@ -159,6 +159,7 @@ button.bui-station-main:focus-visible { outline: 2px solid var(--barynt-color-fo
 .bui-text[data-tone="danger"] { color: var(--barynt-color-danger); }
 .bui-link { color: var(--barynt-color-primary); text-decoration: none; display: inline-flex; align-items: center; gap: 0.25em; }
 .bui-link:hover { text-decoration: underline; }
+button.bui-link { display: inline; padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
 
 .bui-icon { flex: none; display: inline-block; vertical-align: -0.15em; }
 

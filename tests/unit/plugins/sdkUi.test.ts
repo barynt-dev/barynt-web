@@ -4,6 +4,7 @@ import {
   button,
   card,
   kpi,
+  link,
   list,
   logView,
   notice,
@@ -13,6 +14,7 @@ import {
   select,
   stageBar,
   status,
+  text,
   textArea,
   textField,
   toggle,
@@ -242,6 +244,25 @@ describe("the UI kit", () => {
     (node.querySelector("button") as HTMLButtonElement).click();
     expect([opened, pressed]).toEqual([1, 1]);
     expect(node.dataset.clickable).toBe("");
+  });
+
+  it("puts a link that acts into a sentence (BARY-238)", () => {
+    let opened = 0;
+    const node = text({
+      text: [
+        "Some are hidden — ",
+        link({ text: "change it", onClick: () => opened++ }),
+        ".",
+      ],
+    });
+    expect(node.textContent).toBe("Some are hidden — change it.");
+    const a = node.querySelector("button.bui-link") as HTMLButtonElement;
+    expect(a.type).toBe("button");
+    a.click();
+    expect(opened).toBe(1);
+    // An address still makes a link out, in a new tab.
+    const out = link({ text: "GitHub", href: "https://github.com" });
+    expect([out.tagName, out.getAttribute("target")]).toEqual(["A", "_blank"]);
   });
 
   it("draws a pipeline's stops — a button, a link, one not reached (BARY-238)", () => {

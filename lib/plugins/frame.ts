@@ -197,7 +197,10 @@ const RUNTIME = `(() => {
             send({ type: "menu", id, items, anchor });
           }),
         // Its own settings page in Barynt, on a level (BARY-238).
-        openSettings: (level) => send({ type: "openSettings", level: String(level) }),
+        openSettings: (level, focus) =>
+          send({ type: "openSettings", level: String(level), ...(focus ? { focus: String(focus) } : {}) }),
+        // Scroll Barynt's page to a part of the frame (BARY-238).
+        reveal: (top) => send({ type: "reveal", top: Number(top) }),
         // A window of Barynt's with another frame of it, and closing the
         // one it's in (BARY-238).
         openModal: (options) => {

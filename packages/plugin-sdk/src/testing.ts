@@ -31,6 +31,8 @@ export interface TestHost extends Host {
   readonly started: { actionId: string; choice?: string }[];
   /** Every settings page it opened (`openSettings`), in order. */
   readonly openedSettings: SettingsLevel[];
+  /** The parts of them it asked for (`openSettings`'s `focus`), in order. */
+  readonly settingsFocus: (string | undefined)[];
   /** Every window it opened (`openModal`), in order. */
   readonly openedModals: ModalOptions[];
   /** How often it closed its window (`closeModal`). */
@@ -75,6 +77,7 @@ export function createTestHost(
   const shown: TestHost["shown"] = [];
   const started: TestHost["started"] = [];
   const openedSettings: SettingsLevel[] = [];
+  const settingsFocus: (string | undefined)[] = [];
   const openedModals: ModalOptions[] = [];
   let closedModals = 0;
   const downloads: DownloadFile[] = [];
@@ -90,6 +93,7 @@ export function createTestHost(
     shown,
     started,
     openedSettings,
+    settingsFocus,
     openedModals,
     get closedModals() {
       return closedModals;
@@ -122,8 +126,9 @@ export function createTestHost(
       saveHandler = handler;
       unsavedState = false;
     },
-    openSettings: (level) => {
+    openSettings: (level, focus) => {
       openedSettings.push(level);
+      settingsFocus.push(focus);
     },
     startAction: (actionId, context) => {
       started.push({

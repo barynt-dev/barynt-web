@@ -136,7 +136,8 @@ frame is for one of them.
 ```ts
 registerAction(action: { id: string; run(context: { issueId, choice?, values? }): ActionResult | void }): void;
 runAction(id: string, context?: { choice? }): void; // from an issue panel
-openSettings(level: "personal" | "project" | "workspace"): void;
+openSettings(level: "personal" | "project" | "workspace", focus?: string): void;
+reveal(el: HTMLElement): void; // scroll Barynt's page to a part of the frame
 openModal(options: { view: string; title: string; data?: unknown; size?: "sm" | "md" | "lg" }): void;
 closeModal(): void; // from inside that window
 ```
@@ -206,6 +207,12 @@ only started like this — rename or delete for a row of the panel, say.
 frame's project, `workspace`. For a panel that can't show anything until
 something is set — "Connect repository" there. In tests,
 `host.openedSettings` lists the levels it opened.
+
+`focus` (`a-z`, `0-9`, `-`, up to 40) names a part of that page: your
+settings section gets it as `context.focus` and calls `this.reveal(el)`
+for that part — Barynt scrolls its page there, waiting for the frame to
+grow that far. A link "change it in the settings" from a panel lands on
+the setting itself. In tests, `host.settingsFocus` holds the last one.
 
 `this.openModal({ view, title, data?, size? })` opens a window of
 Barynt's over the page — a dialog, a bottom sheet on a phone — with
@@ -761,7 +768,7 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | --- | --- |
 | `heading({ text, level? })` | `h1`–`h4`, sized like Barynt's |
 | `text({ text, tone?, size?, weight?, mono?, inline? })` | a paragraph; `tone` `subtle`, `primary`, `success`, `warning`, `danger` |
-| `link({ text, href })` | a link out, in a new tab |
+| `link({ text, href })` | a link out, in a new tab — or `link({ text, onClick })`, a link that acts in Barynt (opens settings, a window) |
 | `stack(...children)`, `row(...children)` | under each other / next to each other, with room between |
 | `grid({ children, minWidth? })` | as many columns as fit, each at least `minWidth` (`12rem`) |
 | `card({ title?, description?, children?, actions?, tone?, compact?, more?, onClick? })` | a framed section; `onClick` makes the whole card open something (its buttons and links still do theirs); `tone` colours its edge, `compact` takes less room (a sidebar); `more: { label, content, aside?, open?, onToggle? }` adds a foot that folds — details only needed now and then, `aside` before its label (a size), `onToggle(open)` to load them when they open; with `onOpen` instead of `content` the foot is a button that opens them elsewhere (a window, `openModal`) |

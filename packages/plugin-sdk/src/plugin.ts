@@ -100,6 +100,7 @@ export abstract class Plugin {
   readonly #closeModal: Host["closeModal"];
   readonly #download: Host["download"];
   readonly #modalBack: Host["modalBack"];
+  readonly #reveal: Host["reveal"];
   readonly #actions = new Map<
     string,
     (context: {
@@ -120,6 +121,7 @@ export abstract class Plugin {
     this.#closeModal = host.closeModal;
     this.#download = host.download;
     this.#modalBack = host.modalBack;
+    this.#reveal = host.reveal;
     // The UI kit's toasts and menus are Barynt's own (BARY-238) — kept
     // where the kit, bundled apart, finds them.
     const store = globalThis as Record<symbol, unknown>;
@@ -205,9 +207,23 @@ export abstract class Plugin {
    * the person's own (their GitHub account, say), `project` for the
    * frame's project (its repositories), `workspace`. For a panel with
    * nothing to show yet because something isn't set: a button there.
+   * `focus` names a part of the page — its settings section gets it as
+   * `context.focus`, to `reveal` that part.
    */
-  openSettings(level: SettingsLevel): void {
-    this.#openSettings?.(level);
+  openSettings(level: SettingsLevel, focus?: string): void {
+    this.#openSettings?.(level, focus);
+  }
+
+  /**
+   * Shows a part of the frame: Barynt scrolls its page there — the frame
+   * grows with its content, so scrolling inside it does nothing. For a
+   * settings section opened at a part (`context.focus`), say.
+   */
+  reveal(el: HTMLElement): void {
+    const root = this.root ?? document.body;
+    const top =
+      el.getBoundingClientRect().top - root.getBoundingClientRect().top;
+    this.#reveal?.(Math.max(0, top));
   }
 
   /**

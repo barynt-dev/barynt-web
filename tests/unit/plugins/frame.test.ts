@@ -94,6 +94,33 @@ describe("bridge protocol", () => {
     ).toBeNull();
   });
 
+  it("opens settings at a part, and scrolls the page to one (BARY-238)", () => {
+    expect(
+      parseFrameMessage({
+        type: "openSettings",
+        level: "project",
+        focus: "workflows",
+      }),
+    ).toEqual({ type: "openSettings", level: "project", focus: "workflows" });
+    // A focus that isn't a plain name is left out.
+    expect(
+      parseFrameMessage({
+        type: "openSettings",
+        level: "project",
+        focus: "../x?y",
+      }),
+    ).toEqual({ type: "openSettings", level: "project" });
+    expect(parseFrameMessage({ type: "reveal", top: 320 })).toEqual({
+      type: "reveal",
+      top: 320,
+    });
+    expect(parseFrameMessage({ type: "reveal", top: -5 })).toEqual({
+      type: "reveal",
+      top: 0,
+    });
+    expect(parseFrameMessage({ type: "reveal", top: "x" })).toBeNull();
+  });
+
   it("opens a window with a view of its own, and closes it (BARY-238)", () => {
     expect(
       parseFrameMessage({
