@@ -411,7 +411,7 @@ button.bui-list-title:focus-visible { outline: none; }
 .bui-list-item[data-tone="info"] .bui-list-icon { color: var(--barynt-color-info); }
 .bui-list-item[data-tone="warning"] .bui-list-icon { color: var(--barynt-color-warning); }
 .bui-list-item[data-tone="danger"] .bui-list-icon { color: var(--barynt-color-danger); }
-.bui-list-item[data-tone="danger"], .bui-list-item[data-tone="warning"] { --line: var(--barynt-color-danger); padding-left: var(--barynt-space-2); border-radius: var(--barynt-radius-sm); background: var(--barynt-color-surface-sunken); box-shadow: inset 3px 0 var(--line); }
+.bui-list-item[data-tone="danger"], .bui-list-item[data-tone="warning"] { --line: var(--barynt-color-danger); padding-left: var(--barynt-space-2); box-shadow: inset 3px 0 var(--line); }
 .bui-list-item[data-tone="warning"] { --line: var(--barynt-color-warning); }
 .bui-list-item:has(.bui-list-body) { padding-left: var(--barynt-space-2); padding-right: var(--barynt-space-1); }
 :is(.bui-list-aside, .bui-list-remove) { position: relative; z-index: 1; }
