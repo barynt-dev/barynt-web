@@ -579,8 +579,7 @@ export interface ListItem {
   note?: string;
   /** Makes the whole row a button — open its details. */
   onClick?: () => void;
-  /** Its state: the icon in its colour — `danger` and `warning` also
-   *  mark the row with a line on its left. */
+  /** Its state: the icon in its colour. */
   tone?: "success" | "danger" | "warning" | "info";
 }
 

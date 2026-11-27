@@ -402,13 +402,14 @@ a.bui-list-title:hover { text-decoration: underline; }
 button.bui-list-title { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
 button.bui-list-title:focus-visible { outline: none; }
 .bui-list-item:has(button.bui-list-title:focus-visible) { outline: 2px solid var(--barynt-color-focus); outline-offset: -2px; border-radius: var(--barynt-radius-sm); }
-.bui-list-item:has(button.bui-list-title) { border-radius: var(--barynt-radius-md); }
+/* A row that opens something lights up on hover — rounded, on a layer of
+   its own behind it, so the line between rows stays straight. */
+.bui-list-item:has(button.bui-list-title) { isolation: isolate; }
+.bui-list-item:has(button.bui-list-title)::before { content: ""; position: absolute; inset: 2px 0; z-index: -1; border-radius: var(--barynt-radius-md); }
+.bui-list-item:has(button.bui-list-title):hover::before { background: var(--barynt-color-surface-hovered); }
 .bui-list[data-variant="cards"] { gap: var(--barynt-space-2); }
 .bui-list[data-variant="cards"] > .bui-list-item { gap: var(--barynt-space-3); padding: 0.625rem var(--barynt-space-3); border: 1px solid var(--barynt-color-border); border-radius: var(--barynt-radius-md); }
 .bui-list[data-variant="cards"] > .bui-list-item:last-child { border-bottom: 1px solid var(--barynt-color-border); }
-/* A card's state is its icon and badge: no line inside its outline. */
-.bui-list[data-variant="cards"] > .bui-list-item[data-tone] { box-shadow: none; }
-.bui-list-item:has(button.bui-list-title):hover { background: var(--barynt-color-surface-hovered); }
 .bui-list-body { flex: 1; display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
 .bui-list-body > .bui-list-title { flex: none; font-weight: var(--barynt-font-weight-semibold); }
 .bui-list-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--barynt-font-size-xs); color: var(--barynt-color-text-subtle); }
@@ -417,8 +418,6 @@ button.bui-list-title:focus-visible { outline: none; }
 .bui-list-item[data-tone="info"] .bui-list-icon { color: var(--barynt-color-info); }
 .bui-list-item[data-tone="warning"] .bui-list-icon { color: var(--barynt-color-warning); }
 .bui-list-item[data-tone="danger"] .bui-list-icon { color: var(--barynt-color-danger); }
-.bui-list-item[data-tone="danger"], .bui-list-item[data-tone="warning"] { --line: var(--barynt-color-danger); padding-left: var(--barynt-space-2); box-shadow: inset 3px 0 var(--line); }
-.bui-list-item[data-tone="warning"] { --line: var(--barynt-color-warning); }
 .bui-list-item:has(.bui-list-body) { padding-left: var(--barynt-space-2); padding-right: var(--barynt-space-1); }
 :is(.bui-list-aside, .bui-list-remove) { position: relative; z-index: 1; }
 .bui-list-aside { display: inline-flex; flex: none; flex-wrap: wrap; justify-content: flex-end; gap: 0.25rem; }
