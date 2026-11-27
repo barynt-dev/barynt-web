@@ -46,6 +46,12 @@ A click on a stage opens a window: state, environment, address, version, reposit
 
 On a board card, a rocket and a bar per stage sit at the right of the pull request's row; _Approval_ shows when one waits.
 
+### Workflows
+
+Below the deployments, **Workflows** lists the GitHub Actions runs on the issue's branches that aren't a deployment: the newest of each workflow, failed ones first. It's one folded line ("4 passed") until you open it — and opens by itself when one failed. A click on a run opens it with its jobs and logs, like a deployment. Deployments fold the same way; what you leave open or closed stays so for you.
+
+**Start workflow…** starts one from the issue: pick the workflow, the repository and branch (the issue's), and fill in its inputs — Barynt reads them from the workflow's file (`on: workflow_dispatch` with `inputs`): text, a switch, a choice, an environment. The project can fill inputs from the issue (`{key}`, `{title}`, `{branch}`, `{assignee}`). It's started with your own GitHub account if you connected one, else through the app. The run shows up under Workflows.
+
 ### Stages, environments and workflows
 
 The project's plugin settings have a **Deployments** section below the form, saved with **Save** at the top:
@@ -53,7 +59,7 @@ The project's plugin settings have a **Deployments** section below the form, sav
 - **Stages** — rename, reorder, remove or add them; one is **Live**, the one that counts as shipped.
 - **Recognize stage and service by name** (on by default) — `staging`, `qa`, `prod` and the service before or after (`api-staging`, `web/production`); off, only what's set by hand counts and the rest is _Other_.
 - **Environments** — every environment the project's repositories deployed to lately, with its stage, service or region, and whether it shows. A new one is marked _New_; one not deployed to in 30 days shows its date in orange.
-- **Workflows as deployments** — for shipping without a GitHub environment (an image, a release): each run of the workflow, on the branch given or any, counts as a deployment to the stage picked. It needs the app's _Workflow run_ event.
+- **Workflows** — per workflow: whether it shows in the issue, whether it can be started from it and by whom (everyone in the project, or who manages the plugin), which inputs are filled from the issue, and whether its runs count as a deployment to a stage (for shipping without a GitHub environment: an image, a release — on the branch given or any; it needs the app's _Workflow run_ event).
 - **Patterns** — for environments that come with each pull request or get renamed: `pr-*` → Preview, `*-staging` → Staging with `-` as the service (the part `*` matched). A pattern goes before recognizing.
 
 Changing the CI breaks nothing: jobs are read per run, so an old run shows its old jobs; a new environment or workflow appears as _New_; a renamed one is new to Barynt unless a pattern catches it.

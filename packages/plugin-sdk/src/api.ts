@@ -29,6 +29,7 @@ export const METHODS = [
   "storage.list",
   "settings.get",
   "settings.set",
+  "me.get",
   "net.fetch",
 ] as const satisfies readonly Method[];
 
@@ -125,6 +126,10 @@ export function createApi(host: Host) {
           call("storage.delete", { key, personal: true }),
         list: () => call("storage.list", { personal: true }),
       },
+    },
+    /** Who's using the plugin, and whether they may manage it here. */
+    me: {
+      get: () => call("me.get", {}),
     },
     settings: {
       get: () => call("settings.get", {}),

@@ -33,6 +33,7 @@ export const CSS = `
 .bui-stage[data-state="running"] { --tone: var(--barynt-color-info); color: var(--tone); font-weight: var(--barynt-font-weight-semibold); }
 .bui-stage[data-state="warning"] { --tone: var(--barynt-color-warning); color: var(--tone); font-weight: var(--barynt-font-weight-semibold); }
 .bui-stage[data-state="danger"] { --tone: var(--barynt-color-danger); color: var(--tone); font-weight: var(--barynt-font-weight-semibold); }
+.bui-switch[data-bare] { justify-content: flex-start; }
 .bui-label[data-hidden] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .bui-logview { display: flex; flex-direction: column; gap: var(--barynt-space-2); min-width: 0; }
 .bui-logview-bar { display: flex; align-items: center; gap: var(--barynt-space-1); flex-wrap: wrap; }

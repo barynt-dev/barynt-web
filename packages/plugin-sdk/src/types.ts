@@ -487,6 +487,15 @@ export interface Methods {
   "storage.delete": [{ key: string; personal?: boolean }, null];
   "storage.list": [{ personal?: boolean }, string[]];
   "settings.get": [Record<string, never>, Record<string, Json>];
+  "me.get": [
+    Record<string, never>,
+    {
+      id: string;
+      name: string;
+      /** May change the plugin's settings here — manage it. */
+      canManage: boolean;
+    },
+  ];
   "settings.set": [{ values: Record<string, Json> }, null];
   "net.fetch": [
     {

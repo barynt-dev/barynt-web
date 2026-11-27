@@ -48,6 +48,12 @@ Ein Klick auf eine Stufe öffnet ein Fenster: Status, Umgebung, Adresse, Version
 
 Auf einer Board-Karte stehen rechts in der Zeile des Pull Requests eine Rakete und ein Balken je Stufe; wartet eine Freigabe, steht dort _Freigabe_.
 
+### Workflows
+
+Unter den Deployments listet **Workflows** die GitHub-Actions-Läufe auf den Branches des Issues, die kein Deployment sind: den neuesten jedes Workflows, fehlgeschlagene zuerst. Bis du ihn öffnest, ist es eine eingeklappte Zeile („4 bestanden“) — schlägt einer fehl, geht sie von selbst auf. Ein Klick auf einen Lauf öffnet ihn mit Jobs und Logs wie ein Deployment. Deployments lassen sich genauso einklappen; was du offen oder zu lässt, bleibt so für dich.
+
+**Workflow starten…** startet einen aus dem Issue: Workflow, Repository und Branch (der des Issues) wählen und seine Eingaben ausfüllen — Barynt liest sie aus der Datei des Workflows (`on: workflow_dispatch` mit `inputs`): Text, Schalter, Auswahl, Umgebung. Das Projekt kann Eingaben aus dem Issue vorbelegen (`{key}`, `{title}`, `{branch}`, `{assignee}`). Gestartet wird mit deinem eigenen GitHub-Konto, wenn du eines verbunden hast, sonst über die App. Der Lauf erscheint danach unter Workflows.
+
 ### Stufen, Umgebungen und Workflows
 
 Die Plugin-Einstellungen des Projekts haben unter dem Formular einen Abschnitt **Deployments**, gespeichert mit **Speichern** oben:
@@ -55,7 +61,7 @@ Die Plugin-Einstellungen des Projekts haben unter dem Formular einen Abschnitt *
 - **Stufen** — umbenennen, umsortieren, entfernen oder hinzufügen; eine ist **Live**, die zählt als ausgeliefert.
 - **Stufe und Dienst am Namen erkennen** (standardmäßig an) — `staging`, `qa`, `prod` und der Dienst davor oder dahinter (`api-staging`, `web/production`); aus zählt nur, was von Hand gesetzt ist, der Rest ist _Sonstige_.
 - **Umgebungen** — jede Umgebung, in die die Repositories des Projekts zuletzt deployt haben, mit Stufe, Dienst oder Region und ob sie erscheint. Eine neue ist mit _Neu_ markiert; eine, in die 30 Tage nicht deployt wurde, zeigt ihr Datum in Orange.
-- **Workflows als Deployment** — für Auslieferungen ohne GitHub-Environment (ein Image, ein Release): jeder Lauf des Workflows, auf dem angegebenen Branch oder jedem, zählt als Deployment in die gewählte Stufe. Braucht das Ereignis _Workflow run_ der App.
+- **Workflows** — pro Workflow: ob er im Issue erscheint, ob er von dort gestartet werden kann und von wem (alle im Projekt, oder wer das Plugin verwaltet), welche Eingaben aus dem Issue vorbelegt sind, und ob seine Läufe als Deployment in eine Stufe zählen (für Auslieferungen ohne GitHub-Environment: ein Image, ein Release — auf dem angegebenen Branch oder jedem; braucht das Ereignis _Workflow run_ der App).
 - **Muster** — für Umgebungen, die mit jedem Pull Request entstehen oder umbenannt werden: `pr-*` → Preview, `*-staging` → Staging mit `-` als Dienst (der Teil, den `*` trifft). Ein Muster gilt vor der Erkennung.
 
 Ändert sich die CI, geht nichts kaputt: Jobs werden pro Lauf gelesen, ein alter Lauf zeigt seine alten Jobs; eine neue Umgebung oder ein neuer Workflow erscheint als _Neu_; eine umbenannte ist für Barynt neu, außer ein Muster fängt sie.

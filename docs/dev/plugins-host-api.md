@@ -166,6 +166,12 @@ send the ones you leave alone too.
 capability: the plugin's own [settings](plugins-manifest.md#settings) in this
 place, each with its saved value or its default.
 
+`api.me.get()` (`me.get`) needs no capability either: who's using the
+plugin (`id`, `name`) and `canManage` — whether they may change its
+settings here (`plugin.enable` in the project, or the workspace). For
+offering what only they should, starting a deploy workflow say; it's a
+hint for the UI, so anything that matters is also checked where it's done.
+
 ## Network
 
 ### `net.fetch`

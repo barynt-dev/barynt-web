@@ -47,6 +47,9 @@ export const BRIDGE_METHODS = {
   "storage.delete": "storage:own",
   "storage.list": "storage:own",
   "settings.get": null,
+  // Who's using it, and whether they may manage it here (BARY-238) — to
+  // offer what only they should (starting a workflow, say).
+  "me.get": null,
   // Its own settings page saving (BARY-149) — needs `plugin.enable` there,
   // checked against the manifest's `settings`.
   "settings.set": null,

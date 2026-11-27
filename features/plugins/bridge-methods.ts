@@ -422,6 +422,27 @@ export const HANDLERS: Record<BridgeMethod, Handler> = {
     );
   },
 
+  async "me.get"(userId, plugin) {
+    const [user, manages] = await Promise.all([
+      db.user.findUnique({
+        where: { id: userId },
+        select: { firstName: true, lastName: true },
+      }),
+      can(
+        userId,
+        "plugin.enable",
+        plugin.projectId
+          ? { projectId: plugin.projectId }
+          : { workspaceId: plugin.workspaceId },
+      ),
+    ]);
+    return ok({
+      id: userId,
+      name: [user?.firstName, user?.lastName].filter(Boolean).join(" "),
+      canManage: manages === true,
+    });
+  },
+
   async "settings.set"(userId, plugin, p) {
     // Whoever may change the plugin's settings here — `plugin.enable` in
     // the project or the workspace, as on Barynt's own form.
