@@ -34,6 +34,10 @@ Ein Projekt kann mit mehreren Repositories arbeiten; **Branch erstellen** fragt 
 
 **Ohne App:** Wie bisher die Repositories eintragen (`owner/repo`, eins pro Zeile), den Webhook aus der Karte **Webhooks anderer Dienste** in den Repository-Einstellungen auf GitHub anlegen und jeder ein eigenes Token hinterlegen. Mit einer Verbindung wird diese Karte nicht gezeigt: GitHub meldet über die App.
 
+### Das Fenster eines Pull Requests
+
+Die Karte eines Pull Requests im Panel bleibt kurz: seine Stufen und was als Nächstes kommt. **Details** unten öffnet ein Fenster mit Reitern: **Übersicht** (Status, Branch, Autor, Größe), **Workflows** (die Läufe auf seinem Branch, jeder mit Jobs und Logs), **Reviews** und **Commits**. **Ansehen** neben „Checks laufen“ oder „Checks fehlgeschlagen“ öffnet es bei den Workflows.
+
 ## Deployments
 
 Wo die Arbeit eines Issues läuft, zeigt das Panel **Development** als Strecke von **Stufen**, in der Reihenfolge, in der eine Änderung ausgeliefert wird — standardmäßig Preview, Test, Staging und Produktion. Es erscheinen nur Stufen, in die etwas deployt wurde, und die, in die das Repository deployt, die das Issue aber noch nicht erreicht hat (gestrichelt, _Noch nicht_). Jede sagt, wie es lief — _Bereit_, _Läuft_, _Wartet auf Freigabe_, _Fehlgeschlagen_ — und wann; der Pfeil in der Ecke öffnet die App dort.

@@ -14,13 +14,16 @@ export const CSS = `
   background: var(--barynt-color-surface-raised); min-width: 0;
 }
 .bui-card-more { margin: 0 calc(-1 * var(--bui-card-pad)) calc(-1 * var(--bui-card-pad)); border-top: 1px solid var(--barynt-color-border); }
-.bui-card-more > summary {
+button.bui-card-more { width: calc(100% + 2 * var(--bui-card-pad)); border-right: 0; border-bottom: 0; border-left: 0; background: none; font: inherit; text-align: start; border-radius: 0 0 var(--barynt-radius-lg) var(--barynt-radius-lg); }
+.bui-card-more > summary, button.bui-card-more {
   display: flex; align-items: center; gap: var(--barynt-space-2); padding: var(--barynt-space-2) var(--bui-card-pad);
   list-style: none; cursor: pointer; font-size: var(--barynt-font-size-xs); color: var(--barynt-color-text-subtle);
 }
 .bui-card-more > summary::-webkit-details-marker { display: none; }
-.bui-card-more > summary:hover { color: var(--barynt-color-text); }
-.bui-card-more > summary:focus-visible { outline: 2px solid var(--barynt-color-focus); outline-offset: -2px; }
+.bui-card-more > summary:hover, button.bui-card-more:hover { color: var(--barynt-color-text); }
+button.bui-card-more:hover { background: var(--barynt-color-surface-hovered); }
+button.bui-card-more > .bui-icon { margin-left: auto; }
+:is(.bui-card-more > summary, button.bui-card-more):focus-visible { outline: 2px solid var(--barynt-color-focus); outline-offset: -2px; }
 .bui-card-more > summary > .bui-icon { margin-left: auto; transition: rotate var(--barynt-duration-fast); }
 .bui-card-more[open] > summary > .bui-icon { rotate: 180deg; }
 .bui-card-more-body { display: flex; flex-direction: column; gap: var(--barynt-space-2); padding: 0 var(--bui-card-pad) var(--bui-card-pad); }

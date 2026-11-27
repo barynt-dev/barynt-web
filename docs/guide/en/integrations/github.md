@@ -32,6 +32,10 @@ That's it: pull requests, branches, commits and checks of those repositories com
 
 **Without the app:** as before, type the repositories (`owner/repo`, one per line), add the webhook from the card **Webhooks from other services** in GitHub's repository settings, and keep a token each. With a connection, that card isn't shown: GitHub reports through the app.
 
+### A pull request's window
+
+A pull request's card in the panel stays short: its stages and what's next. **Details** at its foot opens a window with tabs: **Overview** (state, branch, author, size), **Workflows** (the runs on its branch, each opening its jobs and logs), **Reviews** and **Commits**. **Look** beside "Checks running" or "Checks failed" opens it at its workflows.
+
 ## Deployments
 
 Where an issue's work runs shows in its **Development** panel as a line of **stages**, in the order a change goes out — by default Preview, Test, Staging and Production. Only stages something was deployed to show, plus the ones the repository deploys to that the issue hasn't reached yet (dashed, _Not yet_). Each says how it went — _Ready_, _Deploying_, _Waiting for approval_, _Failed_ — and when; the arrow in its corner opens the app there.

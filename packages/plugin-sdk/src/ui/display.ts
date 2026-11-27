@@ -141,10 +141,13 @@ export function card(options: {
    *  log. `aside` sits before its label (a size, a count). */
   more?: {
     label: string;
-    content: Child | Child[];
+    /** What unfolds — or, with `onOpen`, nothing: the foot opens it. */
+    content?: Child | Child[];
     aside?: Child[];
     open?: boolean;
     onToggle?: (open: boolean) => void;
+    /** The foot as a button: opens the details elsewhere — a window. */
+    onOpen?: () => void;
   };
 }): HTMLElement {
   styled();
@@ -169,7 +172,20 @@ export function card(options: {
     node.append(head);
   }
   append(node, options.children ?? []);
-  if (options.more) {
+  if (options.more?.onOpen) {
+    const more = options.more;
+    const onOpen = more.onOpen as () => void;
+    const foot = el(
+      "button",
+      "bui-card-more",
+      ...(more.aside ?? []),
+      el("span", "bui-card-more-label", more.label),
+      icon("chevron-right", { size: 14 }),
+    );
+    foot.type = "button";
+    foot.addEventListener("click", () => onOpen());
+    node.append(foot);
+  } else if (options.more) {
     const more = options.more;
     const foot = el(
       "details",
@@ -184,7 +200,11 @@ export function card(options: {
       el(
         "div",
         "bui-card-more-body",
-        ...(Array.isArray(more.content) ? more.content : [more.content]),
+        ...(Array.isArray(more.content)
+          ? more.content
+          : more.content === undefined
+            ? []
+            : [more.content]),
       ),
     );
     foot.open = more.open ?? false;

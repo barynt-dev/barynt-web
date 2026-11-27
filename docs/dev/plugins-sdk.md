@@ -761,7 +761,7 @@ The sandbox doesn't submit forms, so there's no `form()`: a field's
 | `link({ text, href })` | a link out, in a new tab |
 | `stack(...children)`, `row(...children)` | under each other / next to each other, with room between |
 | `grid({ children, minWidth? })` | as many columns as fit, each at least `minWidth` (`12rem`) |
-| `card({ title?, description?, children?, actions?, tone?, compact?, more? })` | a framed section; `tone` colours its edge, `compact` takes less room (a sidebar); `more: { label, content, aside?, open?, onToggle? }` adds a foot that folds — details only needed now and then, `aside` before its label (a size), `onToggle(open)` to load them when they open |
+| `card({ title?, description?, children?, actions?, tone?, compact?, more? })` | a framed section; `tone` colours its edge, `compact` takes less room (a sidebar); `more: { label, content, aside?, open?, onToggle? }` adds a foot that folds — details only needed now and then, `aside` before its label (a size), `onToggle(open)` to load them when they open; with `onOpen` instead of `content` the foot is a button that opens them elsewhere (a window, `openModal`) |
 | `divider()` | a line |
 | `icon(name, { size?, label? })` | one of the built-in icons (`IconName`: `check`, `x`, `plus`, `search`, `calendar`, `git-pull-request` … — `ICONS` lists them); no network needed |
 
