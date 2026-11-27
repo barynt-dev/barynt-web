@@ -127,6 +127,15 @@ describe("bridge protocol", () => {
     expect(parseFrameMessage({ type: "closeModal" })).toEqual({
       type: "closeModal",
     });
+    // A back arrow in the window's head, or none.
+    expect(parseFrameMessage({ type: "modalBack", on: true })).toEqual({
+      type: "modalBack",
+      on: true,
+    });
+    expect(parseFrameMessage({ type: "modalBack", on: "yes" })).toEqual({
+      type: "modalBack",
+      on: false,
+    });
   });
 
   it("hands a file to save to Barynt — named safely, within its size (BARY-238)", () => {

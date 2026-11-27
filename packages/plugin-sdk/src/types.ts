@@ -332,6 +332,9 @@ export interface Host {
   openModal?(options: ModalOptions): void;
   /** Closes the window this frame is in. */
   closeModal?(): void;
+  /** A back arrow in the head of the window this frame is in — `null`:
+   *  none. */
+  modalBack?(handler: (() => void) | null): void;
   /** Saves a file through Barynt — the frame may not download itself. */
   download?(file: DownloadFile): void;
   /** What saves its settings page when Barynt's Save button is pressed. */

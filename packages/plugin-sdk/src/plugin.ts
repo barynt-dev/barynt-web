@@ -99,6 +99,7 @@ export abstract class Plugin {
   readonly #openModal: Host["openModal"];
   readonly #closeModal: Host["closeModal"];
   readonly #download: Host["download"];
+  readonly #modalBack: Host["modalBack"];
   readonly #actions = new Map<
     string,
     (context: {
@@ -118,6 +119,7 @@ export abstract class Plugin {
     this.#openModal = host.openModal;
     this.#closeModal = host.closeModal;
     this.#download = host.download;
+    this.#modalBack = host.modalBack;
     // The UI kit's toasts and menus are Barynt's own (BARY-238) — kept
     // where the kit, bundled apart, finds them.
     const store = globalThis as Record<symbol, unknown>;
@@ -226,6 +228,17 @@ export abstract class Plugin {
    */
   download(file: DownloadFile): void {
     this.#download?.(file);
+  }
+
+  /**
+   * In a window opened with `openModal`, on a second view inside it (a
+   * run's jobs, say): a back arrow in Barynt's head over the window, left
+   * of its title, that runs `onBack`. `null` takes it away — back on the
+   * first view.
+   */
+  setBack(onBack: (() => void) | null): void {
+    if (!this.context.modal) return;
+    this.#modalBack?.(onBack);
   }
 
   /** In a window opened with `openModal`: closes it. */

@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
 import { useRef } from "react";
 import { Badge } from "@/components/ui/atoms/Badge/Badge";
+import { Button } from "@/components/ui/atoms/Button/Button";
 import { ModalFooter } from "@/components/ui/layout/Modal/components/ModalFooter";
 import { ModalHeader } from "@/components/ui/layout/Modal/components/ModalHeader";
 import { SheetHeader } from "@/components/ui/layout/Modal/components/SheetHeader";
@@ -122,6 +123,7 @@ export function PluginDialog({
   children,
   footer,
   width,
+  onBack,
 }: {
   title: string;
   sheet: boolean;
@@ -131,6 +133,8 @@ export function PluginDialog({
   footer?: React.ReactNode;
   /** As `Modal`'s — 620px by default. */
   width?: number;
+  /** A back arrow before the title — a second view inside. */
+  onBack?: () => void;
 }) {
   const t = useTranslations();
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -147,12 +151,25 @@ export function PluginDialog({
           title={title}
           onClose={close}
           closeLabel={t("actions.close")}
+          {...(onBack && { onBack, backLabel: t("actions.back") })}
         />
       ) : (
         <ModalHeader
           title={title}
           onClose={close}
           closeLabel={t("actions.close")}
+          {...(onBack && {
+            leading: (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<Icon icon="lucide:chevron-left" width={16} />}
+                aria-label={t("actions.back")}
+                title={t("actions.back")}
+                onClick={onBack}
+              />
+            ),
+          })}
         />
       )}
       <ModalBody ref={bodyRef} className={styles.dialogBody}>

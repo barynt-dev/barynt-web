@@ -117,6 +117,8 @@ export function PluginFrame({
   onSaveDone,
   onError,
   onCloseModal,
+  onModalBack,
+  backRequest,
 }: {
   pluginId: string;
   /** The plugin's name — the frame's title, and in its error. */
@@ -160,6 +162,10 @@ export function PluginFrame({
   onError?: (message: string) => void;
   /** In a window it opened (`openModal`): closes that window. */
   onCloseModal?: () => void;
+  /** In a window: whether it wants a back arrow in the window's head. */
+  onModalBack?: (on: boolean) => void;
+  /** That arrow was pressed — tell the frame (a new `seq` each time). */
+  backRequest?: number;
 }) {
   const t = useTranslations("plugins");
   const frame = useRef<HTMLIFrameElement>(null);
@@ -184,27 +190,30 @@ export function PluginFrame({
     const { focus: _, ...place } = context;
     modals.openModal(
       ({ close }) => (
-        <PluginDialog
+        <FrameWindow
           title={m.title}
           sheet={isPhone}
           close={close}
           width={MODAL_WIDTH[m.size]}
-        >
-          <PluginFrame
-            pluginId={pluginId}
-            name={name}
-            context={{
-              ...place,
-              modal: {
-                view: m.view,
-                ...(m.data !== undefined && { data: m.data }),
-              },
-            }}
-            autoHeight={{ min: 120, max: Number.POSITIVE_INFINITY }}
-            onRunAction={onRunAction}
-            onCloseModal={close}
-          />
-        </PluginDialog>
+          frame={(back) => (
+            <PluginFrame
+              pluginId={pluginId}
+              name={name}
+              context={{
+                ...place,
+                modal: {
+                  view: m.view,
+                  ...(m.data !== undefined && { data: m.data }),
+                },
+              }}
+              autoHeight={{ min: 120, max: Number.POSITIVE_INFINITY }}
+              onRunAction={onRunAction}
+              onCloseModal={close}
+              onModalBack={back.set}
+              backRequest={back.request}
+            />
+          )}
+        />
       ),
       { ...(isPhone && { placement: "bottom" as const }), label: m.title },
     );
@@ -236,6 +245,7 @@ export function PluginFrame({
     onSaveDone,
     onError,
     onCloseModal,
+    onModalBack,
   });
   callbacks.current = {
     onBlockData,
@@ -246,6 +256,7 @@ export function PluginFrame({
     onSaveDone,
     onError,
     onCloseModal,
+    onModalBack,
   };
   // Sends to the frame's channel — set while one is open.
   const send = useRef<((message: HostMessage) => void) | null>(null);
@@ -382,6 +393,8 @@ export function PluginFrame({
           openFrameModalRef.current(m);
         } else if (message.type === "download") {
           saveFile(message);
+        } else if (message.type === "modalBack") {
+          callbacks.current.onModalBack?.(message.on);
         } else if (message.type === "closeModal") {
           callbacks.current.onCloseModal?.();
         } else if (message.type === "runAction") {
@@ -437,6 +450,11 @@ export function PluginFrame({
   }, [state.status, actionRequest]);
 
   // Save its settings page, once it listens.
+  // The back arrow in its window's head was pressed (BARY-238).
+  useEffect(() => {
+    if (backRequest) send.current?.({ type: "modal:back" });
+  }, [backRequest]);
+
   useEffect(() => {
     if (state.status === "ready" && saveRequest)
       send.current?.({ type: "settings:save", ...saveRequest });
@@ -560,5 +578,38 @@ export function PluginFrame({
         </div>
       )}
     </div>
+  );
+}
+
+/** A plugin's window: Barynt's dialog (a sheet on a phone) with its frame
+ *  inside — and a back arrow in its head while the frame wants one. */
+function FrameWindow({
+  title,
+  sheet,
+  close,
+  width,
+  frame,
+}: {
+  title: string;
+  sheet: boolean;
+  close: () => void;
+  width: number;
+  frame: (back: {
+    set: (on: boolean) => void;
+    request: number;
+  }) => React.ReactNode;
+}) {
+  const [back, setBack] = useState(false);
+  const [request, setRequest] = useState(0);
+  return (
+    <PluginDialog
+      title={title}
+      sheet={sheet}
+      close={close}
+      width={width}
+      {...(back && { onBack: () => setRequest((n) => n + 1) })}
+    >
+      {frame({ set: setBack, request })}
+    </PluginDialog>
   );
 }

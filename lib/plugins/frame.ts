@@ -21,6 +21,7 @@ const RUNTIME = `(() => {
   const MAX_PENDING = ${BRIDGE_MAX_PENDING};
   const pending = new Map();
   let port = null;
+  let backHandler = null;
   let seq = 0;
   let instance = null;
   let badgeHandler = null;
@@ -110,6 +111,10 @@ const RUNTIME = `(() => {
       }
       // Barynt's Save button, for its settings page: the answer goes back
       // with the request's number.
+      if (m.type === "modal:back") {
+        if (backHandler) backHandler();
+        return;
+      }
       if (m.type === "settings:save") {
         const seq = m.seq;
         if (!saveHandler) return send({ type: "saveDone", seq, ok: true });
@@ -200,6 +205,11 @@ const RUNTIME = `(() => {
           send({ type: "openModal", view: o.view, title: o.title, data: o.data, size: o.size });
         },
         closeModal: () => send({ type: "closeModal" }),
+        // A back arrow in its window's head — or none (BARY-238).
+        modalBack: (handler) => {
+          backHandler = typeof handler === "function" ? handler : null;
+          send({ type: "modalBack", on: backHandler !== null });
+        },
         // A file to save: the sandbox may not download (BARY-238).
         download: (file) => {
           const f = file && typeof file === "object" ? file : {};

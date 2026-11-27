@@ -215,7 +215,10 @@ frame reads `context.modal` (`{ view, data }`) and draws that view
 instead of its usual one. For what doesn't fit a panel: an environment's
 details and history, say. `view` is a plain name (`a-z`, `0-9`, `-`),
 `data` JSON up to 8 KB; `size` is `sm` 420px, `md` 560px (default), `lg`
-760px or `xl` 1120px wide. From inside, `this.closeModal()` closes it.
+760px or `xl` 1120px wide. From inside, `this.closeModal()` closes it, and `this.setBack(onBack)`
+puts a back arrow in the window's head, left of its title — for a second
+view inside it (a run's jobs, say); `setBack(null)` takes it away again.
+In tests, `host.back` is what the arrow runs.
 
 `this.download({ name, text | base64, type? })` saves a file through
 Barynt — the frame is a sandbox that may not download itself: text, or

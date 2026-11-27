@@ -161,6 +161,8 @@ export type FrameMessage =
    *  from that frame, closing it (BARY-238). */
   | ({ type: "openModal" } & FrameModal)
   | { type: "closeModal" }
+  /** In a window: a back arrow in Barynt's head over it, or none. */
+  | { type: "modalBack"; on: boolean }
   /** A file to save — the sandbox may not download (BARY-238). */
   | {
       type: "download";
@@ -211,7 +213,9 @@ export type HostMessage =
   /** Save its settings page: Barynt's Save button was pressed. */
   | { type: "settings:save"; seq: number }
   /** What was picked from its menu — `null`: closed without. */
-  | { type: "menu:pick"; id: number; itemId: string | null };
+  | { type: "menu:pick"; id: number; itemId: string | null }
+  /** The back arrow in its window's head was pressed. */
+  | { type: "modal:back" };
 
 /** The first message, posted to the frame's window with the channel's port. */
 export interface InitMessage {
@@ -288,6 +292,7 @@ export function parseFrameMessage(data: unknown): FrameMessage | null {
     return { type: "error", message: String(m.message ?? "").slice(0, 500) };
   if (m.type === "menu:close") return { type: "menu:close" };
   if (m.type === "closeModal") return { type: "closeModal" };
+  if (m.type === "modalBack") return { type: "modalBack", on: m.on === true };
   if (m.type === "download") {
     // What a file's name mustn't hold — paths, wildcards, control
     // characters — becomes `_`.

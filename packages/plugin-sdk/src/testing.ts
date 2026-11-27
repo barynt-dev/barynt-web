@@ -37,6 +37,8 @@ export interface TestHost extends Host {
   readonly closedModals: number;
   /** Every file it saved (`download`), in order. */
   readonly downloads: DownloadFile[];
+  /** What its window's back arrow runs now (`setBack`) — `null`: none. */
+  readonly back: (() => void) | null;
   /** Runs one of the plugin's actions, as a menu would. */
   runAction(
     id: string,
@@ -76,6 +78,7 @@ export function createTestHost(
   const openedModals: ModalOptions[] = [];
   let closedModals = 0;
   const downloads: DownloadFile[] = [];
+  let back: (() => void) | null = null;
   let badgeHandler: Parameters<NonNullable<Host["serveBadges"]>>[0] | null =
     null;
   let actionHandler: Parameters<NonNullable<Host["serveActions"]>>[0] | null =
@@ -98,6 +101,12 @@ export function createTestHost(
       closedModals += 1;
     },
     downloads,
+    get back() {
+      return back;
+    },
+    modalBack: (handler) => {
+      back = handler;
+    },
     download: (file) => {
       downloads.push(file);
     },
